@@ -1,0 +1,132 @@
+{
+  "common": {
+    "statuses": {
+      "BORRADOR": "Borrador",
+      "EN_REVISION": "En Revisión",
+      "EN_APROBACION": "En Aprobación",
+      "PUBLICADO": "Publicado",
+      "OBSOLETO": "Obsoleto",
+      "EN_REVISION_PERIODICA": "En Revisión Periódica"
+    }
+  },
+  "documents": {
+    "list": {
+      "title": "Control Documentario",
+      "empty": "No se encontraron documentos con los filtros aplicados.",
+      "columns": {
+        "codigo": "Código",
+        "titulo": "Título",
+        "tipo": "Tipo",
+        "version": "Versión",
+        "estado": "Estado",
+        "area": "Área",
+        "proxRevision": "Próx. Revisión",
+        "acciones": "Acciones"
+      },
+      "pagination": {
+        "showing": "Mostrando {{from}}–{{to}} de {{total}}",
+        "previous": "Anterior",
+        "next": "Siguiente"
+      },
+      "filters": {
+        "searchPlaceholder": "Buscar por código o título…",
+        "searchLabel": "Buscar documentos",
+        "estadoLabel": "Estado",
+        "tipoLabel": "Tipo",
+        "areaLabel": "Área",
+        "todos": "Todos",
+        "limpiar": "Limpiar filtros"
+      },
+      "actions": {
+        "nuevo": "Nuevo Documento",
+        "editar": "Editar documento",
+        "iniciarRevision": "Iniciar revisión periódica",
+        "eliminar": "Eliminar documento",
+        "qeActivo": "Documento vinculado a QE activo",
+        "reintentar": "Reintentar",
+        "errorMsg": "Error al cargar los documentos."
+      }
+    },
+    "semaforo": {
+      "proximo": "Próximo",
+      "vencido": "Vencido",
+      "diasRestantes": "{{dias}} día(s) restante(s)"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "subtitle": "Sistema Híbrido de Acciones Correctivas",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Ingresar",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
+    },
+    "forgotPassword": {
+      "title": "Recuperar contraseña",
+      "description": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      "email": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "successMessage": "Si el email existe en el sistema, recibirás un enlace en los próximos minutos.",
+      "backToLogin": "Volver al inicio de sesión"
+    },
+    "resetPassword": {
+      "title": "Nueva contraseña",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "submit": "Restablecer contraseña",
+      "strength": {
+        "weak": "Débil",
+        "fair": "Regular",
+        "good": "Buena",
+        "strong": "Fuerte"
+      }
+    },
+    "validation": {
+      "emailRequired": "El correo electrónico es obligatorio.",
+      "emailInvalid": "Ingresa un correo electrónico válido.",
+      "passwordRequired": "La contraseña es obligatoria.",
+      "passwordMinLength": "Mínimo 8 caracteres.",
+      "passwordUppercase": "Debe incluir al menos una mayúscula.",
+      "passwordLowercase": "Debe incluir al menos una minúscula.",
+      "passwordDigit": "Debe incluir al menos un número.",
+      "passwordSpecial": "Debe incluir al menos un carácter especial.",
+      "passwordMismatch": "Las contraseñas no coinciden."
+    },
+    "errors": {
+      "invalidCredentials": "Credenciales inválidas. Verifica tu correo y contraseña.",
+      "tokenExpired": "El enlace ha expirado o no es válido.",
+      "networkError": "Error de conexión. Inténtalo de nuevo.",
+      "invalidLink": "El enlace no es válido. Solicita uno nuevo."
+    },
+    "roles": {
+      "OPERARIO": "Operario",
+      "SUPERVISOR": "Supervisor",
+      "JEFE_CALIDAD_SYST": "Jefe de Calidad y SyST",
+      "JEFE_CONTROL_DOCUMENTARIO": "Jefe de Control Documentario",
+      "AUDITOR_INTERNO": "Auditor Interno",
+      "ALTA_DIRECCION": "Alta Dirección"
+    },
+    "devMode": {
+      "roleSelector": "Modo desarrollo — seleccionar rol"
+    }
+  },
+  "nav": {
+    "documents": "Documentos",
+    "nonconformities": "No Conformidades",
+    "incidents": "Incidentes SyST",
+    "qualityEvents": "Quality Events",
+    "dashboard": "Dashboard",
+    "users": "Usuarios",
+    "logout": "Cerrar sesión",
+    "myProfile": "Mi perfil",
+    "toggleTheme": "Cambiar tema",
+    "toggleLanguage": "Cambiar idioma"
+  },
+  "qualityEvents": {},
+  "incidents": {},
+  "nonconformities": {},
+  "dashboard": {}
+}

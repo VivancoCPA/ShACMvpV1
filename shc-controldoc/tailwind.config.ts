@@ -1,0 +1,50 @@
+import type { Config } from 'tailwindcss'
+
+export default {
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        canvas: '#faf9f5',
+        'surface-soft': '#f5f0e8',
+        'surface-card': '#efe9de',
+        'surface-cream': '#e8e0d2',
+        'surface-dark': '#181715',
+        'surface-dark-elevated': '#252320',
+        'surface-dark-soft': '#1f1e1b',
+        coral: '#cc785c',
+        'coral-dark': '#a9583e',
+        'coral-muted': '#e6dfd8',
+        ink: '#141413',
+        'body-strong': '#252523',
+        body: '#3d3d3a',
+        muted: '#6c6a64',
+        'muted-soft': '#8e8b82',
+        'on-dark': '#faf9f5',
+        'on-dark-soft': '#a09d96',
+        hairline: '#e6dfd8',
+        'hairline-soft': '#ebe6df',
+        teal: '#5db8a6',
+        amber: '#e8a55a',
+        success: '#5db872',
+        warning: '#d4a017',
+        error: '#c64545',
+      },
+      borderRadius: {
+        xs: '4px',
+        sm: '6px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
+        pill: '9999px',
+      },
+      fontFamily: {
+        display: ['Copernicus', '"Tiempos Headline"', '"EB Garamond"', 'serif'],
+        sans: ['StyreneB', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config

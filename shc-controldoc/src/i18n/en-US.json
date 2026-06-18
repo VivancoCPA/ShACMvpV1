@@ -1,0 +1,132 @@
+{
+  "common": {
+    "statuses": {
+      "BORRADOR": "Draft",
+      "EN_REVISION": "In Review",
+      "EN_APROBACION": "Pending Approval",
+      "PUBLICADO": "Published",
+      "OBSOLETO": "Obsolete",
+      "EN_REVISION_PERIODICA": "Periodic Review"
+    }
+  },
+  "documents": {
+    "list": {
+      "title": "Document Control",
+      "empty": "No documents found matching the applied filters.",
+      "columns": {
+        "codigo": "Code",
+        "titulo": "Title",
+        "tipo": "Type",
+        "version": "Version",
+        "estado": "Status",
+        "area": "Area",
+        "proxRevision": "Next Review",
+        "acciones": "Actions"
+      },
+      "pagination": {
+        "showing": "Showing {{from}}–{{to}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "filters": {
+        "searchPlaceholder": "Search by code or title…",
+        "searchLabel": "Search documents",
+        "estadoLabel": "Status",
+        "tipoLabel": "Type",
+        "areaLabel": "Area",
+        "todos": "All",
+        "limpiar": "Clear filters"
+      },
+      "actions": {
+        "nuevo": "New Document",
+        "editar": "Edit document",
+        "iniciarRevision": "Start periodic review",
+        "eliminar": "Delete document",
+        "qeActivo": "Document linked to active QE",
+        "reintentar": "Retry",
+        "errorMsg": "Failed to load documents."
+      }
+    },
+    "semaforo": {
+      "proximo": "Due soon",
+      "vencido": "Overdue",
+      "diasRestantes": "{{dias}} day(s) remaining"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Corrective Actions Hybrid System",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
+    "forgotPassword": {
+      "title": "Reset password",
+      "description": "Enter your email and we will send you a link to reset your password.",
+      "email": "Email address",
+      "submit": "Send link",
+      "successMessage": "If the email exists in the system, you will receive a link within the next few minutes.",
+      "backToLogin": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "New password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Reset password",
+      "strength": {
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      }
+    },
+    "validation": {
+      "emailRequired": "Email address is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordRequired": "Password is required.",
+      "passwordMinLength": "Minimum 8 characters.",
+      "passwordUppercase": "Must include at least one uppercase letter.",
+      "passwordLowercase": "Must include at least one lowercase letter.",
+      "passwordDigit": "Must include at least one number.",
+      "passwordSpecial": "Must include at least one special character.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "errors": {
+      "invalidCredentials": "Invalid credentials. Check your email and password.",
+      "tokenExpired": "The link has expired or is invalid.",
+      "networkError": "Connection error. Please try again.",
+      "invalidLink": "The link is not valid. Request a new one."
+    },
+    "roles": {
+      "OPERARIO": "Operator",
+      "SUPERVISOR": "Supervisor",
+      "JEFE_CALIDAD_SYST": "Quality & HSE Manager",
+      "JEFE_CONTROL_DOCUMENTARIO": "Document Control Manager",
+      "AUDITOR_INTERNO": "Internal Auditor",
+      "ALTA_DIRECCION": "Senior Management"
+    },
+    "devMode": {
+      "roleSelector": "Dev mode — select role"
+    }
+  },
+  "nav": {
+    "documents": "Documents",
+    "nonconformities": "Non-Conformities",
+    "incidents": "HSE Incidents",
+    "qualityEvents": "Quality Events",
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "logout": "Sign out",
+    "myProfile": "My profile",
+    "toggleTheme": "Toggle theme",
+    "toggleLanguage": "Toggle language"
+  },
+  "qualityEvents": {},
+  "incidents": {},
+  "nonconformities": {},
+  "dashboard": {}
+}
