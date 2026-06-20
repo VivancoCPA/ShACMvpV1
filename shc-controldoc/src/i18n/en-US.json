@@ -39,6 +39,7 @@
       },
       "actions": {
         "nuevo": "New Document",
+        "new_document": "New Document",
         "editar": "Edit document",
         "iniciarRevision": "Start periodic review",
         "eliminar": "Delete document",
@@ -47,10 +48,147 @@
         "errorMsg": "Failed to load documents."
       }
     },
+    "types": {
+      "POL": "Policy",
+      "PRC": "Procedure",
+      "INS": "Work Instruction",
+      "REG": "Record",
+      "INF": "Report",
+      "MAT": "Material",
+      "PLAN": "Plan"
+    },
+    "form": {
+      "title_create": "New Document",
+      "title_edit": "Edit Document",
+      "field_titulo": "Title",
+      "field_tipo": "Document Type",
+      "field_area": "Area",
+      "field_version": "Version",
+      "field_revisor": "Reviewer",
+      "field_aprobador": "Approver",
+      "field_vigencia": "Validity Date",
+      "field_revision": "Next Review",
+      "field_archivo": "File",
+      "field_descripcion": "Description",
+      "field_confidencialidad": "Confidentiality Level",
+      "field_roles_autorizados": "Authorized Roles",
+      "confidencialidad_publico": "Public",
+      "confidencialidad_interno": "Internal",
+      "confidencialidad_confidencial": "Confidential",
+      "confidencialidad_restringido": "Restricted",
+      "hint_restringido": "Only the selected roles will be able to view this document",
+      "btn_save": "Save",
+      "btn_cancel": "Cancel",
+      "success_create": "Document created successfully.",
+      "success_edit": "Document updated successfully.",
+      "error_not_borrador": "This document cannot be edited because it is not in DRAFT status.",
+      "error_file_size": "File exceeds the maximum allowed size (10 MB).",
+      "error_file_type": "File type not allowed. Only PDF, DOCX, and XLSX are accepted.",
+      "error_submit": "Failed to save the document. Please try again.",
+      "generating_code": "The code will be generated automatically.",
+      "upload_drag": "Drag a file here or click to select",
+      "upload_hint": "PDF, DOCX or XLSX · max 10 MB",
+      "upload_replace": "Replace file"
+    },
     "semaforo": {
       "proximo": "Due soon",
       "vencido": "Overdue",
       "diasRestantes": "{{dias}} day(s) remaining"
+    },
+    "detail": {
+      "title": "Document Detail",
+      "noActionsAvailable": "No actions available for this document.",
+      "backToList": "Back to list",
+      "tabs": {
+        "detail": "Detail",
+        "historial": "History",
+        "auditTrail": "Audit Trail"
+      },
+      "banners": {
+        "obsoleto": "This document is OBSOLETE and must not be used.",
+        "qeVinculados": "Linked to active Quality Events: {{ids}}",
+        "restringido": "Access restricted to roles: {{roles}}"
+      },
+      "actions": {
+        "sendToReview": "Send to review",
+        "approveReview": "Approve review",
+        "reject": "Reject",
+        "sign": "Sign and publish",
+        "cancelReview": "Cancel review",
+        "startPeriodicReview": "Start periodic review",
+        "createNewVersion": "Create new version",
+        "startNewVersion": "Start new version",
+        "delete": "Delete",
+        "viewFile": "View file",
+        "downloadPdf": "Download PDF"
+      },
+      "confirmSendToReview": "Send this document to review?",
+      "confirmApproveReview": "Approve review and move to approval?",
+      "confirmCancelReview": "Cancel review and return to draft?",
+      "confirmStartPeriodicReview": "Start periodic review for this document?",
+      "confirmDelete": "Delete this document? This action cannot be undone.",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "signature": {
+      "title": "Sign and Publish Document",
+      "legalText": "By signing this document, I confirm that I have reviewed and approve its content. This electronic signature has the same legal validity as a handwritten signature per policy RN-DOC-004.",
+      "passwordLabel": "Password (signature PIN)",
+      "passwordPlaceholder": "Enter your password",
+      "submit": "Sign and publish",
+      "cancel": "Cancel",
+      "errorInvalid": "Invalid credentials. Check your password.",
+      "successMessage": "Document signed and published successfully."
+    },
+    "reject": {
+      "title": "Reject Document",
+      "motivoLabel": "Rejection reason",
+      "motivoHint": "Describe the reason for rejection (minimum 20 characters)",
+      "motivoPlaceholder": "Explain why this document is being rejected…",
+      "notifyAuthor": "Notify author",
+      "submit": "Reject",
+      "cancel": "Cancel",
+      "successMessage": "Document rejected and returned to draft."
+    },
+    "historial": {
+      "currentVersion": "Current version",
+      "viewFile": "View file",
+      "noHistory": "No version history available."
+    },
+    "auditTrail": {
+      "showMore": "Show more",
+      "noEntries": "No audit trail entries.",
+      "actions": {
+        "DESCARGA": "PDF download",
+        "VISUALIZACION": "File view",
+        "ESTADO_CAMBIADO": "Status changed",
+        "CAMPO_EDITADO": "Field edited",
+        "FIRMA_REGISTRADA": "Signature recorded",
+        "DOCUMENTO_CREADO": "Document created"
+      }
+    },
+    "confidencialidad": {
+      "PUBLICO": "Public",
+      "INTERNO": "Internal",
+      "CONFIDENCIAL": "Confidential",
+      "RESTRINGIDO": "Restricted"
+    },
+    "errors": {
+      "accessDenied": "You do not have permission to access this document.",
+      "downloadUrlExpired": "The download session has expired. Please try again.",
+      "notFound": "Document not found.",
+      "loadError": "Failed to load the document."
+    },
+    "toasts": {
+      "createSuccess": "Document created successfully.",
+      "updateSuccess": "Document updated successfully.",
+      "statusChangeSuccess": "Document status updated.",
+      "statusChangeError": "Failed to change document status.",
+      "deleteSuccess": "Document deleted successfully.",
+      "deleteError": "Failed to delete the document.",
+      "signSuccess": "Document signed and published.",
+      "signError": "Failed to sign the document.",
+      "accessError": "You do not have access to this action."
     }
   },
   "auth": {

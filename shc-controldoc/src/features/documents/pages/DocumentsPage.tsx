@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { ErrorBoundary } from '../../../components/shared/ErrorBoundary'
@@ -9,6 +10,7 @@ const CREATE_ROLES = new Set(['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST'])
 
 export function DocumentsPage() {
   const { t } = useTranslation('documents')
+  const navigate = useNavigate()
   const userRole = useAuthStore((s) => s.user?.rol)
 
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
@@ -16,6 +18,7 @@ export function DocumentsPage() {
   const actions = canCreate ? (
     <button
       type="button"
+      onClick={() => navigate('/documents/new')}
       className="rounded-md bg-coral px-5 py-2.5 text-sm font-medium text-white hover:bg-coral-dark focus:outline-none focus:ring-2 focus:ring-coral/50 dark:hover:bg-coral-dark"
     >
       {t('list.actions.nuevo')}

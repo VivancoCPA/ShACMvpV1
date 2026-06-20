@@ -599,3 +599,19 @@ Un componente o feature está completo cuando:
 - [ ] Audit trail registrado en mutaciones de estado.
 - [ ] Al menos un test unitario del caso principal.
 - [ ] Handler MSW presente para cada endpoint consumido.
+
+## Addendum activo: SHAC-PRD-003-ADD-01
+
+# Archivo: /docs/SHAC-PRD-003-ADD-01.docx
+
+# Tema: Seguridad documental y confidencialidad
+
+# Nuevas reglas: RN-DOC-007 a RN-DOC-012
+
+# Nuevo tipo: DocConfidencialidad (PUBLICO|INTERNO|CONFIDENCIAL|RESTRINGIDO)
+
+# Nuevo campo: Documento.confidencialidad (required)
+
+# Nuevo campo: Documento.rolesAutorizados (conditional)
+
+# Impacto principal: M1-S04 (form), M1-S05 (PDF + seguridad)

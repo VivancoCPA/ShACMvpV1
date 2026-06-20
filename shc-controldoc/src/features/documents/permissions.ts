@@ -1,4 +1,22 @@
-import type { DocStatus, DocRole, DocumentPermissions } from '../../types/documents.types'
+import type { DocStatus, DocRole, DocumentPermissions, DocConfidencialidad } from '../../types/documents.types'
+
+const CONFIDENCIAL_ROLES = new Set([
+  'JEFE_CALIDAD_SYST',
+  'JEFE_CONTROL_DOCUMENTARIO',
+  'AUDITOR_INTERNO',
+  'ALTA_DIRECCION',
+])
+
+export function canAccessDocument(
+  confidencialidad: DocConfidencialidad,
+  userRole: string,
+  rolesAutorizados: string[],
+): boolean {
+  if (confidencialidad === 'PUBLICO' || confidencialidad === 'INTERNO') return true
+  if (confidencialidad === 'CONFIDENCIAL') return CONFIDENCIAL_ROLES.has(userRole)
+  // RESTRINGIDO
+  return rolesAutorizados.includes(userRole)
+}
 
 const DENY_ALL: DocumentPermissions = {
   canRead: false,

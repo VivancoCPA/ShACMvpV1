@@ -1,11 +1,38 @@
 import { z } from 'zod'
 
-export const updateDocumentSchema = z.object({
-  titulo: z.string().min(5).max(200).optional(),
-  descripcion: z.string().max(2000).optional(),
-  revisorId: z.string().uuid().optional(),
-  aprobadorId: z.string().uuid().optional(),
-  fechaVigencia: z.string().optional(),
-})
+const userRoleEnum = z.enum([
+  'OPERARIO',
+  'SUPERVISOR',
+  'JEFE_CALIDAD_SYST',
+  'JEFE_CONTROL_DOCUMENTARIO',
+  'AUDITOR_INTERNO',
+  'ALTA_DIRECCION',
+])
+
+export const updateDocumentSchema = z
+  .object({
+    titulo: z.string().min(5).max(200).optional(),
+    descripcion: z.string().max(2000).optional(),
+    revisorId: z.string().uuid().optional(),
+    aprobadorId: z.string().uuid().optional(),
+    fechaVigencia: z.string().optional(),
+    confidencialidad: z.enum(['PUBLICO', 'INTERNO', 'CONFIDENCIAL', 'RESTRINGIDO']).optional(),
+    rolesAutorizados: z.array(userRoleEnum).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.confidencialidad === 'RESTRINGIDO' &&
+      (!data.rolesAutorizados || data.rolesAutorizados.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 1,
+        origin: 'array',
+        inclusive: true,
+        path: ['rolesAutorizados'],
+        message: 'Se requiere al menos un rol para documentos RESTRINGIDO.',
+      })
+    }
+  })
 
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>

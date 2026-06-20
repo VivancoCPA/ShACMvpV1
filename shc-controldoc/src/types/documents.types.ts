@@ -1,3 +1,5 @@
+import type { UserRole } from './auth.types'
+
 export type DocStatus =
   | 'BORRADOR'
   | 'EN_REVISION'
@@ -7,6 +9,8 @@ export type DocStatus =
   | 'EN_REVISION_PERIODICA'
 
 export type DocType = 'POL' | 'PRC' | 'INS' | 'REG' | 'INF' | 'MAT' | 'PLAN'
+
+export type DocConfidencialidad = 'PUBLICO' | 'INTERNO' | 'CONFIDENCIAL' | 'RESTRINGIDO'
 
 export type DocRole = 'AUTOR' | 'REVISOR' | 'APROBADOR' | 'JEFE_CALIDAD' | 'OPERARIO'
 
@@ -55,12 +59,15 @@ export interface Documento {
   version: string
   estado: DocStatus
   area: string
+  confidencialidad: DocConfidencialidad
+  rolesAutorizados?: UserRole[]
   autorId: string
   revisorId?: string
   aprobadorId?: string
   fechaEmision?: string
   fechaVigencia?: string
   fechaRevisionProxima?: string
+  descripcion?: string
   archivoUrl?: string
   hashArchivo?: string
   qeVinculados: string[]

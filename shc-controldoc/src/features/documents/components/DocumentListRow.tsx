@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
@@ -31,6 +32,7 @@ function userRoleToDocRole(role: UserRole): DocRole {
 
 export function DocumentListRow({ documento, userRole, index, onClick }: DocumentListRowProps) {
   const { t } = useTranslation('documents')
+  const navigate = useNavigate()
 
   const isReadOnly = READ_ONLY_ROLES.has(userRole)
   const docRole = userRoleToDocRole(userRole)
@@ -92,10 +94,11 @@ export function DocumentListRow({ documento, userRole, index, onClick }: Documen
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
-          {perms.canEdit && documento.estado !== 'OBSOLETO' && (
+          {perms.canEdit && documento.estado === 'BORRADOR' && (
             <button
               type="button"
               aria-label={t('list.actions.editar')}
+              onClick={() => navigate(`/documents/${documento.id}/edit`)}
               className="rounded-sm p-1 text-muted transition-colors hover:text-coral dark:text-on-dark-soft dark:hover:text-coral"
             >
               ✏

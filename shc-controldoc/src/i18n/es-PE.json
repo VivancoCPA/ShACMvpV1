@@ -39,6 +39,7 @@
       },
       "actions": {
         "nuevo": "Nuevo Documento",
+        "new_document": "Nuevo Documento",
         "editar": "Editar documento",
         "iniciarRevision": "Iniciar revisión periódica",
         "eliminar": "Eliminar documento",
@@ -47,10 +48,147 @@
         "errorMsg": "Error al cargar los documentos."
       }
     },
+    "types": {
+      "POL": "Política",
+      "PRC": "Procedimiento",
+      "INS": "Instrucción de Trabajo",
+      "REG": "Registro",
+      "INF": "Informe",
+      "MAT": "Material",
+      "PLAN": "Plan"
+    },
+    "form": {
+      "title_create": "Nuevo Documento",
+      "title_edit": "Editar Documento",
+      "field_titulo": "Título",
+      "field_tipo": "Tipo de Documento",
+      "field_area": "Área",
+      "field_version": "Versión",
+      "field_revisor": "Revisor",
+      "field_aprobador": "Aprobador",
+      "field_vigencia": "Fecha de Vigencia",
+      "field_revision": "Próxima Revisión",
+      "field_archivo": "Archivo",
+      "field_descripcion": "Descripción",
+      "field_confidencialidad": "Nivel de Confidencialidad",
+      "field_roles_autorizados": "Roles Autorizados",
+      "confidencialidad_publico": "Público",
+      "confidencialidad_interno": "Interno",
+      "confidencialidad_confidencial": "Confidencial",
+      "confidencialidad_restringido": "Restringido",
+      "hint_restringido": "Solo los roles seleccionados podrán ver este documento",
+      "btn_save": "Guardar",
+      "btn_cancel": "Cancelar",
+      "success_create": "Documento creado exitosamente.",
+      "success_edit": "Documento actualizado exitosamente.",
+      "error_not_borrador": "Este documento no puede editarse porque no está en estado BORRADOR.",
+      "error_file_size": "El archivo supera el tamaño máximo permitido (10 MB).",
+      "error_file_type": "Tipo de archivo no permitido. Solo se aceptan PDF, DOCX y XLSX.",
+      "error_submit": "Error al guardar el documento. Intenta de nuevo.",
+      "generating_code": "El código se generará automáticamente.",
+      "upload_drag": "Arrastra un archivo aquí o haz clic para seleccionar",
+      "upload_hint": "PDF, DOCX o XLSX · máx. 10 MB",
+      "upload_replace": "Reemplazar archivo"
+    },
     "semaforo": {
       "proximo": "Próximo",
       "vencido": "Vencido",
       "diasRestantes": "{{dias}} día(s) restante(s)"
+    },
+    "detail": {
+      "title": "Detalle del Documento",
+      "noActionsAvailable": "No hay acciones disponibles para este documento.",
+      "backToList": "Volver a lista",
+      "tabs": {
+        "detail": "Detalle",
+        "historial": "Historial",
+        "auditTrail": "Audit Trail"
+      },
+      "banners": {
+        "obsoleto": "Este documento está OBSOLETO y no debe ser utilizado.",
+        "qeVinculados": "Vinculado a Quality Events activos: {{ids}}",
+        "restringido": "Acceso restringido a roles: {{roles}}"
+      },
+      "actions": {
+        "sendToReview": "Enviar a revisión",
+        "approveReview": "Aprobar revisión",
+        "reject": "Rechazar",
+        "sign": "Firmar y publicar",
+        "cancelReview": "Cancelar revisión",
+        "startPeriodicReview": "Iniciar revisión periódica",
+        "createNewVersion": "Crear nueva versión",
+        "startNewVersion": "Iniciar nueva versión",
+        "delete": "Eliminar",
+        "viewFile": "Ver archivo",
+        "downloadPdf": "Descargar PDF"
+      },
+      "confirmSendToReview": "¿Enviar este documento a revisión?",
+      "confirmApproveReview": "¿Aprobar la revisión y pasar a aprobación?",
+      "confirmCancelReview": "¿Cancelar la revisión y volver a borrador?",
+      "confirmStartPeriodicReview": "¿Iniciar revisión periódica de este documento?",
+      "confirmDelete": "¿Eliminar este documento? Esta acción no se puede deshacer.",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar"
+    },
+    "signature": {
+      "title": "Firmar y Publicar Documento",
+      "legalText": "Al firmar este documento, confirmo que he revisado y apruebo su contenido. Esta firma electrónica tiene validez legal equivalente a una firma manuscrita según la política RN-DOC-004.",
+      "passwordLabel": "Contraseña (PIN de firma)",
+      "passwordPlaceholder": "Ingresa tu contraseña",
+      "submit": "Firmar y publicar",
+      "cancel": "Cancelar",
+      "errorInvalid": "Credenciales inválidas. Verifica tu contraseña.",
+      "successMessage": "Documento firmado y publicado exitosamente."
+    },
+    "reject": {
+      "title": "Rechazar Documento",
+      "motivoLabel": "Motivo del rechazo",
+      "motivoHint": "Describe el motivo del rechazo (mínimo 20 caracteres)",
+      "motivoPlaceholder": "Explica por qué se rechaza este documento…",
+      "notifyAuthor": "Notificar al autor",
+      "submit": "Rechazar",
+      "cancel": "Cancelar",
+      "successMessage": "Documento rechazado y devuelto a borrador."
+    },
+    "historial": {
+      "currentVersion": "Versión actual",
+      "viewFile": "Ver archivo",
+      "noHistory": "No hay historial de versiones disponible."
+    },
+    "auditTrail": {
+      "showMore": "Ver más",
+      "noEntries": "Sin entradas en el audit trail.",
+      "actions": {
+        "DESCARGA": "Descarga de PDF",
+        "VISUALIZACION": "Visualización de archivo",
+        "ESTADO_CAMBIADO": "Cambio de estado",
+        "CAMPO_EDITADO": "Campo editado",
+        "FIRMA_REGISTRADA": "Firma registrada",
+        "DOCUMENTO_CREADO": "Documento creado"
+      }
+    },
+    "confidencialidad": {
+      "PUBLICO": "Público",
+      "INTERNO": "Interno",
+      "CONFIDENCIAL": "Confidencial",
+      "RESTRINGIDO": "Restringido"
+    },
+    "errors": {
+      "accessDenied": "No tienes permisos para acceder a este documento.",
+      "downloadUrlExpired": "La sesión de descarga ha expirado. Intenta nuevamente.",
+      "notFound": "Documento no encontrado.",
+      "loadError": "Error al cargar el documento."
+    },
+    "toasts": {
+      "createSuccess": "Documento creado exitosamente.",
+      "updateSuccess": "Documento actualizado exitosamente.",
+      "statusChangeSuccess": "Estado del documento actualizado.",
+      "statusChangeError": "Error al cambiar el estado del documento.",
+      "deleteSuccess": "Documento eliminado exitosamente.",
+      "deleteError": "Error al eliminar el documento.",
+      "signSuccess": "Documento firmado y publicado.",
+      "signError": "Error al firmar el documento.",
+      "accessError": "No tienes acceso a esta acción."
     }
   },
   "auth": {

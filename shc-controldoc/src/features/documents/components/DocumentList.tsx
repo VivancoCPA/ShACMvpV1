@@ -26,7 +26,7 @@ function TableSkeleton() {
 export function DocumentList() {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol)
   const { documentos, isLoading, isError, pagination, refetch } = useDocumentList()
 
@@ -121,7 +121,7 @@ export function DocumentList() {
                   documento={doc}
                   userRole={userRole ?? 'OPERARIO'}
                   index={index}
-                  onClick={() => navigate(`/documents/${doc.id}`)}
+                  onClick={() => navigate(`/documentos/${doc.id}`)}
                 />
               ))}
           </tbody>

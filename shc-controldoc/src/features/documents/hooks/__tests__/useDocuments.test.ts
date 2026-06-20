@@ -96,6 +96,7 @@ describe('useCreateDocument', () => {
         titulo: 'Procedimiento de Prueba para Test',
         tipo: 'PRC',
         area: 'Calidad',
+        confidencialidad: 'INTERNO',
         revisorId: '11111111-1111-1111-1111-111111111111',
         aprobadorId: '22222222-2222-2222-2222-222222222222',
       })

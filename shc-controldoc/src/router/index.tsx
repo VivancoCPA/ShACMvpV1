@@ -5,6 +5,8 @@ import { LoginPage } from '../features/auth/pages/LoginPage'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { DocumentsPage } from '../features/documents/pages/DocumentsPage'
+import { DocumentFormPage } from '../features/documents/pages/DocumentFormPage'
+import { DocumentDetailPage } from '../features/documents/pages/DocumentDetailPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 
@@ -40,8 +42,42 @@ export const router = createBrowserRouter([
           },
           {
             path: '/documentos/:id',
-            element: <ComingSoon label="Detalle de Documento" />,
+            element: <DocumentDetailPage />,
             handle: { breadcrumb: 'documents' },
+          },
+          // English-path aliases used by form navigation
+          { path: '/documents', element: <Navigate to="/documentos" replace /> },
+          {
+            element: (
+              <RoleGuard
+                requiredRoles={['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST']}
+              />
+            ),
+            children: [
+              {
+                path: '/documents/new',
+                element: <DocumentFormPage />,
+                handle: { breadcrumb: 'documents' },
+              },
+            ],
+          },
+          {
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'JEFE_CONTROL_DOCUMENTARIO',
+                  'JEFE_CALIDAD_SYST',
+                  'SUPERVISOR',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/documents/:id/edit',
+                element: <DocumentFormPage />,
+                handle: { breadcrumb: 'documents' },
+              },
+            ],
           },
           {
             path: '/no-conformidades',
