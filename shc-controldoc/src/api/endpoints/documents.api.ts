@@ -26,8 +26,18 @@ export async function getDocuments(filters: DocFilters = {}): Promise<DocumentLi
   if (filters.page !== undefined) params.page = filters.page
   if (filters.pageSize !== undefined) params.pageSize = filters.pageSize
   if (filters.includeDeleted) params.includeDeleted = 'true'
+  if (filters.pendientes) params.pendientes = 'true'
 
   const response = await api.get<DocumentListResponse>('/api/documents', { params })
+  return response.data
+}
+
+export interface PendientesCountResponse {
+  count: number
+}
+
+export async function getPendientesCount(): Promise<PendientesCountResponse> {
+  const response = await api.get<PendientesCountResponse>('/api/documents/pendientes/count')
   return response.data
 }
 

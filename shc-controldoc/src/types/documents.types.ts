@@ -92,4 +92,5 @@ export interface DocFilters {
   page?: number
   pageSize?: number
   includeDeleted?: boolean
+  pendientes?: boolean
 }

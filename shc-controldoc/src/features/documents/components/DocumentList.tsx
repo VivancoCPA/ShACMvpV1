@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDocumentList } from '../hooks/useDocumentList'
@@ -7,6 +7,17 @@ import { DocumentVersionSubRow } from './DocumentVersionSubRow'
 import { useAuthStore } from '../../../stores/authStore'
 import type { Documento, DocStatus } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
+
+const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
+
+function isDocPendingForUser(doc: Documento, userId: string, userRole: UserRole): boolean {
+  if (!userId || NON_PENDING_ROLES.has(userRole)) return false
+  if (userRole === 'SUPERVISOR' && doc.estado === 'EN_REVISION' && doc.revisorId === userId) return true
+  if (!NON_PENDING_ROLES.has(userRole) && doc.estado === 'EN_APROBACION' && doc.aprobadorId === userId) return true
+  if (userRole === 'JEFE_CALIDAD_SYST' && (doc.estado === 'EN_REVISION' || doc.estado === 'EN_REVISION_PERIODICA')) return true
+  if (userRole === 'JEFE_CONTROL_DOCUMENTARIO' && doc.estado === 'EN_REVISION_PERIODICA') return true
+  return false
+}
 
 const STATUS_RANK: Record<DocStatus, number> = {
   PUBLICADO: 0,
@@ -77,9 +88,18 @@ export function DocumentList() {
   const { documentos, isLoading, isError, pagination, refetch } = useDocumentList()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
+  const userId = useAuthStore((s) => s.user?.id) ?? ''
   const effectiveRole: UserRole = (userRole as UserRole | undefined) ?? 'OPERARIO'
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
+
+  const pendingDocIds = useMemo(() => {
+    const ids = new Set<string>()
+    documentos.forEach((doc) => {
+      if (isDocPendingForUser(doc, userId, effectiveRole)) ids.add(doc.id)
+    })
+    return ids
+  }, [documentos, userId, effectiveRole])
 
   const groups = includeDeleted ? [] : buildGroups(documentos, effectiveRole)
 
@@ -189,6 +209,7 @@ export function DocumentList() {
                   onClick={() => navigate(`/documentos/${doc.id}`)}
                   hasVersions={false}
                   isExpanded={false}
+                  isPending={false}
                 />
               ))}
 
@@ -206,6 +227,7 @@ export function DocumentList() {
                     hasVersions={group.older.length > 0}
                     isExpanded={expandedGroups.has(group.codigo)}
                     onToggle={() => toggleGroup(group.codigo)}
+                    isPending={pendingDocIds.has(group.primary.id)}
                   />
                   {expandedGroups.has(group.codigo) &&
                     group.older.map((doc) => (

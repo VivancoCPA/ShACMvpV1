@@ -303,6 +303,14 @@
         "confirmada": "Periodic review recorded. Next review: {{fecha}}",
         "nuevaVersion": "New version started for periodic review."
       }
+    },
+    "pendientes": {
+      "filtro": "My pending",
+      "filtroCon": "My pending ({{count}})",
+      "sinPendientes": "You have no documents pending action.",
+      "sidebar": {
+        "badge": "You have {{count}} document(s) pending review"
+      }
     }
   },
   "auth": {

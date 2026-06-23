@@ -303,6 +303,14 @@
         "confirmada": "Revisión periódica registrada. Próxima revisión: {{fecha}}",
         "nuevaVersion": "Nueva versión iniciada para revisión periódica."
       }
+    },
+    "pendientes": {
+      "filtro": "Mis pendientes",
+      "filtroCon": "Mis pendientes ({{count}})",
+      "sinPendientes": "No tienes documentos pendientes de acción.",
+      "sidebar": {
+        "badge": "Tienes {{count}} documento(s) pendiente(s) de revisión"
+      }
     }
   },
   "auth": {

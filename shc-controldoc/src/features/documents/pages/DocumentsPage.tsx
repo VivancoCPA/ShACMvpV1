@@ -1,19 +1,48 @@
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { ErrorBoundary } from '../../../components/shared/ErrorBoundary'
 import { DocumentListFilters } from '../components/DocumentListFilters'
 import { DocumentList } from '../components/DocumentList'
 import { useAuthStore } from '../../../stores/authStore'
+import { useDocumentosPendientesCount } from '../hooks/useDocumentosPendientesCount'
+import type { UserRole } from '../../../types/auth.types'
 
 const CREATE_ROLES = new Set(['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST'])
+const PENDIENTES_ROLES = new Set<UserRole>(['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO'])
 
 export function DocumentsPage() {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol)
+  const { data: pendientesData } = useDocumentosPendientesCount()
+  const hasAutoActivated = useRef(false)
 
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
+
+  // Auto-activate "Mis pendientes" on first load if the user has pending docs and no filters set
+  useEffect(() => {
+    if (pendientesData === undefined || hasAutoActivated.current) return
+    hasAutoActivated.current = true
+    const hasPendientes = pendientesData.count > 0
+    const hasExplicitFilter =
+      searchParams.has('search') ||
+      searchParams.has('estado') ||
+      searchParams.has('tipo') ||
+      searchParams.has('area') ||
+      searchParams.has('pendientes') ||
+      searchParams.has('includeDeleted')
+    const canSeePendientes = userRole !== undefined && PENDIENTES_ROLES.has(userRole)
+    if (hasPendientes && !hasExplicitFilter && canSeePendientes) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('pendientes', 'true')
+        return next
+      }, { replace: true })
+    }
+  }, [pendientesData])
 
   const actions = canCreate ? (
     <button

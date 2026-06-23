@@ -20,16 +20,18 @@ export function useDocumentList(): UseDocumentListResult {
   const area = searchParams.get('area') ?? undefined
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
+  const pendientes = searchParams.get('pendientes') === 'true'
 
   const query = useDocuments({
     search,
-    // When showing deleted docs, skip estado filter
-    estado: includeDeleted ? undefined : estado,
+    // pendientes mode and deleted view both skip the estado filter
+    estado: includeDeleted || pendientes ? undefined : estado,
     tipo,
     area,
     page,
     pageSize: 20,
     includeDeleted,
+    pendientes: pendientes || undefined,
   })
 
   return {

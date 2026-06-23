@@ -21,6 +21,7 @@ interface DocumentListRowProps {
   hasVersions?: boolean
   isExpanded?: boolean
   onToggle?: () => void
+  isPending?: boolean
 }
 
 const READ_ONLY_ROLES: Set<UserRole> = new Set(['AUDITOR_INTERNO', 'ALTA_DIRECCION'])
@@ -48,6 +49,7 @@ export function DocumentListRow({
   hasVersions = false,
   isExpanded = false,
   onToggle,
+  isPending = false,
 }: DocumentListRowProps) {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
@@ -94,10 +96,14 @@ export function DocumentListRow({
       ? 'bg-canvas dark:bg-surface-dark'
       : 'bg-hairline/30 dark:bg-surface-dark-elevated/30'
 
+  const pendingBorder = isPending
+    ? 'border-l-2 border-l-amber dark:border-l-amber'
+    : 'border-l-2 border-l-transparent'
+
   return (
     <tr
       onClick={onClick}
-      className={`cursor-pointer border-b border-hairline hover:bg-coral/5 dark:border-hairline/20 dark:hover:bg-coral/10 ${rowBg}`}
+      className={`cursor-pointer border-b border-hairline hover:bg-coral/5 dark:border-hairline/20 dark:hover:bg-coral/10 ${rowBg} ${pendingBorder}`}
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-ink dark:text-on-dark">
         <span className="flex items-center gap-1.5">

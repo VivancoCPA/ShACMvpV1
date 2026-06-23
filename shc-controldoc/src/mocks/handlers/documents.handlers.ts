@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { documentFixtures } from '../fixtures/documents.fixtures'
+import { authFixtures } from '../fixtures/auth.fixtures'
 import { DOC_STATUS_TRANSITIONS } from '../../features/documents/constants'
 import type { Documento, DocStatus, DocType } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
@@ -21,6 +22,46 @@ const CONFIDENCIAL_ROLES = new Set([
   'AUDITOR_INTERNO',
   'ALTA_DIRECCION',
 ])
+
+const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
+
+function getUserFromRequest(request: Request) {
+  const authHeader = request.headers.get('Authorization') ?? ''
+  const token = authHeader.replace('Bearer ', '')
+  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
+  const userId = match?.[1] ?? null
+  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
+}
+
+function filterPendientes(docs: Documento[], userId: string, userRole: UserRole): Documento[] {
+  const ids = new Set<string>()
+
+  if (userRole === 'SUPERVISOR') {
+    docs
+      .filter((d) => d.estado === 'EN_REVISION' && d.revisorId === userId)
+      .forEach((d) => ids.add(d.id))
+  }
+
+  if (!NON_PENDING_ROLES.has(userRole)) {
+    docs
+      .filter((d) => d.estado === 'EN_APROBACION' && d.aprobadorId === userId)
+      .forEach((d) => ids.add(d.id))
+  }
+
+  if (userRole === 'JEFE_CALIDAD_SYST') {
+    docs
+      .filter((d) => d.estado === 'EN_REVISION' || d.estado === 'EN_REVISION_PERIODICA')
+      .forEach((d) => ids.add(d.id))
+  }
+
+  if (userRole === 'JEFE_CONTROL_DOCUMENTARIO') {
+    docs
+      .filter((d) => d.estado === 'EN_REVISION_PERIODICA')
+      .forEach((d) => ids.add(d.id))
+  }
+
+  return docs.filter((d) => ids.has(d.id))
+}
 
 const LATENCY = 400
 
@@ -101,8 +142,10 @@ export const documentHandlers = [
       return (d.rolesAutorizados ?? []).includes(userRole as UserRole)
     })
 
-    // estado filter only applies when not in deleted view
-    if (!includeDeleted && estado) filtered = filtered.filter((d) => d.estado === estado)
+    const pendientes = url.searchParams.get('pendientes') === 'true'
+
+    // estado filter only applies when not in deleted view and not in pendientes mode
+    if (!includeDeleted && !pendientes && estado) filtered = filtered.filter((d) => d.estado === estado)
     if (tipo) filtered = filtered.filter((d) => d.tipo === tipo)
     if (area) filtered = filtered.filter((d) => d.area === area)
     if (codigo) filtered = filtered.filter((d) => d.codigo === codigo)
@@ -113,12 +156,35 @@ export const documentHandlers = [
       )
     }
 
+    if (pendientes) {
+      const requestUser = getUserFromRequest(request)
+      if (requestUser) {
+        filtered = filterPendientes(filtered, requestUser.id, requestUser.rol)
+      } else {
+        filtered = []
+      }
+    }
+
     const totalItems = filtered.length
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
     const start = (page - 1) * pageSize
     const items = filtered.slice(start, start + pageSize)
 
     return ok({ items, pagination: { page, pageSize, totalItems, totalPages } })
+  }),
+
+  // GET /api/documents/pendientes/count — count pending docs for current user
+  http.get('/api/documents/pendientes/count', async ({ request }) => {
+    await delay(LATENCY)
+
+    const requestUser = getUserFromRequest(request)
+    if (!requestUser || NON_PENDING_ROLES.has(requestUser.rol)) {
+      return ok({ count: 0 })
+    }
+
+    const activeDocs = store.filter((d) => !d.deletedAt)
+    const pendientesDocs = filterPendientes(activeDocs, requestUser.id, requestUser.rol)
+    return ok({ count: pendientesDocs.length })
   }),
 
   // GET /api/documents/:id — detail

@@ -12,8 +12,11 @@ import {
 } from 'lucide-react'
 import { useUIStore } from '../../stores/uiStore'
 import { useAuthStore } from '../../stores/authStore'
+import { useDocumentosPendientesCount } from '../../features/documents/hooks/useDocumentosPendientesCount'
 import { UserAvatar } from '../ui/UserAvatar'
 import type { UserRole } from '../../types/auth.types'
+
+const PENDIENTES_BADGE_ROLES = new Set<UserRole>(['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO'])
 
 interface NavItem {
   key: string
@@ -54,8 +57,13 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const { t } = useTranslation('nav')
   const { t: tAuth } = useTranslation('auth')
+  const { t: tDocs } = useTranslation('documents')
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const user = useAuthStore((s) => s.user)
+
+  const showBadge = user?.rol !== undefined && PENDIENTES_BADGE_ROLES.has(user.rol)
+  const { data: pendientesData } = useDocumentosPendientesCount()
+  const pendientesCount = showBadge ? (pendientesData?.count ?? 0) : 0
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.roles || (user?.rol && item.roles.includes(user.rol)),
@@ -91,17 +99,45 @@ export function Sidebar() {
             <NavLink
               key={item.key}
               to={item.path}
-              title={!sidebarOpen ? t(item.key) : undefined}
+              title={
+                !sidebarOpen
+                  ? item.key === 'documents' && pendientesCount > 0
+                    ? tDocs('pendientes.sidebar.badge', { count: pendientesCount })
+                    : t(item.key)
+                  : undefined
+              }
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                `relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                   isActive
                     ? 'border-l-2 border-coral bg-coral/10 text-coral'
                     : 'border-l-2 border-transparent text-muted hover:bg-hairline hover:text-ink dark:hover:bg-surface-dark-soft dark:hover:text-on-dark'
                 }`
               }
             >
-              <Icon size={18} className="flex-shrink-0" />
-              {sidebarOpen && <span>{t(item.key)}</span>}
+              <span className="relative flex-shrink-0">
+                <Icon size={18} />
+                {!sidebarOpen && item.key === 'documents' && pendientesCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-amber px-0.5 text-[9px] font-bold leading-none text-white dark:text-surface-dark"
+                  >
+                    {pendientesCount > 9 ? '9+' : pendientesCount}
+                  </span>
+                )}
+              </span>
+              {sidebarOpen && (
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  {t(item.key)}
+                  {item.key === 'documents' && pendientesCount > 0 && (
+                    <span
+                      title={tDocs('pendientes.sidebar.badge', { count: pendientesCount })}
+                      className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber px-1.5 text-xs font-semibold text-white dark:text-surface-dark"
+                    >
+                      {pendientesCount > 99 ? '99+' : pendientesCount}
+                    </span>
+                  )}
+                </span>
+              )}
             </NavLink>
           )
         })}

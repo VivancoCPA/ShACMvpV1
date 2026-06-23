@@ -53,9 +53,10 @@ describe('useDocuments', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
+    const activeFixtures = documentFixtures.filter((d) => !d.deletedAt)
     expect(result.current.data?.items.length).toBeGreaterThan(0)
     expect(result.current.data?.pagination).toBeDefined()
-    expect(result.current.data?.pagination.totalItems).toBe(documentFixtures.length)
+    expect(result.current.data?.pagination.totalItems).toBe(activeFixtures.length)
   })
 })
 
