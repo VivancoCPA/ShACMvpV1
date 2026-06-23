@@ -45,7 +45,15 @@
         "eliminar": "Delete document",
         "qeActivo": "Document linked to active QE",
         "reintentar": "Retry",
-        "errorMsg": "Failed to load documents."
+        "errorMsg": "Failed to load documents.",
+        "tooltips": {
+          "verDetalle": "View detail",
+          "editar": "Edit document",
+          "iniciarRevision": "Start periodic review",
+          "verArchivo": "View original file",
+          "exportarPdf": "Export controlled PDF",
+          "eliminar": "Delete document"
+        }
       }
     },
     "types": {
@@ -82,12 +90,12 @@
       "success_create": "Document created successfully.",
       "success_edit": "Document updated successfully.",
       "error_not_borrador": "This document cannot be edited because it is not in DRAFT status.",
-      "error_file_size": "File exceeds the maximum allowed size (10 MB).",
-      "error_file_type": "File type not allowed. Only PDF, DOCX, and XLSX are accepted.",
+      "error_file_size": "File exceeds the maximum allowed size (50 MB).",
+      "error_file_type": "File type not allowed. Only PDF, Word (.doc, .docx), and Excel (.xls, .xlsx) are accepted.",
       "error_submit": "Failed to save the document. Please try again.",
       "generating_code": "The code will be generated automatically.",
       "upload_drag": "Drag a file here or click to select",
-      "upload_hint": "PDF, DOCX or XLSX · max 10 MB",
+      "upload_hint": "PDF, DOCX or XLSX · max 50 MB",
       "upload_replace": "Replace file"
     },
     "semaforo": {
@@ -164,7 +172,11 @@
         "ESTADO_CAMBIADO": "Status changed",
         "CAMPO_EDITADO": "Field edited",
         "FIRMA_REGISTRADA": "Signature recorded",
-        "DOCUMENTO_CREADO": "Document created"
+        "DOCUMENTO_CREADO": "Document created",
+        "NUEVA_VERSION_INICIADA": "New version started",
+        "REVISION_PERIODICA_CONFIRMADA": "Periodic review confirmed",
+        "DOCUMENTO_ELIMINADO": "Document deleted",
+        "RESTAURADO": "Document restored"
       }
     },
     "confidencialidad": {
@@ -189,6 +201,108 @@
       "signSuccess": "Document signed and published.",
       "signError": "Failed to sign the document.",
       "accessError": "You do not have access to this action."
+    },
+    "actions": {
+      "verArchivo": "View original file",
+      "exportarPdf": "Export controlled PDF",
+      "exportarPdfControlado": "Export controlled PDF",
+      "exportando": "Exporting…",
+      "errorExportar": "Could not generate the PDF. Please try again.",
+      "delete": {
+        "confirm": {
+          "title": "Delete?",
+          "message": "Delete '{{titulo}}'? This action cannot be undone.",
+          "cancel": "Cancel",
+          "confirm": "Delete"
+        },
+        "toast": {
+          "success": "Document deleted successfully.",
+          "error": "Failed to delete the document."
+        }
+      }
+    },
+    "archivo": {
+      "abrir": "View original file",
+      "abriendo": "Opening…",
+      "errorAbrir": "Could not retrieve the file. Please try again.",
+      "urlExpirada": "The file URL has expired. Please try again.",
+      "formatosAceptados": "Accepted formats: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Max. 50 MB.",
+      "tipo": "File type"
+    },
+    "nuevaVersion": {
+      "modal": {
+        "title": "Create new version",
+        "tipoCambio": "Change type",
+        "menor": "Minor change (format correction, no substantial content change)",
+        "mayor": "Major change (process change or new requirement)",
+        "motivo": "Reason for change",
+        "motivoPlaceholder": "Describe the reason for this change (minimum 20 characters)…",
+        "preview": "New version: {{version}}",
+        "confirm": "Create draft"
+      },
+      "toast": {
+        "success": "New version {{version}} created as draft"
+      }
+    },
+    "pdf": {
+      "previewTitle": "Controlled PDF preview",
+      "previewNote": "The preview shows the document as it will appear when printed.",
+      "download": "Download PDF",
+      "cancel": "Cancel"
+    },
+    "versiones": {
+      "tab": "Versions",
+      "versionActual": "current version",
+      "versionAnterior": "previous version",
+      "verDocumento": "View document",
+      "publicadoPor": "Published by {{nombre}}",
+      "publicadoEl": "on {{fecha}}",
+      "obsoletoEl": "Obsolete on {{fecha}}",
+      "motivoCambio": "Reason for change",
+      "sinVersionesAnteriores": "This is the only record with this code.",
+      "expandir": "Expand previous versions",
+      "colapsar": "Collapse previous versions"
+    },
+    "deleted": {
+      "badge": "Deleted",
+      "toggle": {
+        "label": "Show deleted",
+        "disabledEstadoTooltip": "Showing deleted documents only"
+      },
+      "banner": {
+        "mensaje": "This document was deleted on {{fecha}} by {{usuario}}.",
+        "restaurar": "Restore document"
+      },
+      "restore": {
+        "tooltip": "Restore document",
+        "confirm": {
+          "title": "Restore this document?",
+          "message": "Restore '{{titulo}}'? The document will return to Draft status and can be edited again.",
+          "cancel": "Cancel",
+          "confirm": "Restore"
+        },
+        "toast": {
+          "success": "Document restored. It is now in Draft.",
+          "error": "Failed to restore the document."
+        }
+      }
+    },
+    "revisionPeriodica": {
+      "modal": {
+        "title": "Periodic Review",
+        "subtitulo": "{{codigo}} — {{titulo}}",
+        "opcionA": "Confirm document still valid — no changes",
+        "opcionADesc": "The document remains valid. Only the next review date will be updated.",
+        "opcionAConfirm": "Confirm — document is still valid",
+        "opcionB": "Requires update — create new version",
+        "opcionBDesc": "The document needs to be updated. A new draft version will be created.",
+        "opcionBAction": "Create new version",
+        "proximaRevision": "Next review: {{fecha}}"
+      },
+      "toast": {
+        "confirmada": "Periodic review recorded. Next review: {{fecha}}",
+        "nuevaVersion": "New version started for periodic review."
+      }
     }
   },
   "auth": {
@@ -249,6 +363,9 @@
     },
     "devMode": {
       "roleSelector": "Dev mode — select role"
+    },
+    "devPanel": {
+      "pinHint": "🔐 Electronic signature PIN (dev mode): 123456"
     }
   },
   "nav": {

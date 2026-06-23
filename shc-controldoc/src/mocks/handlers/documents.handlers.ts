@@ -7,6 +7,14 @@ import type { AuditTrailEntry } from '../../types/documents.types'
 
 const MOCK_PIN = '123456'
 
+function calcularNuevaVersion(versionActual: string, tipoCambio: 'MENOR' | 'MAYOR'): string {
+  const match = versionActual.match(/^v?(\d+)\.(\d+)$/)
+  if (!match) return versionActual
+  const major = parseInt(match[1], 10)
+  const minor = parseInt(match[2], 10)
+  return tipoCambio === 'MENOR' ? `v${major}.${minor + 1}` : `v${major + 1}.0`
+}
+
 const CONFIDENCIAL_ROLES = new Set([
   'JEFE_CALIDAD_SYST',
   'JEFE_CONTROL_DOCUMENTARIO',
@@ -73,21 +81,31 @@ export const documentHandlers = [
     const tipo = url.searchParams.get('tipo') as DocType | null
     const area = url.searchParams.get('area')
     const search = url.searchParams.get('search')
+    const codigo = url.searchParams.get('codigo')
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '10', 10)
+    const includeDeleted = url.searchParams.get('includeDeleted') === 'true'
 
     // RN-DOC-012: filter by confidencialidad based on simulated user role
     const userRole = url.searchParams.get('_role') ?? 'JEFE_CALIDAD_SYST'
     let filtered = store.filter((d) => {
+      // Soft-delete filter: by default only active docs; with includeDeleted only deleted docs
+      if (includeDeleted) {
+        if (!d.deletedAt) return false
+      } else {
+        if (d.deletedAt) return false
+      }
       if (d.confidencialidad === 'PUBLICO' || d.confidencialidad === 'INTERNO') return true
       if (d.confidencialidad === 'CONFIDENCIAL') return CONFIDENCIAL_ROLES.has(userRole)
       // RESTRINGIDO
       return (d.rolesAutorizados ?? []).includes(userRole as UserRole)
     })
 
-    if (estado) filtered = filtered.filter((d) => d.estado === estado)
+    // estado filter only applies when not in deleted view
+    if (!includeDeleted && estado) filtered = filtered.filter((d) => d.estado === estado)
     if (tipo) filtered = filtered.filter((d) => d.tipo === tipo)
     if (area) filtered = filtered.filter((d) => d.area === area)
+    if (codigo) filtered = filtered.filter((d) => d.codigo === codigo)
     if (search) {
       const q = search.toLowerCase()
       filtered = filtered.filter(
@@ -289,7 +307,7 @@ export const documentHandlers = [
     return ok({ archivoUrl, hashArchivo })
   }),
 
-  // DELETE /api/documents/:id
+  // DELETE /api/documents/:id — soft delete (sets deletedAt)
   http.delete('/api/documents/:id', async ({ params }) => {
     await delay(LATENCY)
 
@@ -297,6 +315,10 @@ export const documentHandlers = [
     if (idx === -1) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
+
+    if (doc.deletedAt) {
+      return err('El documento ya está eliminado', 409)
+    }
 
     if (doc.estado !== 'BORRADOR' && doc.estado !== 'EN_REVISION') {
       return err('Solo se pueden eliminar documentos en estado BORRADOR o EN_REVISION', 409)
@@ -309,7 +331,18 @@ export const documentHandlers = [
       )
     }
 
-    store.splice(idx, 1)
+    const now = new Date().toISOString()
+    store[idx] = {
+      ...doc,
+      deletedAt: now,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'DOCUMENTO_ELIMINADO', {
+          estadoAnterior: doc.estado,
+        }),
+      ],
+    }
     return ok(null)
   }),
 
@@ -437,6 +470,167 @@ export const documentHandlers = [
     return ok(updated)
   }),
 
+  // GET /api/documents/:id/archivo — signed view URL + VISUALIZACION audit (RN-DOC-008/009)
+  http.get('/api/documents/:id/archivo', async ({ params }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+    const ext = doc.archivoUrl?.split('.').pop() ?? 'pdf'
+    const tipoArchivo = doc.tipoArchivo ?? 'application/pdf'
+    const nombreArchivo = `${doc.codigo}-${doc.version}.${ext}`
+    const now = new Date().toISOString()
+
+    store[idx] = {
+      ...doc,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'VISUALIZACION', { timestamp: now }),
+      ],
+    }
+
+    return ok({
+      url: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/pdf-sample.pdf',
+      expiresAt,
+      nombreArchivo,
+      tipoArchivo,
+    })
+  }),
+
+  // POST /api/documents/:id/nueva-version — create new version draft (RN-DOC-002)
+  http.post('/api/documents/:id/nueva-version', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const body = await request.json() as { tipoCambio: 'MENOR' | 'MAYOR'; motivo: string }
+    const nuevaVersion = calcularNuevaVersion(doc.version, body.tipoCambio)
+    const now = new Date().toISOString()
+    const newId = generateId()
+
+    const newDoc = {
+      ...doc,
+      id: newId,
+      version: nuevaVersion,
+      estado: 'BORRADOR' as const,
+      versionAnteriorId: doc.id,
+      archivoUrl: undefined,
+      hashArchivo: undefined,
+      fechaEmision: undefined,
+      revisorId: undefined,
+      aprobadorId: undefined,
+      qeVinculados: [],
+      historialVersiones: [],
+      auditTrail: [
+        makeAuditEntry(newId, 'DOCUMENTO_CREADO', {
+          valorNuevo: `Nueva versión ${nuevaVersion} iniciada. Motivo: ${body.motivo}`,
+        }),
+      ],
+      creadoEn: now,
+      actualizadoEn: now,
+    }
+
+    store[idx] = {
+      ...doc,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'NUEVA_VERSION_INICIADA', {
+          valorNuevo: `Nueva versión ${nuevaVersion} iniciada. Motivo: ${body.motivo}`,
+        }),
+      ],
+    }
+
+    store.push(newDoc)
+    return ok(newDoc, 201)
+  }),
+
+  // POST /api/documents/:id/exportar-pdf — watermarked PDF for controlled copy (RN-DOC-007)
+  http.post('/api/documents/:id/exportar-pdf', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    if (doc.estado !== 'PUBLICADO') {
+      return err('Solo se puede exportar documentos en estado PUBLICADO', 409)
+    }
+
+    const body = await request.json() as { userNombreCompleto: string }
+    const limaTime = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
+    const fileName = `${doc.codigo}-${doc.version}-controlado.pdf`
+    const now = new Date().toISOString()
+
+    store[idx] = {
+      ...store[idx],
+      actualizadoEn: now,
+      auditTrail: [
+        ...store[idx].auditTrail,
+        makeAuditEntry(doc.id, 'DESCARGA', {
+          timestamp: now,
+          valorNuevo: `Archivo: ${fileName}`,
+        }),
+      ],
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>${doc.codigo} — ${doc.titulo}</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; color: #141413; background: #ffffff; }
+    .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-30deg);
+      font-size: 48px; color: rgba(0,0,0,0.07); white-space: nowrap; pointer-events: none; user-select: none; }
+    .header { border-bottom: 2px solid #e6dfd8; padding-bottom: 16px; margin-bottom: 24px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+    .meta dt { font-weight: 600; color: #6c6a64; font-size: 12px; text-transform: uppercase; }
+    .meta dd { margin: 0; font-size: 14px; }
+    .copy-notice { margin-top: 40px; padding: 12px; background: #f5f0e8; border: 1px solid #e6dfd8;
+      font-size: 12px; color: #4a4a4a; }
+    .user-info { font-weight: bold; color: #4a4a4a; }
+  </style>
+</head>
+<body>
+  <div class="watermark">COPIA NO CONTROLADA</div>
+  <div class="header">
+    <h1>${doc.codigo} — ${doc.titulo}</h1>
+    <p>Versión ${doc.version} &middot; Estado: ${doc.estado} &middot; Área: ${doc.area}</p>
+  </div>
+  <dl class="meta">
+    <dt>Tipo</dt><dd>${doc.tipo}</dd>
+    <dt>Área</dt><dd>${doc.area}</dd>
+    <dt>Emisión</dt><dd>${doc.fechaEmision ?? '—'}</dd>
+    <dt>Vigencia</dt><dd>${doc.fechaVigencia ?? '—'}</dd>
+  </dl>
+  <div class="copy-notice">
+    <p class="user-info">Descargado por: ${body.userNombreCompleto}</p>
+    <p>Fecha y hora Lima (GMT-5): ${limaTime}</p>
+    <p><strong>COPIA NO CONTROLADA — Solo válido al momento de impresión</strong></p>
+    <p>Hash SHA-256: ${doc.hashArchivo ?? 'sin firma'}</p>
+  </div>
+</body>
+</html>`
+
+    const encoder = new TextEncoder()
+    const bytes = encoder.encode(htmlContent)
+
+    return new HttpResponse(bytes.buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      },
+    })
+  }),
+
   // GET /api/documents/:id/download-url — signed URL (RN-DOC-009)
   http.get('/api/documents/:id/download-url', async ({ params, request }) => {
     await delay(LATENCY)
@@ -454,6 +648,94 @@ export const documentHandlers = [
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     return ok({ url: `mock://signed-url-${params.id as string}`, expiresAt })
+  }),
+
+  // PATCH /api/documents/:id/confirmar-revision — confirm periodic review, renew next review date
+  http.patch('/api/documents/:id/confirmar-revision', async ({ params }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    if (doc.estado !== 'PUBLICADO' && doc.estado !== 'EN_REVISION_PERIODICA') {
+      return err('La revisión periódica solo aplica a documentos PUBLICADO o EN_REVISION_PERIODICA', 409)
+    }
+
+    const now = new Date()
+    let fechaRevisionProxima: string | undefined = undefined
+    switch (doc.tipo) {
+      case 'POL':
+      case 'PRC':
+      case 'PLAN':
+        fechaRevisionProxima = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toISOString()
+        break
+      case 'MAT':
+        fechaRevisionProxima = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate()).toISOString()
+        break
+      case 'INS':
+        fechaRevisionProxima = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString()
+        break
+      case 'REG':
+      case 'INF':
+        fechaRevisionProxima = undefined
+        break
+    }
+
+    const nowStr = now.toISOString()
+    const detalle = fechaRevisionProxima
+      ? `Documento confirmado vigente sin cambios. Próxima revisión: ${fechaRevisionProxima}`
+      : 'Documento confirmado vigente sin cambios. Sin próxima revisión programada.'
+
+    const updated: Documento = {
+      ...doc,
+      estado: 'PUBLICADO',
+      fechaRevisionProxima,
+      actualizadoEn: nowStr,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'REVISION_PERIODICA_CONFIRMADA', {
+          estadoAnterior: doc.estado,
+          estadoNuevo: 'PUBLICADO',
+          valorNuevo: detalle,
+        }),
+      ],
+    }
+
+    store[idx] = updated
+    return ok(updated)
+  }),
+
+  // PATCH /api/documents/:id/restaurar — restore a soft-deleted document
+  http.patch('/api/documents/:id/restaurar', async ({ params }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    if (!doc.deletedAt) {
+      return err('El documento no está eliminado', 409)
+    }
+
+    const now = new Date().toISOString()
+    const updated: Documento = {
+      ...doc,
+      deletedAt: undefined,
+      estado: 'BORRADOR',
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'RESTAURADO', {
+          estadoAnterior: 'ELIMINADO',
+          estadoNuevo: 'BORRADOR',
+          valorNuevo: 'Documento restaurado desde estado eliminado',
+        }),
+      ],
+    }
+
+    store[idx] = updated
+    return ok(updated)
   }),
 
   // POST /api/documents/:id/audit/access — register DESCARGA or VISUALIZACION (RN-DOC-008)

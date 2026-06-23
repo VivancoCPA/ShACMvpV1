@@ -1,8 +1,15 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { ChevronRight, ChevronDown, RotateCcw } from 'lucide-react'
 import { getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
+import { Tooltip } from '../../../components/ui/Tooltip'
+import { deleteDocument, restaurarDocumento } from '../../../api/endpoints/documents.api'
+import { QUERY_KEYS } from '../constants'
 import type { Documento, DocRole } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
 
@@ -11,6 +18,9 @@ interface DocumentListRowProps {
   userRole: UserRole
   index: number
   onClick: () => void
+  hasVersions?: boolean
+  isExpanded?: boolean
+  onToggle?: () => void
 }
 
 const READ_ONLY_ROLES: Set<UserRole> = new Set(['AUDITOR_INTERNO', 'ALTA_DIRECCION'])
@@ -30,18 +40,57 @@ function userRoleToDocRole(role: UserRole): DocRole {
   }
 }
 
-export function DocumentListRow({ documento, userRole, index, onClick }: DocumentListRowProps) {
+export function DocumentListRow({
+  documento,
+  userRole,
+  index,
+  onClick,
+  hasVersions = false,
+  isExpanded = false,
+  onToggle,
+}: DocumentListRowProps) {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [confirming, setConfirming] = useState(false)
+  const [confirmingRestore, setConfirmingRestore] = useState(false)
 
+  const isDeleted = !!documento.deletedAt
   const isReadOnly = READ_ONLY_ROLES.has(userRole)
   const docRole = userRoleToDocRole(userRole)
-  const perms = isReadOnly
+  const perms = isDeleted || isReadOnly
     ? { canEdit: false, canDelete: false, canStartReview: false }
     : getDocumentPermissions(documento.estado, docRole)
 
-  const rowBg =
-    index % 2 === 0
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteDocument(documento.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
+      toast.success(t('actions.delete.toast.success'))
+      setConfirming(false)
+    },
+    onError: () => {
+      toast.error(t('actions.delete.toast.error'))
+      setConfirming(false)
+    },
+  })
+
+  const restaurarMutation = useMutation({
+    mutationFn: () => restaurarDocumento(documento.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
+      toast.success(t('deleted.restore.toast.success'))
+      setConfirmingRestore(false)
+    },
+    onError: () => {
+      toast.error(t('deleted.restore.toast.error'))
+      setConfirmingRestore(false)
+    },
+  })
+
+  const rowBg = isDeleted
+    ? 'bg-error/8 dark:bg-error/10'
+    : index % 2 === 0
       ? 'bg-canvas dark:bg-surface-dark'
       : 'bg-hairline/30 dark:bg-surface-dark-elevated/30'
 
@@ -52,6 +101,21 @@ export function DocumentListRow({ documento, userRole, index, onClick }: Documen
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-ink dark:text-on-dark">
         <span className="flex items-center gap-1.5">
+          {hasVersions ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggle?.() }}
+              aria-label={isExpanded ? t('versiones.colapsar') : t('versiones.expandir')}
+              aria-expanded={isExpanded}
+              className="flex-shrink-0 rounded-sm text-muted transition-colors hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+            >
+              {isExpanded
+                ? <ChevronDown size={14} aria-hidden="true" />
+                : <ChevronRight size={14} aria-hidden="true" />}
+            </button>
+          ) : (
+            <span className="w-[14px] flex-shrink-0" aria-hidden="true" />
+          )}
           {documento.codigo}
           {documento.qeVinculados.length > 0 && (
             <span
@@ -78,7 +142,14 @@ export function DocumentListRow({ documento, userRole, index, onClick }: Documen
       </td>
 
       <td className="whitespace-nowrap px-4 py-3">
-        <StatusBadge status={documento.estado} />
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={documento.estado} />
+          {isDeleted && (
+            <span className="rounded-full bg-error/15 px-2 py-0.5 text-xs font-medium text-error dark:bg-error/20 dark:text-error">
+              {t('deleted.badge')}
+            </span>
+          )}
+        </div>
       </td>
 
       <td className="whitespace-nowrap px-4 py-3 text-sm text-muted dark:text-on-dark-soft">
@@ -94,33 +165,108 @@ export function DocumentListRow({ documento, userRole, index, onClick }: Documen
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
-          {perms.canEdit && documento.estado === 'BORRADOR' && (
-            <button
-              type="button"
-              aria-label={t('list.actions.editar')}
-              onClick={() => navigate(`/documents/${documento.id}/edit`)}
-              className="rounded-sm p-1 text-muted transition-colors hover:text-coral dark:text-on-dark-soft dark:hover:text-coral"
-            >
-              ✏
-            </button>
+          {/* Restore action — only for deleted docs */}
+          {isDeleted && (
+            confirmingRestore ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-body dark:text-on-dark">
+                  {t('deleted.restore.confirm.title')}
+                </span>
+                <button
+                  type="button"
+                  aria-label={t('deleted.restore.confirm.cancel')}
+                  onClick={() => setConfirmingRestore(false)}
+                  disabled={restaurarMutation.isPending}
+                  className="rounded-sm px-1.5 py-0.5 text-xs text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+                >
+                  {t('deleted.restore.confirm.cancel')}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('deleted.restore.confirm.confirm')}
+                  onClick={() => restaurarMutation.mutate()}
+                  disabled={restaurarMutation.isPending}
+                  className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-teal hover:text-teal/80 disabled:opacity-50 dark:text-teal"
+                >
+                  {t('deleted.restore.confirm.confirm')}
+                </button>
+              </div>
+            ) : (
+              <Tooltip content={t('deleted.restore.tooltip')}>
+                <button
+                  type="button"
+                  aria-label={t('deleted.restore.tooltip')}
+                  onClick={() => setConfirmingRestore(true)}
+                  className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                </button>
+              </Tooltip>
+            )
           )}
-          {perms.canStartReview && (
-            <button
-              type="button"
-              aria-label={t('list.actions.iniciarRevision')}
-              className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
-            >
-              ↻
-            </button>
+
+          {/* Normal actions — only for non-deleted docs */}
+          {!isDeleted && perms.canEdit && documento.estado === 'BORRADOR' && (
+            <Tooltip content={t('list.actions.tooltips.editar')}>
+              <button
+                type="button"
+                aria-label={t('list.actions.editar')}
+                onClick={() => navigate(`/documents/${documento.id}/edit`)}
+                className="rounded-sm p-1 text-muted transition-colors hover:text-coral dark:text-on-dark-soft dark:hover:text-coral"
+              >
+                ✏
+              </button>
+            </Tooltip>
           )}
-          {perms.canDelete && (
-            <button
-              type="button"
-              aria-label={t('list.actions.eliminar')}
-              className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
-            >
-              ✕
-            </button>
+          {!isDeleted && perms.canStartReview && (
+            <Tooltip content={t('list.actions.tooltips.iniciarRevision')}>
+              <button
+                type="button"
+                aria-label={t('list.actions.iniciarRevision')}
+                onClick={() => navigate(`/documentos/${documento.id}?action=iniciar-revision`)}
+                className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
+              >
+                ↻
+              </button>
+            </Tooltip>
+          )}
+          {!isDeleted && perms.canDelete && (
+            confirming ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-error dark:text-error">
+                  {t('actions.delete.confirm.title')}
+                </span>
+                <button
+                  type="button"
+                  aria-label={t('actions.delete.confirm.cancel')}
+                  onClick={() => setConfirming(false)}
+                  disabled={deleteMutation.isPending}
+                  className="rounded-sm px-1.5 py-0.5 text-xs text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+                >
+                  {t('actions.delete.confirm.cancel')}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('actions.delete.confirm.confirm')}
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                  className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-error hover:text-error/80 disabled:opacity-50 dark:text-error"
+                >
+                  {t('actions.delete.confirm.confirm')}
+                </button>
+              </div>
+            ) : (
+              <Tooltip content={t('list.actions.tooltips.eliminar')}>
+                <button
+                  type="button"
+                  aria-label={t('list.actions.eliminar')}
+                  onClick={() => setConfirming(true)}
+                  className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+                >
+                  ✕
+                </button>
+              </Tooltip>
+            )
           )}
         </div>
       </td>

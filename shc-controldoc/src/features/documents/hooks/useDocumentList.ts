@@ -19,8 +19,18 @@ export function useDocumentList(): UseDocumentListResult {
   const tipo = (searchParams.get('tipo') as DocType | null) ?? undefined
   const area = searchParams.get('area') ?? undefined
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+  const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
-  const query = useDocuments({ search, estado, tipo, area, page, pageSize: 20 })
+  const query = useDocuments({
+    search,
+    // When showing deleted docs, skip estado filter
+    estado: includeDeleted ? undefined : estado,
+    tipo,
+    area,
+    page,
+    pageSize: 20,
+    includeDeleted,
+  })
 
   return {
     documentos: query.data?.items ?? [],

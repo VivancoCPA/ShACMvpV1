@@ -5,6 +5,7 @@ export const QUERY_KEYS = {
     all: ['documents'] as const,
     list: (filters: DocFilters) => ['documents', 'list', filters] as const,
     detail: (id: string) => ['documents', 'detail', id] as const,
+    versionesByCodigo: (codigo: string) => ['documents', 'versiones', codigo] as const,
   },
 } as const
 

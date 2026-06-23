@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next'
 
 const ACCEPTED_TYPES = new Set([
   'application/pdf',
+  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ])
-const MAX_BYTES = 10 * 1024 * 1024 // 10 MiB
+const MAX_BYTES = 50 * 1024 * 1024 // 50 MiB
 
 interface FileUploadFieldProps {
   value: File | null
@@ -183,7 +185,7 @@ export function FileUploadField({
       >
         <span className="text-2xl text-muted dark:text-on-dark-soft">📁</span>
         <p className="text-sm font-medium text-ink dark:text-on-dark">{t('form.upload_drag')}</p>
-        <p className="text-xs text-muted dark:text-on-dark-soft">{t('form.upload_hint')}</p>
+        <p className="text-xs text-muted dark:text-on-dark-soft">{t('archivo.formatosAceptados')}</p>
       </div>
       {error && (
         <p role="alert" className="text-xs text-error">{error}</p>
@@ -191,7 +193,7 @@ export function FileUploadField({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.docx,.xlsx"
+        accept=".pdf,.doc,.docx,.xls,.xlsx"
         className="sr-only"
         disabled={disabled}
         onChange={(e) => handleFiles(e.target.files)}

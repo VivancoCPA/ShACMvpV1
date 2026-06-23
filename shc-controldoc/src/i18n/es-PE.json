@@ -45,7 +45,15 @@
         "eliminar": "Eliminar documento",
         "qeActivo": "Documento vinculado a QE activo",
         "reintentar": "Reintentar",
-        "errorMsg": "Error al cargar los documentos."
+        "errorMsg": "Error al cargar los documentos.",
+        "tooltips": {
+          "verDetalle": "Ver detalle",
+          "editar": "Editar documento",
+          "iniciarRevision": "Iniciar revisión periódica",
+          "verArchivo": "Ver archivo original",
+          "exportarPdf": "Exportar PDF controlado",
+          "eliminar": "Eliminar documento"
+        }
       }
     },
     "types": {
@@ -82,12 +90,12 @@
       "success_create": "Documento creado exitosamente.",
       "success_edit": "Documento actualizado exitosamente.",
       "error_not_borrador": "Este documento no puede editarse porque no está en estado BORRADOR.",
-      "error_file_size": "El archivo supera el tamaño máximo permitido (10 MB).",
-      "error_file_type": "Tipo de archivo no permitido. Solo se aceptan PDF, DOCX y XLSX.",
+      "error_file_size": "El archivo supera el tamaño máximo permitido (50 MB).",
+      "error_file_type": "Tipo de archivo no permitido. Solo se aceptan PDF, Word (.doc, .docx) y Excel (.xls, .xlsx).",
       "error_submit": "Error al guardar el documento. Intenta de nuevo.",
       "generating_code": "El código se generará automáticamente.",
       "upload_drag": "Arrastra un archivo aquí o haz clic para seleccionar",
-      "upload_hint": "PDF, DOCX o XLSX · máx. 10 MB",
+      "upload_hint": "PDF, DOCX o XLSX · máx. 50 MB",
       "upload_replace": "Reemplazar archivo"
     },
     "semaforo": {
@@ -164,7 +172,11 @@
         "ESTADO_CAMBIADO": "Cambio de estado",
         "CAMPO_EDITADO": "Campo editado",
         "FIRMA_REGISTRADA": "Firma registrada",
-        "DOCUMENTO_CREADO": "Documento creado"
+        "DOCUMENTO_CREADO": "Documento creado",
+        "NUEVA_VERSION_INICIADA": "Nueva versión iniciada",
+        "REVISION_PERIODICA_CONFIRMADA": "Revisión periódica confirmada",
+        "DOCUMENTO_ELIMINADO": "Documento eliminado",
+        "RESTAURADO": "Documento restaurado"
       }
     },
     "confidencialidad": {
@@ -189,6 +201,108 @@
       "signSuccess": "Documento firmado y publicado.",
       "signError": "Error al firmar el documento.",
       "accessError": "No tienes acceso a esta acción."
+    },
+    "actions": {
+      "verArchivo": "Ver archivo original",
+      "exportarPdf": "Exportar PDF controlado",
+      "exportarPdfControlado": "Exportar PDF controlado",
+      "exportando": "Exportando…",
+      "errorExportar": "No se pudo generar el PDF. Intente nuevamente.",
+      "delete": {
+        "confirm": {
+          "title": "¿Eliminar?",
+          "message": "¿Eliminar '{{titulo}}'? Esta acción no se puede deshacer.",
+          "cancel": "Cancelar",
+          "confirm": "Eliminar"
+        },
+        "toast": {
+          "success": "Documento eliminado correctamente.",
+          "error": "Error al eliminar el documento."
+        }
+      }
+    },
+    "archivo": {
+      "abrir": "Ver archivo original",
+      "abriendo": "Abriendo…",
+      "errorAbrir": "No se pudo obtener el archivo. Intente nuevamente.",
+      "urlExpirada": "La URL del archivo ha expirado. Intente nuevamente.",
+      "formatosAceptados": "Formatos aceptados: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Máx. 50 MB.",
+      "tipo": "Tipo de archivo"
+    },
+    "nuevaVersion": {
+      "modal": {
+        "title": "Crear nueva versión",
+        "tipoCambio": "Tipo de cambio",
+        "menor": "Cambio menor (corrección de forma, sin cambio de contenido sustancial)",
+        "mayor": "Cambio mayor (cambio de proceso o requisito nuevo)",
+        "motivo": "Motivo del cambio",
+        "motivoPlaceholder": "Describe el motivo del cambio (mínimo 20 caracteres)…",
+        "preview": "Nueva versión: {{version}}",
+        "confirm": "Crear borrador"
+      },
+      "toast": {
+        "success": "Nueva versión {{version}} creada en borrador"
+      }
+    },
+    "pdf": {
+      "previewTitle": "Vista previa del PDF controlado",
+      "previewNote": "La vista previa muestra el documento como se verá al imprimir.",
+      "download": "Descargar PDF",
+      "cancel": "Cancelar"
+    },
+    "versiones": {
+      "tab": "Versiones",
+      "versionActual": "versión actual",
+      "versionAnterior": "versión anterior",
+      "verDocumento": "Ver documento",
+      "publicadoPor": "Publicado por {{nombre}}",
+      "publicadoEl": "el {{fecha}}",
+      "obsoletoEl": "Obsoleto el {{fecha}}",
+      "motivoCambio": "Motivo del cambio",
+      "sinVersionesAnteriores": "Este es el único registro con este código.",
+      "expandir": "Expandir versiones anteriores",
+      "colapsar": "Colapsar versiones anteriores"
+    },
+    "deleted": {
+      "badge": "Eliminado",
+      "toggle": {
+        "label": "Mostrar eliminados",
+        "disabledEstadoTooltip": "Mostrando solo documentos eliminados"
+      },
+      "banner": {
+        "mensaje": "Este documento fue eliminado el {{fecha}} por {{usuario}}.",
+        "restaurar": "Restaurar documento"
+      },
+      "restore": {
+        "tooltip": "Restaurar documento",
+        "confirm": {
+          "title": "¿Restaurar este documento?",
+          "message": "¿Restaurar '{{titulo}}'? El documento volverá a estado Borrador y podrá ser editado nuevamente.",
+          "cancel": "Cancelar",
+          "confirm": "Restaurar"
+        },
+        "toast": {
+          "success": "Documento restaurado. Ahora está en Borrador.",
+          "error": "Error al restaurar el documento."
+        }
+      }
+    },
+    "revisionPeriodica": {
+      "modal": {
+        "title": "Revisión Periódica",
+        "subtitulo": "{{codigo}} — {{titulo}}",
+        "opcionA": "Confirmar vigencia sin cambios",
+        "opcionADesc": "El documento sigue siendo válido. Solo se actualizará la fecha de próxima revisión.",
+        "opcionAConfirm": "Confirmar — el documento sigue vigente",
+        "opcionB": "Requiere actualización — crear nueva versión",
+        "opcionBDesc": "El documento necesita actualizarse. Se iniciará la creación de una nueva versión en borrador.",
+        "opcionBAction": "Crear nueva versión",
+        "proximaRevision": "Próxima revisión: {{fecha}}"
+      },
+      "toast": {
+        "confirmada": "Revisión periódica registrada. Próxima revisión: {{fecha}}",
+        "nuevaVersion": "Nueva versión iniciada para revisión periódica."
+      }
     }
   },
   "auth": {
@@ -249,6 +363,9 @@
     },
     "devMode": {
       "roleSelector": "Modo desarrollo — seleccionar rol"
+    },
+    "devPanel": {
+      "pinHint": "🔐 PIN de firma electrónica (modo dev): 123456"
     }
   },
   "nav": {

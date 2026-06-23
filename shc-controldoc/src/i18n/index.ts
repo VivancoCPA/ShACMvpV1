@@ -6,7 +6,7 @@ import { usePreferencesStore } from '../stores/preferencesStore'
 
 const persistedLang = usePreferencesStore.getState().language ?? 'es-PE'
 
-void i18n.use(initReactI18next).init({
+export const i18nReady = i18n.use(initReactI18next).init({
   lng: persistedLang,
   fallbackLng: 'es-PE',
   ns: ['common', 'auth', 'nav', 'documents', 'qualityEvents', 'incidents', 'nonconformities', 'dashboard'],

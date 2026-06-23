@@ -2,9 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { DocumentConfidencialidadBadge } from './DocumentConfidencialidadBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
-import { canAccessDocument } from '../permissions'
 import { useAuthStore } from '../../../stores/authStore'
-import { requestDocumentPdf, requestDocumentView } from '../../../utils/documentPdf'
 import type { Documento } from '../../../types/documents.types'
 
 interface DocumentDetailHeaderProps {
@@ -20,10 +18,6 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
   const user = useAuthStore((s) => s.user)
-
-  const hasFileAccess =
-    user !== null &&
-    canAccessDocument(documento.confidencialidad, user.rol, documento.rolesAutorizados ?? [])
 
   const isJefeDocOrDireccion =
     user?.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user?.rol === 'ALTA_DIRECCION'
@@ -124,25 +118,6 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
         )}
       </dl>
 
-      {/* File actions */}
-      {hasFileAccess && (documento.archivoUrl || documento.hashArchivo) && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {documento.archivoUrl && (
-            <button
-              onClick={() => user && requestDocumentView(documento, user)}
-              className="rounded-md border border-hairline bg-canvas px-3.5 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
-            >
-              {t('detail.actions.viewFile')}
-            </button>
-          )}
-          <button
-            onClick={() => user && requestDocumentPdf(documento, user)}
-            className="rounded-md border border-hairline bg-canvas px-3.5 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
-          >
-            {t('detail.actions.downloadPdf')}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

@@ -60,6 +60,11 @@ export function LoginPage() {
                 </option>
               ))}
             </select>
+            <div className="mt-3 border-t border-hairline pt-3 dark:border-hairline/20">
+              <p className="text-xs text-muted dark:text-on-dark-soft">
+                {t('devPanel.pinHint')}
+              </p>
+            </div>
           </div>
         )}
 

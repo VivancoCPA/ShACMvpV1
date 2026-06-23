@@ -1,14 +1,31 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, FileText, FileType, Sheet } from 'lucide-react'
 import { useDocumentDetail } from '../hooks/useDocumentDetail'
 import { DocumentDetailHeader } from '../components/DocumentDetailHeader'
 import { DocumentActionPanel } from '../components/DocumentActionPanel'
 import { DocumentHistorial } from '../components/DocumentHistorial'
 import { DocumentAuditTrail } from '../components/DocumentAuditTrail'
+import { DocumentVersionesTab } from '../components/DocumentVersionesTab'
 
-type Tab = 'detail' | 'historial' | 'auditTrail'
+type Tab = 'detail' | 'historial' | 'auditTrail' | 'versiones'
+
+function getFileTypeInfo(archivoUrl?: string, tipoArchivo?: string): { icon: JSX.Element; label: string } | null {
+  const ext = archivoUrl?.split('.').pop()?.toLowerCase() ?? ''
+  const mime = tipoArchivo ?? ''
+  if (ext === 'pdf' || mime === 'application/pdf') {
+    return { icon: <FileText size={14} aria-hidden="true" />, label: 'PDF' }
+  }
+  if (ext === 'docx' || ext === 'doc' || mime.includes('wordprocessingml') || mime === 'application/msword') {
+    return { icon: <FileType size={14} aria-hidden="true" />, label: 'Word' }
+  }
+  if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheetml') || mime === 'application/vnd.ms-excel') {
+    return { icon: <Sheet size={14} aria-hidden="true" />, label: 'Excel' }
+  }
+  if (!ext && !mime) return null
+  return { icon: <FileText size={14} aria-hidden="true" />, label: ext.toUpperCase() || 'Archivo' }
+}
 
 function DetailSkeleton() {
   return (
@@ -27,15 +44,21 @@ function DetailSkeleton() {
 export function DocumentDetailPage() {
   const { id = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { t } = useTranslation('documents')
   const [activeTab, setActiveTab] = useState<Tab>('detail')
 
   const { documento, isLoading, isError } = useDocumentDetail(id)
 
+  const initialAction = searchParams.get('action') === 'iniciar-revision'
+    ? ('revision-periodica' as const)
+    : undefined
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'detail', label: t('detail.tabs.detail') },
     { key: 'historial', label: t('detail.tabs.historial') },
     { key: 'auditTrail', label: t('detail.tabs.auditTrail') },
+    { key: 'versiones', label: t('versiones.tab') },
   ]
 
   return (
@@ -95,16 +118,32 @@ export function DocumentDetailPage() {
                     ) : (
                       <p className="text-muted dark:text-on-dark-soft">—</p>
                     )}
+                    {(documento.archivoUrl || documento.tipoArchivo) && (() => {
+                      const fileInfo = getFileTypeInfo(documento.archivoUrl, documento.tipoArchivo)
+                      if (!fileInfo) return null
+                      return (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
+                            {t('archivo.tipo')}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded bg-surface-soft px-2 py-0.5 text-xs font-medium text-body dark:bg-surface-dark-elevated dark:text-on-dark">
+                            {fileInfo.icon}
+                            {fileInfo.label}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
                 {activeTab === 'historial' && <DocumentHistorial documento={documento} />}
                 {activeTab === 'auditTrail' && <DocumentAuditTrail documento={documento} />}
+                {activeTab === 'versiones' && <DocumentVersionesTab documento={documento} />}
               </div>
             </div>
 
             {/* Right column — 1/3 */}
             <div className="lg:col-span-1">
-              <DocumentActionPanel documento={documento} />
+              <DocumentActionPanel documento={documento} initialAction={initialAction} />
             </div>
           </div>
         </div>

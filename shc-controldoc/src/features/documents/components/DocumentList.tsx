@@ -1,11 +1,57 @@
+import { Fragment, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDocumentList } from '../hooks/useDocumentList'
 import { DocumentListRow } from './DocumentListRow'
+import { DocumentVersionSubRow } from './DocumentVersionSubRow'
 import { useAuthStore } from '../../../stores/authStore'
+import type { Documento, DocStatus } from '../../../types/documents.types'
+import type { UserRole } from '../../../types/auth.types'
+
+const STATUS_RANK: Record<DocStatus, number> = {
+  PUBLICADO: 0,
+  EN_REVISION_PERIODICA: 1,
+  EN_APROBACION: 2,
+  EN_REVISION: 3,
+  BORRADOR: 4,
+  OBSOLETO: 5,
+}
 
 const SKELETON_ROWS = 5
 const CREATE_ROLES = new Set(['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST'])
+const HIDE_OBSOLETO_ROLES = new Set<UserRole>(['OPERARIO', 'SUPERVISOR'])
+
+type DocGroup = {
+  codigo: string
+  primary: Documento
+  older: Documento[]
+}
+
+function buildGroups(docs: Documento[], userRole: UserRole): DocGroup[] {
+  const hideObsoleto = HIDE_OBSOLETO_ROLES.has(userRole)
+  const map = new Map<string, Documento[]>()
+
+  for (const doc of docs) {
+    if (hideObsoleto && doc.estado === 'OBSOLETO') continue
+    const list = map.get(doc.codigo) ?? []
+    list.push(doc)
+    map.set(doc.codigo, list)
+  }
+
+  const groups: DocGroup[] = []
+  for (const [codigo, versions] of map) {
+    const sorted = [...versions].sort((a, b) => {
+      const ra = STATUS_RANK[a.estado] ?? 99
+      const rb = STATUS_RANK[b.estado] ?? 99
+      if (ra !== rb) return ra - rb
+      return b.creadoEn.localeCompare(a.creadoEn)
+    })
+    const [primary, ...older] = sorted
+    groups.push({ codigo, primary, older })
+  }
+
+  return groups
+}
 
 function TableSkeleton() {
   return (
@@ -26,11 +72,28 @@ function TableSkeleton() {
 export function DocumentList() {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
-  const [, setSearchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol)
   const { documentos, isLoading, isError, pagination, refetch } = useDocumentList()
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
+  const effectiveRole: UserRole = (userRole as UserRole | undefined) ?? 'OPERARIO'
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
+  const includeDeleted = searchParams.get('includeDeleted') === 'true'
+
+  const groups = includeDeleted ? [] : buildGroups(documentos, effectiveRole)
+
+  const toggleGroup = (codigo: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(codigo)) {
+        next.delete(codigo)
+      } else {
+        next.add(codigo)
+      }
+      return next
+    })
+  }
 
   const currentPage = pagination?.page ?? 1
   const totalPages = pagination?.totalPages ?? 1
@@ -94,7 +157,7 @@ export function DocumentList() {
               </tr>
             )}
 
-            {!isLoading && !isError && documentos.length === 0 && (
+            {!isLoading && !isError && (includeDeleted ? documentos.length === 0 : groups.length === 0) && (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center">
                   <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
@@ -113,16 +176,46 @@ export function DocumentList() {
               </tr>
             )}
 
+            {/* Deleted documents — flat list, no grouping */}
             {!isLoading &&
               !isError &&
-              documentos.map((doc, index) => (
+              includeDeleted &&
+              documentos.map((doc, i) => (
                 <DocumentListRow
                   key={doc.id}
                   documento={doc}
-                  userRole={userRole ?? 'OPERARIO'}
-                  index={index}
+                  userRole={effectiveRole}
+                  index={i}
                   onClick={() => navigate(`/documentos/${doc.id}`)}
+                  hasVersions={false}
+                  isExpanded={false}
                 />
+              ))}
+
+            {/* Active documents — grouped by codigo */}
+            {!isLoading &&
+              !isError &&
+              !includeDeleted &&
+              groups.map((group, groupIndex) => (
+                <Fragment key={group.codigo}>
+                  <DocumentListRow
+                    documento={group.primary}
+                    userRole={effectiveRole}
+                    index={groupIndex}
+                    onClick={() => navigate(`/documentos/${group.primary.id}`)}
+                    hasVersions={group.older.length > 0}
+                    isExpanded={expandedGroups.has(group.codigo)}
+                    onToggle={() => toggleGroup(group.codigo)}
+                  />
+                  {expandedGroups.has(group.codigo) &&
+                    group.older.map((doc) => (
+                      <DocumentVersionSubRow
+                        key={doc.id}
+                        documento={doc}
+                        onClick={() => navigate(`/documentos/${doc.id}`)}
+                      />
+                    ))}
+                </Fragment>
               ))}
           </tbody>
         </table>

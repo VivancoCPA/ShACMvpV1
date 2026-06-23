@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '../../../hooks/useDebounce'
+import { useAuthStore } from '../../../stores/authStore'
 import { AREAS_SHAC, DOC_STATUSES, DOC_TYPES } from '../constants'
+import type { UserRole } from '../../../types/auth.types'
+
+const CAN_SEE_DELETED: Set<UserRole> = new Set(['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'])
 
 const SELECT_CLASSES =
   'h-10 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/50 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
@@ -10,11 +14,15 @@ const SELECT_CLASSES =
 export function DocumentListFilters() {
   const { t } = useTranslation('documents')
   const [searchParams, setSearchParams] = useSearchParams()
+  const userRole = useAuthStore((s) => s.user?.rol) as UserRole | undefined
 
   const currentSearch = searchParams.get('search') ?? ''
   const currentEstado = searchParams.get('estado') ?? ''
   const currentTipo = searchParams.get('tipo') ?? ''
   const currentArea = searchParams.get('area') ?? ''
+  const includeDeleted = searchParams.get('includeDeleted') === 'true'
+
+  const showDeletedToggle = userRole !== undefined && CAN_SEE_DELETED.has(userRole)
 
   const [searchInput, setSearchInput] = useState(currentSearch)
   const debouncedSearch = useDebounce(searchInput, 300)
@@ -40,6 +48,21 @@ export function DocumentListFilters() {
   const hasActiveFilters =
     currentSearch !== '' || currentEstado !== '' || currentTipo !== '' || currentArea !== ''
 
+  const toggleIncludeDeleted = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (includeDeleted) {
+        next.delete('includeDeleted')
+      } else {
+        next.set('includeDeleted', 'true')
+        // Disable estado filter when showing deleted
+        next.delete('estado')
+      }
+      next.delete('page')
+      return next
+    })
+  }
+
   const updateSelectParam = (key: string, value: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -62,6 +85,7 @@ export function DocumentListFilters() {
       next.delete('tipo')
       next.delete('area')
       next.delete('page')
+      next.delete('includeDeleted')
       return next
     })
   }
@@ -95,9 +119,11 @@ export function DocumentListFilters() {
         </label>
         <select
           id="doc-estado"
-          value={currentEstado}
+          value={includeDeleted ? '' : currentEstado}
           onChange={(e) => updateSelectParam('estado', e.target.value)}
-          className={SELECT_CLASSES}
+          disabled={includeDeleted}
+          title={includeDeleted ? t('deleted.toggle.disabledEstadoTooltip') : undefined}
+          className={`${SELECT_CLASSES} ${includeDeleted ? 'cursor-not-allowed opacity-40' : ''}`}
         >
           <option value="">{t('list.filters.todos')}</option>
           {DOC_STATUSES.map((s) => (
@@ -152,7 +178,7 @@ export function DocumentListFilters() {
         </select>
       </div>
 
-      {hasActiveFilters && (
+      {hasActiveFilters && !includeDeleted && (
         <button
           type="button"
           onClick={handleClearFilters}
@@ -160,6 +186,35 @@ export function DocumentListFilters() {
         >
           {t('list.filters.limpiar')}
         </button>
+      )}
+
+      {showDeletedToggle && (
+        <div className="ml-auto flex items-center gap-2 self-end">
+          <label
+            htmlFor="toggle-eliminados"
+            className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted dark:text-on-dark-soft"
+          >
+            <div
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                includeDeleted ? 'bg-error' : 'bg-hairline dark:bg-surface-dark-elevated'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  includeDeleted ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </div>
+            <input
+              id="toggle-eliminados"
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={toggleIncludeDeleted}
+              className="sr-only"
+            />
+            {t('deleted.toggle.label')}
+          </label>
+        </div>
       )}
     </div>
   )

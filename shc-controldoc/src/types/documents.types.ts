@@ -67,9 +67,14 @@ export interface Documento {
   fechaEmision?: string
   fechaVigencia?: string
   fechaRevisionProxima?: string
+  fechaObsolescencia?: string
+  motivoVersion?: string
   descripcion?: string
   archivoUrl?: string
+  tipoArchivo?: string
   hashArchivo?: string
+  versionAnteriorId?: string
+  deletedAt?: string
   qeVinculados: string[]
   historialVersiones: VersionEntry[]
   auditTrail: AuditTrailEntry[]
@@ -83,6 +88,8 @@ export interface DocFilters {
   area?: string
   autorId?: string
   search?: string
+  codigo?: string
   page?: number
   pageSize?: number
+  includeDeleted?: boolean
 }
