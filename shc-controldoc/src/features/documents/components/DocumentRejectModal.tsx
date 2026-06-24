@@ -62,7 +62,7 @@ export function DocumentRejectModal({ documentId, onClose }: DocumentRejectModal
     })
     toast.success(t('reject.successMessage'))
     onClose()
-    navigate('/documentos')
+    navigate(-1)
   }
 
   return (

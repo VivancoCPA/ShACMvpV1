@@ -12,20 +12,25 @@ import type { UserRole } from '../../../types/auth.types'
 const CREATE_ROLES = new Set(['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST'])
 const PENDIENTES_ROLES = new Set<UserRole>(['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO'])
 
+// Module-level flag: survives React remounts (navigate away and back) within the same
+// page load, so auto-activation fires only once per session. Resets on hard refresh.
+let pendientesAutoActivated = false
+
 export function DocumentsPage() {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol)
   const { data: pendientesData } = useDocumentosPendientesCount()
-  const hasAutoActivated = useRef(false)
+  const hasAutoActivated = useRef(pendientesAutoActivated)
 
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
 
-  // Auto-activate "Mis pendientes" on first load if the user has pending docs and no filters set
+  // Auto-activate "Mis pendientes" on first visit if the user has pending docs and no filters set
   useEffect(() => {
     if (pendientesData === undefined || hasAutoActivated.current) return
     hasAutoActivated.current = true
+    pendientesAutoActivated = true
     const hasPendientes = pendientesData.count > 0
     const hasExplicitFilter =
       searchParams.has('search') ||

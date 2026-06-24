@@ -241,8 +241,10 @@
         "confirm": "Create draft"
       },
       "toast": {
-        "success": "New version {{version}} created as draft"
-      }
+        "success": "New version {{version}} created as draft",
+        "error": "Failed to create the new document version."
+      },
+      "tooltipYaExiste": "A version in {{estado}} is already in progress. Publish or cancel it before creating a new one."
     },
     "pdf": {
       "previewTitle": "Controlled PDF preview",

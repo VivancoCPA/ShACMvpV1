@@ -31,15 +31,15 @@ export function DocumentListFilters() {
   const { data: pendientesData } = useDocumentosPendientesCount()
   const pendientesCount = pendientesData?.count ?? 0
 
-  const [searchInput, setSearchInput] = useState(currentSearch)
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get('search') ?? ''
+  )
   const debouncedSearch = useDebounce(searchInput, 300)
-  const isFirstRender = useRef(true)
+  const prevDebouncedSearch = useRef(debouncedSearch)
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
+    if (prevDebouncedSearch.current === debouncedSearch) return
+    prevDebouncedSearch.current = debouncedSearch
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       if (debouncedSearch) {

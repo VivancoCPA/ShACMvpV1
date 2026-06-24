@@ -37,8 +37,12 @@ export function DocumentNuevaVersionModal({
   const versionPreview = tipoCambio ? calcularNuevaVersion(versionActual, tipoCambio) : null
 
   const onSubmit = async (data: NuevaVersionInput) => {
-    await createNuevaVersion.mutateAsync(data)
-    onClose()
+    try {
+      await createNuevaVersion.mutateAsync(data)
+      onClose()
+    } catch {
+      // error handled by onError in useCreateNuevaVersion
+    }
   }
 
   return (

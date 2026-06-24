@@ -241,8 +241,10 @@
         "confirm": "Crear borrador"
       },
       "toast": {
-        "success": "Nueva versión {{version}} creada en borrador"
-      }
+        "success": "Nueva versión {{version}} creada en borrador",
+        "error": "Error al crear la nueva versión del documento."
+      },
+      "tooltipYaExiste": "Ya existe una versión en proceso ({{estado}}). Publícala o cancélala antes de crear una nueva."
     },
     "pdf": {
       "previewTitle": "Vista previa del PDF controlado",

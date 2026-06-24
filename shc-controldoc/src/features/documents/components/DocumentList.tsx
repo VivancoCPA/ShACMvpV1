@@ -10,6 +10,17 @@ import type { UserRole } from '../../../types/auth.types'
 
 const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
 
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: (number | '...')[] = []
+  const left = Math.max(1, current - 3)
+  const right = Math.min(total, current + 3)
+  if (left > 1) { pages.push(1); if (left > 2) pages.push('...') }
+  for (let p = left; p <= right; p++) pages.push(p)
+  if (right < total) { if (right < total - 1) pages.push('...'); pages.push(total) }
+  return pages
+}
+
 function isDocPendingForUser(doc: Documento, userId: string, userRole: UserRole): boolean {
   if (!userId || NON_PENDING_ROLES.has(userRole)) return false
   if (userRole === 'SUPERVISOR' && doc.estado === 'EN_REVISION' && doc.revisorId === userId) return true
@@ -258,24 +269,20 @@ export function DocumentList() {
             >
               ‹
             </button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const page = i + 1
-              const isActive = page === currentPage
-              return (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => goToPage(page)}
-                  className={`min-w-[2rem] rounded-sm px-2 py-1 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-coral text-white'
-                      : 'text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            })}
+            {getPageNumbers(currentPage, totalPages).map((p, i) =>
+              p === '...'
+                ? <span key={`ellipsis-${i}`} className="px-2 py-1 text-sm text-muted">…</span>
+                : <button
+                    key={p}
+                    type="button"
+                    onClick={() => goToPage(p)}
+                    className={`min-w-[2rem] rounded-sm px-2 py-1 text-sm transition-colors ${
+                      p === currentPage
+                        ? 'bg-coral text-white'
+                        : 'text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark'
+                    }`}
+                  >{p}</button>
+            )}
             <button
               type="button"
               onClick={() => goToPage(currentPage + 1)}

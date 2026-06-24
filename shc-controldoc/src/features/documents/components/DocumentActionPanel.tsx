@@ -4,12 +4,13 @@ import { FileText, FileDown, Loader2, Info, RotateCcw } from 'lucide-react'
 
 import { useAuthStore } from '../../../stores/authStore'
 import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
+import { useDocumentsByCode } from '../hooks/useDocuments'
 import { canAccessDocument } from '../permissions'
 import { DocumentSignatureModal } from './DocumentSignatureModal'
 import { DocumentRejectModal } from './DocumentRejectModal'
 import { DocumentNuevaVersionModal } from './DocumentNuevaVersionModal'
 import { DocumentRevisionPeriodicaModal } from './DocumentRevisionPeriodicaModal'
-import type { Documento } from '../../../types/documents.types'
+import type { Documento, DocStatus } from '../../../types/documents.types'
 
 type ModalState =
   | 'none'
@@ -148,6 +149,15 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
   const canCreateVersion = documento.estado === 'PUBLICADO' && (isAutor || isJefeCalidad)
   const canStartNewVersion = documento.estado === 'EN_REVISION_PERIODICA' && (isAutor || isJefeCalidad)
 
+  const IN_PROCESS_STATUSES = new Set<DocStatus>(['BORRADOR', 'EN_REVISION', 'EN_APROBACION'])
+  const { data: versionesData } = useDocumentsByCode(
+    documento.codigo,
+    !documento.deletedAt && (canCreateVersion || canStartNewVersion),
+  )
+  const otraVersionEnProceso = (versionesData?.items ?? []).find(
+    (d) => d.id !== documento.id && !d.deletedAt && IN_PROCESS_STATUSES.has(d.estado),
+  )
+
   const hasAnyAction =
     canVerArchivo || canExportarPdf ||
     canSendToReview || canDelete || canApproveReview || canRejectReview ||
@@ -259,21 +269,29 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
         )}
 
         {canCreateVersion && (
-          <button
-            onClick={() => setModal('nueva-version')}
-            className="rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
-          >
-            {t('detail.actions.createNewVersion')}
-          </button>
+          <span title={otraVersionEnProceso ? t('nuevaVersion.tooltipYaExiste', { estado: t(`common:statuses.${otraVersionEnProceso.estado}`) }) : undefined}>
+            <button
+              type="button"
+              onClick={() => setModal('nueva-version')}
+              disabled={!!otraVersionEnProceso}
+              className="w-full rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+            >
+              {t('detail.actions.createNewVersion')}
+            </button>
+          </span>
         )}
 
         {canStartNewVersion && (
-          <button
-            onClick={() => setModal('nueva-version')}
-            className="rounded-md bg-coral px-4 py-2.5 text-sm font-medium text-white hover:bg-coral-dark"
-          >
-            {t('detail.actions.startNewVersion')}
-          </button>
+          <span title={otraVersionEnProceso ? t('nuevaVersion.tooltipYaExiste', { estado: t(`common:statuses.${otraVersionEnProceso.estado}`) }) : undefined}>
+            <button
+              type="button"
+              onClick={() => setModal('nueva-version')}
+              disabled={!!otraVersionEnProceso}
+              className="w-full rounded-md bg-coral px-4 py-2.5 text-sm font-medium text-white hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {t('detail.actions.startNewVersion')}
+            </button>
+          </span>
         )}
 
         {canDelete && (

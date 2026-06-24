@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
+import { isAxiosError } from 'axios'
 import {
   patchDocumentStatus,
   signDocument,
@@ -66,7 +67,7 @@ export function useDeleteDocument(documentId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       toast.success(t('toasts.deleteSuccess'))
-      navigate('/documentos')
+      navigate(-1)
     },
     onError: () => {
       toast.error(t('toasts.deleteError'))
@@ -166,6 +167,13 @@ export function useCreateNuevaVersion(documentoId: string) {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       toast.success(t('nuevaVersion.toast.success', { version: newDoc.version }))
       navigate(`/documentos/${newDoc.id}`)
+    },
+    onError: (error) => {
+      const serverMsg =
+        isAxiosError(error) && error.response?.status === 409
+          ? (error.response.data as { message?: string } | null)?.message
+          : null
+      toast.error(serverMsg ?? t('nuevaVersion.toast.error'))
     },
   })
 }

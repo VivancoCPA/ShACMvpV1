@@ -17,14 +17,14 @@ export interface DocumentListResponse {
 
 export async function getDocuments(filters: DocFilters = {}): Promise<DocumentListResponse> {
   const params: Record<string, unknown> = {}
-  if (filters.estado !== undefined) params.estado = filters.estado
-  if (filters.tipo !== undefined) params.tipo = filters.tipo
-  if (filters.area !== undefined) params.area = filters.area
+  if (filters.estado) params.estado = filters.estado
+  if (filters.tipo) params.tipo = filters.tipo
+  if (filters.area) params.area = filters.area
   if (filters.autorId !== undefined) params.autorId = filters.autorId
-  if (filters.search !== undefined) params.search = filters.search
+  if (filters.search) params.search = filters.search
   if (filters.codigo !== undefined) params.codigo = filters.codigo
-  if (filters.page !== undefined) params.page = filters.page
-  if (filters.pageSize !== undefined) params.pageSize = filters.pageSize
+  params.page = filters.page ?? 1
+  params.pageSize = filters.pageSize ?? 5
   if (filters.includeDeleted) params.includeDeleted = 'true'
   if (filters.pendientes) params.pendientes = 'true'
 

@@ -8,6 +8,8 @@ import type { AuditTrailEntry } from '../../types/documents.types'
 
 const MOCK_PIN = '123456'
 
+const IN_PROCESS_STATUSES = new Set<DocStatus>(['BORRADOR', 'EN_REVISION', 'EN_APROBACION'])
+
 function calcularNuevaVersion(versionActual: string, tipoCambio: 'MENOR' | 'MAYOR'): string {
   const match = versionActual.match(/^v?(\d+)\.(\d+)$/)
   if (!match) return versionActual
@@ -203,10 +205,19 @@ export const documentHandlers = [
     const body = await request.json() as Record<string, unknown>
     const tipo = body.tipo as DocType
     const now = new Date().toISOString()
+    const codigo = generateCodigo(tipo)
+
+    const blocker = store.find((d) => !d.deletedAt && d.codigo === codigo && IN_PROCESS_STATUSES.has(d.estado))
+    if (blocker) {
+      return err(
+        `El código ${codigo} ya tiene una versión en estado ${blocker.estado}. Cancela o publica esa versión antes de crear un nuevo borrador (RN-DOC-001).`,
+        409,
+      )
+    }
 
     const doc: Documento = {
       id: generateId(),
-      codigo: generateCodigo(tipo),
+      codigo,
       titulo: body.titulo as string,
       tipo,
       version: (body.version as string | undefined) ?? 'v1.0',
@@ -575,6 +586,17 @@ export const documentHandlers = [
     if (idx === -1) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
+
+    const versionEnProceso = store.find(
+      (d) => !d.deletedAt && d.codigo === doc.codigo && d.id !== doc.id && IN_PROCESS_STATUSES.has(d.estado),
+    )
+    if (versionEnProceso) {
+      return err(
+        `El código ${doc.codigo} ya tiene una versión en estado ${versionEnProceso.estado}. Cancela o publica esa versión antes de crear una nueva (RN-DOC-001).`,
+        409,
+      )
+    }
+
     const body = await request.json() as { tipoCambio: 'MENOR' | 'MAYOR'; motivo: string }
     const nuevaVersion = calcularNuevaVersion(doc.version, body.tipoCambio)
     const now = new Date().toISOString()

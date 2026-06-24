@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
+import { isAxiosError } from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { documentFormSchema, type DocumentFormInput } from '../schemas/documentForm.schema'
 import { useDocument } from './useDocuments'
@@ -152,8 +153,12 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         toast.success(t('form.success_edit'))
         navigate('/documents')
       }
-    } catch {
-      toast.error(t('form.error_submit') ?? 'Error al guardar el documento.')
+    } catch (error) {
+      const serverMsg =
+        isAxiosError(error) && error.response?.status === 409
+          ? (error.response.data as { message?: string } | null)?.message
+          : null
+      toast.error(serverMsg ?? t('form.error_submit'))
     } finally {
       setIsSubmitting(false)
     }

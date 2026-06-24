@@ -22,6 +22,14 @@ export function useDocuments(filters: DocFilters = {}) {
   })
 }
 
+export function useDocumentsByCode(codigo: string, enabled = true) {
+  return useQuery({
+    queryKey: QUERY_KEYS.documents.list({ codigo }),
+    queryFn: () => getDocuments({ codigo, pageSize: 20 }),
+    enabled: enabled && !!codigo,
+  })
+}
+
 export function useDocument(id: string) {
   return useQuery({
     queryKey: QUERY_KEYS.documents.detail(id),

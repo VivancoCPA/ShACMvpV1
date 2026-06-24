@@ -66,7 +66,7 @@ export function DocumentDetailPage() {
       {/* Back button */}
       <div className="border-b border-hairline bg-canvas px-6 py-3 dark:border-hairline/20 dark:bg-surface-dark">
         <button
-          onClick={() => navigate('/documentos')}
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-body dark:text-on-dark-soft dark:hover:text-on-dark"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
