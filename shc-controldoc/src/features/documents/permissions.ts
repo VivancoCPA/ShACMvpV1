@@ -28,15 +28,16 @@ const DENY_ALL: DocumentPermissions = {
   canSign: false,
   canStartReview: false,
   canCancelReview: false,
+  canViewArchivoOriginal: false,
+  canReplaceArchivoOriginal: false,
+  canViewArchivoDistribucion: false,
 }
 
-export function getDocumentPermissions(
+function getBasePermissions(
   estado: DocStatus,
   rol: DocRole,
-  context: { isAssignedAuthor?: boolean } = {},
+  isAssignedAuthor: boolean,
 ): DocumentPermissions {
-  const { isAssignedAuthor = false } = context
-
   switch (estado) {
     case 'BORRADOR':
       switch (rol) {
@@ -126,4 +127,27 @@ export function getDocumentPermissions(
           return { ...DENY_ALL, canRead: true }
       }
   }
+}
+
+export function getDocumentPermissions(
+  estado: DocStatus,
+  rol: DocRole,
+  context: { isAssignedAuthor?: boolean; archivoOriginalBloqueado?: boolean } = {},
+): DocumentPermissions {
+  const { isAssignedAuthor = false, archivoOriginalBloqueado = false } = context
+
+  const base = getBasePermissions(estado, rol, isAssignedAuthor)
+
+  // RN-DOC-013/016: archivo original visible only in BORRADOR/EN_REVISION for non-OPERARIO roles
+  const canViewArchivoOriginal =
+    rol !== 'OPERARIO' && (estado === 'BORRADOR' || estado === 'EN_REVISION')
+
+  // RN-DOC-015: replacement blocked when file is frozen
+  const canReplaceArchivoOriginal = canViewArchivoOriginal && !archivoOriginalBloqueado
+
+  // Distribution PDF visible to anyone who can read a PUBLICADO or EN_REVISION_PERIODICA document
+  const canViewArchivoDistribucion =
+    base.canRead && (estado === 'PUBLICADO' || estado === 'EN_REVISION_PERIODICA')
+
+  return { ...base, canViewArchivoOriginal, canReplaceArchivoOriginal, canViewArchivoDistribucion }
 }

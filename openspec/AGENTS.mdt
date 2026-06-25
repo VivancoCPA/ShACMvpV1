@@ -608,3 +608,13 @@ Un componente o feature está completo cuando:
 # Nuevo campo: Documento.confidencialidad (required)
 # Nuevo campo: Documento.rolesAutorizados (conditional)
 # Impacto principal: M1-S04 (form), M1-S05 (PDF + seguridad)
+
+## Addendum activo: SHAC-PRD-003-ADD-02
+# Archivo: /docs/SHAC-PRD-003-ADD-02.docx
+# Tema: Gestión de archivos original editable + PDF distribución
+# Nuevas reglas: RN-DOC-013 a RN-DOC-018
+# Nuevos campos: archivoOriginalUrl, archivoOriginalNombre,
+#                archivoOriginalBloqueado, archivoDistribucionUrl
+# Impacto principal: M1-S02 (MSW), M1-S04 (form), M1-S05 (congelamiento)
+# Regla clave: archivoOriginalUrl solo accesible en BORRADOR/EN_REVISION
+#              para Autor y JEFE_CONTROL_DOCUMENTARIO (RN-DOC-013)

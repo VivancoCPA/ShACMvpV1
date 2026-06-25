@@ -14,6 +14,7 @@ export function DocumentFormPage() {
   const navigate = useNavigate()
   const mode = id ? 'edit' : 'create'
   const userRole = useAuthStore((s) => s.user?.rol ?? 'OPERARIO')
+  const userId = useAuthStore((s) => s.user?.id ?? null)
 
   const { form, documento, isDocLoading, isSubmitting, onSubmit } = useDocumentForm({
     mode,
@@ -59,6 +60,9 @@ export function DocumentFormPage() {
   }
 
   const descriptionLocked = mode === 'edit' && !!documento && documento.estado !== 'BORRADOR'
+  const isAutorOrJefe =
+    !(['OPERARIO', 'SUPERVISOR'] as typeof userRole[]).includes(userRole) &&
+    (!documento?.estado || (['BORRADOR', 'EN_REVISION'] as typeof documento.estado[]).includes(documento.estado))
 
   return (
     <PageWrapper title={title}>
@@ -74,6 +78,10 @@ export function DocumentFormPage() {
               userRole={userRole}
               isUploading={isSubmitting}
               onSubmit={onSubmit}
+              isAutorOrJefe={isAutorOrJefe}
+              existingArchivoOriginalNombre={documento?.archivoOriginalNombre ?? null}
+              archivoOriginalBloqueado={documento?.archivoOriginalBloqueado ?? false}
+              existingArchivoDistribucionUrl={documento?.archivoDistribucionUrl ?? null}
             />
           </FormProvider>
         </div>

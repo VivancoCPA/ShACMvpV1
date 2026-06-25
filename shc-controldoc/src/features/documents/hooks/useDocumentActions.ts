@@ -11,6 +11,7 @@ import {
   registerDocumentAccess,
   createNuevaVersion,
   getArchivoUrl,
+  getArchivoOriginalUrl,
   exportarPdfControlado,
   confirmarRevisionPeriodica,
   restaurarDocumento,
@@ -193,6 +194,34 @@ export function useRestaurarDocumento(documentoId: string) {
       toast.error(t('deleted.restore.toast.error'))
     },
   })
+}
+
+export function useGetArchivoOriginalUrl() {
+  const { t } = useTranslation('documents')
+
+  const mutation = useMutation({
+    mutationFn: (documentoId: string) => getArchivoOriginalUrl(documentoId),
+    onSuccess: (data) => {
+      if (data.url) {
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+      }
+    },
+    onError: (error) => {
+      const is403 = isAxiosError(error) && error.response?.status === 403
+      toast.error(is403 ? t('archivo.original.bloqueadoMsg') : t('archivo.errorAbrir'))
+    },
+  })
+
+  return {
+    abrirArchivoOriginal: async (documentoId: string): Promise<void> => {
+      try {
+        await mutation.mutateAsync(documentoId)
+      } catch {
+        // handled by onError
+      }
+    },
+    isLoading: mutation.isPending,
+  }
 }
 
 export function useConfirmarRevisionPeriodica(documentoId: string) {

@@ -43,6 +43,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/POL-CD-001-v2.0.pdf',
     tipoArchivo: 'application/pdf',
     hashArchivo: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+    archivoOriginalUrl: '/mock/originales/doc-001/POL-CD-001-v2.0.docx',
+    archivoOriginalNombre: 'POL-CD-001-v2.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-001/POL-CD-001-v2.0.pdf',
     qeVinculados: ['qe-001', 'qe-002'],
     historialVersiones: [
       {
@@ -134,6 +138,10 @@ export const documentFixtures: Documento[] = [
     hashArchivo: 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3',
     motivoVersion: 'Corrección de formato y actualización de responsabilidades en la sección 4.2 según auditoría interna Q4 2024',
     versionAnteriorId: 'doc-016',
+    archivoOriginalUrl: '/mock/originales/doc-002/PRC-CD-001-v1.1.docx',
+    archivoOriginalNombre: 'PRC-CD-001-v1.1.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-002/PRC-CD-001-v1.1.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -215,6 +223,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-003/INS-CD-001-v1.0.docx',
+    archivoOriginalNombre: 'INS-CD-001-v1.0.docx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -273,6 +285,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-004/REG-CD-001-v1.0.xlsx',
+    archivoOriginalNombre: 'REG-CD-001-v1.0.xlsx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -330,6 +346,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-005/INF-CD-001-v1.0.docx',
+    archivoOriginalNombre: 'INF-CD-001-v1.0.docx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -404,6 +424,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/MAT-CD-001-v1.0.xlsx',
     tipoArchivo: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     hashArchivo: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+    archivoOriginalUrl: '/mock/originales/doc-006/MAT-CD-001-v1.0.xlsx',
+    archivoOriginalNombre: 'MAT-CD-001-v1.0.xlsx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [
       {
@@ -464,7 +488,7 @@ export const documentFixtures: Documento[] = [
     actualizadoEn: '2025-03-01T08:00:00.000Z',
   },
 
-  // 7 — PLAN / BORRADOR
+  // 7 — PLAN / BORRADOR — sin archivoOriginalUrl (solo PDF eventual): valida RN-DOC-017
   {
     id: 'doc-007',
     codigo: 'PLAN-CD-001',
@@ -478,6 +502,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -510,6 +538,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-008/PRC-CD-002-v1.0.docx',
+    archivoOriginalNombre: 'PRC-CD-002-v1.0.docx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -542,6 +574,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-009/REG-CD-002-v1.0.xlsx',
+    archivoOriginalNombre: 'REG-CD-002-v1.0.xlsx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -594,6 +630,10 @@ export const documentFixtures: Documento[] = [
     hashArchivo: 'd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5',
     motivoVersion: 'Actualización de pasos de despacho por cambio en protocolo de seguridad portuaria vigente desde 2025',
     versionAnteriorId: 'doc-018',
+    archivoOriginalUrl: '/mock/originales/doc-010/INS-CD-002-v1.0.docx',
+    archivoOriginalNombre: 'INS-CD-002-v1.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-010/INS-CD-002-v1.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -676,6 +716,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/PLAN-CD-002-v1.0.pdf',
     tipoArchivo: 'application/pdf',
     hashArchivo: 'e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6',
+    archivoOriginalUrl: '/mock/originales/doc-011/PLAN-CD-002-v1.0.docx',
+    archivoOriginalNombre: 'PLAN-CD-002-v1.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-011/PLAN-CD-002-v1.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -734,6 +778,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/MAT-CD-002-v2.0.pdf',
     tipoArchivo: 'application/pdf',
     hashArchivo: 'f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1',
+    archivoOriginalUrl: '/mock/originales/doc-012/MAT-CD-002-v2.0.pptx',
+    archivoOriginalNombre: 'MAT-CD-002-v2.0.pptx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-012/MAT-CD-002-v2.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -792,6 +840,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/PRC-CD-003-v1.0.docx',
     tipoArchivo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     hashArchivo: 'a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3',
+    archivoOriginalUrl: '/mock/originales/doc-013/PRC-CD-003-v1.0.docx',
+    archivoOriginalNombre: 'PRC-CD-003-v1.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-013/PRC-CD-003-v1.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -830,7 +882,7 @@ export const documentFixtures: Documento[] = [
     actualizadoEn: '2025-07-01T08:00:00.000Z',
   },
 
-  // 14 — REG / PUBLICADO — sin semáforo (fechaRevisionProxima null)
+  // 14 — REG / PUBLICADO — sin semáforo (fechaRevisionProxima null) — sin archivoOriginalUrl: valida RN-DOC-017
   {
     id: 'doc-014',
     codigo: 'REG-CD-003',
@@ -847,6 +899,10 @@ export const documentFixtures: Documento[] = [
     fechaEmision: '2025-08-01T08:00:00.000Z',
     fechaVigencia: '2026-08-01T08:00:00.000Z',
     fechaRevisionProxima: undefined,
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-014/REG-CD-003-v1.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -906,6 +962,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/PRC-CD-001-v1.0.docx',
     tipoArchivo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     hashArchivo: 'b1c2d3e4f5a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3',
+    archivoOriginalUrl: '/mock/originales/doc-016/PRC-CD-001-v1.0.docx',
+    archivoOriginalNombre: 'PRC-CD-001-v1.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [
       {
@@ -999,6 +1059,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/PRC-CD-001-v0.9.docx',
     tipoArchivo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     hashArchivo: 'a0b1c2d3e4f5a0b1c2d3e4f5a0b1c2d3e4f5a0b1c2d3e4f5a0b1c2d3e4f5a0b1',
+    archivoOriginalUrl: '/mock/originales/doc-017-obs/PRC-CD-001-v0.9.docx',
+    archivoOriginalNombre: 'PRC-CD-001-v0.9.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [
       {
@@ -1068,6 +1132,10 @@ export const documentFixtures: Documento[] = [
     archivoUrl: '/docs/INS-CD-002-v0.9.pdf',
     tipoArchivo: 'application/pdf',
     hashArchivo: 'c3d4e5f6a1c3d4e5f6a1c3d4e5f6a1c3d4e5f6a1c3d4e5f6a1c3d4e5f6a1c3d4',
+    archivoOriginalUrl: '/mock/originales/doc-018-obs/INS-CD-002-v0.9.pdf',
+    archivoOriginalNombre: 'INS-CD-002-v0.9.pdf',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [
       {
@@ -1132,6 +1200,10 @@ export const documentFixtures: Documento[] = [
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
     deletedAt: '2025-05-10T14:30:00-05:00',
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -1176,6 +1248,10 @@ export const documentFixtures: Documento[] = [
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
     deletedAt: '2025-06-01T09:15:00-05:00',
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [
@@ -1222,6 +1298,10 @@ export const documentFixtures: Documento[] = [
     fechaEmision: '2025-09-01T08:00:00.000Z',
     fechaVigencia: '2026-09-01T08:00:00.000Z',
     fechaRevisionProxima: undefined,
+    archivoOriginalUrl: '/mock/originales/doc-015/INF-CD-002-v1.0.docx',
+    archivoOriginalNombre: 'INF-CD-002-v1.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-015/INF-CD-002-v1.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -1276,6 +1356,10 @@ export const documentFixtures: Documento[] = [
     fechaEmision: '2024-03-01T08:00:00.000Z',
     fechaVigencia: '2025-03-01T08:00:00.000Z',
     fechaRevisionProxima: '2025-09-01T00:00:00.000Z',
+    archivoOriginalUrl: '/mock/originales/doc-017-rev/PRC-CD-002-v2.0.docx',
+    archivoOriginalNombre: 'PRC-CD-002-v2.0.docx',
+    archivoOriginalBloqueado: true,
+    archivoDistribucionUrl: '/mock/distribuciones/doc-017-rev/PRC-CD-002-v2.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -1345,6 +1429,10 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
+    archivoOriginalUrl: '/mock/originales/doc-018-apr/INS-CD-002-v1.0.docx',
+    archivoOriginalNombre: 'INS-CD-002-v1.0.docx',
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
     qeVinculados: [],
     historialVersiones: [],
     auditTrail: [

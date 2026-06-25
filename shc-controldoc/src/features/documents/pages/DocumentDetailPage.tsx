@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, FileText, FileType, Sheet } from 'lucide-react'
+import { ArrowLeft, FileText, FileType, Sheet, Download, Lock, Upload, FileDown, Loader2 } from 'lucide-react'
 import { useDocumentDetail } from '../hooks/useDocumentDetail'
+import { useGetArchivoOriginalUrl } from '../hooks/useDocumentActions'
 import { DocumentDetailHeader } from '../components/DocumentDetailHeader'
 import { DocumentActionPanel } from '../components/DocumentActionPanel'
 import { DocumentHistorial } from '../components/DocumentHistorial'
 import { DocumentAuditTrail } from '../components/DocumentAuditTrail'
 import { DocumentVersionesTab } from '../components/DocumentVersionesTab'
+import { getDocumentPermissions } from '../permissions'
+import { useAuthStore } from '../../../stores/authStore'
+import type { DocRole } from '../../../types/documents.types'
 
 type Tab = 'detail' | 'historial' | 'auditTrail' | 'versiones'
 
@@ -47,8 +51,10 @@ export function DocumentDetailPage() {
   const [searchParams] = useSearchParams()
   const { t } = useTranslation('documents')
   const [activeTab, setActiveTab] = useState<Tab>('detail')
+  const user = useAuthStore((s) => s.user)
 
   const { documento, isLoading, isError } = useDocumentDetail(id)
+  const { abrirArchivoOriginal, isLoading: isLoadingOriginal } = useGetArchivoOriginalUrl()
 
   const initialAction = searchParams.get('action') === 'iniciar-revision'
     ? ('revision-periodica' as const)
@@ -111,30 +117,120 @@ export function DocumentDetailPage() {
 
               {/* Tab content */}
               <div className="mt-6">
-                {activeTab === 'detail' && (
-                  <div className="space-y-4 text-sm text-body dark:text-on-dark">
-                    {documento.descripcion ? (
-                      <p>{documento.descripcion}</p>
-                    ) : (
-                      <p className="text-muted dark:text-on-dark-soft">—</p>
-                    )}
-                    {(documento.archivoUrl || documento.tipoArchivo) && (() => {
-                      const fileInfo = getFileTypeInfo(documento.archivoUrl, documento.tipoArchivo)
-                      if (!fileInfo) return null
-                      return (
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
-                            {t('archivo.tipo')}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 rounded bg-surface-soft px-2 py-0.5 text-xs font-medium text-body dark:bg-surface-dark-elevated dark:text-on-dark">
-                            {fileInfo.icon}
-                            {fileInfo.label}
-                          </span>
+                {activeTab === 'detail' && (() => {
+                  // Derive DocRole from authenticated user + document assignment
+                  let docRole: DocRole = 'OPERARIO'
+                  if (user) {
+                    const isJefeCalidad = user.rol === 'JEFE_CALIDAD_SYST' || user.rol === 'JEFE_CONTROL_DOCUMENTARIO'
+                    const isAutor = documento.autorId === user.id
+                    const isRevisor = documento.revisorId === user.id
+                    const isAprobador = documento.aprobadorId === user.id
+                    if (isAutor) docRole = 'AUTOR'
+                    else if (isRevisor) docRole = 'REVISOR'
+                    else if (isAprobador) docRole = 'APROBADOR'
+                    else if (isJefeCalidad) docRole = 'JEFE_CALIDAD'
+                  }
+
+                  const perms = getDocumentPermissions(documento.estado, docRole, {
+                    isAssignedAuthor: docRole === 'AUTOR',
+                    archivoOriginalBloqueado: documento.archivoOriginalBloqueado,
+                  })
+
+                  // CA-34: JEFE_CONTROL_DOCUMENTARIO and ALTA_DIRECCION can see the original
+                  // of OBSOLETO documents for historical traceability
+                  const isObsoletoHistorico =
+                    documento.estado === 'OBSOLETO' &&
+                    (user?.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user?.rol === 'ALTA_DIRECCION')
+
+                  const distUrl = documento.archivoDistribucionUrl
+                  const showArchivoSection =
+                    perms.canViewArchivoOriginal || isObsoletoHistorico || perms.canViewArchivoDistribucion
+
+                  return (
+                    <div className="space-y-4 text-sm text-body dark:text-on-dark">
+                      {documento.descripcion ? (
+                        <p>{documento.descripcion}</p>
+                      ) : (
+                        <p className="text-muted dark:text-on-dark-soft">—</p>
+                      )}
+                      {(documento.archivoUrl || documento.tipoArchivo) && (() => {
+                        const fileInfo = getFileTypeInfo(documento.archivoUrl, documento.tipoArchivo)
+                        if (!fileInfo) return null
+                        return (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
+                              {t('archivo.tipo')}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded bg-surface-soft px-2 py-0.5 text-xs font-medium text-body dark:bg-surface-dark-elevated dark:text-on-dark">
+                              {fileInfo.icon}
+                              {fileInfo.label}
+                            </span>
+                          </div>
+                        )
+                      })()}
+
+                      {showArchivoSection && (
+                        <div className="rounded-lg border border-hairline bg-surface-soft p-4 dark:border-hairline/20 dark:bg-surface-dark-elevated">
+                          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted dark:text-on-dark-soft">
+                            {t('archivo.seccion')}
+                          </h4>
+                          <div className="flex flex-col gap-2">
+                            {(perms.canViewArchivoOriginal || isObsoletoHistorico) && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void abrirArchivoOriginal(documento.id)}
+                                  disabled={isLoadingOriginal}
+                                  className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+                                >
+                                  {isLoadingOriginal
+                                    ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                                    : <Download size={12} aria-hidden="true" />}
+                                  {t('archivo.original.descargar')}
+                                </button>
+
+                                {documento.archivoOriginalBloqueado && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning dark:bg-warning/20">
+                                    <Lock size={10} aria-hidden="true" />
+                                    {t('archivo.original.congelado')}
+                                  </span>
+                                )}
+
+                                {perms.canReplaceArchivoOriginal && (
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/documents/${documento.id}/edit`)}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+                                  >
+                                    <Upload size={12} aria-hidden="true" />
+                                    {t('archivo.original.reemplazar')}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {perms.canViewArchivoDistribucion && distUrl && (
+                              <button
+                                type="button"
+                                onClick={() => window.open(distUrl, '_blank', 'noopener,noreferrer')}
+                                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+                              >
+                                <FileDown size={12} aria-hidden="true" />
+                                {t('archivo.distribucion.ver')}
+                              </button>
+                            )}
+
+                            {perms.canViewArchivoDistribucion && !distUrl && (
+                              <p className="text-xs text-muted dark:text-on-dark-soft">
+                                {t('archivo.distribucion.autoGenerado')}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      )
-                    })()}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )
+                })()}
                 {activeTab === 'historial' && <DocumentHistorial documento={documento} />}
                 {activeTab === 'auditTrail' && <DocumentAuditTrail documento={documento} />}
                 {activeTab === 'versiones' && <DocumentVersionesTab documento={documento} />}

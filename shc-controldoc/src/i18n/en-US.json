@@ -96,7 +96,18 @@
       "generating_code": "The code will be generated automatically.",
       "upload_drag": "Drag a file here or click to select",
       "upload_hint": "PDF, DOCX or XLSX · max 50 MB",
-      "upload_replace": "Replace file"
+      "upload_replace": "Replace file",
+      "archivoOriginal": {
+        "label": "Original editable file",
+        "hint": "Upload the source file (.docx or .xlsx). Only visible to the Author and Document Control Manager.",
+        "reemplazar": "Replace original file",
+        "congelado": "File frozen — create a new version to edit"
+      },
+      "archivoDistribucion": {
+        "label": "Distribution PDF",
+        "hint": "PDF file ready for controlled distribution.",
+        "autoGenerado": "Generated automatically when the document is published."
+      }
     },
     "semaforo": {
       "proximo": "Due soon",
@@ -176,7 +187,11 @@
         "NUEVA_VERSION_INICIADA": "New version started",
         "REVISION_PERIODICA_CONFIRMADA": "Periodic review confirmed",
         "DOCUMENTO_ELIMINADO": "Document deleted",
-        "RESTAURADO": "Document restored"
+        "RESTAURADO": "Document restored",
+        "ARCHIVO_ORIGINAL_ACTUALIZADO": "Original file updated",
+        "ARCHIVO_ORIGINAL_CONGELADO": "Original file frozen",
+        "ARCHIVO_ORIGINAL_COPIADO_A_VERSION": "Original file copied to new version",
+        "ARCHIVO_DISTRIBUCION_GENERADO": "Distribution PDF generated"
       }
     },
     "confidencialidad": {
@@ -227,7 +242,20 @@
       "errorAbrir": "Could not retrieve the file. Please try again.",
       "urlExpirada": "The file URL has expired. Please try again.",
       "formatosAceptados": "Accepted formats: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Max. 50 MB.",
-      "tipo": "File type"
+      "formatosOriginal": "Formats: DOCX, XLSX · Max. 50 MB.",
+      "formatosDistribucion": "Format: PDF · Max. 50 MB.",
+      "tipo": "File type",
+      "seccion": "Document files",
+      "original": {
+        "descargar": "Download original file",
+        "reemplazar": "Replace original file",
+        "congelado": "Frozen",
+        "bloqueadoMsg": "The original file is frozen. Create a new version to edit it."
+      },
+      "distribucion": {
+        "ver": "View distribution PDF",
+        "autoGenerado": "Will be generated automatically when the document is published."
+      }
     },
     "nuevaVersion": {
       "modal": {

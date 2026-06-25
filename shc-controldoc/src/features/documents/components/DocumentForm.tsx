@@ -9,6 +9,10 @@ import type { MockUser } from '../../../mocks/fixtures/documents.fixtures'
 import type { UserRole } from '../../../types/auth.types'
 import { DOC_TYPES, AREAS_SHAC } from '../constants'
 
+function fileNameFromUrl(url: string): string {
+  return url.split('/').pop() ?? url
+}
+
 const CONFIDENCIALIDAD_VALUES = ['PUBLICO', 'INTERNO', 'CONFIDENCIAL', 'RESTRINGIDO'] as const
 const ALL_ROLES: UserRole[] = [
   'OPERARIO',
@@ -128,6 +132,10 @@ interface DocumentFormProps {
   userRole: UserRole
   isUploading?: boolean
   onSubmit: (e: React.FormEvent) => void
+  isAutorOrJefe?: boolean
+  existingArchivoOriginalNombre?: string | null
+  archivoOriginalBloqueado?: boolean
+  existingArchivoDistribucionUrl?: string | null
 }
 
 function FieldError({ name }: { name: string }) {
@@ -168,6 +176,10 @@ export function DocumentForm({
   userRole,
   isUploading = false,
   onSubmit,
+  isAutorOrJefe = false,
+  existingArchivoOriginalNombre,
+  archivoOriginalBloqueado = false,
+  existingArchivoDistribucionUrl,
 }: DocumentFormProps) {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
@@ -353,21 +365,50 @@ export function DocumentForm({
         <FieldError name="descripcion" />
       </div>
 
-      {/* Archivo — full width */}
+      {/* Archivo original editable — solo Autor y JEFE_CONTROL_DOCUMENTARIO (RN-DOC-013, RN-DOC-016) */}
+      {isAutorOrJefe && (
+        <div>
+          <Label htmlFor="archivoOriginalFile">{t('form.archivoOriginal.label')}</Label>
+          <p className="mb-1.5 text-xs text-muted dark:text-on-dark-soft">
+            {t('form.archivoOriginal.hint')}
+          </p>
+          <Controller
+            control={control}
+            name="archivoOriginalFile"
+            render={({ field }) => (
+              <FileUploadField
+                value={field.value ?? null}
+                onChange={field.onChange}
+                existingFileName={existingArchivoOriginalNombre ?? undefined}
+                variant="original"
+                disabled={archivoOriginalBloqueado}
+                frozenMessage={archivoOriginalBloqueado ? t('form.archivoOriginal.congelado') : undefined}
+                replaceLabel={t('form.archivoOriginal.reemplazar')}
+                isUploading={isUploading}
+              />
+            )}
+          />
+        </div>
+      )}
+
+      {/* PDF de distribución — informativo para todos los roles con acceso */}
       <div>
-        <Label htmlFor="archivo">{t('form.field_archivo')}</Label>
-        <Controller
-          control={control}
-          name="archivo"
-          render={({ field }) => (
-            <FileUploadField
-              value={field.value ?? null}
-              onChange={field.onChange}
-              existingFileUrl={existingFileUrl}
-              isUploading={isUploading}
-            />
-          )}
-        />
+        <Label htmlFor="archivoDistribucion">{t('form.archivoDistribucion.label')}</Label>
+        <p className="mb-1.5 text-xs text-muted dark:text-on-dark-soft">
+          {t('form.archivoDistribucion.hint')}
+        </p>
+        {existingArchivoDistribucionUrl ? (
+          <div className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-soft px-4 py-3 dark:border-hairline/30 dark:bg-surface-dark-elevated">
+            <span className="text-lg text-muted dark:text-on-dark-soft">📄</span>
+            <span className="flex-1 truncate text-sm text-ink dark:text-on-dark">
+              {fileNameFromUrl(existingArchivoDistribucionUrl)}
+            </span>
+          </div>
+        ) : (
+          <p className="rounded-lg border border-hairline/50 bg-surface-soft px-4 py-3 text-sm text-muted dark:border-hairline/20 dark:bg-surface-dark-elevated dark:text-on-dark-soft">
+            {t('form.archivoDistribucion.autoGenerado')}
+          </p>
+        )}
       </div>
 
       {/* Action buttons — right aligned */}

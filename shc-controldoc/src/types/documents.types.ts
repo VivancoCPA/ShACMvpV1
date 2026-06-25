@@ -24,6 +24,9 @@ export interface DocumentPermissions {
   canSign: boolean
   canStartReview: boolean
   canCancelReview: boolean
+  canViewArchivoOriginal: boolean
+  canReplaceArchivoOriginal: boolean
+  canViewArchivoDistribucion: boolean
 }
 
 export interface VersionEntry {
@@ -73,6 +76,10 @@ export interface Documento {
   archivoUrl?: string
   tipoArchivo?: string
   hashArchivo?: string
+  archivoOriginalUrl: string | null
+  archivoOriginalNombre: string | null
+  archivoOriginalBloqueado: boolean
+  archivoDistribucionUrl: string | null
   versionAnteriorId?: string
   deletedAt?: string
   qeVinculados: string[]

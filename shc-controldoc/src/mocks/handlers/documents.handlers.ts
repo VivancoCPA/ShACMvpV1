@@ -190,12 +190,30 @@ export const documentHandlers = [
   }),
 
   // GET /api/documents/:id — detail
-  http.get('/api/documents/:id', async ({ params }) => {
+  http.get('/api/documents/:id', async ({ params, request }) => {
     await delay(LATENCY)
 
     const doc = store.find((d) => d.id === params.id)
     if (!doc) return err('Documento no encontrado', 404)
-    return ok(doc)
+
+    const requestUser = getUserFromRequest(request)
+    const userRole = requestUser?.rol ?? 'OPERARIO'
+    const isEditableState = doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION'
+    const isRestrictedRole = userRole === 'OPERARIO' || userRole === 'SUPERVISOR'
+
+    // CA-34: JEFE_CONTROL_DOCUMENTARIO and ALTA_DIRECCION can access original of OBSOLETO docs
+    const isHistoricalAccess =
+      doc.estado === 'OBSOLETO' &&
+      (userRole === 'JEFE_CONTROL_DOCUMENTARIO' || userRole === 'ALTA_DIRECCION')
+
+    // RN-DOC-016: OPERARIO/SUPERVISOR nunca ven campos del archivo original
+    // RN-DOC-013: archivoOriginalUrl solo accesible en BORRADOR/EN_REVISION (+ CA-34 excepción)
+    const exposeOriginal = (!isRestrictedRole && isEditableState) || isHistoricalAccess
+    return ok({
+      ...doc,
+      archivoOriginalUrl: exposeOriginal ? doc.archivoOriginalUrl : null,
+      archivoOriginalNombre: exposeOriginal ? doc.archivoOriginalNombre : null,
+    })
   }),
 
   // POST /api/documents — create in BORRADOR
@@ -231,6 +249,10 @@ export const documentHandlers = [
       descripcion: (body.descripcion as string | undefined) || undefined,
       fechaVigencia: (body.fechaVigencia as string | undefined) || undefined,
       fechaRevisionProxima: (body.fechaRevisionProxima as string | undefined) || undefined,
+      archivoOriginalUrl: null,
+      archivoOriginalNombre: null,
+      archivoOriginalBloqueado: false,
+      archivoDistribucionUrl: null,
       qeVinculados: [],
       historialVersiones: [],
       auditTrail: [
@@ -340,10 +362,17 @@ export const documentHandlers = [
     }
 
     const now = new Date().toISOString()
+    const mockDistribucionUrlStatus = nuevoEstado === 'PUBLICADO'
+      ? `/mock/distribuciones/${doc.id}/${doc.codigo}-${doc.version}.pdf`
+      : undefined
     const updated: Documento = {
       ...doc,
       estado: nuevoEstado,
       actualizadoEn: now,
+      ...(nuevoEstado === 'PUBLICADO' && {
+        archivoOriginalBloqueado: true,
+        archivoDistribucionUrl: mockDistribucionUrlStatus ?? null,
+      }),
       auditTrail: [
         ...doc.auditTrail,
         makeAuditEntry(doc.id, 'ESTADO_CAMBIADO', {
@@ -351,6 +380,10 @@ export const documentHandlers = [
           estadoNuevo: nuevoEstado,
           valorAnterior: comentario,
         }),
+        ...(nuevoEstado === 'PUBLICADO' ? [
+          makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
+          makeAuditEntry(doc.id, 'ARCHIVO_DISTRIBUCION_GENERADO', { valorNuevo: mockDistribucionUrlStatus }),
+        ] : []),
       ],
     }
 
@@ -469,10 +502,17 @@ export const documentHandlers = [
     }
 
     const now = new Date().toISOString()
+    const mockDistribucionUrlPatch = nuevoEstado === 'PUBLICADO'
+      ? `/mock/distribuciones/${doc.id}/${doc.codigo}-${doc.version}.pdf`
+      : undefined
     const updated: Documento = {
       ...doc,
       estado: nuevoEstado,
       actualizadoEn: now,
+      ...(nuevoEstado === 'PUBLICADO' && {
+        archivoOriginalBloqueado: true,
+        archivoDistribucionUrl: mockDistribucionUrlPatch ?? null,
+      }),
       auditTrail: [
         ...doc.auditTrail,
         makeAuditEntry(doc.id, 'ESTADO_CAMBIADO', {
@@ -480,6 +520,10 @@ export const documentHandlers = [
           estadoNuevo: nuevoEstado,
           valorAnterior: motivo,
         }),
+        ...(nuevoEstado === 'PUBLICADO' ? [
+          makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
+          makeAuditEntry(doc.id, 'ARCHIVO_DISTRIBUCION_GENERADO', { valorNuevo: mockDistribucionUrlPatch }),
+        ] : []),
       ],
     }
 
@@ -528,17 +572,25 @@ export const documentHandlers = [
     }
 
     const now = new Date().toISOString()
+    const mockHash = `sha256-mock-${doc.id}`
+    const mockDistribucionUrlSign = `/mock/distribuciones/${doc.id}/${doc.codigo}-${doc.version}.pdf`
     const updated: Documento = {
       ...doc,
       estado: 'PUBLICADO',
-      hashArchivo: `sha256-mock-${doc.id}`,
+      hashArchivo: mockHash,
+      archivoOriginalBloqueado: true,
+      archivoDistribucionUrl: mockDistribucionUrlSign,
       actualizadoEn: now,
       auditTrail: [
         ...doc.auditTrail,
         makeAuditEntry(doc.id, 'FIRMA_REGISTRADA', {
           estadoAnterior: 'EN_APROBACION',
           estadoNuevo: 'PUBLICADO',
-          valorNuevo: `sha256-mock-${doc.id}`,
+          valorNuevo: mockHash,
+        }),
+        makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
+        makeAuditEntry(doc.id, 'ARCHIVO_DISTRIBUCION_GENERADO', {
+          valorNuevo: mockDistribucionUrlSign,
         }),
       ],
     }
@@ -613,11 +665,16 @@ export const documentHandlers = [
       fechaEmision: undefined,
       revisorId: undefined,
       aprobadorId: undefined,
+      archivoOriginalBloqueado: false,
+      archivoDistribucionUrl: null,
       qeVinculados: [],
       historialVersiones: [],
       auditTrail: [
         makeAuditEntry(newId, 'DOCUMENTO_CREADO', {
           valorNuevo: `Nueva versión ${nuevaVersion} iniciada. Motivo: ${body.motivo}`,
+        }),
+        makeAuditEntry(newId, 'ARCHIVO_ORIGINAL_COPIADO_A_VERSION', {
+          valorNuevo: doc.archivoOriginalUrl ?? 'sin archivo original en versión anterior',
         }),
       ],
       creadoEn: now,
@@ -846,6 +903,144 @@ export const documentHandlers = [
     }
 
     return ok({ success: true })
+  }),
+
+  // GET /api/documents/:id/archivo-original — access original editable file (RN-DOC-013, RN-DOC-016)
+  http.get('/api/documents/:id/archivo-original', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const doc = store.find((d) => d.id === params.id)
+    if (!doc) return err('Documento no encontrado', 404)
+
+    const requestUser = getUserFromRequest(request)
+    const userRole = requestUser?.rol ?? 'OPERARIO'
+    const isRestrictedRole = userRole === 'OPERARIO' || userRole === 'SUPERVISOR'
+    const isEditableState = doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION'
+
+    // CA-34: JEFE_CONTROL_DOCUMENTARIO and ALTA_DIRECCION can access original of OBSOLETO docs
+    const isHistoricalAccess =
+      doc.estado === 'OBSOLETO' &&
+      (userRole === 'JEFE_CONTROL_DOCUMENTARIO' || userRole === 'ALTA_DIRECCION')
+
+    if (isRestrictedRole || (!isEditableState && !isHistoricalAccess)) {
+      return err('Acceso denegado al archivo original (RN-DOC-013, RN-DOC-016)', 403)
+    }
+
+    return ok({
+      url: doc.archivoOriginalUrl,
+      nombre: doc.archivoOriginalNombre,
+      bloqueado: doc.archivoOriginalBloqueado,
+    })
+  }),
+
+  // POST /api/documents/:id/archivo-original — replace original editable file (RN-DOC-013, RN-DOC-015)
+  // NOTE: MSW cannot parse multipart/form-data boundaries. Body is ignored; a mock URL is returned.
+  http.post('/api/documents/:id/archivo-original', async ({ params }) => {
+    await delay(LATENCY)
+
+    const id = params.id as string
+    const idx = store.findIndex((d) => d.id === id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+
+    if (doc.archivoOriginalBloqueado) {
+      return err('El archivo original está congelado y no puede ser reemplazado (RN-DOC-015)', 403)
+    }
+
+    const isEditableState = doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION'
+    if (!isEditableState) {
+      return err('Solo se puede actualizar el archivo original en BORRADOR o EN_REVISION (RN-DOC-013)', 403)
+    }
+
+    const now = new Date().toISOString()
+    const mockUrl = `/mock/originales/${id}/documento-${Date.now()}.docx`
+    const mockNombre = `documento-${Date.now()}.docx`
+
+    store[idx] = {
+      ...doc,
+      archivoOriginalUrl: mockUrl,
+      archivoOriginalNombre: mockNombre,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(id, 'ARCHIVO_ORIGINAL_ACTUALIZADO', {
+          valorAnterior: doc.archivoOriginalUrl ?? 'sin archivo',
+          valorNuevo: mockUrl,
+        }),
+      ],
+    }
+
+    return ok({ archivoOriginalUrl: mockUrl, archivoOriginalNombre: mockNombre })
+  }),
+
+  // POST /api/documents/:id/publicar — freeze original + generate distribution PDF (ADD-02)
+  http.post('/api/documents/:id/publicar', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const body = await request.json() as Record<string, unknown>
+    const password = body.password as string | undefined
+
+    if (password !== MOCK_PIN) {
+      return HttpResponse.json(
+        { success: false, data: null, message: 'Credenciales inválidas (RN-DOC-004)' },
+        { status: 401 },
+      )
+    }
+
+    const doc = store[idx]
+    if (doc.estado !== 'EN_APROBACION') {
+      return err('Solo se puede publicar un documento en estado EN_APROBACION', 409)
+    }
+
+    // RN-DOC-001: obsoletizar versión publicada del mismo código
+    for (let i = 0; i < store.length; i++) {
+      if (store[i].codigo === doc.codigo && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
+        store[i] = {
+          ...store[i],
+          estado: 'OBSOLETO',
+          actualizadoEn: new Date().toISOString(),
+          auditTrail: [
+            ...store[i].auditTrail,
+            makeAuditEntry(store[i].id, 'ESTADO_CAMBIADO', {
+              estadoAnterior: 'PUBLICADO',
+              estadoNuevo: 'OBSOLETO',
+            }),
+          ],
+        }
+      }
+    }
+
+    const now = new Date().toISOString()
+    const mockHash = `sha256-mock-${doc.id}`
+    const mockDistribucionUrl = `/mock/distribuciones/${doc.id}/${doc.codigo}-${doc.version}.pdf`
+
+    const updated: Documento = {
+      ...doc,
+      estado: 'PUBLICADO',
+      hashArchivo: mockHash,
+      archivoOriginalBloqueado: true,
+      archivoDistribucionUrl: mockDistribucionUrl,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'FIRMA_REGISTRADA', {
+          estadoAnterior: 'EN_APROBACION',
+          estadoNuevo: 'PUBLICADO',
+          valorNuevo: mockHash,
+        }),
+        makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
+        makeAuditEntry(doc.id, 'ARCHIVO_DISTRIBUCION_GENERADO', {
+          valorNuevo: mockDistribucionUrl,
+        }),
+      ],
+    }
+
+    store[idx] = updated
+    return ok(updated)
   }),
 ]
 

@@ -23,6 +23,9 @@ export const documentFormSchema = z
     fechaRevisionProxima: z.string().optional(),
     descripcion: z.string().max(1000).optional(),
     archivo: z.instanceof(File).nullable().optional(),
+    archivoOriginalFile: z.instanceof(File).nullable().optional(),
+    archivoOriginalUrl: z.string().nullable().optional(),
+    archivoDistribucionUrl: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (

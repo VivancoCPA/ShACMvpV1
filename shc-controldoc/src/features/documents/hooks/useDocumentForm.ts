@@ -30,6 +30,9 @@ const CREATE_DEFAULTS: DocumentFormInput = {
   fechaRevisionProxima: '',
   descripcion: '',
   archivo: null,
+  archivoOriginalFile: null,
+  archivoOriginalUrl: null,
+  archivoDistribucionUrl: null,
 }
 
 function docToFormValues(doc: Documento): DocumentFormInput {
@@ -48,6 +51,9 @@ function docToFormValues(doc: Documento): DocumentFormInput {
       : '',
     descripcion: doc.descripcion ?? '',
     archivo: null,
+    archivoOriginalFile: null,
+    archivoOriginalUrl: doc.archivoOriginalUrl ?? null,
+    archivoDistribucionUrl: doc.archivoDistribucionUrl ?? null,
   }
 }
 
@@ -118,6 +124,9 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         revisorId: data.revisorId || undefined,
         aprobadorId: data.aprobadorId || undefined,
         archivo: undefined,
+        archivoOriginalFile: undefined,
+        archivoOriginalUrl: undefined,
+        archivoDistribucionUrl: undefined,
       }
 
       if (mode === 'create') {
@@ -132,6 +141,14 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
           })
         }
 
+        if (data.archivoOriginalFile) {
+          const formData = new FormData()
+          formData.append('archivoOriginal', data.archivoOriginalFile)
+          await api.post(`/api/documents/${created.id}/archivo-original`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+        }
+
         void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
         toast.success(t('form.success_create'))
         navigate('/documents')
@@ -142,6 +159,14 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
           const formData = new FormData()
           formData.append('archivo', data.archivo)
           await api.post(`/api/documents/${documentId}/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+        }
+
+        if (data.archivoOriginalFile) {
+          const formData = new FormData()
+          formData.append('archivoOriginal', data.archivoOriginalFile)
+          await api.post(`/api/documents/${documentId}/archivo-original`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           })
         }

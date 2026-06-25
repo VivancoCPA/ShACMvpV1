@@ -96,7 +96,18 @@
       "generating_code": "El código se generará automáticamente.",
       "upload_drag": "Arrastra un archivo aquí o haz clic para seleccionar",
       "upload_hint": "PDF, DOCX o XLSX · máx. 50 MB",
-      "upload_replace": "Reemplazar archivo"
+      "upload_replace": "Reemplazar archivo",
+      "archivoOriginal": {
+        "label": "Archivo original editable",
+        "hint": "Sube el archivo fuente (.docx o .xlsx). Solo visible para el Autor y el Jefe de Control Documentario.",
+        "reemplazar": "Reemplazar archivo original",
+        "congelado": "Archivo congelado — crea una nueva versión para editar"
+      },
+      "archivoDistribucion": {
+        "label": "PDF de distribución",
+        "hint": "Archivo PDF listo para distribución controlada.",
+        "autoGenerado": "Se genera automáticamente al publicar el documento."
+      }
     },
     "semaforo": {
       "proximo": "Próximo",
@@ -176,7 +187,11 @@
         "NUEVA_VERSION_INICIADA": "Nueva versión iniciada",
         "REVISION_PERIODICA_CONFIRMADA": "Revisión periódica confirmada",
         "DOCUMENTO_ELIMINADO": "Documento eliminado",
-        "RESTAURADO": "Documento restaurado"
+        "RESTAURADO": "Documento restaurado",
+        "ARCHIVO_ORIGINAL_ACTUALIZADO": "Archivo original actualizado",
+        "ARCHIVO_ORIGINAL_CONGELADO": "Archivo original congelado",
+        "ARCHIVO_ORIGINAL_COPIADO_A_VERSION": "Archivo original copiado a nueva versión",
+        "ARCHIVO_DISTRIBUCION_GENERADO": "PDF de distribución generado"
       }
     },
     "confidencialidad": {
@@ -227,7 +242,20 @@
       "errorAbrir": "No se pudo obtener el archivo. Intente nuevamente.",
       "urlExpirada": "La URL del archivo ha expirado. Intente nuevamente.",
       "formatosAceptados": "Formatos aceptados: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Máx. 50 MB.",
-      "tipo": "Tipo de archivo"
+      "formatosOriginal": "Formatos: DOCX, XLSX · Máx. 50 MB.",
+      "formatosDistribucion": "Formato: PDF · Máx. 50 MB.",
+      "tipo": "Tipo de archivo",
+      "seccion": "Archivos del documento",
+      "original": {
+        "descargar": "Descargar archivo original",
+        "reemplazar": "Reemplazar archivo original",
+        "congelado": "Congelado",
+        "bloqueadoMsg": "El archivo original está congelado. Crea una nueva versión para editarlo."
+      },
+      "distribucion": {
+        "ver": "Ver PDF de distribución",
+        "autoGenerado": "Se generará automáticamente al publicar el documento."
+      }
     },
     "nuevaVersion": {
       "modal": {

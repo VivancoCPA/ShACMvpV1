@@ -168,3 +168,14 @@ export async function restaurarDocumento(id: string): Promise<Documento> {
   const response = await api.patch<Documento>(`/api/documents/${id}/restaurar`)
   return response.data
 }
+
+export interface ArchivoOriginalResponse {
+  url: string | null
+  nombre: string | null
+  bloqueado: boolean
+}
+
+export async function getArchivoOriginalUrl(id: string): Promise<ArchivoOriginalResponse> {
+  const response = await api.get<ArchivoOriginalResponse>(`/api/documents/${id}/archivo-original`)
+  return response.data
+}

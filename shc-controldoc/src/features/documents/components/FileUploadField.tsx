@@ -1,21 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const ACCEPTED_TYPES = new Set([
+const ACCEPTED_TYPES_GENERIC = new Set([
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ])
+const ACCEPTED_TYPES_ORIGINAL = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+])
+const ACCEPTED_TYPES_DISTRIBUCION = new Set(['application/pdf'])
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MiB
+
+type FileUploadVariant = 'generic' | 'original' | 'distribucion'
 
 interface FileUploadFieldProps {
   value: File | null
   onChange: (file: File | null) => void
   existingFileUrl?: string
+  existingFileName?: string
   disabled?: boolean
   isUploading?: boolean
+  variant?: FileUploadVariant
+  frozenMessage?: string
+  replaceLabel?: string
 }
 
 function formatBytes(bytes: number): string {
@@ -32,20 +43,41 @@ export function FileUploadField({
   value,
   onChange,
   existingFileUrl,
+  existingFileName,
   disabled = false,
   isUploading = false,
+  variant = 'generic',
+  frozenMessage,
+  replaceLabel,
 }: FileUploadFieldProps) {
   const { t } = useTranslation('documents')
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
-  const [showExisting, setShowExisting] = useState(!!existingFileUrl && !value)
+  const [showExisting, setShowExisting] = useState(!!(existingFileUrl || existingFileName) && !value)
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
+  const acceptedTypes =
+    variant === 'original' ? ACCEPTED_TYPES_ORIGINAL :
+    variant === 'distribucion' ? ACCEPTED_TYPES_DISTRIBUCION :
+    ACCEPTED_TYPES_GENERIC
+
+  const acceptAttr =
+    variant === 'original' ? '.docx,.xlsx' :
+    variant === 'distribucion' ? '.pdf' :
+    '.pdf,.doc,.docx,.xls,.xlsx'
+
+  const formatHint =
+    variant === 'original' ? t('archivo.formatosOriginal') :
+    variant === 'distribucion' ? t('archivo.formatosDistribucion') :
+    t('archivo.formatosAceptados')
+
+  const replaceBtnLabel = replaceLabel ?? t('form.upload_replace')
+
   useEffect(() => {
-    setShowExisting(!!existingFileUrl && !value)
-  }, [existingFileUrl, value])
+    setShowExisting(!!(existingFileUrl || existingFileName) && !value)
+  }, [existingFileUrl, existingFileName, value])
 
   useEffect(() => {
     if (isUploading && value) {
@@ -69,7 +101,7 @@ export function FileUploadField({
   }, [isUploading, value])
 
   function validate(file: File): string | null {
-    if (!ACCEPTED_TYPES.has(file.type)) return t('form.error_file_type')
+    if (!acceptedTypes.has(file.type)) return t('form.error_file_type')
     if (file.size > MAX_BYTES) return t('form.error_file_size')
     return null
   }
@@ -98,7 +130,7 @@ export function FileUploadField({
     onChange(null)
     setError(null)
     setProgress(null)
-    setShowExisting(!!existingFileUrl)
+    setShowExisting(!!(existingFileUrl || existingFileName))
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -115,13 +147,24 @@ export function FileUploadField({
     disabled ? dropZoneDisabled : isDragging ? dropZoneDragging : dropZoneIdle
   } ${!disabled ? 'cursor-pointer' : ''}`
 
+  // Frozen state — original file locked (RN-DOC-015)
+  if (frozenMessage) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-amber/30 bg-amber/5 px-4 py-3 dark:border-amber/20 dark:bg-amber/10">
+        <span className="text-lg">🔒</span>
+        <span className="flex-1 text-sm text-muted dark:text-on-dark-soft">{frozenMessage}</span>
+      </div>
+    )
+  }
+
   // Show existing file preview (edit mode, no new file selected)
-  if (showExisting && existingFileUrl) {
+  const displayName = existingFileName ?? (existingFileUrl ? fileNameFromUrl(existingFileUrl) : null)
+  if (showExisting && displayName) {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-soft px-4 py-3 dark:border-hairline/30 dark:bg-surface-dark-elevated">
         <span className="text-lg text-muted dark:text-on-dark-soft">📄</span>
         <span className="flex-1 truncate text-sm text-ink dark:text-on-dark">
-          {fileNameFromUrl(existingFileUrl)}
+          {displayName}
         </span>
         {!disabled && (
           <button
@@ -129,7 +172,7 @@ export function FileUploadField({
             onClick={() => setShowExisting(false)}
             className="text-sm text-coral hover:text-coral-dark dark:hover:text-coral-dark"
           >
-            {t('form.upload_replace')}
+            {replaceBtnLabel}
           </button>
         )}
       </div>
@@ -185,7 +228,7 @@ export function FileUploadField({
       >
         <span className="text-2xl text-muted dark:text-on-dark-soft">📁</span>
         <p className="text-sm font-medium text-ink dark:text-on-dark">{t('form.upload_drag')}</p>
-        <p className="text-xs text-muted dark:text-on-dark-soft">{t('archivo.formatosAceptados')}</p>
+        <p className="text-xs text-muted dark:text-on-dark-soft">{formatHint}</p>
       </div>
       {error && (
         <p role="alert" className="text-xs text-error">{error}</p>
@@ -193,7 +236,7 @@ export function FileUploadField({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.xls,.xlsx"
+        accept={acceptAttr}
         className="sr-only"
         disabled={disabled}
         onChange={(e) => handleFiles(e.target.files)}
