@@ -39,7 +39,7 @@ export interface VersionEntry {
 
 export interface AuditTrailEntry {
   id: string
-  entidadTipo: 'Documento'
+  entidadTipo: 'Documento' | 'NoConformidad'
   entidadId: string
   accion: string
   estadoAnterior?: string

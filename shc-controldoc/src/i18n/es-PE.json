@@ -420,6 +420,73 @@
   },
   "qualityEvents": {},
   "incidents": {},
-  "nonconformities": {},
+  "nonconformities": {
+    "status": {
+      "DETECTADA": "Detectada",
+      "EN_INVESTIGACION": "En Investigación",
+      "EN_CORRECCION": "En Corrección",
+      "PENDIENTE_CIERRE": "Pendiente de Cierre",
+      "CERRADA": "Cerrada",
+      "REABIERTA": "Reabierta",
+      "ANULADA": "Anulada"
+    },
+    "tipo": {
+      "PROCESO": "Proceso",
+      "PRODUCTO": "Producto",
+      "SERVICIO": "Servicio",
+      "SISTEMA": "Sistema",
+      "SST": "SST"
+    },
+    "severidad": {
+      "MENOR": "Menor",
+      "MAYOR": "Mayor",
+      "CRITICA": "Crítica"
+    },
+    "origen": {
+      "INSPECCION_INTERNA": "Inspección Interna",
+      "AUDITORIA_INTERNA": "Auditoría Interna",
+      "AUDITORIA_EXTERNA": "Auditoría Externa",
+      "CLIENTE_RECLAMO": "Reclamo de Cliente",
+      "OPERACION_CAMPO": "Operación de Campo",
+      "CONTROL_PROCESO": "Control de Proceso"
+    },
+    "validation": {
+      "origenRequired": "El origen es obligatorio.",
+      "tipoRequired": "El tipo es obligatorio.",
+      "severidadRequired": "La severidad es obligatoria.",
+      "areaAfectadaRequired": "El área afectada es obligatoria.",
+      "areaAfectadaMax": "El área afectada no puede superar los 200 caracteres.",
+      "descripcionMin": "La descripción debe tener al menos 10 caracteres.",
+      "descripcionMax": "La descripción no puede superar los 2000 caracteres.",
+      "fechaDeteccionRequired": "La fecha de detección es obligatoria.",
+      "mineralInvolucradoMax": "El mineral involucrado no puede superar los 100 caracteres.",
+      "accionInmediataMax": "La acción inmediata no puede superar los 1000 caracteres.",
+      "correccionMax": "La corrección no puede superar los 2000 caracteres.",
+      "causaRaizMax": "La causa raíz no puede superar los 2000 caracteres.",
+      "correccionEvidenciaUrlInvalid": "La URL de evidencia de corrección no es válida.",
+      "correccionEvidenciaUrlRequired": "La URL de evidencia de corrección es requerida para solicitar el cierre.",
+      "comentarioRequired": "El comentario es obligatorio.",
+      "comentarioMax": "El comentario no puede superar los 500 caracteres."
+    },
+    "toasts": {
+      "created": "No conformidad registrada correctamente.",
+      "posibleDuplicado": "Posible duplicado detectado: existen NCs similares en los últimos 30 días.",
+      "createError": "Error al registrar la no conformidad.",
+      "updated": "No conformidad actualizada.",
+      "updateError": "Error al actualizar la no conformidad.",
+      "anulada": "No conformidad anulada.",
+      "anularError": "Error al anular la no conformidad.",
+      "acCreada": "Acción correctiva creada.",
+      "acCreateError": "Error al crear la acción correctiva.",
+      "acUpdated": "Acción correctiva actualizada.",
+      "acUpdateError": "Error al actualizar la acción correctiva.",
+      "acCerrada": "Acción correctiva cerrada con evidencia.",
+      "acCerrarError": "Error al cerrar la acción correctiva."
+    },
+    "errors": {
+      "notFound": "No conformidad no encontrada.",
+      "editBlockedByStatus": "No se puede editar una no conformidad en estado Cerrada o Anulada."
+    }
+  },
   "dashboard": {}
 }

@@ -420,6 +420,73 @@
   },
   "qualityEvents": {},
   "incidents": {},
-  "nonconformities": {},
+  "nonconformities": {
+    "status": {
+      "DETECTADA": "Detected",
+      "EN_INVESTIGACION": "Under Investigation",
+      "EN_CORRECCION": "Under Correction",
+      "PENDIENTE_CIERRE": "Pending Closure",
+      "CERRADA": "Closed",
+      "REABIERTA": "Reopened",
+      "ANULADA": "Voided"
+    },
+    "tipo": {
+      "PROCESO": "Process",
+      "PRODUCTO": "Product",
+      "SERVICIO": "Service",
+      "SISTEMA": "System",
+      "SST": "HSE"
+    },
+    "severidad": {
+      "MENOR": "Minor",
+      "MAYOR": "Major",
+      "CRITICA": "Critical"
+    },
+    "origen": {
+      "INSPECCION_INTERNA": "Internal Inspection",
+      "AUDITORIA_INTERNA": "Internal Audit",
+      "AUDITORIA_EXTERNA": "External Audit",
+      "CLIENTE_RECLAMO": "Customer Complaint",
+      "OPERACION_CAMPO": "Field Operation",
+      "CONTROL_PROCESO": "Process Control"
+    },
+    "validation": {
+      "origenRequired": "Origin is required.",
+      "tipoRequired": "Type is required.",
+      "severidadRequired": "Severity is required.",
+      "areaAfectadaRequired": "Affected area is required.",
+      "areaAfectadaMax": "Affected area cannot exceed 200 characters.",
+      "descripcionMin": "Description must be at least 10 characters.",
+      "descripcionMax": "Description cannot exceed 2000 characters.",
+      "fechaDeteccionRequired": "Detection date is required.",
+      "mineralInvolucradoMax": "Mineral involved cannot exceed 100 characters.",
+      "accionInmediataMax": "Immediate action cannot exceed 1000 characters.",
+      "correccionMax": "Correction cannot exceed 2000 characters.",
+      "causaRaizMax": "Root cause cannot exceed 2000 characters.",
+      "correccionEvidenciaUrlInvalid": "Correction evidence URL is not valid.",
+      "correccionEvidenciaUrlRequired": "Correction evidence URL is required to request closure.",
+      "comentarioRequired": "Comment is required.",
+      "comentarioMax": "Comment cannot exceed 500 characters."
+    },
+    "toasts": {
+      "created": "Non-conformity registered successfully.",
+      "posibleDuplicado": "Possible duplicate detected: similar NCs exist within the last 30 days.",
+      "createError": "Error registering the non-conformity.",
+      "updated": "Non-conformity updated.",
+      "updateError": "Error updating the non-conformity.",
+      "anulada": "Non-conformity voided.",
+      "anularError": "Error voiding the non-conformity.",
+      "acCreada": "Corrective action created.",
+      "acCreateError": "Error creating the corrective action.",
+      "acUpdated": "Corrective action updated.",
+      "acUpdateError": "Error updating the corrective action.",
+      "acCerrada": "Corrective action closed with evidence.",
+      "acCerrarError": "Error closing the corrective action."
+    },
+    "errors": {
+      "notFound": "Non-conformity not found.",
+      "editBlockedByStatus": "Cannot edit a non-conformity in Closed or Voided status."
+    }
+  },
   "dashboard": {}
 }
