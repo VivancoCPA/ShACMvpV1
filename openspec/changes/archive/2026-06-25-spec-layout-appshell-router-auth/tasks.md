@@ -59,9 +59,9 @@
 
 ## 11. Verificación de criterios de aceptación
 
-- [ ] 11.1 Verificar que `/login` renderiza correctamente en light y dark mode, con selector de rol visible (MSW=true)
-- [ ] 11.2 Verificar flujo completo: seleccionar rol → login → sidebar con ítems filtrados → topnav con badge de rol → logout → redirect a login
-- [ ] 11.3 Verificar `/forgot-password`: submit con email válido → 200 + mensaje genérico; submit con email inexistente → también 200 + mismo mensaje (confirmar que el mock nunca distingue entre emails existentes y no existentes)
-- [ ] 11.4 Verificar `/reset-password?token=mock-reset-token`: indicador de fortaleza funciona, submit exitoso navega a login
-- [ ] 11.5 Verificar que usuario OPERARIO no ve No Conformidades ni Quality Events en el sidebar
+- [x] 11.1 Verificar que `/login` renderiza correctamente en light y dark mode, con selector de rol visible (MSW=true)
+- [x] 11.2 Verificar flujo completo: seleccionar rol → login → sidebar con ítems filtrados → topnav con badge de rol → logout → redirect a login
+- [x] 11.3 Verificar `/forgot-password`: submit con email válido → 200 + mensaje genérico; submit con email inexistente → también 200 + mismo mensaje (confirmar que el mock nunca distingue entre emails existentes y no existentes)
+- [x] 11.4 Verificar `/reset-password?token=mock-reset-token`: indicador de fortaleza funciona, submit exitoso navega a login
+- [x] 11.5 Verificar que usuario OPERARIO no ve No Conformidades ni Quality Events en el sidebar
 - [x] 11.6 Verificar que TypeScript no reporta errores (`tsc --noEmit`)
