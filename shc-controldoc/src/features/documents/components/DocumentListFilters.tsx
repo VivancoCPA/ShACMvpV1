@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { useAuthStore } from '../../../stores/authStore'
 import { useDocumentosPendientesCount } from '../hooks/useDocumentosPendientesCount'
-import { AREAS_SHAC, DOC_STATUSES, DOC_TYPES } from '../constants'
+import { FilterBar } from '../../../components/shared/FilterBar'
+import { DOC_STATUSES, DOC_TYPES } from '../constants'
+import { AREAS_SHAC } from '../../../constants/shared.constants'
 import type { UserRole } from '../../../types/auth.types'
 
 const CAN_SEE_DELETED: Set<UserRole> = new Set(['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'])
@@ -114,7 +116,7 @@ export function DocumentListFilters() {
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-hairline bg-canvas p-4 dark:border-hairline/20 dark:bg-surface-dark-elevated">
+    <FilterBar>
       {showPendientes && (
         <button
           type="button"
@@ -260,6 +262,6 @@ export function DocumentListFilters() {
           </label>
         </div>
       )}
-    </div>
+    </FilterBar>
   )
 }

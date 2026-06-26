@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const createNCSchema = z.object({
-  dominio: z.enum(['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL']),
+  dominio: z.enum(['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL', 'PROVEEDOR']),
   origen: z.enum([
     'INSPECCION_INTERNA',
     'AUDITORIA_INTERNA',

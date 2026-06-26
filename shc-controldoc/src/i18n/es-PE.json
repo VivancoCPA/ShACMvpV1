@@ -1,5 +1,11 @@
 {
   "common": {
+    "pagination": {
+      "showing": "Mostrando {{from}}–{{to}} de {{total}}"
+    },
+    "deadline": {
+      "vencida": "Vencida"
+    },
     "statuses": {
       "BORRADOR": "Borrador",
       "EN_REVISION": "En Revisión",
@@ -446,12 +452,13 @@
       "acVencidaLabel": "Tiene acciones correctivas vencidas",
       "columns": {
         "numero": "Número NC",
-        "dominio": "Dominio",
+        "titulo": "Título",
         "areaAfectada": "Área Afectada",
         "severidad": "Severidad",
         "estado": "Estado",
         "responsableAC": "Responsable AC",
         "fechaDeteccion": "Fecha Detección",
+        "fechaCierre": "Fecha Cierre",
         "acciones": "Acciones"
       },
       "actions": {
@@ -471,14 +478,28 @@
       "areaAfectadaPlaceholder": "Filtrar por área…",
       "fechaDesdeLabel": "Desde",
       "fechaHastaLabel": "Hasta",
+      "fechaDeteccionLabel": "Fecha detección",
+      "fechaCampo": {
+        "label": "Filtrar por",
+        "fechaDeteccion": "Fecha detección",
+        "fechaCierre": "Fecha cierre"
+      },
       "todos": "Todos",
       "limpiar": "Limpiar filtros",
       "dominio": {
         "CALIDAD": "NC-CAL",
         "SST": "NC-SST",
         "ADUANERO": "NC-ADU",
-        "OPERACIONAL": "NC-OPE"
+        "OPERACIONAL": "NC-OPE",
+        "PROVEEDOR": "NC-PRV"
       }
+    },
+    "dominio": {
+      "CALIDAD": "Calidad",
+      "SST": "SyST",
+      "ADUANERO": "Aduanero",
+      "OPERACIONAL": "Operacional",
+      "PROVEEDOR": "Proveedor/Contratista"
     },
     "tipo": {
       "PROCESO": "Proceso",

@@ -22,7 +22,7 @@ export type NCTipo = 'PROCESO' | 'PRODUCTO' | 'SERVICIO' | 'SISTEMA' | 'SST'
 export type NCSeveridad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 
 /** Área de negocio afectada — determina el prefijo del número NC-[DOMINIO_ABBR]-YYYY-NNN */
-export type NCDominio = 'CALIDAD' | 'SST' | 'ADUANERO' | 'OPERACIONAL'
+export type NCDominio = 'CALIDAD' | 'SST' | 'ADUANERO' | 'OPERACIONAL' | 'PROVEEDOR'
 
 export type ACStatus = 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'VENCIDA'
 
@@ -123,6 +123,8 @@ export interface NoConformidad {
   documentosVinculados: string[]
   adjuntos: string[]
   auditTrail: AuditTrailEntry[]
+  /** Fecha límite esperada de cierre de la NC (ISO 8601) — diferente del fechaCierre de AccionCorrectiva */
+  fechaCierre?: string
   creadoEn: string
   actualizadoEn: string
   mineralInvolucrado?: string

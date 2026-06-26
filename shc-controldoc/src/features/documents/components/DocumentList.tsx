@@ -4,22 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useDocumentList } from '../hooks/useDocumentList'
 import { DocumentListRow } from './DocumentListRow'
 import { DocumentVersionSubRow } from './DocumentVersionSubRow'
+import { Pagination } from '../../../components/shared/Pagination'
+import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import { useAuthStore } from '../../../stores/authStore'
 import type { Documento, DocStatus } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
 
 const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
-
-function getPageNumbers(current: number, total: number): (number | '...')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const pages: (number | '...')[] = []
-  const left = Math.max(1, current - 3)
-  const right = Math.min(total, current + 3)
-  if (left > 1) { pages.push(1); if (left > 2) pages.push('...') }
-  for (let p = left; p <= right; p++) pages.push(p)
-  if (right < total) { if (right < total - 1) pages.push('...'); pages.push(total) }
-  return pages
-}
 
 function isDocPendingForUser(doc: Documento, userId: string, userRole: UserRole): boolean {
   if (!userId || NON_PENDING_ROLES.has(userRole)) return false
@@ -79,7 +70,7 @@ function TableSkeleton() {
   return (
     <>
       {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-        <tr key={i}>
+        <tr key={i} className={TABLE_ROW_CLASS}>
           {Array.from({ length: 8 }).map((__, j) => (
             <td key={j} className="px-4 py-3">
               <div className="h-4 rounded bg-hairline animate-pulse dark:bg-surface-dark-elevated" />
@@ -130,8 +121,6 @@ export function DocumentList() {
   const totalPages = pagination?.totalPages ?? 1
   const totalItems = pagination?.totalItems ?? 0
   const pageSize = pagination?.pageSize ?? 20
-  const from = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
-  const to = Math.min(currentPage * pageSize, totalItems)
 
   const goToPage = (page: number) => {
     setSearchParams((prev) => {
@@ -153,6 +142,7 @@ export function DocumentList() {
   ]
 
   return (
+    <>
     <div className="overflow-hidden rounded-lg border border-hairline dark:border-hairline/20">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse bg-canvas text-left dark:bg-surface-dark">
@@ -254,47 +244,15 @@ export function DocumentList() {
         </table>
       </div>
 
-      {!isLoading && !isError && totalItems > 0 && (
-        <div className="flex items-center justify-between border-t border-hairline bg-canvas px-4 py-3 dark:border-hairline/20 dark:bg-surface-dark">
-          <p className="text-sm text-muted dark:text-on-dark-soft">
-            {t('list.pagination.showing', { from, to, total: totalItems })}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage <= 1}
-              aria-label={t('list.pagination.previous')}
-              className="rounded-sm px-2 py-1 text-sm text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 dark:text-on-dark-soft dark:hover:text-on-dark"
-            >
-              ‹
-            </button>
-            {getPageNumbers(currentPage, totalPages).map((p, i) =>
-              p === '...'
-                ? <span key={`ellipsis-${i}`} className="px-2 py-1 text-sm text-muted">…</span>
-                : <button
-                    key={p}
-                    type="button"
-                    onClick={() => goToPage(p)}
-                    className={`min-w-[2rem] rounded-sm px-2 py-1 text-sm transition-colors ${
-                      p === currentPage
-                        ? 'bg-coral text-white'
-                        : 'text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark'
-                    }`}
-                  >{p}</button>
-            )}
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              aria-label={t('list.pagination.next')}
-              className="rounded-sm px-2 py-1 text-sm text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 dark:text-on-dark-soft dark:hover:text-on-dark"
-            >
-              ›
-            </button>
-          </div>
-        </div>
-      )}
     </div>
+
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      totalItems={totalItems}
+      pageSize={pageSize}
+      onPageChange={goToPage}
+    />
+    </>
   )
 }

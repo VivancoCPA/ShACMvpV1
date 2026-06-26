@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronRight, ChevronDown, RotateCcw } from 'lucide-react'
+import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import { getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
@@ -103,7 +104,7 @@ export function DocumentListRow({
   return (
     <tr
       onClick={onClick}
-      className={`cursor-pointer border-b border-hairline hover:bg-coral/5 dark:border-hairline/20 dark:hover:bg-coral/10 ${rowBg} ${pendingBorder}`}
+      className={`${TABLE_ROW_CLASS} border-b border-hairline dark:border-hairline/20 ${rowBg} ${pendingBorder}`}
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-ink dark:text-on-dark">
         <span className="flex items-center gap-1.5">
@@ -135,8 +136,8 @@ export function DocumentListRow({
         </span>
       </td>
 
-      <td className="px-4 py-3 text-sm text-ink dark:text-on-dark">
-        <span className="line-clamp-2 max-w-xs">{documento.titulo}</span>
+      <td className="max-w-[200px] truncate px-4 py-3 text-sm text-ink dark:text-on-dark" title={documento.titulo}>
+        {documento.titulo}
       </td>
 
       <td className="whitespace-nowrap px-4 py-3 text-sm text-muted dark:text-on-dark-soft">

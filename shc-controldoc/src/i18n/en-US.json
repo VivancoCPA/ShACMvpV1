@@ -1,5 +1,11 @@
 {
   "common": {
+    "pagination": {
+      "showing": "Showing {{from}}–{{to}} of {{total}}"
+    },
+    "deadline": {
+      "vencida": "Overdue"
+    },
     "statuses": {
       "BORRADOR": "Draft",
       "EN_REVISION": "In Review",
@@ -446,12 +452,13 @@
       "acVencidaLabel": "Has overdue corrective actions",
       "columns": {
         "numero": "NC Number",
-        "dominio": "Domain",
+        "titulo": "Title",
         "areaAfectada": "Affected Area",
         "severidad": "Severity",
         "estado": "Status",
         "responsableAC": "AC Responsible",
         "fechaDeteccion": "Detection Date",
+        "fechaCierre": "Due Date",
         "acciones": "Actions"
       },
       "actions": {
@@ -471,14 +478,28 @@
       "areaAfectadaPlaceholder": "Filter by area…",
       "fechaDesdeLabel": "From",
       "fechaHastaLabel": "To",
+      "fechaDeteccionLabel": "Detection date",
+      "fechaCampo": {
+        "label": "Filter by",
+        "fechaDeteccion": "Detection date",
+        "fechaCierre": "Close date"
+      },
       "todos": "All",
       "limpiar": "Clear filters",
       "dominio": {
         "CALIDAD": "NC-CAL",
         "SST": "NC-SST",
         "ADUANERO": "NC-ADU",
-        "OPERACIONAL": "NC-OPE"
+        "OPERACIONAL": "NC-OPE",
+        "PROVEEDOR": "NC-PRV"
       }
+    },
+    "dominio": {
+      "CALIDAD": "Quality",
+      "SST": "HSE",
+      "ADUANERO": "Customs",
+      "OPERACIONAL": "Operational",
+      "PROVEEDOR": "Supplier/Contractor"
     },
     "tipo": {
       "PROCESO": "Process",

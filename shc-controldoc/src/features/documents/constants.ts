@@ -1,4 +1,6 @@
 import type { DocStatus, DocFilters, DocType } from '../../types/documents.types'
+// AREAS_SHAC moved to src/constants/shared.constants.ts — re-exported for backward compatibility
+export { AREAS_SHAC } from '../../constants/shared.constants'
 
 export const QUERY_KEYS = {
   documents: {
@@ -30,17 +32,6 @@ export const DOC_STATUSES: DocStatus[] = [
   'EN_REVISION_PERIODICA',
 ]
 
-export const AREAS_SHAC: string[] = [
-  'Calidad',
-  'Control Documentario',
-  'Operaciones',
-  'SyST',
-  'Auditoría',
-  'RR.HH.',
-  'Gerencia',
-  'Almacén',
-  'Logística',
-]
 
 export const DOC_STATUS_TRANSITIONS: Record<DocStatus, DocStatus[]> = {
   BORRADOR: ['EN_REVISION'],

@@ -1,120 +1,118 @@
-import { useRef, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import type { NCStatus, NCSeveridad, NCDominio } from '../types/nonconformity.types'
+import { useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { FilterBar } from "../../../components/shared/FilterBar";
+import { AREAS_SHAC } from "../../../constants/shared.constants";
+import type { NCStatus, NCSeveridad } from "../types/nonconformity.types";
 
 const NC_STATUS_VALUES: NCStatus[] = [
-  'ABIERTA',
-  'EN_INVESTIGACION',
-  'ANALISIS_COMPLETADO',
-  'EN_EJECUCION',
-  'PENDIENTE_CIERRE',
-  'CERRADA',
-  'ANULADA',
-]
+  "ABIERTA",
+  "EN_INVESTIGACION",
+  "ANALISIS_COMPLETADO",
+  "EN_EJECUCION",
+  "PENDIENTE_CIERRE",
+  "CERRADA",
+  "ANULADA",
+];
 
-const NC_SEVERITY_VALUES: NCSeveridad[] = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']
+const NC_SEVERITY_VALUES: NCSeveridad[] = ["BAJA", "MEDIA", "ALTA", "CRITICA"];
 
-const NC_DOMINIO_VALUES: NCDominio[] = ['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL']
-
-const FILTER_PARAMS = ['search', 'estado', 'dominio', 'severidad', 'areaAfectada', 'fechaDesde', 'fechaHasta', 'page']
+const FILTER_PARAMS = [
+  "search",
+  "estado",
+  "severidad",
+  "areaAfectada",
+  "fechaDesde",
+  "fechaHasta",
+  "page",
+];
 
 export function NCListFilters() {
-  const { t } = useTranslation('nonconformities')
-  const [searchParams, setSearchParams] = useSearchParams()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { t } = useTranslation("nonconformities");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasActiveFilters = FILTER_PARAMS.some(
-    (p) => p !== 'page' && searchParams.has(p),
-  )
+    (p) => p !== "page" && searchParams.has(p),
+  );
+
+  const fechaCampo = (searchParams.get("fechaCampo") ?? "fechaDeteccion") as
+    | "fechaDeteccion"
+    | "fechaCierre";
 
   const setParam = useCallback(
     (key: string, value: string) => {
       setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
+        const next = new URLSearchParams(prev);
         if (value) {
-          next.set(key, value)
+          next.set(key, value);
         } else {
-          next.delete(key)
+          next.delete(key);
         }
-        if (key !== 'page') next.set('page', '1')
-        return next
-      })
+        if (key !== "page") next.set("page", "1");
+        return next;
+      });
     },
     [setSearchParams],
-  )
+  );
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+      const value = e.target.value;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        setParam('search', value)
-      }, 300)
+        setParam("search", value);
+      }, 300);
     },
     [setParam],
-  )
+  );
 
   const handleClear = useCallback(() => {
-    setSearchParams(new URLSearchParams())
-  }, [setSearchParams])
+    setSearchParams(new URLSearchParams({ fechaCampo: "fechaDeteccion" }));
+  }, [setSearchParams]);
 
   const inputBase =
-    'h-9 rounded-md border border-hairline bg-canvas px-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:placeholder:text-on-dark-soft'
+    "h-9 rounded-md border border-hairline bg-canvas px-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:placeholder:text-on-dark-soft";
 
   const selectBase =
-    'h-9 rounded-md border border-hairline bg-canvas px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
+    "h-9 rounded-md border border-hairline bg-canvas px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark";
 
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3">
+    <FilterBar>
       {/* Search */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-search">
-          {t('filters.searchLabel')}
+        <label
+          className="text-xs font-medium text-muted dark:text-on-dark-soft"
+          htmlFor="nc-search"
+        >
+          {t("filters.searchLabel")}
         </label>
         <input
           id="nc-search"
           type="search"
           className={`${inputBase} w-56`}
-          placeholder={t('filters.searchPlaceholder')}
-          defaultValue={searchParams.get('search') ?? ''}
+          placeholder={t("filters.searchPlaceholder")}
+          defaultValue={searchParams.get("search") ?? ""}
           onChange={handleSearch}
-          aria-label={t('filters.searchLabel')}
+          aria-label={t("filters.searchLabel")}
         />
-      </div>
-
-      {/* Dominio */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-dominio">
-          {t('filters.dominioLabel')}
-        </label>
-        <select
-          id="nc-dominio"
-          className={`${selectBase} w-32`}
-          value={searchParams.get('dominio') ?? ''}
-          onChange={(e) => setParam('dominio', e.target.value)}
-        >
-          <option value="">{t('filters.todos')}</option>
-          {NC_DOMINIO_VALUES.map((d) => (
-            <option key={d} value={d}>
-              {t(`filters.dominio.${d}`)}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Severidad */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-severidad">
-          {t('filters.severidadLabel')}
+        <label
+          className="text-xs font-medium text-muted dark:text-on-dark-soft"
+          htmlFor="nc-severidad"
+        >
+          {t("filters.severidadLabel")}
         </label>
         <select
           id="nc-severidad"
           className={`${selectBase} w-32`}
-          value={searchParams.get('severidad') ?? ''}
-          onChange={(e) => setParam('severidad', e.target.value)}
+          value={searchParams.get("severidad") ?? ""}
+          onChange={(e) => setParam("severidad", e.target.value)}
         >
-          <option value="">{t('filters.todos')}</option>
+          <option value="">{t("filters.todos")}</option>
           {NC_SEVERITY_VALUES.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -125,16 +123,19 @@ export function NCListFilters() {
 
       {/* Estado */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-estado">
-          {t('filters.estadoLabel')}
+        <label
+          className="text-xs font-medium text-muted dark:text-on-dark-soft"
+          htmlFor="nc-estado"
+        >
+          {t("filters.estadoLabel")}
         </label>
         <select
           id="nc-estado"
           className={`${selectBase} w-40`}
-          value={searchParams.get('estado') ?? ''}
-          onChange={(e) => setParam('estado', e.target.value)}
+          value={searchParams.get("estado") ?? ""}
+          onChange={(e) => setParam("estado", e.target.value)}
         >
-          <option value="">{t('filters.todos')}</option>
+          <option value="">{t("filters.todos")}</option>
           {NC_STATUS_VALUES.map((s) => (
             <option key={s} value={s}>
               {t(`status.${s}`)}
@@ -143,47 +144,78 @@ export function NCListFilters() {
         </select>
       </div>
 
-      {/* Área Afectada */}
+      {/* Área Afectada — select con AREAS_SHAC */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-area">
-          {t('filters.areaAfectadaLabel')}
+        <label
+          className="text-xs font-medium text-muted dark:text-on-dark-soft"
+          htmlFor="nc-area"
+        >
+          {t("filters.areaAfectadaLabel")}
         </label>
-        <input
+        <select
           id="nc-area"
-          type="text"
-          className={`${inputBase} w-40`}
-          placeholder={t('filters.areaAfectadaPlaceholder')}
-          value={searchParams.get('areaAfectada') ?? ''}
-          onChange={(e) => setParam('areaAfectada', e.target.value)}
-        />
+          className={`${selectBase} w-44`}
+          value={searchParams.get("areaAfectada") ?? ""}
+          onChange={(e) => setParam("areaAfectada", e.target.value)}
+        >
+          <option value="">{t("filters.todos")}</option>
+          {AREAS_SHAC.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Fecha Desde */}
+      {/* Rango de fechas + campo selector */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-fecha-desde">
-          {t('filters.fechaDesdeLabel')}
+        <label
+          className="text-xs font-medium text-muted dark:text-on-dark-soft"
+          htmlFor="nc-fecha-campo"
+        >
+          {t("filters.fechaCampo.label")}
         </label>
-        <input
-          id="nc-fecha-desde"
-          type="date"
-          className={`${inputBase} w-36`}
-          value={searchParams.get('fechaDesde') ?? ''}
-          onChange={(e) => setParam('fechaDesde', e.target.value)}
-        />
-      </div>
-
-      {/* Fecha Hasta */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted dark:text-on-dark-soft" htmlFor="nc-fecha-hasta">
-          {t('filters.fechaHastaLabel')}
-        </label>
-        <input
-          id="nc-fecha-hasta"
-          type="date"
-          className={`${inputBase} w-36`}
-          value={searchParams.get('fechaHasta') ?? ''}
-          onChange={(e) => setParam('fechaHasta', e.target.value)}
-        />
+        <div className="flex items-center gap-2">
+          <select
+            id="nc-fecha-campo"
+            className={`${selectBase} w-36`}
+            value={fechaCampo}
+            onChange={(e) => setParam("fechaCampo", e.target.value)}
+            aria-label={t("filters.fechaCampo.label")}
+          >
+            <option value="fechaDeteccion">
+              {t("filters.fechaCampo.fechaDeteccion")}
+            </option>
+            <option value="fechaCierre">
+              {t("filters.fechaCampo.fechaCierre")}
+            </option>
+          </select>
+          <label className="sr-only" htmlFor="nc-fecha-desde">
+            {t("filters.fechaDesdeLabel")}
+          </label>
+          <input
+            id="nc-fecha-desde"
+            type="date"
+            lang="es-PE"
+            title={t("filters.fechaDesdeLabel")}
+            className={`${inputBase} w-36`}
+            value={searchParams.get("fechaDesde") ?? ""}
+            onChange={(e) => setParam("fechaDesde", e.target.value)}
+          />
+          <span className="text-xs text-muted dark:text-on-dark-soft">–</span>
+          <label className="sr-only" htmlFor="nc-fecha-hasta">
+            {t("filters.fechaHastaLabel")}
+          </label>
+          <input
+            id="nc-fecha-hasta"
+            type="date"
+            lang="es-PE"
+            title={t("filters.fechaHastaLabel")}
+            className={`${inputBase} w-36`}
+            value={searchParams.get("fechaHasta") ?? ""}
+            onChange={(e) => setParam("fechaHasta", e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Clear filters */}
@@ -193,9 +225,9 @@ export function NCListFilters() {
           onClick={handleClear}
           className="h-9 self-end rounded-md border border-hairline bg-canvas px-3 text-sm text-muted transition-colors hover:border-error/40 hover:text-error dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft dark:hover:text-error"
         >
-          {t('filters.limpiar')}
+          {t("filters.limpiar")}
         </button>
       )}
-    </div>
-  )
+    </FilterBar>
+  );
 }

@@ -1,4 +1,6 @@
-import type { NCStatus, NCTipo, NCSeveridad, NCOrigen } from '../types/nonconformity.types'
+import type { NCStatus, NCTipo, NCSeveridad, NCOrigen, NCDominio } from '../types/nonconformity.types'
+
+export const NC_DOMINIO_VALUES: NCDominio[] = ['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL', 'PROVEEDOR']
 
 export const NC_STATE_TRANSITIONS: Record<NCStatus, NCStatus[]> = {
   ABIERTA: ['EN_INVESTIGACION', 'ANULADA'],

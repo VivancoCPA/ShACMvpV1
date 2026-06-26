@@ -1,7 +1,7 @@
 import type { NoConformidad } from '../../features/nonconformities/types/nonconformity.types'
 
 export const nonconformityFixtures: NoConformidad[] = [
-  // NC-CAL-1: ABIERTA, BAJA
+  // NC-CAL-1: ABIERTA, BAJA — fechaCierre verde (>14 días)
   {
     id: 'nc-001',
     numero: 'NC-CAL-2025-001',
@@ -10,6 +10,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     tipo: 'PROCESO',
     severidad: 'BAJA',
     estado: 'ABIERTA',
+    fechaCierre: '2026-07-20',
     descripcion: 'Se detectó desvío en el procedimiento de verificación de peso en báscula principal. El operario no registró la tara antes de iniciar el pesaje.',
     areaAfectada: 'Almacén Norte',
     reportadoPorId: 'user-002',
@@ -47,7 +48,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     turno: 'DIA',
   },
 
-  // NC-CAL-2: EN_INVESTIGACION, ALTA
+  // NC-CAL-2: EN_INVESTIGACION, ALTA — fechaCierre ámbar (0–14 días)
   {
     id: 'nc-002',
     numero: 'NC-CAL-2025-002',
@@ -56,6 +57,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     tipo: 'SISTEMA',
     severidad: 'ALTA',
     estado: 'EN_INVESTIGACION',
+    fechaCierre: '2026-07-03',
     descripcion: 'Auditoría interna identificó que el control de documentos no incluye el registro de distribución controlada para los procedimientos críticos de operación.',
     areaAfectada: 'Control Documentario',
     reportadoPorId: 'user-004',
@@ -116,7 +118,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     qeGeneradoId: 'qe-001',
   },
 
-  // NC-SST-1: EN_EJECUCION, CRITICA, requiereIPER
+  // NC-SST-1: EN_EJECUCION, CRITICA, requiereIPER — fechaCierre rojo (vencida)
   {
     id: 'nc-003',
     numero: 'NC-SST-2025-001',
@@ -125,6 +127,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     tipo: 'SST',
     severidad: 'CRITICA',
     estado: 'EN_EJECUCION',
+    fechaCierre: '2026-06-15',
     descripcion: 'Trabajador expuesto a polvo de mineral sin EPP adecuado durante operación de descarga. El sistema de ventilación del almacén sur se encontraba inoperativo.',
     areaAfectada: 'Almacén Sur',
     reportadoPorId: 'user-006',
@@ -1101,6 +1104,53 @@ export const nonconformityFixtures: NoConformidad[] = [
     ],
     creadoEn: '2026-05-28T10:00:00.000Z',
     actualizadoEn: '2026-05-29T08:00:00.000Z',
+  },
+
+  // NC-PRV-1: ABIERTA, MEDIA — Proveedor/Contratista, fechaCierre ámbar
+  {
+    id: 'nc-019',
+    numero: 'NC-PRV-2026-001',
+    dominio: 'PROVEEDOR',
+    origen: 'INSPECCION_INTERNA',
+    tipo: 'SERVICIO',
+    severidad: 'MEDIA',
+    estado: 'ABIERTA',
+    fechaCierre: '2026-07-05',
+    descripcion: 'Proveedor de transporte de concentrados incumplió protocolo de seguridad al no presentar el checklist de revisión vehicular previo al despacho del lote de cobre del 2026-06-20.',
+    areaAfectada: 'Logística',
+    reportadoPorId: 'user-003',
+    fechaDeteccion: '2026-06-20T10:00:00.000Z',
+    fechaReporte: '2026-06-20T11:00:00.000Z',
+    accionesCorrectivas: [
+      {
+        id: 'ac-028',
+        ncId: 'nc-019',
+        descripcion: 'Notificar formalmente al proveedor y requerir plan de acción correctiva en 5 días hábiles.',
+        responsableId: 'user-003',
+        plazoFecha: '2026-07-01T00:00:00.000Z',
+        estado: 'PENDIENTE',
+        creadoEn: '2026-06-20T11:30:00.000Z',
+        actualizadoEn: '2026-06-20T11:30:00.000Z',
+      },
+    ],
+    documentosVinculados: [],
+    adjuntos: [],
+    auditTrail: [
+      {
+        id: 'audit-nc-019-1',
+        entidadTipo: 'NoConformidad',
+        entidadId: 'nc-019',
+        accion: 'CREADA',
+        estadoNuevo: 'ABIERTA',
+        realizadoPorId: 'user-003',
+        realizadoPorNombre: 'María Castro',
+        timestamp: '2026-06-20T11:00:00.000Z',
+        generadoPorIA: false,
+      },
+    ],
+    creadoEn: '2026-06-20T11:00:00.000Z',
+    actualizadoEn: '2026-06-20T11:00:00.000Z',
+    turno: 'DIA',
   },
 
   // NC-SST-5: ABIERTA, BAJA

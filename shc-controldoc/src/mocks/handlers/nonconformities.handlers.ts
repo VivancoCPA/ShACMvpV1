@@ -19,6 +19,7 @@ const DOMINIO_PREFIX: Record<NCDominio, string> = {
   SST: 'SST',
   ADUANERO: 'ADU',
   OPERACIONAL: 'OPE',
+  PROVEEDOR: 'PRV',
 }
 
 function generateId(): string {
@@ -72,6 +73,7 @@ export const nonconformityHandlers = [
     const search = url.searchParams.get('search')
     const fechaDesde = url.searchParams.get('fechaDesde')
     const fechaHasta = url.searchParams.get('fechaHasta')
+    const fechaCampo = (url.searchParams.get('fechaCampo') ?? 'fechaDeteccion') as 'fechaDeteccion' | 'fechaCierre'
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '20', 10)
 
@@ -91,11 +93,17 @@ export const nonconformityHandlers = [
     }
     if (fechaDesde) {
       const since = new Date(fechaDesde).getTime()
-      filtered = filtered.filter((nc) => new Date(nc.fechaDeteccion).getTime() >= since)
+      filtered = filtered.filter((nc) => {
+        const val = fechaCampo === 'fechaCierre' ? nc.fechaCierre : nc.fechaDeteccion
+        return val ? new Date(val).getTime() >= since : false
+      })
     }
     if (fechaHasta) {
       const until = new Date(fechaHasta).getTime()
-      filtered = filtered.filter((nc) => new Date(nc.fechaDeteccion).getTime() <= until)
+      filtered = filtered.filter((nc) => {
+        const val = fechaCampo === 'fechaCierre' ? nc.fechaCierre : nc.fechaDeteccion
+        return val ? new Date(val).getTime() <= until : false
+      })
     }
 
     const totalItems = filtered.length

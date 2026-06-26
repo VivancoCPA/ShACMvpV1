@@ -20,4 +20,10 @@ export const i18nReady = i18n.use(initReactI18next).init({
   },
 })
 
+// Keep <html lang> in sync with the active language so <input type="date">
+// renders the correct regional format (Chrome uses the document lang attribute).
+i18n.on('languageChanged', (lang) => {
+  document.documentElement.lang = lang
+})
+
 export default i18n
