@@ -17,4 +17,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ['lucide-react'],
   },
+  test: {
+    environment: 'jsdom',
+  },
 })

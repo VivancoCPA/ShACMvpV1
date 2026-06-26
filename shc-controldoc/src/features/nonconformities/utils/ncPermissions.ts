@@ -13,24 +13,24 @@ const DENY_ALL: NCPermissions = {
   canReabrir: false,
 }
 
-function getOperarioPermissions(estado: NCStatus): NCPermissions {
+function getOperarioPermissions(_estado: NCStatus): NCPermissions {
   return { ...DENY_ALL, canRead: true }
 }
 
 function getSupervisorPermissions(estado: NCStatus): NCPermissions {
   switch (estado) {
-    case 'DETECTADA':
+    case 'ABIERTA':
       return { ...DENY_ALL, canRead: true, canEdit: true, canComment: true, canIniciarInvestigacion: true }
     case 'EN_INVESTIGACION':
       return { ...DENY_ALL, canRead: true, canEdit: true, canComment: true, canRegistrarCorreccion: true }
-    case 'EN_CORRECCION':
+    case 'ANALISIS_COMPLETADO':
+      return { ...DENY_ALL, canRead: true, canEdit: true, canComment: true }
+    case 'EN_EJECUCION':
       return { ...DENY_ALL, canRead: true, canEdit: true, canComment: true, canSolicitarCierre: true }
     case 'PENDIENTE_CIERRE':
       return { ...DENY_ALL, canRead: true, canComment: true }
     case 'CERRADA':
       return { ...DENY_ALL, canRead: true }
-    case 'REABIERTA':
-      return { ...DENY_ALL, canRead: true, canEdit: true, canComment: true, canIniciarInvestigacion: true }
     case 'ANULADA':
       return { ...DENY_ALL, canRead: true }
   }
@@ -39,18 +39,18 @@ function getSupervisorPermissions(estado: NCStatus): NCPermissions {
 function getJefeCalidadPermissions(estado: NCStatus): NCPermissions {
   const base: NCPermissions = { ...DENY_ALL, canRead: true, canComment: true }
   switch (estado) {
-    case 'DETECTADA':
+    case 'ABIERTA':
       return { ...base, canEdit: true, canIniciarInvestigacion: true }
     case 'EN_INVESTIGACION':
       return { ...base, canEdit: true }
-    case 'EN_CORRECCION':
+    case 'ANALISIS_COMPLETADO':
+      return { ...base, canEdit: true }
+    case 'EN_EJECUCION':
       return { ...base, canEdit: true }
     case 'PENDIENTE_CIERRE':
       return { ...base, canCerrar: true }
     case 'CERRADA':
-      return { ...base, canReabrir: true }
-    case 'REABIERTA':
-      return { ...base, canEdit: true, canIniciarInvestigacion: true }
+      return { ...base }
     case 'ANULADA':
       return { ...base }
   }
@@ -61,8 +61,6 @@ function getAltaDireccionPermissions(estado: NCStatus): NCPermissions {
   switch (estado) {
     case 'PENDIENTE_CIERRE':
       return { ...base, canCerrar: true }
-    case 'CERRADA':
-      return { ...base, canReabrir: true }
     default:
       return base
   }

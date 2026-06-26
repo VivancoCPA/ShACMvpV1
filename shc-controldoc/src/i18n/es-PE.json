@@ -7,6 +7,15 @@
       "PUBLICADO": "Publicado",
       "OBSOLETO": "Obsoleto",
       "EN_REVISION_PERIODICA": "En Revisión Periódica"
+    },
+    "severity": {
+      "BAJA": "Baja",
+      "MEDIA": "Media",
+      "ALTA": "Alta",
+      "CRITICA": "Crítica"
+    },
+    "nav": {
+      "nonconformities": "No Conformidades"
     }
   },
   "documents": {
@@ -422,13 +431,54 @@
   "incidents": {},
   "nonconformities": {
     "status": {
-      "DETECTADA": "Detectada",
+      "ABIERTA": "Abierta",
       "EN_INVESTIGACION": "En Investigación",
-      "EN_CORRECCION": "En Corrección",
+      "ANALISIS_COMPLETADO": "Análisis Completado",
+      "EN_EJECUCION": "En Ejecución",
       "PENDIENTE_CIERRE": "Pendiente de Cierre",
       "CERRADA": "Cerrada",
-      "REABIERTA": "Reabierta",
       "ANULADA": "Anulada"
+    },
+    "list": {
+      "title": "No Conformidades",
+      "empty": "No se encontraron no conformidades con los filtros aplicados.",
+      "pagination": "Mostrando {{from}}–{{to}} de {{total}}",
+      "acVencidaLabel": "Tiene acciones correctivas vencidas",
+      "columns": {
+        "numero": "Número NC",
+        "dominio": "Dominio",
+        "areaAfectada": "Área Afectada",
+        "severidad": "Severidad",
+        "estado": "Estado",
+        "responsableAC": "Responsable AC",
+        "fechaDeteccion": "Fecha Detección",
+        "acciones": "Acciones"
+      },
+      "actions": {
+        "nueva": "Nueva NC",
+        "verDetalle": "Ver detalle",
+        "reintentar": "Reintentar",
+        "errorMsg": "Error al cargar las no conformidades."
+      }
+    },
+    "filters": {
+      "searchPlaceholder": "Buscar por número o descripción…",
+      "searchLabel": "Buscar no conformidades",
+      "dominioLabel": "Dominio",
+      "severidadLabel": "Severidad",
+      "estadoLabel": "Estado",
+      "areaAfectadaLabel": "Área Afectada",
+      "areaAfectadaPlaceholder": "Filtrar por área…",
+      "fechaDesdeLabel": "Desde",
+      "fechaHastaLabel": "Hasta",
+      "todos": "Todos",
+      "limpiar": "Limpiar filtros",
+      "dominio": {
+        "CALIDAD": "NC-CAL",
+        "SST": "NC-SST",
+        "ADUANERO": "NC-ADU",
+        "OPERACIONAL": "NC-OPE"
+      }
     },
     "tipo": {
       "PROCESO": "Proceso",
@@ -438,8 +488,9 @@
       "SST": "SST"
     },
     "severidad": {
-      "MENOR": "Menor",
-      "MAYOR": "Mayor",
+      "BAJA": "Baja",
+      "MEDIA": "Media",
+      "ALTA": "Alta",
       "CRITICA": "Crítica"
     },
     "origen": {

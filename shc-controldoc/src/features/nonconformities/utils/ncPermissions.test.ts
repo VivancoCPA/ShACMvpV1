@@ -5,22 +5,23 @@ import type { NoConformidad, NCPermissions } from '../types/nonconformity.types'
 function makeNC(estado: NoConformidad['estado']): NoConformidad {
   return {
     id: 'test-id',
-    numero: 'NC-2025-001',
+    numero: 'NC-CAL-2026-001',
+    dominio: 'CALIDAD',
     origen: 'INSPECCION_INTERNA',
     tipo: 'PROCESO',
-    severidad: 'MENOR',
+    severidad: 'BAJA',
     estado,
     descripcion: 'Descripción de prueba para la no conformidad',
     areaAfectada: 'Almacén',
     reportadoPorId: 'user-1',
-    fechaDeteccion: '2025-01-01T00:00:00Z',
-    fechaReporte: '2025-01-01T00:00:00Z',
+    fechaDeteccion: '2026-01-01T00:00:00Z',
+    fechaReporte: '2026-01-01T00:00:00Z',
+    accionesCorrectivas: [],
     documentosVinculados: [],
     adjuntos: [],
     auditTrail: [],
-    creadoEn: '2025-01-01T00:00:00Z',
-    actualizadoEn: '2025-01-01T00:00:00Z',
-    qeGeneradoId: null,
+    creadoEn: '2026-01-01T00:00:00Z',
+    actualizadoEn: '2026-01-01T00:00:00Z',
   }
 }
 
@@ -40,8 +41,8 @@ function deny(overrides: Partial<NCPermissions> = {}): NCPermissions {
 }
 
 describe('getNCPermissions — OPERARIO', () => {
-  it('is read-only on DETECTADA', () => {
-    const perms = getNCPermissions(makeNC('DETECTADA'), 'OPERARIO')
+  it('is read-only on ABIERTA', () => {
+    const perms = getNCPermissions(makeNC('ABIERTA'), 'OPERARIO')
     expect(perms.canRead).toBe(true)
     expect(perms.canIniciarInvestigacion).toBe(false)
     expect(perms.canEdit).toBe(false)
@@ -51,7 +52,7 @@ describe('getNCPermissions — OPERARIO', () => {
 
   it('cannot cerrar in any state', () => {
     const states: NoConformidad['estado'][] = [
-      'DETECTADA', 'EN_INVESTIGACION', 'EN_CORRECCION', 'PENDIENTE_CIERRE', 'CERRADA', 'REABIERTA',
+      'ABIERTA', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE', 'CERRADA',
     ]
     for (const estado of states) {
       expect(getNCPermissions(makeNC(estado), 'OPERARIO').canCerrar).toBe(false)
@@ -60,8 +61,8 @@ describe('getNCPermissions — OPERARIO', () => {
 })
 
 describe('getNCPermissions — SUPERVISOR', () => {
-  it('can iniciarInvestigacion on DETECTADA', () => {
-    const perms = getNCPermissions(makeNC('DETECTADA'), 'SUPERVISOR')
+  it('can iniciarInvestigacion on ABIERTA', () => {
+    const perms = getNCPermissions(makeNC('ABIERTA'), 'SUPERVISOR')
     expect(perms.canIniciarInvestigacion).toBe(true)
     expect(perms.canEdit).toBe(true)
     expect(perms.canComment).toBe(true)
@@ -73,14 +74,14 @@ describe('getNCPermissions — SUPERVISOR', () => {
     expect(perms.canEdit).toBe(true)
   })
 
-  it('can solicitarCierre on EN_CORRECCION', () => {
-    const perms = getNCPermissions(makeNC('EN_CORRECCION'), 'SUPERVISOR')
+  it('can solicitarCierre on EN_EJECUCION', () => {
+    const perms = getNCPermissions(makeNC('EN_EJECUCION'), 'SUPERVISOR')
     expect(perms.canSolicitarCierre).toBe(true)
   })
 
   it('cannot cerrar in any state', () => {
     const states: NoConformidad['estado'][] = [
-      'DETECTADA', 'EN_INVESTIGACION', 'EN_CORRECCION', 'PENDIENTE_CIERRE', 'CERRADA', 'REABIERTA',
+      'ABIERTA', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE', 'CERRADA',
     ]
     for (const estado of states) {
       expect(getNCPermissions(makeNC(estado), 'SUPERVISOR').canCerrar).toBe(false)
@@ -96,22 +97,17 @@ describe('getNCPermissions — JEFE_CALIDAD_SYST', () => {
     expect(perms.canComment).toBe(true)
   })
 
-  it('can reabrir on CERRADA', () => {
-    const perms = getNCPermissions(makeNC('CERRADA'), 'JEFE_CALIDAD_SYST')
-    expect(perms.canReabrir).toBe(true)
-  })
-
   it('cannot cerrar when not in PENDIENTE_CIERRE', () => {
-    expect(getNCPermissions(makeNC('EN_CORRECCION'), 'JEFE_CALIDAD_SYST').canCerrar).toBe(false)
+    expect(getNCPermissions(makeNC('EN_EJECUCION'), 'JEFE_CALIDAD_SYST').canCerrar).toBe(false)
     expect(getNCPermissions(makeNC('EN_INVESTIGACION'), 'JEFE_CALIDAD_SYST').canCerrar).toBe(false)
-    expect(getNCPermissions(makeNC('DETECTADA'), 'JEFE_CALIDAD_SYST').canCerrar).toBe(false)
+    expect(getNCPermissions(makeNC('ABIERTA'), 'JEFE_CALIDAD_SYST').canCerrar).toBe(false)
   })
 })
 
 describe('getNCPermissions — AUDITOR_INTERNO', () => {
   it('can only read and comment in all states', () => {
     const states: NoConformidad['estado'][] = [
-      'DETECTADA', 'EN_INVESTIGACION', 'EN_CORRECCION', 'PENDIENTE_CIERRE', 'CERRADA', 'REABIERTA',
+      'ABIERTA', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE', 'CERRADA',
     ]
     for (const estado of states) {
       const perms = getNCPermissions(makeNC(estado), 'AUDITOR_INTERNO')
@@ -125,13 +121,9 @@ describe('getNCPermissions — ALTA_DIRECCION', () => {
     expect(getNCPermissions(makeNC('PENDIENTE_CIERRE'), 'ALTA_DIRECCION').canCerrar).toBe(true)
   })
 
-  it('can reabrir on CERRADA', () => {
-    expect(getNCPermissions(makeNC('CERRADA'), 'ALTA_DIRECCION').canReabrir).toBe(true)
-  })
-
   it('cannot edit in any state', () => {
     const states: NoConformidad['estado'][] = [
-      'DETECTADA', 'EN_INVESTIGACION', 'EN_CORRECCION', 'PENDIENTE_CIERRE', 'CERRADA', 'REABIERTA',
+      'ABIERTA', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE', 'CERRADA',
     ]
     for (const estado of states) {
       expect(getNCPermissions(makeNC(estado), 'ALTA_DIRECCION').canEdit).toBe(false)
@@ -142,7 +134,7 @@ describe('getNCPermissions — ALTA_DIRECCION', () => {
 describe('getNCPermissions — JEFE_CONTROL_DOCUMENTARIO', () => {
   it('can only read in all states', () => {
     const states: NoConformidad['estado'][] = [
-      'DETECTADA', 'EN_INVESTIGACION', 'EN_CORRECCION', 'PENDIENTE_CIERRE', 'CERRADA', 'REABIERTA',
+      'ABIERTA', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE', 'CERRADA',
     ]
     for (const estado of states) {
       const perms = getNCPermissions(makeNC(estado), 'JEFE_CONTROL_DOCUMENTARIO')

@@ -7,6 +7,7 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { DocumentsPage } from '../features/documents/pages/DocumentsPage'
 import { DocumentFormPage } from '../features/documents/pages/DocumentFormPage'
 import { DocumentDetailPage } from '../features/documents/pages/DocumentDetailPage'
+import { NonconformityListPage } from '../features/nonconformities/pages/NonconformityListPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 
@@ -80,8 +81,8 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: '/no-conformidades',
-            element: <ComingSoon label="No Conformidades" />,
+            path: '/nonconformities',
+            element: <NonconformityListPage />,
             handle: { breadcrumb: 'nonconformities' },
           },
           {

@@ -148,7 +148,7 @@ export const nonconformityHandlers = [
       origen: body.origen as NoConformidad['origen'],
       tipo: body.tipo as NoConformidad['tipo'],
       severidad: body.severidad as NoConformidad['severidad'],
-      estado: 'DETECTADA',
+      estado: 'ABIERTA',
       descripcion: body.descripcion as string,
       areaAfectada: body.areaAfectada as string,
       reportadoPorId: 'user-mock-001',
@@ -158,7 +158,7 @@ export const nonconformityHandlers = [
       documentosVinculados: (body.documentosVinculados as string[]) ?? [],
       adjuntos: [],
       auditTrail: [
-        makeAuditEntry(id, 'CREADA', { estadoNuevo: 'DETECTADA' }),
+        makeAuditEntry(id, 'CREADA', { estadoNuevo: 'ABIERTA' }),
       ],
       creadoEn: now,
       actualizadoEn: now,

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   FileText,
-  AlertCircle,
+  ClipboardX,
   ShieldAlert,
   ClipboardList,
   BarChart2,
@@ -29,8 +29,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'documents', path: '/documentos', icon: FileText },
   {
     key: 'nonconformities',
-    path: '/no-conformidades',
-    icon: AlertCircle,
+    path: '/nonconformities',
+    icon: ClipboardX,
     roles: ['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
   },
   { key: 'incidents', path: '/incidentes', icon: ShieldAlert },

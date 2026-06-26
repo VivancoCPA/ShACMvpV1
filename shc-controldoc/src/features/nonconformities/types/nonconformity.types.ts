@@ -1,12 +1,12 @@
 import type { UserRole } from '../../../types/auth.types'
 
 export type NCStatus =
-  | 'DETECTADA'
+  | 'ABIERTA'
   | 'EN_INVESTIGACION'
-  | 'EN_CORRECCION'
+  | 'ANALISIS_COMPLETADO'
+  | 'EN_EJECUCION'
   | 'PENDIENTE_CIERRE'
   | 'CERRADA'
-  | 'REABIERTA'
   | 'ANULADA'
 
 export type NCOrigen =
@@ -19,7 +19,7 @@ export type NCOrigen =
 
 export type NCTipo = 'PROCESO' | 'PRODUCTO' | 'SERVICIO' | 'SISTEMA' | 'SST'
 
-export type NCSeveridad = 'MENOR' | 'MAYOR' | 'CRITICA'
+export type NCSeveridad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 
 /** Área de negocio afectada — determina el prefijo del número NC-[DOMINIO_ABBR]-YYYY-NNN */
 export type NCDominio = 'CALIDAD' | 'SST' | 'ADUANERO' | 'OPERACIONAL'

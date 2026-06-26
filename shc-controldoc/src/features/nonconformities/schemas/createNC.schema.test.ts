@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { createNCSchema } from './createNC.schema'
 
 const validPayload = {
+  dominio: 'CALIDAD' as const,
   origen: 'INSPECCION_INTERNA' as const,
   tipo: 'PROCESO' as const,
-  severidad: 'MENOR' as const,
+  severidad: 'BAJA' as const,
   areaAfectada: 'Almacén de minerales',
   descripcion: 'Descripción válida con más de diez caracteres.',
   fechaDeteccion: '2025-01-15T08:00:00Z',

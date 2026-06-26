@@ -7,6 +7,15 @@
       "PUBLICADO": "Published",
       "OBSOLETO": "Obsolete",
       "EN_REVISION_PERIODICA": "Periodic Review"
+    },
+    "severity": {
+      "BAJA": "Low",
+      "MEDIA": "Medium",
+      "ALTA": "High",
+      "CRITICA": "Critical"
+    },
+    "nav": {
+      "nonconformities": "Non-Conformities"
     }
   },
   "documents": {
@@ -422,13 +431,54 @@
   "incidents": {},
   "nonconformities": {
     "status": {
-      "DETECTADA": "Detected",
+      "ABIERTA": "Open",
       "EN_INVESTIGACION": "Under Investigation",
-      "EN_CORRECCION": "Under Correction",
+      "ANALISIS_COMPLETADO": "Analysis Complete",
+      "EN_EJECUCION": "In Execution",
       "PENDIENTE_CIERRE": "Pending Closure",
       "CERRADA": "Closed",
-      "REABIERTA": "Reopened",
       "ANULADA": "Voided"
+    },
+    "list": {
+      "title": "Non-Conformities",
+      "empty": "No non-conformities found matching the applied filters.",
+      "pagination": "Showing {{from}}–{{to}} of {{total}}",
+      "acVencidaLabel": "Has overdue corrective actions",
+      "columns": {
+        "numero": "NC Number",
+        "dominio": "Domain",
+        "areaAfectada": "Affected Area",
+        "severidad": "Severity",
+        "estado": "Status",
+        "responsableAC": "AC Responsible",
+        "fechaDeteccion": "Detection Date",
+        "acciones": "Actions"
+      },
+      "actions": {
+        "nueva": "New NC",
+        "verDetalle": "View detail",
+        "reintentar": "Retry",
+        "errorMsg": "Failed to load non-conformities."
+      }
+    },
+    "filters": {
+      "searchPlaceholder": "Search by number or description…",
+      "searchLabel": "Search non-conformities",
+      "dominioLabel": "Domain",
+      "severidadLabel": "Severity",
+      "estadoLabel": "Status",
+      "areaAfectadaLabel": "Affected Area",
+      "areaAfectadaPlaceholder": "Filter by area…",
+      "fechaDesdeLabel": "From",
+      "fechaHastaLabel": "To",
+      "todos": "All",
+      "limpiar": "Clear filters",
+      "dominio": {
+        "CALIDAD": "NC-CAL",
+        "SST": "NC-SST",
+        "ADUANERO": "NC-ADU",
+        "OPERACIONAL": "NC-OPE"
+      }
     },
     "tipo": {
       "PROCESO": "Process",
@@ -438,8 +488,9 @@
       "SST": "HSE"
     },
     "severidad": {
-      "MENOR": "Minor",
-      "MAYOR": "Major",
+      "BAJA": "Low",
+      "MEDIA": "Medium",
+      "ALTA": "High",
       "CRITICA": "Critical"
     },
     "origen": {

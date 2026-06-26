@@ -1,22 +1,22 @@
 import type { NCStatus, NCTipo, NCSeveridad, NCOrigen } from '../types/nonconformity.types'
 
 export const NC_STATE_TRANSITIONS: Record<NCStatus, NCStatus[]> = {
-  DETECTADA: ['EN_INVESTIGACION', 'ANULADA'],
-  EN_INVESTIGACION: ['EN_CORRECCION'],
-  EN_CORRECCION: ['PENDIENTE_CIERRE', 'EN_INVESTIGACION'],
+  ABIERTA: ['EN_INVESTIGACION', 'ANULADA'],
+  EN_INVESTIGACION: ['ANALISIS_COMPLETADO', 'ANULADA'],
+  ANALISIS_COMPLETADO: ['EN_EJECUCION'],
+  EN_EJECUCION: ['PENDIENTE_CIERRE', 'EN_INVESTIGACION'],
   PENDIENTE_CIERRE: ['CERRADA', 'EN_INVESTIGACION'],
-  CERRADA: ['REABIERTA'],
-  REABIERTA: ['EN_INVESTIGACION'],
+  CERRADA: [],
   ANULADA: [],
 }
 
 export const NC_STATUS_LABELS: Record<NCStatus, string> = {
-  DETECTADA: 'nonconformities:status.DETECTADA',
+  ABIERTA: 'nonconformities:status.ABIERTA',
   EN_INVESTIGACION: 'nonconformities:status.EN_INVESTIGACION',
-  EN_CORRECCION: 'nonconformities:status.EN_CORRECCION',
+  ANALISIS_COMPLETADO: 'nonconformities:status.ANALISIS_COMPLETADO',
+  EN_EJECUCION: 'nonconformities:status.EN_EJECUCION',
   PENDIENTE_CIERRE: 'nonconformities:status.PENDIENTE_CIERRE',
   CERRADA: 'nonconformities:status.CERRADA',
-  REABIERTA: 'nonconformities:status.REABIERTA',
   ANULADA: 'nonconformities:status.ANULADA',
 }
 
@@ -29,9 +29,10 @@ export const NC_TIPO_LABELS: Record<NCTipo, string> = {
 }
 
 export const NC_SEVERIDAD_LABELS: Record<NCSeveridad, string> = {
-  MENOR: 'nonconformities:severidad.MENOR',
-  MAYOR: 'nonconformities:severidad.MAYOR',
-  CRITICA: 'nonconformities:severidad.CRITICA',
+  BAJA: 'common:severity.BAJA',
+  MEDIA: 'common:severity.MEDIA',
+  ALTA: 'common:severity.ALTA',
+  CRITICA: 'common:severity.CRITICA',
 }
 
 export const NC_ORIGEN_LABELS: Record<NCOrigen, string> = {
@@ -44,17 +45,18 @@ export const NC_ORIGEN_LABELS: Record<NCOrigen, string> = {
 }
 
 export const NC_SEVERIDAD_COLORS: Record<NCSeveridad, string> = {
-  MENOR: 'bg-teal/10 text-teal border border-teal/20',
-  MAYOR: 'bg-amber/10 text-amber border border-amber/20',
-  CRITICA: 'bg-error/10 text-error border border-error/20',
+  BAJA: 'bg-muted-soft/20 text-muted',
+  MEDIA: 'bg-amber/20 text-amber',
+  ALTA: 'bg-error/10 text-error',
+  CRITICA: 'bg-error/20 text-error font-semibold',
 }
 
 export const NC_STATUS_COLORS: Record<NCStatus, string> = {
-  DETECTADA: 'bg-amber/10 text-amber border border-amber/20',
-  EN_INVESTIGACION: 'bg-teal/10 text-teal border border-teal/20',
-  EN_CORRECCION: 'bg-teal/10 text-teal border border-teal/20',
-  PENDIENTE_CIERRE: 'bg-warning/10 text-warning border border-warning/20',
-  CERRADA: 'bg-success/10 text-success border border-success/20',
-  REABIERTA: 'bg-warning/10 text-warning border border-warning/20',
-  ANULADA: 'bg-muted/10 text-muted border border-muted/20',
+  ABIERTA: 'bg-teal/20 text-teal',
+  EN_INVESTIGACION: 'bg-amber/20 text-amber',
+  ANALISIS_COMPLETADO: 'bg-amber/30 text-amber',
+  EN_EJECUCION: 'bg-coral/20 text-coral',
+  PENDIENTE_CIERRE: 'bg-warning/20 text-warning',
+  CERRADA: 'bg-success/20 text-success',
+  ANULADA: 'bg-muted-soft/20 text-muted',
 }

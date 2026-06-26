@@ -3,12 +3,13 @@ import { z } from 'zod'
 export const cambiarEstadoNCSchema = z
   .object({
     nuevoEstado: z.enum([
-      'DETECTADA',
+      'ABIERTA',
       'EN_INVESTIGACION',
-      'EN_CORRECCION',
+      'ANALISIS_COMPLETADO',
+      'EN_EJECUCION',
       'PENDIENTE_CIERRE',
       'CERRADA',
-      'REABIERTA',
+      'ANULADA',
     ]),
     comentario: z.string().min(1).max(500),
     correccionEvidenciaUrl: z.string().url().optional(),

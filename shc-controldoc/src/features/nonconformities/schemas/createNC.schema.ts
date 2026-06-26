@@ -11,7 +11,7 @@ export const createNCSchema = z.object({
     'CONTROL_PROCESO',
   ]),
   tipo: z.enum(['PROCESO', 'PRODUCTO', 'SERVICIO', 'SISTEMA', 'SST']),
-  severidad: z.enum(['MENOR', 'MAYOR', 'CRITICA']),
+  severidad: z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']),
   areaAfectada: z.string().min(1).max(200),
   descripcion: z.string().min(10).max(2000),
   fechaDeteccion: z.string().datetime({ offset: true }),
