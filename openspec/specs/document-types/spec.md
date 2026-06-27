@@ -78,11 +78,19 @@ The system SHALL define a `VersionEntry` interface with fields: `version`, `fech
 - **THEN** TypeScript infers the element type as `VersionEntry`
 
 ### Requirement: Document-scoped AuditTrailEntry interface
-The system SHALL define an `AuditTrailEntry` interface scoped to the document domain with fields: `id`, `entidadTipo` (literal `'Documento'`), `entidadId`, `accion`, `estadoAnterior?`, `estadoNuevo?`, `campoModificado?`, `valorAnterior?`, `valorNuevo?`, `realizadoPorId`, `realizadoPorNombre`, `timestamp`, `ipOrigen?`, `generadoPorIA`.
+The system SHALL define an `AuditTrailEntry` interface scoped to the document domain with fields: `id`, `entidadTipo` (union literal `'Documento' | 'NoConformidad'`), `entidadId`, `accion`, `estadoAnterior?`, `estadoNuevo?`, `campoModificado?`, `valorAnterior?`, `valorNuevo?`, `realizadoPorId`, `realizadoPorNombre`, `timestamp`, `ipOrigen?`, `generadoPorIA`.
 
-#### Scenario: AuditTrailEntry entidadTipo is narrowed to Documento
-- **WHEN** a developer reads `auditEntry.entidadTipo`
-- **THEN** TypeScript narrows the value to the literal `'Documento'`, not the generic union
+#### Scenario: AuditTrailEntry entidadTipo accepts NoConformidad
+- **WHEN** a developer constructs an `AuditTrailEntry` with `entidadTipo: 'NoConformidad'`
+- **THEN** TypeScript accepts the value without error
+
+#### Scenario: AuditTrailEntry entidadTipo rejects unknown entity types
+- **WHEN** a developer constructs an `AuditTrailEntry` with `entidadTipo: 'QualityEvent'`
+- **THEN** TypeScript emits a compile error (QualityEvent is not yet a valid value at this spec stage)
+
+#### Scenario: AuditTrailEntry entidadTipo accepts Documento
+- **WHEN** a developer constructs an `AuditTrailEntry` with `entidadTipo: 'Documento'`
+- **THEN** TypeScript accepts the value without error (existing behavior preserved)
 
 ### Requirement: DocFilters interface
 The system SHALL define a `DocFilters` interface for list queries: `estado?`, `tipo?`, `area?`, `autorId?`, `search?`, `page?`, `pageSize?`.

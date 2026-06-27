@@ -9,15 +9,11 @@ Core TypeScript type definitions for the M2 Gestión de No Conformidades domain.
 ## Requirements
 
 ### Requirement: NCStatus union type
-The system SHALL define `NCStatus` as a TypeScript string literal union covering all valid non-conformity lifecycle states: `ABIERTA | EN_INVESTIGACION | ANALISIS_COMPLETADO | EN_EJECUCION | PENDIENTE_CIERRE | CERRADA | ANULADA`.
+The system SHALL define `NCStatus` as a TypeScript string literal union covering all valid non-conformity lifecycle states: `DETECTADA | EN_INVESTIGACION | EN_CORRECCION | PENDIENTE_CIERRE | CERRADA | REABIERTA | ANULADA`.
 
-#### Scenario: NCStatus covers all 7 M2 lifecycle states
+#### Scenario: NCStatus covers all M2 lifecycle states including ANULADA
 - **WHEN** a developer imports `NCStatus` from `src/features/nonconformities/types/nonconformity.types.ts`
-- **THEN** the union includes exactly the seven values: `ABIERTA`, `EN_INVESTIGACION`, `ANALISIS_COMPLETADO`, `EN_EJECUCION`, `PENDIENTE_CIERRE`, `CERRADA`, `ANULADA` and TypeScript rejects any other string
-
-#### Scenario: Previous NCStatus values are no longer valid
-- **WHEN** a developer assigns `'DETECTADA'` or `'EN_CORRECCION'` or `'REABIERTA'` as an `NCStatus` value
-- **THEN** TypeScript emits a compile error because those literals are not members of the updated union
+- **THEN** the union includes exactly seven values: `DETECTADA`, `EN_INVESTIGACION`, `EN_CORRECCION`, `PENDIENTE_CIERRE`, `CERRADA`, `REABIERTA`, `ANULADA` and TypeScript rejects any other string
 
 ---
 
@@ -53,42 +49,58 @@ The system SHALL define `NCSeveridad` as a TypeScript string literal union with 
 ---
 
 ### Requirement: NCDominio union type
-The system SHALL define `NCDominio` as a TypeScript string literal union covering the four organizational business areas: `'CALIDAD' | 'SST' | 'ADUANERO' | 'OPERACIONAL'`. This determines the `numero` prefix (NC-CAL, NC-SST, NC-ADU, NC-OPE).
+The system SHALL define `NCDominio` as a TypeScript string literal union: `'NC-CAL' | 'NC-SST' | 'NC-ADU' | 'NC-OPE' | 'NC-PRV'`. These codes correspond to the five organizational/regulatory domains (Calidad, SST, Aduanero, Operacional, Proveedores) and directly determine the `numero` prefix of a non-conformity.
 
-#### Scenario: NCDominio has exactly four values
-- **WHEN** a developer assigns a `NCDominio` value
-- **THEN** TypeScript accepts only `'CALIDAD'`, `'SST'`, `'ADUANERO'`, or `'OPERACIONAL'` and rejects any other string
+#### Scenario: NCDominio covers all regulatory/organizational buckets
+- **WHEN** a developer assigns a non-conformity domain value
+- **THEN** TypeScript accepts only the five defined values (`'NC-CAL'`, `'NC-SST'`, `'NC-ADU'`, `'NC-OPE'`, `'NC-PRV'`) and rejects any other string
 
 #### Scenario: NCDominio is orthogonal to NCTipo
-- **WHEN** a developer constructs a `NoConformidad` with `dominio='SST'` and `tipo='PROCESO'`
+- **WHEN** a developer constructs a `NoConformidad` with `dominio='NC-PRV'` and `tipo='SERVICIO'`
 - **THEN** TypeScript accepts the combination without error, since both fields are independent
 
 ---
 
 ### Requirement: ACStatus union type
-The system SHALL define `ACStatus` as a TypeScript string literal union: `'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'VENCIDA'`.
+The system SHALL define `ACStatus` as a TypeScript string literal union: `'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA' | 'VENCIDA'`.
 
-#### Scenario: ACStatus covers all corrective action lifecycle states
-- **WHEN** a developer assigns an `ACStatus` value
-- **THEN** TypeScript accepts only the four defined values and rejects any other string
+#### Scenario: ACStatus covers all AC lifecycle states
+- **WHEN** a developer assigns an `AccionCorrectiva.estado` value
+- **THEN** TypeScript accepts only the five defined values and rejects any other string
 
 ---
 
 ### Requirement: NCPermissions interface
-The system SHALL define an `NCPermissions` interface in `src/features/nonconformities/types/nonconformity.types.ts` with the following required boolean flags: `canRead`, `canEdit`, `canDelete`, `canComment`, `canIniciarInvestigacion`, `canRegistrarCorreccion`, `canSolicitarCierre`, `canCerrar`, `canReabrir`. All flags SHALL be required booleans with no optional members.
+The system SHALL define an `NCPermissions` interface in `src/features/nonconformities/types/nonconformity.types.ts` with the following required boolean flags: `canRead`, `canEdit`, `canDelete`, `canComment`, `canIniciarInvestigacion`, `canRegistrarCorreccion`, `canSolicitarCierre`, `canCerrar`, `canReabrir`, `canAnular`, `canAsignarAC`, `canCerrarAC`, `canVerAuditTrail`. All flags SHALL be required booleans with no optional members.
 
-#### Scenario: NCPermissions has all nine flags as required booleans
+#### Scenario: NCPermissions has all thirteen flags as required booleans
 - **WHEN** a developer constructs an `NCPermissions` object
-- **THEN** TypeScript requires all nine flags to be explicitly assigned and rejects any extra properties
+- **THEN** TypeScript requires all thirteen flags to be explicitly assigned and rejects any extra properties
 
 #### Scenario: canReabrir is only true for roles authorized to reopen
 - **WHEN** a developer calls `getNCPermissions` with role `OPERARIO` on a `CERRADA` NC
 - **THEN** the returned `NCPermissions.canReabrir` is `false`
 
+#### Scenario: canAnular is false for OPERARIO regardless of state
+- **WHEN** a developer calls `getNCPermissions` with role `OPERARIO` for any NC state
+- **THEN** `canAnular` is always `false`
+
+#### Scenario: canAsignarAC is true for SUPERVISOR on non-terminal NCs
+- **WHEN** a developer calls `getNCPermissions(nc, 'SUPERVISOR')` with `nc.estado = 'EN_CORRECCION'`
+- **THEN** `canAsignarAC` is `true`
+
+#### Scenario: canCerrarAC is true only for JEFE_CALIDAD_SYST
+- **WHEN** a developer calls `getNCPermissions` with role `JEFE_CALIDAD_SYST` for any active NC
+- **THEN** `canCerrarAC` is `true`
+
+#### Scenario: canVerAuditTrail is false for OPERARIO
+- **WHEN** a developer calls `getNCPermissions` with role `OPERARIO` for any NC
+- **THEN** `canVerAuditTrail` is `false`
+
 ---
 
 ### Requirement: AccionCorrectiva interface
-The system SHALL define an `AccionCorrectiva` interface in `src/features/nonconformities/types/nonconformity.types.ts` with the following required fields: `id` (string), `ncId` (string), `descripcion` (string), `responsableId` (string), `plazoFecha` (ISO 8601 string), `estado` (ACStatus), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `descripcionEvidencia` (string), `evidenciaUrl` (string), `fechaCierre` (ISO 8601 string).
+The system SHALL define an `AccionCorrectiva` interface in `src/features/nonconformities/types/nonconformity.types.ts` with the following required fields: `id` (string), `ncId` (string), `descripcion` (string), `responsableId` (string), `responsableNombre` (string), `plazoFecha` (ISO 8601 string), `estado` (ACStatus), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `descripcionEvidencia` (string or undefined), `evidenciaUrl` (string or undefined), `fechaCierre` (ISO 8601 string or undefined).
 
 #### Scenario: AccionCorrectiva requires all mandatory fields
 - **WHEN** a developer constructs an `AccionCorrectiva` without `plazoFecha`
@@ -114,20 +126,40 @@ The system SHALL define an `NCNotificacionComercioExterior` interface in `src/fe
 ---
 
 ### Requirement: CreateACInput, UpdateACInput, and CerrarACInput types
-The system SHALL define `CreateACInput` as `{ descripcion: string; responsableId: string; plazoFecha: string }`, `UpdateACInput` as `Partial<Pick<AccionCorrectiva, 'descripcion' | 'responsableId' | 'plazoFecha' | 'estado'>>`, and `CerrarACInput` as `{ descripcionEvidencia: string; evidenciaUrl?: string }` in `src/features/nonconformities/types/nonconformity.types.ts`.
+The system SHALL define:
+- `CreateACInput` with required fields: `descripcion` (string, min 5), `responsableId` (string UUID), `plazoFecha` (ISO 8601 date string).
+- `UpdateACInput` as a partial object with optional fields: `estado` (ACStatus), `descripcion` (string), `responsableId` (string UUID), `plazoFecha` (ISO 8601 date string).
+- `CerrarACInput` with required field `descripcionEvidencia` (string, min 1) and optional field `evidenciaUrl` (string URL or undefined).
+These types SHALL be defined in or exported from the nonconformity types/schemas files.
 
 #### Scenario: CreateACInput rejects payload missing descripcion
 - **WHEN** a developer assigns a `CreateACInput` without `descripcion`
 - **THEN** TypeScript emits a compile error
 
+#### Scenario: CreateACInput rejects missing responsableId
+- **WHEN** a developer parses an object without `responsableId` through the AC creation schema
+- **THEN** Zod returns an error with path `['responsableId']`
+
+#### Scenario: UpdateACInput accepts partial payload with only estado
+- **WHEN** a developer constructs `UpdateACInput` with only `{ estado: 'EN_EJECUCION' }`
+- **THEN** TypeScript accepts it without error
+
 #### Scenario: CerrarACInput requires descripcionEvidencia
 - **WHEN** a developer assigns a `CerrarACInput` without `descripcionEvidencia`
 - **THEN** TypeScript emits a compile error
 
+#### Scenario: CerrarACInput rejects empty descripcionEvidencia
+- **WHEN** a developer parses `{ descripcionEvidencia: '' }` through the cerrar AC schema
+- **THEN** Zod returns an error with path `['descripcionEvidencia']`
+
+#### Scenario: CerrarACInput accepts payload without evidenciaUrl
+- **WHEN** a developer constructs `CerrarACInput` with only `{ descripcionEvidencia: 'Evidencia adjunta' }`
+- **THEN** TypeScript and Zod accept it without error
+
 ---
 
 ### Requirement: NoConformidad interface
-The system SHALL define a `NoConformidad` interface with the following required fields: `id`, `numero` (format `NC-[DOMINIO_ABBR]-YYYY-NNN` where DOMINIO_ABBR is CAL, SST, ADU, or OPE), `dominio` (NCDominio), `origen`, `tipo`, `severidad`, `estado`, `descripcion`, `areaAfectada`, `reportadoPorId`, `fechaDeteccion`, `fechaReporte`, `accionesCorrectivas` (AccionCorrectiva[]), `documentosVinculados`, `adjuntos`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include the following optional fields: `mineralInvolucrado`, `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `responsableInvestigacionId`, `accionInmediata`, `accionInmediataFecha`, `correccion`, `correccionEvidenciaUrl`, `causaRaiz`, `corregidoPorId`, `verificadoPorId`, `fechaVerificacion`, `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `qeGeneradoId`, `requiereIPER` (boolean — only meaningful when `dominio === 'SST'`), `notificacionComercioExterior` (NCNotificacionComercioExterior — only meaningful when `dominio === 'ADUANERO'`).
+The system SHALL define a `NoConformidad` interface with the following required fields: `id`, `numero` (format `NC-[DOMINIO_ABBR]-YYYY-NNN` where DOMINIO_ABBR is CAL, SST, ADU, OPE, or PRV), `dominio` (NCDominio), `titulo` (string), `origen`, `tipo`, `severidad`, `estado`, `descripcion`, `areaAfectada`, `reportadoPorId`, `fechaDeteccion`, `fechaReporte`, `requiereIPER` (boolean — only meaningful when `dominio === 'NC-SST'`), `accionesCorrectivas` (AccionCorrectiva[]), `documentosVinculados`, `adjuntos`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include the following optional fields: `detectadoPor` (string or undefined), `justificacionAnulacion` (string or undefined), `mineralInvolucrado`, `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `responsableInvestigacionId`, `accionInmediata`, `accionInmediataFecha`, `correccion`, `correccionEvidenciaUrl`, `causaRaiz`, `corregidoPorId`, `verificadoPorId`, `fechaVerificacion`, `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `qeGeneradoId`, `notificacionComercioExterior` (NCNotificacionComercioExterior — only meaningful when `dominio === 'NC-ADU'`).
 
 #### Scenario: NoConformidad rejects missing required fields
 - **WHEN** a developer constructs a `NoConformidad` without `numero` or `areaAfectada`
@@ -140,6 +172,10 @@ The system SHALL define a `NoConformidad` interface with the following required 
 #### Scenario: NoConformidad requires accionesCorrectivas array
 - **WHEN** a developer constructs a `NoConformidad` without `accionesCorrectivas`
 - **THEN** TypeScript emits a compile error for the missing required field
+
+#### Scenario: NoConformidad accepts justificacionAnulacion when estado is ANULADA
+- **WHEN** a developer reads `nc.justificacionAnulacion` on a `NoConformidad` with `estado === 'ANULADA'`
+- **THEN** TypeScript infers the type as `string | undefined` without narrowing errors
 
 #### Scenario: NoConformidad accepts empty accionesCorrectivas
 - **WHEN** a developer constructs a `NoConformidad` with `accionesCorrectivas: []`
@@ -160,6 +196,23 @@ The system SHALL define a `NoConformidad` interface with the following required 
 #### Scenario: resultadoVerificacion is a two-value union
 - **WHEN** a developer assigns `resultadoVerificacion`
 - **THEN** TypeScript accepts only `'EFECTIVO'` or `'NO_EFECTIVO'` and rejects any other string
+
+---
+
+### Requirement: NoConformidad includes optional fechaCierre field
+The system SHALL add a `fechaCierre?: string` optional field to the `NoConformidad` interface in `src/features/nonconformities/types/nonconformity.types.ts`. This field represents the expected closing deadline of the non-conformity (ISO 8601 date string), set by the supervisor when creating or updating the NC. It is distinct from `AccionCorrectiva.fechaCierre` (which is the actual close date of a corrective action). The field SHALL be optional to support NCs that have not yet had a closing deadline assigned.
+
+#### Scenario: NoConformidad accepts fechaCierre as undefined
+- **WHEN** a developer constructs a `NoConformidad` without `fechaCierre`
+- **THEN** TypeScript accepts the object without error
+
+#### Scenario: NoConformidad accepts a valid ISO date string as fechaCierre
+- **WHEN** a developer constructs a `NoConformidad` with `fechaCierre: '2026-03-15'`
+- **THEN** TypeScript accepts the value without error
+
+#### Scenario: fechaCierre is typed as string or undefined
+- **WHEN** a developer reads `noConformidad.fechaCierre`
+- **THEN** TypeScript infers the type as `string | undefined`, not `string`
 
 ---
 
