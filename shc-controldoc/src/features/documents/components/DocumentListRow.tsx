@@ -1,16 +1,11 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { ChevronRight, ChevronDown, RotateCcw } from 'lucide-react'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import { getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { Tooltip } from '../../../components/ui/Tooltip'
-import { deleteDocument, restaurarDocumento } from '../../../api/endpoints/documents.api'
-import { QUERY_KEYS } from '../constants'
 import type { Documento, DocRole } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
 
@@ -23,6 +18,8 @@ interface DocumentListRowProps {
   isExpanded?: boolean
   onToggle?: () => void
   isPending?: boolean
+  onDeleteClick?: (doc: Documento) => void
+  onRestoreClick?: (doc: Documento) => void
 }
 
 const READ_ONLY_ROLES: Set<UserRole> = new Set(['AUDITOR_INTERNO', 'ALTA_DIRECCION'])
@@ -51,12 +48,11 @@ export function DocumentListRow({
   isExpanded = false,
   onToggle,
   isPending = false,
+  onDeleteClick,
+  onRestoreClick,
 }: DocumentListRowProps) {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [confirming, setConfirming] = useState(false)
-  const [confirmingRestore, setConfirmingRestore] = useState(false)
 
   const isDeleted = !!documento.deletedAt
   const isReadOnly = READ_ONLY_ROLES.has(userRole)
@@ -65,37 +61,9 @@ export function DocumentListRow({
     ? { canEdit: false, canDelete: false, canStartReview: false }
     : getDocumentPermissions(documento.estado, docRole)
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteDocument(documento.id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
-      toast.success(t('actions.delete.toast.success'))
-      setConfirming(false)
-    },
-    onError: () => {
-      toast.error(t('actions.delete.toast.error'))
-      setConfirming(false)
-    },
-  })
-
-  const restaurarMutation = useMutation({
-    mutationFn: () => restaurarDocumento(documento.id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
-      toast.success(t('deleted.restore.toast.success'))
-      setConfirmingRestore(false)
-    },
-    onError: () => {
-      toast.error(t('deleted.restore.toast.error'))
-      setConfirmingRestore(false)
-    },
-  })
-
-  const rowBg = isDeleted
-    ? 'bg-error/8 dark:bg-error/10'
-    : index % 2 === 0
-      ? 'bg-canvas dark:bg-surface-dark'
-      : 'bg-hairline/30 dark:bg-surface-dark-elevated/30'
+  const rowBg = index % 2 === 0
+    ? 'bg-canvas dark:bg-surface-dark'
+    : 'bg-hairline/30 dark:bg-surface-dark-elevated/30'
 
   const pendingBorder = isPending
     ? 'border-l-2 border-l-amber dark:border-l-amber'
@@ -104,7 +72,7 @@ export function DocumentListRow({
   return (
     <tr
       onClick={onClick}
-      className={`${TABLE_ROW_CLASS} border-b border-hairline dark:border-hairline/20 ${rowBg} ${pendingBorder}`}
+      className={`${TABLE_ROW_CLASS} border-b border-hairline dark:border-hairline/20 ${rowBg} ${pendingBorder} ${isDeleted ? 'opacity-50 cursor-default' : ''}`}
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-ink dark:text-on-dark">
         <span className="flex items-center gap-1.5">
@@ -123,7 +91,7 @@ export function DocumentListRow({
           ) : (
             <span className="w-[14px] flex-shrink-0" aria-hidden="true" />
           )}
-          {documento.codigo}
+          <span className={isDeleted ? 'line-through' : ''}>{documento.codigo}</span>
           {documento.qeVinculados.length > 0 && (
             <span
               aria-label={t('list.actions.qeActivo')}
@@ -136,7 +104,7 @@ export function DocumentListRow({
         </span>
       </td>
 
-      <td className="max-w-[200px] truncate px-4 py-3 text-sm text-ink dark:text-on-dark" title={documento.titulo}>
+      <td className={`max-w-[200px] truncate px-4 py-3 text-sm text-ink dark:text-on-dark ${isDeleted ? 'line-through' : ''}`} title={documento.titulo}>
         {documento.titulo}
       </td>
 
@@ -174,42 +142,16 @@ export function DocumentListRow({
         <div className="flex items-center gap-2">
           {/* Restore action — only for deleted docs */}
           {isDeleted && (
-            confirmingRestore ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-body dark:text-on-dark">
-                  {t('deleted.restore.confirm.title')}
-                </span>
-                <button
-                  type="button"
-                  aria-label={t('deleted.restore.confirm.cancel')}
-                  onClick={() => setConfirmingRestore(false)}
-                  disabled={restaurarMutation.isPending}
-                  className="rounded-sm px-1.5 py-0.5 text-xs text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
-                >
-                  {t('deleted.restore.confirm.cancel')}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('deleted.restore.confirm.confirm')}
-                  onClick={() => restaurarMutation.mutate()}
-                  disabled={restaurarMutation.isPending}
-                  className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-teal hover:text-teal/80 disabled:opacity-50 dark:text-teal"
-                >
-                  {t('deleted.restore.confirm.confirm')}
-                </button>
-              </div>
-            ) : (
-              <Tooltip content={t('deleted.restore.tooltip')}>
-                <button
-                  type="button"
-                  aria-label={t('deleted.restore.tooltip')}
-                  onClick={() => setConfirmingRestore(true)}
-                  className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
-                >
-                  <RotateCcw size={14} aria-hidden="true" />
-                </button>
-              </Tooltip>
-            )
+            <Tooltip content={t('deleted.restore.tooltip')}>
+              <button
+                type="button"
+                aria-label={t('deleted.restore.tooltip')}
+                onClick={() => onRestoreClick?.(documento)}
+                className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+              </button>
+            </Tooltip>
           )}
 
           {/* Normal actions — only for non-deleted docs */}
@@ -238,42 +180,16 @@ export function DocumentListRow({
             </Tooltip>
           )}
           {!isDeleted && perms.canDelete && (
-            confirming ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-error dark:text-error">
-                  {t('actions.delete.confirm.title')}
-                </span>
-                <button
-                  type="button"
-                  aria-label={t('actions.delete.confirm.cancel')}
-                  onClick={() => setConfirming(false)}
-                  disabled={deleteMutation.isPending}
-                  className="rounded-sm px-1.5 py-0.5 text-xs text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
-                >
-                  {t('actions.delete.confirm.cancel')}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('actions.delete.confirm.confirm')}
-                  onClick={() => deleteMutation.mutate()}
-                  disabled={deleteMutation.isPending}
-                  className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-error hover:text-error/80 disabled:opacity-50 dark:text-error"
-                >
-                  {t('actions.delete.confirm.confirm')}
-                </button>
-              </div>
-            ) : (
-              <Tooltip content={t('list.actions.tooltips.eliminar')}>
-                <button
-                  type="button"
-                  aria-label={t('list.actions.eliminar')}
-                  onClick={() => setConfirming(true)}
-                  className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
-                >
-                  ✕
-                </button>
-              </Tooltip>
-            )
+            <Tooltip content={t('list.actions.tooltips.eliminar')}>
+              <button
+                type="button"
+                aria-label={t('list.actions.eliminar')}
+                onClick={() => onDeleteClick?.(documento)}
+                className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+              >
+                ✕
+              </button>
+            </Tooltip>
           )}
         </div>
       </td>

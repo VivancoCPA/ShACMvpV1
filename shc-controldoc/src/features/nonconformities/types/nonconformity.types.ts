@@ -24,14 +24,17 @@ export type NCSeveridad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 /** Área de negocio afectada — determina el prefijo del número NC-[DOMINIO_ABBR]-YYYY-NNN */
 export type NCDominio = 'CALIDAD' | 'SST' | 'ADUANERO' | 'OPERACIONAL' | 'PROVEEDOR'
 
-export type ACStatus = 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'VENCIDA'
+export type ACStatus = 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA' | 'VENCIDA'
 
 export interface AccionCorrectiva {
   id: string
   ncId: string
+  titulo?: string
   descripcion: string
   responsableId: string
+  responsableNombre: string
   plazoFecha: string
+  prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
   estado: ACStatus
   creadoEn: string
   actualizadoEn: string
@@ -47,9 +50,11 @@ export interface NCNotificacionComercioExterior {
 }
 
 export type CreateACInput = {
+  titulo: string
   descripcion: string
   responsableId: string
   plazoFecha: string
+  prioridad: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 }
 
 export type UpdateACInput = Partial<
@@ -65,12 +70,17 @@ export interface NCPermissions {
   canRead: boolean
   canEdit: boolean
   canDelete: boolean
+  canRestore: boolean
   canComment: boolean
   canIniciarInvestigacion: boolean
   canRegistrarCorreccion: boolean
   canSolicitarCierre: boolean
   canCerrar: boolean
   canReabrir: boolean
+  canAnular: boolean
+  canAsignarAC: boolean
+  canCerrarAC: boolean
+  canVerAuditTrail: boolean
 }
 
 export interface NCFilters {
@@ -86,6 +96,7 @@ export interface NCFilters {
   fechaHasta?: string
   page?: number
   pageSize?: number
+  showDeleted?: boolean
 }
 
 export interface AuditTrailEntry {
@@ -114,8 +125,11 @@ export interface NoConformidad {
   tipo: NCTipo
   severidad: NCSeveridad
   estado: NCStatus
+  titulo?: string
   descripcion: string
   areaAfectada: string
+  procesoInvolucrado?: string
+  detectadoPorId?: string
   reportadoPorId: string
   fechaDeteccion: string
   fechaReporte: string
@@ -123,12 +137,14 @@ export interface NoConformidad {
   documentosVinculados: string[]
   adjuntos: string[]
   auditTrail: AuditTrailEntry[]
-  /** Fecha límite esperada de cierre de la NC (ISO 8601) — diferente del fechaCierre de AccionCorrectiva */
+  /** Fecha límite esperada de cierre de la NC (ISO 8601) */
   fechaCierre?: string
+  justificacionAnulacion?: string
+  deletedAt?: string
   creadoEn: string
   actualizadoEn: string
   mineralInvolucrado?: string
-  turno?: 'DIA' | 'TARDE' | 'NOCHE'
+  turno?: 'TODOS' | 'DIA' | 'TARDE' | 'NOCHE'
   responsableInvestigacionId?: string
   accionInmediata?: string
   accionInmediataFecha?: string

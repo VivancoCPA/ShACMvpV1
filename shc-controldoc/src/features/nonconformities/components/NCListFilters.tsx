@@ -2,7 +2,9 @@ import { useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FilterBar } from "../../../components/shared/FilterBar";
+import { Switch } from "../../../components/ui/Switch";
 import { AREAS_SHAC } from "../../../constants/shared.constants";
+import { useAuthStore } from "../../../stores/authStore";
 import type { NCStatus, NCSeveridad } from "../types/nonconformity.types";
 
 const NC_STATUS_VALUES: NCStatus[] = [
@@ -24,6 +26,7 @@ const FILTER_PARAMS = [
   "areaAfectada",
   "fechaDesde",
   "fechaHasta",
+  "showDeleted",
   "page",
 ];
 
@@ -31,6 +34,8 @@ export function NCListFilters() {
   const { t } = useTranslation("nonconformities");
   const [searchParams, setSearchParams] = useSearchParams();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const canSeeDeleted = user?.rol === 'JEFE_CALIDAD_SYST';
 
   const hasActiveFilters = FILTER_PARAMS.some(
     (p) => p !== "page" && searchParams.has(p),
@@ -217,6 +222,22 @@ export function NCListFilters() {
           />
         </div>
       </div>
+
+      {/* Mostrar eliminados — solo JEFE_CALIDAD_SYST */}
+      {canSeeDeleted && (
+        <div className="self-end">
+          <Switch
+            id="nc-show-deleted"
+            checked={searchParams.get('showDeleted') === 'true'}
+            onChange={() => {
+              const current = searchParams.get('showDeleted') === 'true';
+              setParam('showDeleted', current ? '' : 'true');
+            }}
+            label={t("filters.mostrarEliminados")}
+            danger
+          />
+        </div>
+      )}
 
       {/* Clear filters */}
       {hasActiveFilters && (

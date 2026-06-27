@@ -5,6 +5,7 @@ import { useDebounce } from '../../../hooks/useDebounce'
 import { useAuthStore } from '../../../stores/authStore'
 import { useDocumentosPendientesCount } from '../hooks/useDocumentosPendientesCount'
 import { FilterBar } from '../../../components/shared/FilterBar'
+import { Switch } from '../../../components/ui/Switch'
 import { DOC_STATUSES, DOC_TYPES } from '../constants'
 import { AREAS_SHAC } from '../../../constants/shared.constants'
 import type { UserRole } from '../../../types/auth.types'
@@ -235,31 +236,14 @@ export function DocumentListFilters() {
       )}
 
       {showDeletedToggle && (
-        <div className="ml-auto flex items-center gap-2 self-end">
-          <label
-            htmlFor="toggle-eliminados"
-            className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted dark:text-on-dark-soft"
-          >
-            <div
-              className={`relative h-5 w-9 rounded-full transition-colors ${
-                includeDeleted ? 'bg-error' : 'bg-hairline dark:bg-surface-dark-elevated'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                  includeDeleted ? 'translate-x-4' : 'translate-x-0.5'
-                }`}
-              />
-            </div>
-            <input
-              id="toggle-eliminados"
-              type="checkbox"
-              checked={includeDeleted}
-              onChange={toggleIncludeDeleted}
-              className="sr-only"
-            />
-            {t('deleted.toggle.label')}
-          </label>
+        <div className="ml-auto self-end">
+          <Switch
+            id="toggle-eliminados"
+            checked={includeDeleted}
+            onChange={toggleIncludeDeleted}
+            label={t('deleted.toggle.label')}
+            danger
+          />
         </div>
       )}
     </FilterBar>

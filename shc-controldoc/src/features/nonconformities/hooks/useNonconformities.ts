@@ -7,6 +7,8 @@ import {
   createNonconformity,
   updateNonconformity,
   anularNonconformity,
+  deleteNonconformity,
+  restoreNonconformity,
   createAccionCorrectiva,
   updateAccionCorrectiva,
   cerrarAccionCorrectiva,
@@ -88,6 +90,38 @@ export function useAnularNonconformity() {
     },
     onError: () => {
       toast.error(t('toasts.anularError'))
+    },
+  })
+}
+
+export function useDeleteNC() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('nonconformities')
+
+  return useMutation({
+    mutationFn: (id: string) => deleteNonconformity(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })
+      toast.success(t('toasts.deleted'))
+    },
+    onError: () => {
+      toast.error(t('toasts.deleteError'))
+    },
+  })
+}
+
+export function useRestoreNC() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('nonconformities')
+
+  return useMutation({
+    mutationFn: (id: string) => restoreNonconformity(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })
+      toast.success(t('toasts.restored'))
+    },
+    onError: () => {
+      toast.error(t('toasts.restoreError'))
     },
   })
 }

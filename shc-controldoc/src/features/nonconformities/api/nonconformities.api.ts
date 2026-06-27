@@ -1,5 +1,6 @@
 import api from '../../../lib/axios'
 import type { PaginationMeta } from '../../../types/api.types'
+import type { User } from '../../../types/auth.types'
 import type {
   NoConformidad,
   NCFilters,
@@ -51,6 +52,16 @@ export async function anularNonconformity(
   return response.data
 }
 
+export async function deleteNonconformity(id: string): Promise<NoConformidad> {
+  const response = await api.delete<NoConformidad>(`/api/nonconformities/${id}`)
+  return response.data
+}
+
+export async function restoreNonconformity(id: string): Promise<NoConformidad> {
+  const response = await api.patch<NoConformidad>(`/api/nonconformities/${id}/restore`)
+  return response.data
+}
+
 export async function createAccionCorrectiva(
   ncId: string,
   data: CreateACInput,
@@ -83,5 +94,10 @@ export async function cerrarAccionCorrectiva(
     `/api/nonconformities/${ncId}/acciones-correctivas/${acId}/cerrar`,
     data,
   )
+  return response.data
+}
+
+export async function getUsers(): Promise<User[]> {
+  const response = await api.get<User[]>('/api/users')
   return response.data
 }

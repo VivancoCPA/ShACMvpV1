@@ -8,6 +8,8 @@ import { DocumentsPage } from '../features/documents/pages/DocumentsPage'
 import { DocumentFormPage } from '../features/documents/pages/DocumentFormPage'
 import { DocumentDetailPage } from '../features/documents/pages/DocumentDetailPage'
 import { NonconformityListPage } from '../features/nonconformities/pages/NonconformityListPage'
+import { NonconformityNewPage } from '../features/nonconformities/pages/NonconformityNewPage'
+import { NonconformityDetailPage } from '../features/nonconformities/pages/NonconformityDetailPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 
@@ -83,6 +85,23 @@ export const router = createBrowserRouter([
           {
             path: '/nonconformities',
             element: <NonconformityListPage />,
+            handle: { breadcrumb: 'nonconformities' },
+          },
+          {
+            element: (
+              <RoleGuard requiredRoles={['SUPERVISOR', 'JEFE_CALIDAD_SYST']} />
+            ),
+            children: [
+              {
+                path: '/nonconformities/new',
+                element: <NonconformityNewPage />,
+                handle: { breadcrumb: 'nonconformities' },
+              },
+            ],
+          },
+          {
+            path: '/nonconformities/:id',
+            element: <NonconformityDetailPage />,
             handle: { breadcrumb: 'nonconformities' },
           },
           {

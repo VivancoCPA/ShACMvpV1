@@ -486,6 +486,7 @@
       },
       "todos": "Todos",
       "limpiar": "Limpiar filtros",
+      "mostrarEliminados": "Mostrar eliminados",
       "dominio": {
         "CALIDAD": "NC-CAL",
         "SST": "NC-SST",
@@ -553,12 +554,201 @@
       "acUpdated": "Acción correctiva actualizada.",
       "acUpdateError": "Error al actualizar la acción correctiva.",
       "acCerrada": "Acción correctiva cerrada con evidencia.",
-      "acCerrarError": "Error al cerrar la acción correctiva."
+      "acCerrarError": "Error al cerrar la acción correctiva.",
+      "deleted": "No conformidad eliminada.",
+      "deleteError": "Error al eliminar la no conformidad.",
+      "restored": "No conformidad restaurada.",
+      "restoreError": "Error al restaurar la no conformidad."
+    },
+    "form": {
+      "fields": {
+        "dominio": "Dominio NC",
+        "origen": "Origen",
+        "tipo": "Tipo de NC",
+        "severidad": "Severidad",
+        "titulo": "Título",
+        "descripcion": "Descripción",
+        "areaAfectada": "Área Afectada",
+        "procesoInvolucrado": "Proceso Involucrado",
+        "fechaDeteccion": "Fecha de Detección",
+        "fechaCierre": "Fecha Límite de Cierre",
+        "detectadoPor": "Detectado Por",
+        "requiereIPER": "Requiere actualización de IPER / matriz de riesgos",
+        "turno": "Turno",
+        "mineralInvolucrado": "Mineral Involucrado",
+        "accionInmediata": "Acción Inmediata Tomada"
+      },
+      "placeholders": {
+        "select": "Selecciona…",
+        "titulo": "Ej: Desvío en procedimiento de pesaje…",
+        "descripcion": "Describe la no conformidad detectada…",
+        "areaAfectada": "Selecciona el área…",
+        "procesoInvolucrado": "Ej: Pesaje, Despacho, Almacenamiento…",
+        "detectadoPor": "Nombre del detector (si difiere del reportante)",
+        "mineralInvolucrado": "Ej: Cobre, Zinc, Plomo…",
+        "accionInmediata": "Describe la acción correctiva tomada de inmediato…"
+      },
+      "warnings": {
+        "iperTitle": "NC de SyST — Revisión de IPER requerida",
+        "iperBody": "Las no conformidades de SyST requieren revisar y actualizar el IPER / matriz de riesgos del área afectada.",
+        "aduanaTitle": "NC Aduanera — Posible notificación requerida",
+        "aduanaBody": "Las no conformidades aduaneras de severidad ALTA o CRÍTICA deben ser notificadas a la autoridad aduanera competente dentro del plazo establecido."
+      },
+      "turno": {
+        "TODOS": "Todos los turnos",
+        "DIA": "Día",
+        "TARDE": "Tarde",
+        "NOCHE": "Noche"
+      },
+      "actions": {
+        "submit": "Registrar No Conformidad",
+        "submitting": "Registrando…",
+        "cancel": "Cancelar"
+      },
+      "duplicate": {
+        "title": "Posible duplicado detectado",
+        "body": "Se encontraron {{count}} no conformidad(es) similar(es) en los últimos 30 días para el mismo dominio y área.",
+        "actions": {
+          "vincular": "Ver NC existente",
+          "guardar": "Guardar como nueva NC"
+        }
+      }
+    },
+    "detail": {
+      "title": "No Conformidad",
+      "loading": "Cargando no conformidad…",
+      "error": "Error al cargar la no conformidad.",
+      "retry": "Reintentar",
+      "back": "Volver a la lista",
+      "noAccess": "No tienes acceso a esta no conformidad.",
+      "sections": {
+        "info": "Información General",
+        "correccion": "Corrección",
+        "causaRaiz": "Causa Raíz",
+        "acciones": "Acciones Correctivas",
+        "auditTrail": "Audit Trail"
+      },
+      "fields": {
+        "numero": "Número",
+        "dominio": "Dominio",
+        "origen": "Origen",
+        "tipo": "Tipo",
+        "severidad": "Severidad",
+        "estado": "Estado",
+        "area": "Área Afectada",
+        "proceso": "Proceso Involucrado",
+        "fechaDeteccion": "Fecha de Detección",
+        "fechaCierre": "Fecha Límite de Cierre",
+        "detectadoPor": "Detectado Por",
+        "reportadoPor": "Reportado Por",
+        "turno": "Turno",
+        "mineral": "Mineral Involucrado",
+        "requiereIPER": "Requiere IPER",
+        "accionInmediata": "Acción Inmediata"
+      },
+      "anulada": {
+        "title": "No conformidad anulada",
+        "justificacion": "Justificación"
+      },
+      "actions": {
+        "anular": "Anular NC",
+        "iniciarInvestigacion": "Iniciar Investigación",
+        "solicitarCierre": "Solicitar Cierre"
+      }
+    },
+    "anular": {
+      "title": "Anular No Conformidad",
+      "body": "Esta acción es irreversible. La NC quedará anulada y no podrá ser reabierta.",
+      "fields": {
+        "justificacion": "Justificación"
+      },
+      "placeholders": {
+        "justificacion": "Explica por qué se anula esta no conformidad (mín. 20 caracteres)…"
+      },
+      "actions": {
+        "confirm": "Confirmar anulación",
+        "cancel": "Cancelar"
+      },
+      "validation": {
+        "justificacionMin": "La justificación debe tener al menos 20 caracteres.",
+        "justificacionMax": "La justificación no puede superar los 2000 caracteres."
+      }
+    },
+    "acSection": {
+      "title": "Acciones Correctivas",
+      "empty": "No hay acciones correctivas registradas.",
+      "acStatus": {
+        "PENDIENTE": "Pendiente",
+        "EN_EJECUCION": "En Ejecución",
+        "COMPLETADA": "Completada",
+        "CERRADA": "Cerrada",
+        "VENCIDA": "Vencida"
+      },
+      "fields": {
+        "nc": "No Conformidad",
+        "titulo": "Título",
+        "descripcion": "Descripción",
+        "responsable": "Responsable",
+        "prioridad": "Prioridad",
+        "plazoFecha": "Fecha de Vencimiento",
+        "evidencia": "Descripción de Evidencia",
+        "evidenciaUrl": "URL de Evidencia (opcional)"
+      },
+      "placeholders": {
+        "titulo": "Título de la acción correctiva…",
+        "descripcion": "Describe la acción correctiva a tomar…",
+        "responsable": "Selecciona el responsable…",
+        "prioridad": "Selecciona la prioridad…",
+        "evidencia": "Describe la evidencia que demuestra la efectividad de la acción…",
+        "evidenciaUrl": "https://…"
+      },
+      "prioridad": {
+        "BAJA": "Baja",
+        "MEDIA": "Media",
+        "ALTA": "Alta",
+        "CRITICA": "Crítica"
+      },
+      "actions": {
+        "add": "Agregar AC",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "iniciar": "Iniciar",
+        "completar": "Completar",
+        "cerrar": "Cerrar con evidencia",
+        "cerrarModal": "Confirmar cierre"
+      },
+      "agregarModal": {
+        "title": "Agregar Acción Correctiva"
+      },
+      "cerrarModal": {
+        "title": "Cerrar Acción Correctiva",
+        "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
+      }
     },
     "errors": {
       "notFound": "No conformidad no encontrada.",
       "editBlockedByStatus": "No se puede editar una no conformidad en estado Cerrada o Anulada."
-    }
+    },
+    "delete": {
+      "confirm": {
+        "title": "¿Eliminar no conformidad?",
+        "message": "¿Eliminar {{numero}}? La NC no aparecerá en el listado pero podrá restaurarse."
+      },
+      "actions": {
+        "confirm": "Eliminar",
+        "cancel": "Cancelar"
+      }
+    },
+    "restore": {
+      "tooltip": "Restaurar NC",
+      "confirm": {
+        "title": "¿Restaurar no conformidad?",
+        "message": "¿Restaurar {{numero}}? La NC volverá a aparecer en el listado.",
+        "cancel": "Cancelar",
+        "confirm": "Restaurar"
+      }
+    },
+    "deletedBadge": "Eliminado"
   },
   "dashboard": {}
 }

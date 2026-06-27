@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
+import { userFixtures, USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
 import type {
   NoConformidad,
   NCStatus,
@@ -77,7 +78,11 @@ export const nonconformityHandlers = [
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '20', 10)
 
-    let filtered = [...nonconformities]
+    const showDeleted = url.searchParams.get('showDeleted') === 'true'
+
+    let filtered = showDeleted
+      ? [...nonconformities]
+      : nonconformities.filter((nc) => !nc.deletedAt)
 
     if (estado) filtered = filtered.filter((nc) => nc.estado === estado)
     if (tipo) filtered = filtered.filter((nc) => nc.tipo === tipo)
@@ -130,24 +135,27 @@ export const nonconformityHandlers = [
 
     const body = await request.json() as Record<string, unknown>
 
-    const required = ['origen', 'tipo', 'severidad', 'areaAfectada', 'descripcion', 'fechaDeteccion', 'dominio']
+    const required = ['origen', 'tipo', 'severidad', 'areaAfectada', 'descripcion', 'fechaDeteccion', 'dominio', 'titulo', 'fechaCierre']
     const missing = required.filter((f) => !body[f])
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
     }
 
     const dominio = body.dominio as NCDominio
+    const forzar = body.forzar === true
     const now = new Date().toISOString()
     const id = generateId()
     const numero = generateNumero(dominio)
 
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const similares = nonconformities.filter(
-      (nc) =>
-        nc.dominio === dominio &&
-        nc.areaAfectada === body.areaAfectada &&
-        new Date(nc.creadoEn).getTime() > thirtyDaysAgo,
-    )
+    const similares = forzar
+      ? []
+      : nonconformities.filter(
+          (nc) =>
+            nc.dominio === dominio &&
+            nc.areaAfectada === body.areaAfectada &&
+            new Date(nc.creadoEn).getTime() > thirtyDaysAgo,
+        )
 
     const newNC: NoConformidad = {
       id,
@@ -157,11 +165,14 @@ export const nonconformityHandlers = [
       tipo: body.tipo as NoConformidad['tipo'],
       severidad: body.severidad as NoConformidad['severidad'],
       estado: 'ABIERTA',
+      titulo: body.titulo as string,
       descripcion: body.descripcion as string,
       areaAfectada: body.areaAfectada as string,
+      fechaCierre: body.fechaCierre as string,
       reportadoPorId: 'user-mock-001',
       fechaDeteccion: body.fechaDeteccion as string,
       fechaReporte: now,
+      requiereIPER: (body.requiereIPER as boolean) ?? false,
       accionesCorrectivas: [],
       documentosVinculados: (body.documentosVinculados as string[]) ?? [],
       adjuntos: [],
@@ -173,6 +184,8 @@ export const nonconformityHandlers = [
       ...(body.turno ? { turno: body.turno as NoConformidad['turno'] } : {}),
       ...(body.mineralInvolucrado ? { mineralInvolucrado: body.mineralInvolucrado as string } : {}),
       ...(body.accionInmediata ? { accionInmediata: body.accionInmediata as string } : {}),
+      ...(body.detectadoPorId ? { detectadoPorId: body.detectadoPorId as string } : {}),
+      ...(body.procesoInvolucrado ? { procesoInvolucrado: body.procesoInvolucrado as string } : {}),
     }
 
     nonconformities = [...nonconformities, newNC]
@@ -219,6 +232,62 @@ export const nonconformityHandlers = [
     return ok(updated)
   }),
 
+  // DELETE /api/nonconformities/:id — soft delete (solo si ABIERTA)
+  http.delete('/api/nonconformities/:id', async ({ params }) => {
+    await delay(LATENCY)
+
+    const nc = nonconformities.find((n) => n.id === params.id)
+    if (!nc) return err('nonconformities:errors.notFound', 404)
+
+    if (nc.estado !== 'ABIERTA') {
+      return err('Solo se pueden eliminar NCs en estado ABIERTA', 422)
+    }
+
+    if (nc.deletedAt) {
+      return err('La NC ya está eliminada', 422)
+    }
+
+    const now = new Date().toISOString()
+    const updated: NoConformidad = {
+      ...nc,
+      deletedAt: now,
+      actualizadoEn: now,
+      auditTrail: [
+        ...nc.auditTrail,
+        makeAuditEntry(nc.id, 'ELIMINADA', { valorNuevo: now }),
+      ],
+    }
+
+    nonconformities = nonconformities.map((n) => (n.id === params.id ? updated : n))
+    return ok(updated)
+  }),
+
+  // PATCH /api/nonconformities/:id/restore — restaurar NC eliminada
+  http.patch('/api/nonconformities/:id/restore', async ({ params }) => {
+    await delay(LATENCY)
+
+    const nc = nonconformities.find((n) => n.id === params.id)
+    if (!nc) return err('nonconformities:errors.notFound', 404)
+
+    if (!nc.deletedAt) {
+      return err('La NC no está eliminada', 422)
+    }
+
+    const now = new Date().toISOString()
+    const updated: NoConformidad = {
+      ...nc,
+      deletedAt: undefined,
+      actualizadoEn: now,
+      auditTrail: [
+        ...nc.auditTrail,
+        makeAuditEntry(nc.id, 'RESTAURADA', {}),
+      ],
+    }
+
+    nonconformities = nonconformities.map((n) => (n.id === params.id ? updated : n))
+    return ok(updated)
+  }),
+
   // POST /api/nonconformities/:id/anular
   http.post('/api/nonconformities/:id/anular', async ({ params, request }) => {
     await delay(LATENCY)
@@ -237,6 +306,7 @@ export const nonconformityHandlers = [
     const updated: NoConformidad = {
       ...nc,
       estado: 'ANULADA',
+      justificacionAnulacion: justificacion,
       actualizadoEn: now,
       auditTrail: [
         ...nc.auditTrail,
@@ -261,7 +331,7 @@ export const nonconformityHandlers = [
     if (!nc) return err('nonconformities:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
-    const required = ['descripcion', 'responsableId', 'plazoFecha']
+    const required = ['titulo', 'descripcion', 'responsableId', 'plazoFecha', 'prioridad']
     const missing = required.filter((f) => !body[f])
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
@@ -269,13 +339,17 @@ export const nonconformityHandlers = [
 
     const now = new Date().toISOString()
     const acId = `ac-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const responsableId = body.responsableId as string
 
     const newAC: AccionCorrectiva = {
       id: acId,
       ncId: nc.id,
+      titulo: body.titulo as string,
       descripcion: body.descripcion as string,
-      responsableId: body.responsableId as string,
+      responsableId,
+      responsableNombre: USER_NOMBRE_MAP[responsableId] ?? 'Usuario',
       plazoFecha: body.plazoFecha as string,
+      prioridad: body.prioridad as AccionCorrectiva['prioridad'],
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,
@@ -357,7 +431,7 @@ export const nonconformityHandlers = [
       const now = new Date().toISOString()
       const closedAC: AccionCorrectiva = {
         ...ac,
-        estado: 'COMPLETADA',
+        estado: 'CERRADA',
         fechaCierre: now,
         descripcionEvidencia,
         ...(body.evidenciaUrl ? { evidenciaUrl: body.evidenciaUrl as string } : {}),
@@ -381,4 +455,10 @@ export const nonconformityHandlers = [
       return ok(closedAC)
     },
   ),
+
+  // GET /api/users — list of users for responsable picker
+  http.get('/api/users', async () => {
+    await delay(LATENCY)
+    return ok(userFixtures)
+  }),
 ]

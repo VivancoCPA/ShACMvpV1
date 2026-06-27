@@ -13,6 +13,7 @@ export function useNCList() {
   const fechaDesde = searchParams.get('fechaDesde') ?? undefined
   const fechaHasta = searchParams.get('fechaHasta') ?? undefined
   const page = parseInt(searchParams.get('page') ?? '1', 10)
+  const showDeleted = searchParams.get('showDeleted') === 'true' ? true : undefined
 
   const estado = estadoRaw as NCStatus | undefined
   const dominio = dominioRaw as NCDominio | undefined
@@ -28,6 +29,7 @@ export function useNCList() {
     fechaHasta,
     page,
     pageSize: 5,
+    showDeleted,
   })
 
   const nonconformidades = query.data?.items ?? []

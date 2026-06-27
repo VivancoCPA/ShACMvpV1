@@ -132,12 +132,9 @@ export const documentHandlers = [
     // RN-DOC-012: filter by confidencialidad based on simulated user role
     const userRole = url.searchParams.get('_role') ?? 'JEFE_CALIDAD_SYST'
     let filtered = store.filter((d) => {
-      // Soft-delete filter: by default only active docs; with includeDeleted only deleted docs
-      if (includeDeleted) {
-        if (!d.deletedAt) return false
-      } else {
-        if (d.deletedAt) return false
-      }
+      // Additive behavior: when includeDeleted=true, show active docs matching filters
+      // PLUS all deleted docs. When false, exclude deleted entirely.
+      if (!includeDeleted && d.deletedAt) return false
       if (d.confidencialidad === 'PUBLICO' || d.confidencialidad === 'INTERNO') return true
       if (d.confidencialidad === 'CONFIDENCIAL') return CONFIDENCIAL_ROLES.has(userRole)
       // RESTRINGIDO

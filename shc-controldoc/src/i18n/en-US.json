@@ -486,6 +486,7 @@
       },
       "todos": "All",
       "limpiar": "Clear filters",
+      "mostrarEliminados": "Show deleted",
       "dominio": {
         "CALIDAD": "NC-CAL",
         "SST": "NC-SST",
@@ -553,12 +554,201 @@
       "acUpdated": "Corrective action updated.",
       "acUpdateError": "Error updating the corrective action.",
       "acCerrada": "Corrective action closed with evidence.",
-      "acCerrarError": "Error closing the corrective action."
+      "acCerrarError": "Error closing the corrective action.",
+      "deleted": "Non-conformity deleted.",
+      "deleteError": "Error deleting the non-conformity.",
+      "restored": "Non-conformity restored.",
+      "restoreError": "Error restoring the non-conformity."
+    },
+    "form": {
+      "fields": {
+        "dominio": "NC Domain",
+        "origen": "Origin",
+        "tipo": "NC Type",
+        "severidad": "Severity",
+        "titulo": "Title",
+        "descripcion": "Description",
+        "areaAfectada": "Affected Area",
+        "procesoInvolucrado": "Involved Process",
+        "fechaDeteccion": "Detection Date",
+        "fechaCierre": "Closure Deadline",
+        "detectadoPor": "Detected By",
+        "requiereIPER": "Requires IPER / Risk Matrix update",
+        "turno": "Shift",
+        "mineralInvolucrado": "Mineral Involved",
+        "accionInmediata": "Immediate Action Taken"
+      },
+      "placeholders": {
+        "select": "Select…",
+        "titulo": "E.g.: Deviation in weighing procedure…",
+        "descripcion": "Describe the detected non-conformity…",
+        "areaAfectada": "Select the area…",
+        "procesoInvolucrado": "E.g.: Weighing, Dispatch, Storage…",
+        "detectadoPor": "Detector name (if different from reporter)",
+        "mineralInvolucrado": "E.g.: Copper, Zinc, Lead…",
+        "accionInmediata": "Describe the immediate corrective action taken…"
+      },
+      "warnings": {
+        "iperTitle": "OHS NC — IPER review required",
+        "iperBody": "OHS non-conformities require reviewing and updating the IPER / risk matrix for the affected area.",
+        "aduanaTitle": "Customs NC — Possible notification required",
+        "aduanaBody": "Customs non-conformities with HIGH or CRITICAL severity must be reported to the competent customs authority within the established deadline."
+      },
+      "turno": {
+        "TODOS": "All shifts",
+        "DIA": "Day",
+        "TARDE": "Afternoon",
+        "NOCHE": "Night"
+      },
+      "actions": {
+        "submit": "Register Non-Conformity",
+        "submitting": "Registering…",
+        "cancel": "Cancel"
+      },
+      "duplicate": {
+        "title": "Possible duplicate detected",
+        "body": "Found {{count}} similar non-conformit(y/ies) in the last 30 days for the same domain and area.",
+        "actions": {
+          "vincular": "View existing NC",
+          "guardar": "Save as new NC"
+        }
+      }
+    },
+    "detail": {
+      "title": "Non-Conformity",
+      "loading": "Loading non-conformity…",
+      "error": "Error loading the non-conformity.",
+      "retry": "Retry",
+      "back": "Back to list",
+      "noAccess": "You don't have access to this non-conformity.",
+      "sections": {
+        "info": "General Information",
+        "correccion": "Correction",
+        "causaRaiz": "Root Cause",
+        "acciones": "Corrective Actions",
+        "auditTrail": "Audit Trail"
+      },
+      "fields": {
+        "numero": "Number",
+        "dominio": "Domain",
+        "origen": "Origin",
+        "tipo": "Type",
+        "severidad": "Severity",
+        "estado": "Status",
+        "area": "Affected Area",
+        "proceso": "Involved Process",
+        "fechaDeteccion": "Detection Date",
+        "fechaCierre": "Closure Deadline",
+        "detectadoPor": "Detected By",
+        "reportadoPor": "Reported By",
+        "turno": "Shift",
+        "mineral": "Mineral Involved",
+        "requiereIPER": "Requires IPER",
+        "accionInmediata": "Immediate Action"
+      },
+      "anulada": {
+        "title": "Non-conformity voided",
+        "justificacion": "Justification"
+      },
+      "actions": {
+        "anular": "Void NC",
+        "iniciarInvestigacion": "Start Investigation",
+        "solicitarCierre": "Request Closure"
+      }
+    },
+    "anular": {
+      "title": "Void Non-Conformity",
+      "body": "This action is irreversible. The NC will be voided and cannot be reopened.",
+      "fields": {
+        "justificacion": "Justification"
+      },
+      "placeholders": {
+        "justificacion": "Explain why this NC is being voided (min. 20 characters)…"
+      },
+      "actions": {
+        "confirm": "Confirm voiding",
+        "cancel": "Cancel"
+      },
+      "validation": {
+        "justificacionMin": "Justification must be at least 20 characters.",
+        "justificacionMax": "Justification cannot exceed 2000 characters."
+      }
+    },
+    "acSection": {
+      "title": "Corrective Actions",
+      "empty": "No corrective actions registered.",
+      "acStatus": {
+        "PENDIENTE": "Pending",
+        "EN_EJECUCION": "In Progress",
+        "COMPLETADA": "Completed",
+        "CERRADA": "Closed",
+        "VENCIDA": "Overdue"
+      },
+      "fields": {
+        "nc": "Non-Conformity",
+        "titulo": "Title",
+        "descripcion": "Description",
+        "responsable": "Responsible",
+        "prioridad": "Priority",
+        "plazoFecha": "Due Date",
+        "evidencia": "Evidence Description",
+        "evidenciaUrl": "Evidence URL (optional)"
+      },
+      "placeholders": {
+        "titulo": "Title of the corrective action…",
+        "descripcion": "Describe the corrective action to take…",
+        "responsable": "Select responsible…",
+        "prioridad": "Select priority…",
+        "evidencia": "Describe the evidence showing the action's effectiveness…",
+        "evidenciaUrl": "https://…"
+      },
+      "prioridad": {
+        "BAJA": "Low",
+        "MEDIA": "Medium",
+        "ALTA": "High",
+        "CRITICA": "Critical"
+      },
+      "actions": {
+        "add": "Add CA",
+        "save": "Save",
+        "cancel": "Cancel",
+        "iniciar": "Start",
+        "completar": "Complete",
+        "cerrar": "Close with evidence",
+        "cerrarModal": "Confirm closure"
+      },
+      "agregarModal": {
+        "title": "Add Corrective Action"
+      },
+      "cerrarModal": {
+        "title": "Close Corrective Action",
+        "body": "Record the evidence that the action was completed satisfactorily."
+      }
     },
     "errors": {
       "notFound": "Non-conformity not found.",
       "editBlockedByStatus": "Cannot edit a non-conformity in Closed or Voided status."
-    }
+    },
+    "delete": {
+      "confirm": {
+        "title": "Delete non-conformity?",
+        "message": "Delete {{numero}}? The NC will be hidden from the list but can be restored."
+      },
+      "actions": {
+        "confirm": "Delete",
+        "cancel": "Cancel"
+      }
+    },
+    "restore": {
+      "tooltip": "Restore NC",
+      "confirm": {
+        "title": "Restore non-conformity?",
+        "message": "Restore {{numero}}? The NC will reappear in the list.",
+        "cancel": "Cancel",
+        "confirm": "Restore"
+      }
+    },
+    "deletedBadge": "Deleted"
   },
   "dashboard": {}
 }

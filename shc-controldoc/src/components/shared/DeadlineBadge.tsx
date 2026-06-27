@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { formatShortDate } from '../../utils/date.utils'
 
 interface DeadlineBadgeProps {
   fechaCierre: string | null
@@ -14,11 +15,7 @@ export function DeadlineBadge({ fechaCierre, estado }: DeadlineBadgeProps) {
     return <span className="text-xs text-muted dark:text-on-dark-soft">—</span>
   }
 
-  const formatted = new Intl.DateTimeFormat(i18n.language, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(fechaCierre))
+  const formatted = formatShortDate(fechaCierre, i18n.language)
 
   if (CLOSED_STATES.has(estado)) {
     return <span className="text-xs text-muted dark:text-on-dark-soft">{formatted}</span>
