@@ -491,8 +491,11 @@ export function IncidentDetailPage() {
         <div className="rounded-lg border border-hairline bg-surface-card p-6 dark:border-hairline/20 dark:bg-surface-dark-elevated">
           <IncidentACSection
             incidenteId={incident.id}
+            incidenteNumero={incident.numero}
+            incidenteEstado={incident.estado}
             accionesCorrectivas={incident.accionesCorrectivas ?? []}
-            canAddAC={permissions?.canAddAC ?? false}
+            canAsignarAC={permissions?.canAddAC ?? false}
+            canCerrarAC={permissions?.canCerrarAC ?? false}
           />
         </div>
       </div>

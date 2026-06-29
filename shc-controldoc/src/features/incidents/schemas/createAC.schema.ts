@@ -1,9 +1,11 @@
 import { z } from 'zod'
 
 export const createACIncidenteSchema = z.object({
-  descripcion: z.string().min(10).max(1000),
-  responsableId: z.string().min(1),
-  fechaLimite: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  titulo: z.string().min(3, 'El título debe tener al menos 3 caracteres.').max(200),
+  descripcion: z.string().min(5, 'La descripción debe tener al menos 5 caracteres.').max(2000),
+  responsableId: z.string().min(1, 'El responsable es obligatorio.'),
+  plazoFecha: z.string().min(1, 'La fecha límite es obligatoria.'),
+  prioridad: z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']),
 })
 
 export type CreateACIncidenteInput = z.infer<typeof createACIncidenteSchema>

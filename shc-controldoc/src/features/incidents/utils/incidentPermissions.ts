@@ -8,6 +8,7 @@ const DENY_ALL: IncidentPermissions = {
   canEdit: false,
   canChangeStatus: false,
   canAddAC: false,
+  canCerrarAC: false,
   canDelete: false,
   canRestore: false,
   canAnular: false,
@@ -45,6 +46,7 @@ export function getIncidentPermissions(
       const canEdit =
         !isDeleted && (estado === 'ABIERTO' || estado === 'EN_INVESTIGACION')
       const canAddAC = !isDeleted && isActive && estado !== 'CERRADO' && estado !== 'ANULADO'
+      const canCerrarAC = canAddAC
       const canChangeStatus = !isDeleted && isActive
       return {
         ...DENY_ALL,
@@ -53,12 +55,14 @@ export function getIncidentPermissions(
         canEdit,
         canChangeStatus,
         canAddAC,
+        canCerrarAC,
       }
     }
 
     case 'JEFE_CALIDAD_SYST': {
       const canEdit = !isDeleted
       const canAddAC = !isDeleted && isActive
+      const canCerrarAC = canAddAC
       const canDelete = !isDeleted && estado === 'ABIERTO'
       const canRestore = isDeleted
       const canAnular = ANULABLE_STATES.includes(estado)
@@ -70,6 +74,7 @@ export function getIncidentPermissions(
         canEdit,
         canChangeStatus,
         canAddAC,
+        canCerrarAC,
         canDelete,
         canRestore,
         canAnular,

@@ -48,13 +48,18 @@ export interface AuditTrailEntry {
 export interface AccionCorrectivaIncidente {
   id: string
   incidenteId: string
+  titulo?: string
   descripcion: string
   responsableId: string
-  fechaLimite: string
+  responsableNombre: string
+  plazoFecha: string
+  prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
   estado: 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA'
   creadoEn: string
   actualizadoEn: string
-  evidencia?: string
+  descripcionEvidencia?: string
+  evidenciaUrl?: string
+  fechaCierre?: string
 }
 
 export interface IncidentEvidencia {

@@ -9,7 +9,7 @@ TBD — Project-wide shared constants that are not tied to a single feature modu
 ## Requirements
 
 ### Requirement: AREAS_SHAC exported from src/constants/shared.constants.ts
-The system SHALL export `AREAS_SHAC` as a `readonly string[]` constant from `src/constants/shared.constants.ts`. The array SHALL contain the nine organizational areas: `'Calidad'`, `'Control Documentario'`, `'Operaciones'`, `'SyST'`, `'Auditoría'`, `'RR.HH.'`, `'Gerencia'`, `'Almacén'`, `'Logística'`. The constant SHALL be importable by any module in the project without creating cross-feature dependencies.
+The system SHALL export `AREAS_SHAC` as a `readonly string[]` constant from `src/constants/shared.constants.ts`. The array SHALL contain the nine organizational areas: `'Calidad'`, `'Control Documentario'`, `'Operaciones'`, `'SyST'`, `'Auditoría'`, `'RR.HH.'`, `'Gerencia'`, `'Almacén'`, `'Logística'`. The constant SHALL be importable by any module in the project without creating cross-feature dependencies. The file SHALL additionally export `INCIDENT_TYPE_LABELS`, `INCIDENT_STATUS_LABELS`, and `CONDICION_ENTORNO_LABELS` as described in the `incident-constants` spec — all as purely additive exports that do not alter the existing `AREAS_SHAC` value.
 
 #### Scenario: AREAS_SHAC is importable from the shared constants file
 - **WHEN** a developer imports `AREAS_SHAC` from `src/constants/shared.constants.ts`
@@ -18,6 +18,10 @@ The system SHALL export `AREAS_SHAC` as a `readonly string[]` constant from `src
 #### Scenario: src/features/documents/constants.ts re-exports AREAS_SHAC
 - **WHEN** a developer imports `AREAS_SHAC` from `src/features/documents/constants.ts`
 - **THEN** the import still resolves (backward-compatible re-export), providing the same array
+
+#### Scenario: New incident constants are co-located in the same file
+- **WHEN** a developer imports `INCIDENT_TYPE_LABELS` and `AREAS_SHAC` from `src/constants/shared.constants.ts`
+- **THEN** both imports resolve without error from the same file
 
 ---
 

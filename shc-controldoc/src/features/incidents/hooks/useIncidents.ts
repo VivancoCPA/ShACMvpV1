@@ -11,10 +11,12 @@ import {
   restoreIncident,
   createAC,
   updateAC,
+  cerrarAC,
 } from '../api/incidents.api'
 import type { IncidentFilters } from '../api/incidents.api'
 import type { CreateIncidentInput, UpdateIncidentInvestigacionInput } from '../schemas/createIncident.schema'
 import type { CreateACIncidenteInput } from '../schemas/createAC.schema'
+import type { CerrarACIncidenteInput } from '../schemas/cerrarAC.schema'
 import type { IncidentStatus, AccionCorrectivaIncidente } from '../types/incident.types'
 
 export const INCIDENT_QUERY_KEYS = {
@@ -154,6 +156,25 @@ export function useUpdateACIncidente(incidenteId: string) {
     },
     onError: () => {
       toast.error(t('toasts.acUpdateError'))
+    },
+  })
+}
+
+export function useCerrarACIncidente(incidenteId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('incidents')
+
+  return useMutation({
+    mutationFn: ({ acId, data }: { acId: string; data: CerrarACIncidenteInput }) =>
+      cerrarAC(incidenteId, acId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: INCIDENT_QUERY_KEYS.detail(incidenteId),
+      })
+      toast.success(t('toasts.acCerrada'))
+    },
+    onError: () => {
+      toast.error(t('toasts.acCerrarError'))
     },
   })
 }

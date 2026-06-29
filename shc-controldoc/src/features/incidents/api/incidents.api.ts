@@ -3,6 +3,7 @@ import type { PaginationMeta } from '../../../types/api.types'
 import type { Incidente, AccionCorrectivaIncidente } from '../types/incident.types'
 import type { CreateIncidentInput, UpdateIncidentInvestigacionInput } from '../schemas/createIncident.schema'
 import type { CreateACIncidenteInput } from '../schemas/createAC.schema'
+import type { CerrarACIncidenteInput } from '../schemas/cerrarAC.schema'
 import type { IncidentStatus } from '../types/incident.types'
 
 export interface IncidentFilters {
@@ -83,6 +84,18 @@ export async function updateAC(
 ): Promise<AccionCorrectivaIncidente> {
   const response = await api.patch<AccionCorrectivaIncidente>(
     `/api/incidents/${incidenteId}/acciones/${acId}`,
+    data,
+  )
+  return response.data
+}
+
+export async function cerrarAC(
+  incidenteId: string,
+  acId: string,
+  data: CerrarACIncidenteInput,
+): Promise<AccionCorrectivaIncidente> {
+  const response = await api.patch<AccionCorrectivaIncidente>(
+    `/api/incidents/${incidenteId}/acciones/${acId}/cerrar`,
     data,
   )
   return response.data

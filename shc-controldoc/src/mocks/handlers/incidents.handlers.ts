@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
+import { userFixtures } from '../fixtures/users.fixtures'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
   Incidente,
@@ -329,7 +330,7 @@ export const incidentHandlers = [
     if (!inc) return err('incidents:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
-    const required = ['descripcion', 'responsableId', 'fechaLimite']
+    const required = ['titulo', 'descripcion', 'responsableId', 'plazoFecha', 'prioridad']
     const missing = required.filter((f) => !body[f])
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
@@ -338,17 +339,21 @@ export const incidentHandlers = [
     const now = new Date().toISOString()
     const acId = `ac-inc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const responsableId = body.responsableId as string
+    const user = userFixtures.find((u) => u.id === responsableId)
+    const responsableNombre = user ? `${user.nombre} ${user.apellido}` : responsableId
 
     const newAC: AccionCorrectivaIncidente = {
       id: acId,
       incidenteId: inc.id,
+      titulo: body.titulo as string,
       descripcion: body.descripcion as string,
       responsableId,
-      fechaLimite: body.fechaLimite as string,
+      responsableNombre,
+      plazoFecha: body.plazoFecha as string,
+      prioridad: body.prioridad as AccionCorrectivaIncidente['prioridad'],
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,
-      ...(body.evidencia ? { evidencia: body.evidencia as string } : {}),
     }
 
     const updated: Incidente = {
@@ -364,6 +369,53 @@ export const incidentHandlers = [
     incidents = incidents.map((i) => (i.id === params.id ? updated : i))
 
     return ok(newAC, 201)
+  }),
+
+  // PATCH /api/incidents/:incidenteId/acciones/:acId/cerrar — cerrar AC con evidencia
+  http.patch('/api/incidents/:incidenteId/acciones/:acId/cerrar', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const inc = incidents.find((i) => i.id === params.incidenteId)
+    if (!inc) return err('incidents:errors.notFound', 404)
+
+    const ac = (inc.accionesCorrectivas ?? []).find((a) => a.id === params.acId)
+    if (!ac) return err('incidents:errors.acNotFound', 404)
+
+    if (ac.estado !== 'EN_EJECUCION') {
+      return err('Solo se pueden cerrar acciones en estado EN_EJECUCION', 422)
+    }
+
+    const body = await request.json() as Record<string, unknown>
+    if (!body.descripcionEvidencia) {
+      return err('Validation error', 400, ['descripcionEvidencia is required'])
+    }
+
+    const now = new Date().toISOString()
+
+    const updatedAC: AccionCorrectivaIncidente = {
+      ...ac,
+      estado: 'CERRADA',
+      descripcionEvidencia: body.descripcionEvidencia as string,
+      ...(body.evidenciaUrl ? { evidenciaUrl: body.evidenciaUrl as string } : {}),
+      fechaCierre: now,
+      actualizadoEn: now,
+    }
+
+    const updatedInc: Incidente = {
+      ...inc,
+      accionesCorrectivas: (inc.accionesCorrectivas ?? []).map((a) =>
+        a.id === params.acId ? updatedAC : a,
+      ),
+      actualizadoEn: now,
+      auditTrail: [
+        ...inc.auditTrail,
+        makeAuditEntry(inc.id, 'AC_CERRADA', { valorNuevo: params.acId as string }),
+      ],
+    }
+
+    incidents = incidents.map((i) => (i.id === params.incidenteId ? updatedInc : i))
+
+    return ok(updatedAC)
   }),
 
   // PATCH /api/incidents/:incidenteId/acciones/:acId — actualizar AC

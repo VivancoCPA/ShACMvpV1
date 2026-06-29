@@ -501,7 +501,9 @@
       "acCreada": "Acción correctiva creada.",
       "acCreateError": "Error al crear la acción correctiva.",
       "acUpdated": "Acción correctiva actualizada.",
-      "acUpdateError": "Error al actualizar la acción correctiva."
+      "acUpdateError": "Error al actualizar la acción correctiva.",
+      "acCerrada": "Acción correctiva cerrada.",
+      "acCerrarError": "Error al cerrar la acción correctiva."
     },
     "errors": {
       "notFound": "Incidente no encontrado.",
@@ -628,16 +630,29 @@
       "title": "Acciones Correctivas",
       "empty": "Sin acciones correctivas registradas.",
       "agregarModal": {
-        "title": "Agregar acción correctiva"
+        "title": "Agregar Acción Correctiva"
+      },
+      "cerrarModal": {
+        "title": "Cerrar Acción Correctiva",
+        "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
       },
       "fields": {
+        "incidente": "Incidente",
+        "titulo": "Título",
         "descripcion": "Descripción",
         "responsable": "Responsable",
-        "fechaLimite": "Fecha límite"
+        "prioridad": "Prioridad",
+        "plazoFecha": "Fecha de Vencimiento",
+        "evidencia": "Descripción de Evidencia",
+        "evidenciaUrl": "URL de Evidencia (opcional)"
       },
       "placeholders": {
-        "descripcion": "Describa la acción correctiva…",
-        "responsable": "Seleccionar responsable…"
+        "titulo": "Título de la acción correctiva…",
+        "descripcion": "Describa la acción correctiva a tomar…",
+        "responsable": "Seleccionar responsable…",
+        "prioridad": "Seleccionar prioridad…",
+        "evidencia": "Describe la evidencia que demuestra la efectividad de la acción…",
+        "evidenciaUrl": "https://…"
       },
       "acStatus": {
         "PENDIENTE": "Pendiente",
@@ -645,10 +660,19 @@
         "COMPLETADA": "Completada",
         "CERRADA": "Cerrada"
       },
+      "prioridad": {
+        "BAJA": "Baja",
+        "MEDIA": "Media",
+        "ALTA": "Alta",
+        "CRITICA": "Crítica"
+      },
       "actions": {
         "add": "Agregar AC",
         "save": "Guardar",
-        "cancel": "Cancelar"
+        "cancel": "Cancelar",
+        "iniciar": "Iniciar",
+        "cerrar": "Cerrar con evidencia",
+        "cerrarModal": "Confirmar cierre"
       }
     }
   },

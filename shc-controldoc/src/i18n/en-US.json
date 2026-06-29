@@ -501,7 +501,9 @@
       "acCreada": "Corrective action created.",
       "acCreateError": "Failed to create the corrective action.",
       "acUpdated": "Corrective action updated.",
-      "acUpdateError": "Failed to update the corrective action."
+      "acUpdateError": "Failed to update the corrective action.",
+      "acCerrada": "Corrective action closed.",
+      "acCerrarError": "Failed to close the corrective action."
     },
     "errors": {
       "notFound": "Incident not found.",
@@ -628,16 +630,29 @@
       "title": "Corrective Actions",
       "empty": "No corrective actions recorded.",
       "agregarModal": {
-        "title": "Add corrective action"
+        "title": "Add Corrective Action"
+      },
+      "cerrarModal": {
+        "title": "Close Corrective Action",
+        "body": "Record the evidence that the action was completed satisfactorily."
       },
       "fields": {
+        "incidente": "Incident",
+        "titulo": "Title",
         "descripcion": "Description",
         "responsable": "Responsible",
-        "fechaLimite": "Due date"
+        "prioridad": "Priority",
+        "plazoFecha": "Due Date",
+        "evidencia": "Evidence Description",
+        "evidenciaUrl": "Evidence URL (optional)"
       },
       "placeholders": {
-        "descripcion": "Describe the corrective action…",
-        "responsable": "Select responsible…"
+        "titulo": "Title of the corrective action…",
+        "descripcion": "Describe the corrective action to take…",
+        "responsable": "Select responsible…",
+        "prioridad": "Select priority…",
+        "evidencia": "Describe the evidence showing the action's effectiveness…",
+        "evidenciaUrl": "https://…"
       },
       "acStatus": {
         "PENDIENTE": "Pending",
@@ -645,10 +660,19 @@
         "COMPLETADA": "Completed",
         "CERRADA": "Closed"
       },
+      "prioridad": {
+        "BAJA": "Low",
+        "MEDIA": "Medium",
+        "ALTA": "High",
+        "CRITICA": "Critical"
+      },
       "actions": {
         "add": "Add CA",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "iniciar": "Start",
+        "cerrar": "Close with evidence",
+        "cerrarModal": "Confirm closure"
       }
     }
   },
