@@ -8,6 +8,9 @@ export type {
   AccionCorrectivaIncidente,
   IncidentEvidencia,
   Incidente,
+  Local,
+  Zona,
+  IncidenteUbicacion,
 } from './types/incident.types'
 export { CondicionEntornoValues } from './types/incident.types'
 
@@ -65,6 +68,8 @@ export {
 } from './hooks/useIncidents'
 
 export { useIncidentList } from './hooks/useIncidentList'
+export { useLocales } from './hooks/useLocales'
+export { useZonasByLocal } from './hooks/useZonasByLocal'
 
 export { IncidentStatusBadge } from './components/IncidentStatusBadge'
 export { IncidentTypeBadge } from './components/IncidentTypeBadge'

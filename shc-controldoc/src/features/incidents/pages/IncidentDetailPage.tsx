@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
 import { useIncident, useDeleteIncident } from '../hooks/useIncidents'
+import { useLocales } from '../hooks/useLocales'
 import { getIncidentPermissions } from '../utils/incidentPermissions'
 import { getPlazoInvestigacion } from '../utils/incidentPlazoInvestigacion'
 import { SeverityBadge } from '../../../components/shared/SeverityBadge'
@@ -173,6 +174,7 @@ export function IncidentDetailPage() {
 
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const deleteMutation = useDeleteIncident()
+  const { data: locales = [] } = useLocales()
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [investigacionOpen, setInvestigacionOpen] = useState(true)
@@ -210,6 +212,7 @@ export function IncidentDetailPage() {
   const hasEvidencias = (incident.evidencias?.length ?? 0) > 0
   const missingInformeMedico = incident.tipo === 'ACCIDENTE' && !incident.informeMedicoAdjunto
   const missingEvidencias = incident.tipo === 'ACCIDENTE' && !hasEvidencias
+  const selectedLocal = locales.find((l) => l.id === incident.localId)
 
   const handleDelete = () => {
     deleteMutation.mutate(incident.id, {
@@ -444,6 +447,49 @@ export function IncidentDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Bloque Ubicación */}
+        {incident.localId && (
+          <div className="mb-4 rounded-lg border border-hairline bg-surface-card p-6 dark:border-hairline/20 dark:bg-surface-dark-elevated">
+            <h2 className="mb-4 text-sm font-semibold text-ink dark:text-on-dark">
+              {t('detail.sections.ubicacion')}
+            </h2>
+            <dl className="space-y-2">
+              <div>
+                <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.local')}</dt>
+                <dd className="mt-0.5 text-sm text-body dark:text-on-dark">
+                  {incident.localNombre ?? incident.localId}
+                </dd>
+              </div>
+              {incident.zonaId && (
+                <div>
+                  <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.zona')}</dt>
+                  <dd className="mt-0.5 text-sm text-body dark:text-on-dark">
+                    {incident.zonaNombre ?? incident.zonaId}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            {selectedLocal?.planoPngUrl && incident.ubicacion && (
+              <div className="mt-4">
+                <div
+                  className="relative overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
+                  style={{ maxWidth: '240px' }}
+                >
+                  <img
+                    src={selectedLocal.planoPngUrl}
+                    alt={incident.localNombre ?? incident.localId}
+                    className="w-full"
+                  />
+                  <div
+                    className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-coral shadow-md"
+                    style={{ left: `${incident.ubicacion.x}%`, top: `${incident.ubicacion.y}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bloque Información de investigación */}
         <div className="mb-4 rounded-lg border border-hairline bg-surface-card dark:border-hairline/20 dark:bg-surface-dark-elevated">

@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
-import { incidentFixtures } from '../fixtures/incidents.fixtures'
+import { incidentFixtures, localFixtures, zonaFixtures } from '../fixtures/incidents.fixtures'
 import { userFixtures } from '../fixtures/users.fixtures'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
@@ -8,6 +8,7 @@ import type {
   IncidentType,
   IncidentSeveridad,
   IncidentTurno,
+  IncidenteUbicacion,
   AuditTrailEntry,
   AccionCorrectivaIncidente,
 } from '../../features/incidents/types/incident.types'
@@ -63,6 +64,22 @@ function err(message: string, status: number, errors?: string[]) {
 }
 
 export const incidentHandlers = [
+  // GET /api/locales — all active locales
+  http.get('/api/locales', async () => {
+    await delay(LATENCY)
+    const active = localFixtures.filter((l) => l.activo)
+    return ok(active)
+  }),
+
+  // GET /api/locales/:localId/zonas — active zones for a local
+  http.get('/api/locales/:localId/zonas', async ({ params }) => {
+    await delay(LATENCY)
+    const local = localFixtures.find((l) => l.id === params.localId)
+    if (!local) return err(`Local ${params.localId} no encontrado`, 404)
+    const zones = zonaFixtures.filter((z) => z.localId === params.localId && z.activo)
+    return ok(zones)
+  }),
+
   // GET /api/incidents — list with filters + pagination
   http.get('/api/incidents', async ({ request }) => {
     await delay(LATENCY)
@@ -193,6 +210,15 @@ export const incidentHandlers = [
       ...(body.atencionMedicaDescripcion ? { atencionMedicaDescripcion: body.atencionMedicaDescripcion as string } : {}),
       ...(body.notificacionAmbientalRequerida !== undefined ? { notificacionAmbientalRequerida: body.notificacionAmbientalRequerida as boolean } : {}),
       ...(body.evidencias ? { evidencias: body.evidencias as Incidente['evidencias'] } : {}),
+      ...(body.localId ? {
+        localId: body.localId as string,
+        localNombre: localFixtures.find((l) => l.id === body.localId)?.nombre,
+      } : {}),
+      ...(body.zonaId ? {
+        zonaId: body.zonaId as string,
+        zonaNombre: zonaFixtures.find((z) => z.id === body.zonaId)?.nombre,
+      } : {}),
+      ...(body.ubicacion ? { ubicacion: body.ubicacion as IncidenteUbicacion } : {}),
     }
 
     incidents = [...incidents, newIncident]

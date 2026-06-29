@@ -72,6 +72,33 @@ export interface IncidentEvidencia {
   creadoPor: string
 }
 
+export interface Local {
+  id: string
+  nombre: string
+  codigo: string
+  activo: boolean
+  creadoEn: string
+  actualizadoEn: string
+  direccion?: string
+  planoPngUrl?: string
+}
+
+export interface Zona {
+  id: string
+  localId: string
+  nombre: string
+  codigo: string
+  activo: boolean
+  creadoEn: string
+  actualizadoEn: string
+  descripcion?: string
+}
+
+export interface IncidenteUbicacion {
+  x: number
+  y: number
+}
+
 export interface Incidente {
   id: string
   numero: string
@@ -101,4 +128,9 @@ export interface Incidente {
   qeId?: string
   accionesCorrectivas?: AccionCorrectivaIncidente[]
   deletedAt?: string
+  localId?: string
+  zonaId?: string
+  ubicacion?: IncidenteUbicacion
+  localNombre?: string
+  zonaNombre?: string
 }

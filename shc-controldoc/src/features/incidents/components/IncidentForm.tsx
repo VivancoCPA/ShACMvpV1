@@ -9,6 +9,7 @@ import {
   ChevronUp,
   FileText,
   Info,
+  MapPin,
   Paperclip,
   X,
   Zap,
@@ -18,6 +19,8 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCreateIncident, useUpdateIncident } from '../hooks/useIncidents'
+import { useLocales } from '../hooks/useLocales'
+import { useZonasByLocal } from '../hooks/useZonasByLocal'
 import { getAutoSeveridad } from '../utils/incidentSeveridad'
 import { getPlazoInvestigacion } from '../utils/incidentPlazoInvestigacion'
 import { CondicionEntornoValues } from '../types/incident.types'
@@ -26,7 +29,7 @@ import {
   type UpdateIncidentFormInput,
 } from '../schemas/incidentForm.schema'
 import { AREAS_SHAC, CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
-import type { Incidente, IncidentType, IncidentSeveridad } from '../types/incident.types'
+import type { Incidente, IncidentType, IncidentSeveridad, IncidenteUbicacion } from '../types/incident.types'
 import type { IncidentEvidencia } from '../types/incident.types'
 
 const TIPO_ICONS: Record<IncidentType, React.ReactNode> = {
@@ -230,6 +233,9 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
         condicionesEntorno: incident.condicionesEntorno ?? [],
         atencionMedicaRequerida: incident.atencionMedicaRequerida ?? false,
         atencionMedicaDescripcion: incident.atencionMedicaDescripcion,
+        localId: incident.localId ?? '',
+        zonaId: incident.zonaId ?? '',
+        ubicacion: incident.ubicacion,
       }
     : { huboLesionados: false, condicionesEntorno: [], atencionMedicaRequerida: false }
 
@@ -249,6 +255,12 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   const numAfectadasValue = useWatch({ control, name: 'numPersonasAfectadas' }) as number | undefined
   const severidadValue = useWatch({ control, name: 'severidad' }) as IncidentSeveridad | undefined
   const atencionMedicaValue = useWatch({ control, name: 'atencionMedicaRequerida' }) as boolean | undefined
+  const localIdValue = useWatch({ control, name: 'localId' }) as string | undefined
+  const ubicacionValue = useWatch({ control, name: 'ubicacion' }) as IncidenteUbicacion | undefined
+
+  const { data: locales = [] } = useLocales()
+  const { data: zonas = [] } = useZonasByLocal(localIdValue ?? '')
+  const selectedLocal = locales.find((l) => l.id === localIdValue)
 
   // Auto-calc severity when tipo or numPersonasAfectadas changes
   useEffect(() => {
@@ -266,6 +278,13 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   }, [huboLesionadosValue, setValue])
 
   const plazoInvestigacion = severidadValue ? getPlazoInvestigacion(severidadValue) : null
+
+  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100)
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100)
+    setValue('ubicacion', { x, y })
+  }
 
   const onSubmit = async (data: FormValues) => {
     const mockEvidencias: IncidentEvidencia[] = newEvidencias.map((f, i) => ({
@@ -504,6 +523,97 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
               )}
             </div>
           )}
+
+          {/* ─── Bloque Ubicación ─── */}
+          <div className="mb-5 border-t border-hairline pt-5 dark:border-hairline/20">
+            <p className={`${labelClass} mb-4 font-semibold`}>
+              {t('form.bloques.ubicacion')}
+            </p>
+
+            {/* Local select */}
+            <div className="mb-4">
+              <label htmlFor="localId" className={labelClass}>
+                {t('form.fields.localId')}
+              </label>
+              <Controller
+                name="localId"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    id="localId"
+                    className={selectClass}
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      field.onChange(e.target.value)
+                      setValue('zonaId', '')
+                      setValue('ubicacion', undefined)
+                    }}
+                  >
+                    <option value="">{t('form.placeholders.localId')}</option>
+                    {locales.map((l) => (
+                      <option key={l.id} value={l.id}>{l.nombre}</option>
+                    ))}
+                  </select>
+                )}
+              />
+            </div>
+
+            {/* Zona select */}
+            <div className="mb-4">
+              <label htmlFor="zonaId" className={labelClass}>
+                {t('form.fields.zonaId')}
+              </label>
+              <select
+                id="zonaId"
+                className={selectClass}
+                disabled={!localIdValue}
+                {...register('zonaId')}
+              >
+                <option value="">{t('form.placeholders.zonaId')}</option>
+                {zonas.map((z) => (
+                  <option key={z.id} value={z.id}>{z.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Interactive floor plan */}
+            {localIdValue && selectedLocal?.planoPngUrl && (
+              <div>
+                <p className={labelClass}>{t('form.fields.ubicacionPlano')}</p>
+                <p className="mb-2 text-xs text-muted dark:text-on-dark-soft">
+                  <MapPin size={11} className="mr-1 inline-block" />
+                  {t('form.ubicacion.clickHint')}
+                </p>
+                <div
+                  className="relative cursor-crosshair overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
+                  style={{ maxWidth: '360px' }}
+                  onClick={handleMapClick}
+                >
+                  <img
+                    src={selectedLocal.planoPngUrl}
+                    alt={selectedLocal.nombre}
+                    className="w-full select-none"
+                    draggable={false}
+                  />
+                  {ubicacionValue && (
+                    <div
+                      className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-coral shadow-md"
+                      style={{ left: `${ubicacionValue.x}%`, top: `${ubicacionValue.y}%` }}
+                    />
+                  )}
+                </div>
+                {ubicacionValue && (
+                  <button
+                    type="button"
+                    onClick={() => setValue('ubicacion', undefined)}
+                    className="mt-1.5 text-xs text-muted hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+                  >
+                    {t('form.ubicacion.limpiar')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Zona de evidencias */}
           <EvidenciasZona

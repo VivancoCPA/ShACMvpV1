@@ -540,7 +540,8 @@
       "titleEdit": "Editar Incidente",
       "bloques": {
         "reporteInicial": "Reporte inicial",
-        "investigacion": "Investigación"
+        "investigacion": "Investigación",
+        "ubicacion": "Ubicación"
       },
       "fields": {
         "tipo": "Tipo de incidente",
@@ -557,12 +558,21 @@
         "condicionesEntorno": "Condiciones del entorno",
         "atencionMedicaRequerida": "¿Se requirió atención médica?",
         "atencionMedicaDescripcion": "Descripción atención médica",
-        "informeMedicoAdjunto": "Informe médico adjunto (PDF, máx 10 MB)"
+        "informeMedicoAdjunto": "Informe médico adjunto (PDF, máx 10 MB)",
+        "localId": "Local",
+        "zonaId": "Zona",
+        "ubicacionPlano": "Ubicación en el plano"
       },
       "placeholders": {
         "select": "Seleccionar…",
         "descripcion": "Describa el evento con el mayor detalle posible (mín. 20 caracteres)…",
-        "porLinea": "Un elemento por línea…"
+        "porLinea": "Un elemento por línea…",
+        "localId": "Seleccionar local…",
+        "zonaId": "Seleccionar zona…"
+      },
+      "ubicacion": {
+        "clickHint": "Haz clic sobre el plano para marcar la ubicación del incidente",
+        "limpiar": "Limpiar ubicación"
       },
       "severidad": {
         "autocalculada": "(auto-calculada)"
@@ -593,7 +603,8 @@
       "escalado": "Incidente de severidad {{severidad}} — Requiere atención inmediata",
       "sections": {
         "descripcion": "Descripción del evento",
-        "investigacion": "Información de investigación"
+        "investigacion": "Información de investigación",
+        "ubicacion": "Ubicación"
       },
       "fields": {
         "fechaEvento": "Fecha del evento",
@@ -609,7 +620,9 @@
         "personalInvolucrado": "Personal involucrado",
         "testigos": "Testigos",
         "atencionMedica": "Atención médica",
-        "informeMedico": "Informe médico"
+        "informeMedico": "Informe médico",
+        "local": "Local",
+        "zona": "Zona"
       },
       "investigacion": {
         "plazoDias": "Plazo máximo de investigación: {{dias}} días hábiles"

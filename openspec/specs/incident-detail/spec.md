@@ -95,6 +95,33 @@ La sección de detalle SHALL incluir un bloque "Descripción del evento" (expand
 - **WHEN** el incidente tiene `tipo = CUASI_ACCIDENTE` y no tiene evidencias
 - **THEN** no se muestra ninguna alerta amarilla
 
+### Requirement: Bloque "Ubicación" en detalle de incidente (ADD-03)
+La sección de detalle SHALL incluir un bloque "Ubicación" posicionado en la misma posición relativa que en el formulario (después del bloque "Descripción del evento" y antes de "Información de investigación"). El bloque SHALL renderizarse únicamente cuando `incidente.localId` tiene valor; si `localId` es `undefined`, el bloque no se muestra.
+
+Cuando `localId` está presente, el bloque SHALL mostrar el nombre del local (`localNombre`) y, si `zonaId` está definido, el nombre de la zona (`zonaNombre`). Si el local tiene `planoPngUrl` Y `incidente.ubicacion` está definido, el bloque SHALL mostrar una miniatura del plano PNG con un pin posicionado mediante `position: absolute; left: x%; top: y%` usando los valores de `ubicacion.x` y `ubicacion.y`. El contenedor del plano SHALL tener `position: relative` para que el pin se posicione correctamente. El pin SHALL renderizarse como un punto con clase `bg-coral`. Si `localId` está definido pero `ubicacion` está ausente, el bloque muestra solo los nombres de local y zona sin imagen de plano.
+
+#### Scenario: Bloque oculto sin localId
+- **WHEN** se carga el detalle de un incidente que no tiene `localId`
+- **THEN** el bloque "Ubicación" no se renderiza en el DOM
+
+#### Scenario: Nombres de local y zona visibles
+- **WHEN** se carga el detalle de un incidente con `localId = 'loc-001'`, `localNombre = 'Almacén Principal'`, `zonaId = 'zon-001'`, `zonaNombre = 'Zona de Recepción'`
+- **THEN** el bloque muestra "Almacén Principal" y "Zona de Recepción"
+
+#### Scenario: Solo nombre de local sin zona
+- **WHEN** se carga el detalle de un incidente con `localId` definido pero `zonaId` ausente
+- **THEN** el bloque muestra el `localNombre` sin ningún texto de zona
+
+#### Scenario: Miniatura con pin cuando hay ubicacion y planoPngUrl
+- **WHEN** se carga el detalle de un incidente con `ubicacion = { x: 45, y: 30 }` y el local tiene `planoPngUrl`
+- **THEN** se muestra el PNG del plano con un punto `bg-coral` posicionado en `left: 45%; top: 30%` (position absolute dentro de contenedor relative)
+
+#### Scenario: Sin plano cuando ubicacion está ausente
+- **WHEN** se carga el detalle de un incidente con `localId` definido pero `ubicacion` ausente
+- **THEN** el bloque muestra el nombre del local/zona pero NO muestra la imagen del plano
+
+---
+
 ### Requirement: Bloque "Información de investigación" colapsable
 La sección de detalle SHALL incluir un bloque "Información de investigación" colapsable que muestre el plazo máximo de investigación calculado con `getPlazoInvestigacion(severidad)` y el estado actual del incidente con orientación sobre qué falta para avanzar al siguiente estado.
 

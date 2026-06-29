@@ -86,3 +86,58 @@ The `areaId` field across all 14 fixtures MUST rotate among at least 4 distinct 
 #### Scenario: At least 4 distinct areas
 - **WHEN** unique `areaId` values are collected from all fixtures
 - **THEN** the set has size >= 4
+
+---
+
+### Requirement: Local fixtures (ADD-03)
+The system SHALL define exactly 4 `Local` objects exported as `localFixtures` from `src/mocks/fixtures/incidents.fixtures.ts`. The four locales SHALL be:
+- `LOC-001` — **Almacén Principal** (active, `planoPngUrl: '/mock/plano-placeholder.png'`)
+- `LOC-002` — **Patio de Minerales** (active, `planoPngUrl: '/mock/plano-placeholder.png'`)
+- `LOC-003` — **Muelle de Carga** (active, `planoPngUrl: '/mock/plano-placeholder.png'`)
+- `LOC-004` — **Oficinas Administrativas** (active, `planoPngUrl: '/mock/plano-placeholder.png'`)
+
+All four are `activo: true`. The total count of 4 is within the RN-LOC-001 limit of 5 active locales.
+
+#### Scenario: Local fixture count
+- **WHEN** `localFixtures` is imported
+- **THEN** the array has exactly 4 elements
+
+#### Scenario: All locales are active
+- **WHEN** `localFixtures` is checked for `activo`
+- **THEN** all 4 have `activo: true`
+
+#### Scenario: planoPngUrl placeholder is present
+- **WHEN** any `localFixtures[n].planoPngUrl` is read
+- **THEN** the value is `'/mock/plano-placeholder.png'`
+
+---
+
+### Requirement: Zona fixtures per local (ADD-03)
+The system SHALL define a `zonaFixtures` array of `Zona` objects exported from `src/mocks/fixtures/incidents.fixtures.ts`. Each of the 4 locales SHALL have 2–4 representative zones reflecting the operational context of that site:
+- **LOC-001 Almacén Principal**: Zona de Recepción, Zona de Almacenamiento, Zona de Despacho, Zona de Carga (4 zonas)
+- **LOC-002 Patio de Minerales**: Área de Acopio Norte, Área de Acopio Sur, Zona de Pesaje (3 zonas)
+- **LOC-003 Muelle de Carga**: Muelle A, Muelle B, Zona de Espera (3 zonas)
+- **LOC-004 Oficinas Administrativas**: Recepción, Área Administrativa, Sala de Reuniones (3 zonas)
+
+All zones are `activo: true`. Zone codes follow the `ZON-NNN` format.
+
+#### Scenario: Total zona fixture count
+- **WHEN** `zonaFixtures` is imported
+- **THEN** the array has exactly 13 elements (4 + 3 + 3 + 3)
+
+#### Scenario: Zones belong to correct local
+- **WHEN** `zonaFixtures` is filtered by `localId === 'loc-001'`
+- **THEN** exactly 4 zones are returned
+
+---
+
+### Requirement: Incident fixtures distribute localId and zonaId (ADD-03)
+The existing 14 `incidentFixtures` SHALL be updated to include `localId` and `zonaId` fields drawn from the 4 locales and their zones. The distribution SHALL ensure at least 3 different locales appear across the 14 fixtures to provide varied data for the map/filter features. Fixtures #13 and #14 (CERRADO and soft-deleted) MAY omit `localId` and `zonaId` to test the absence case. All other existing fixture fields remain unchanged.
+
+#### Scenario: At least 3 distinct localIds across fixtures
+- **WHEN** unique `localId` values are collected from fixtures with a defined `localId`
+- **THEN** the set has size >= 3
+
+#### Scenario: Fixtures without localId are accepted
+- **WHEN** an `Incidente` fixture has `localId` omitted
+- **THEN** TypeScript accepts the object and the MSW list handler includes it in results

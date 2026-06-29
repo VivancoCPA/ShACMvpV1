@@ -540,7 +540,8 @@
       "titleEdit": "Edit Incident",
       "bloques": {
         "reporteInicial": "Initial Report",
-        "investigacion": "Investigation"
+        "investigacion": "Investigation",
+        "ubicacion": "Location"
       },
       "fields": {
         "tipo": "Incident type",
@@ -557,12 +558,21 @@
         "condicionesEntorno": "Environmental conditions",
         "atencionMedicaRequerida": "Was medical attention required?",
         "atencionMedicaDescripcion": "Medical attention description",
-        "informeMedicoAdjunto": "Medical report attachment (PDF, max 10 MB)"
+        "informeMedicoAdjunto": "Medical report attachment (PDF, max 10 MB)",
+        "localId": "Facility",
+        "zonaId": "Zone",
+        "ubicacionPlano": "Location on floor plan"
       },
       "placeholders": {
         "select": "Select…",
         "descripcion": "Describe the event in as much detail as possible (min. 20 characters)…",
-        "porLinea": "One item per line…"
+        "porLinea": "One item per line…",
+        "localId": "Select facility…",
+        "zonaId": "Select zone…"
+      },
+      "ubicacion": {
+        "clickHint": "Click on the floor plan to mark the incident location",
+        "limpiar": "Clear location"
       },
       "severidad": {
         "autocalculada": "(auto-calculated)"
@@ -593,7 +603,8 @@
       "escalado": "{{severidad}} severity incident — Requires immediate attention",
       "sections": {
         "descripcion": "Event description",
-        "investigacion": "Investigation information"
+        "investigacion": "Investigation information",
+        "ubicacion": "Location"
       },
       "fields": {
         "fechaEvento": "Event date",
@@ -609,7 +620,9 @@
         "personalInvolucrado": "Personnel involved",
         "testigos": "Witnesses",
         "atencionMedica": "Medical attention",
-        "informeMedico": "Medical report"
+        "informeMedico": "Medical report",
+        "local": "Facility",
+        "zona": "Zone"
       },
       "investigacion": {
         "plazoDias": "Maximum investigation period: {{dias}} business days"

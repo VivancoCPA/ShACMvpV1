@@ -11,6 +11,10 @@ export const createIncidentSchema = z
     huboLesionados: z.boolean(),
     numPersonasAfectadas: z.number().int().min(1).optional(),
     severidad: z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']).optional(),
+    localId: z.string().optional(),
+    zonaId: z.string().optional(),
+    ubicacion: z.object({ x: z.number(), y: z.number() }).optional(),
+    evidencias: z.array(z.unknown()).optional(),
   })
   .refine(
     (data) => {
@@ -35,6 +39,9 @@ export const updateIncidentInvestigacionSchema = z.object({
   atencionMedicaRequerida: z.boolean().optional(),
   atencionMedicaDescripcion: z.string().max(500).optional(),
   notificacionAmbientalRequerida: z.boolean().optional(),
+  localId: z.string().optional(),
+  zonaId: z.string().optional(),
+  ubicacion: z.object({ x: z.number(), y: z.number() }).optional(),
 })
 
 export type UpdateIncidentInvestigacionInput = z.infer<typeof updateIncidentInvestigacionSchema>

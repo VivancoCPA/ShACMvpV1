@@ -20,6 +20,7 @@ export const createIncidentFormSchema = z
     areaId: z.string().min(1, 'El área es obligatoria'),
     turno: z.enum(['DIA', 'TARDE', 'NOCHE'], { required_error: 'El turno es obligatorio' }),
     fechaEvento: z.string().min(1, 'La fecha del evento es obligatoria').superRefine((val, ctx) => {
+
       const fecha = new Date(val)
       if (isNaN(fecha.getTime())) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Fecha inválida' })
@@ -61,6 +62,9 @@ export const createIncidentFormSchema = z
           }
         }
       }),
+    localId: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    zonaId: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    ubicacion: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   })
   .refine(
     (data) => {

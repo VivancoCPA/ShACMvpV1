@@ -115,6 +115,57 @@ Al enviar exitosamente el formulario de edición, el sistema SHALL llamar a `use
 - **WHEN** el usuario modifica campos y hace clic en "Guardar"
 - **THEN** se actualiza el incidente, aparece toast de éxito y el usuario es redirigido al detalle
 
+### Requirement: Bloque "Ubicación" en formulario de incidente (ADD-03)
+El formulario SHALL incluir un bloque "Ubicación" opcional, posicionado después de los campos de descripción del bloque "Reporte inicial" y antes de la zona de carga de evidencias. El bloque contiene tres campos opcionales: `localId` (select), `zonaId` (select), y `ubicacion` (componente interactivo). La ausencia de los tres campos NO bloquea el guardado ni rompe ninguna validación Zod existente (RN-LOC-003).
+
+El campo `localId` SHALL renderizarse como un select con las opciones cargadas desde `useLocales()`. Al cambiar `localId`, el sistema SHALL resetear automáticamente `zonaId` a `undefined` y `ubicacion` a `undefined`.
+
+El campo `zonaId` SHALL renderizarse como un select con las opciones cargadas desde `useZonasByLocal(localId)`. El select SHALL estar deshabilitado cuando `localId` no tiene valor seleccionado.
+
+El componente `ubicacion` SHALL ser visible únicamente cuando `localId` tiene valor Y el local seleccionado tiene `planoPngUrl` definido. El componente muestra la imagen PNG del plano como fondo (usando `/mock/plano-placeholder.png` mientras el cliente no entregue assets reales). Al hacer clic sobre el PNG, el sistema SHALL calcular las coordenadas `x` e `y` como porcentaje (0–100) relativo al tamaño del contenedor del PNG y guardarlas en `ubicacion: { x, y }`. El pin SHALL renderizarse como un punto con clase `bg-coral` posicionado con `position: absolute` en `left: x%` / `top: y%`. El componente SHALL incluir un botón "Limpiar ubicación" que resetea `ubicacion` a `undefined` y un texto informativo "Haz clic sobre el plano para marcar la ubicación del incidente".
+
+#### Scenario: Select de local cargado con useLocales
+- **WHEN** el formulario se monta
+- **THEN** el select `localId` muestra las opciones obtenidas de `useLocales()` (máx 4 locales activos)
+
+#### Scenario: zonaId deshabilitado sin localId
+- **WHEN** el campo `localId` no tiene valor seleccionado
+- **THEN** el select `zonaId` está deshabilitado (`disabled={true}`)
+
+#### Scenario: zonaId se habilita al seleccionar localId
+- **WHEN** el usuario selecciona `localId = 'loc-001'`
+- **THEN** el select `zonaId` se habilita y carga las zonas desde `useZonasByLocal('loc-001')`
+
+#### Scenario: zonaId y ubicacion se resetean al cambiar localId
+- **WHEN** el usuario tiene `localId = 'loc-001'`, `zonaId = 'zon-002'`, y `ubicacion = { x: 30, y: 50 }` y cambia `localId` a `'loc-002'`
+- **THEN** `zonaId` vuelve a `undefined` y `ubicacion` vuelve a `undefined`
+
+#### Scenario: Componente de mapa visible con local que tiene planoPngUrl
+- **WHEN** el usuario selecciona `localId = 'loc-001'` (que tiene `planoPngUrl`)
+- **THEN** aparece el componente de mapa con la imagen del plano como fondo
+
+#### Scenario: Componente de mapa oculto sin localId
+- **WHEN** `localId` no tiene valor
+- **THEN** el componente de mapa interactivo no se renderiza
+
+#### Scenario: Clic en mapa registra coordenadas porcentuales
+- **WHEN** el usuario hace clic sobre el PNG en la posición (150px, 75px) dentro de un contenedor de 300×150 px
+- **THEN** el sistema guarda `ubicacion = { x: 50, y: 50 }` (cada coordenada = posición / tamaño × 100)
+
+#### Scenario: Pin coral visible en posición guardada
+- **WHEN** `ubicacion = { x: 45, y: 30 }` está guardado
+- **THEN** se muestra un punto con clase `bg-coral` posicionado en `left: 45%; top: 30%` relativo al contenedor del PNG
+
+#### Scenario: Botón "Limpiar ubicación" resetea el pin
+- **WHEN** el usuario hace clic en el botón "Limpiar ubicación"
+- **THEN** `ubicacion` vuelve a `undefined` y el pin desaparece del mapa
+
+#### Scenario: Campos opcionales no bloquean el submit
+- **WHEN** el usuario envía el formulario sin seleccionar `localId`, `zonaId` ni `ubicacion`
+- **THEN** el formulario se envía sin errores de validación (los tres campos son opcionales)
+
+---
+
 ### Requirement: Tipo IncidentEvidencia y campo `evidencias` en schema Zod
 El sistema SHALL definir la interfaz `IncidentEvidencia` en `src/features/incidents/types/` con los campos: `id: string`, `url: string`, `nombre: string`, `tipo: 'imagen' | 'pdf'`, `tamanioKb: number`, `creadoEn: string` (ISO 8601), `creadoPor: string`. La interfaz `Incidente` SHALL incluir `evidencias?: IncidentEvidencia[]`. El schema Zod SHALL validar `evidencias` como array opcional de `File`: máx 5 archivos, cada archivo máx 10 MB, tipos aceptados `image/jpeg`, `image/png`, `application/pdf`.
 

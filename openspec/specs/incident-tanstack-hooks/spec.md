@@ -99,3 +99,37 @@ All `toast.success` and `toast.error` calls inside hooks MUST use `useTranslatio
 #### Scenario: i18n namespace used for toasts
 - **WHEN** a mutation succeeds or fails
 - **THEN** `t('incidents:...')` produces the toast message (not a hardcoded Spanish string)
+
+---
+
+### Requirement: useLocales hook (ADD-03)
+The module SHALL export `useLocales()` from `src/features/incidents/hooks/useLocales.ts`. The hook SHALL call `GET /api/locales` via the Axios instance, return only active locales (`activo: true`), and use query key `['locales']`. The hook is always enabled; it requires no parameters.
+
+#### Scenario: Returns only active locales
+- **WHEN** `useLocales()` is called and MSW returns all 4 locales (all active)
+- **THEN** `data` is an array of 4 `Local` objects
+
+#### Scenario: Typed return
+- **WHEN** `useLocales().data` is accessed
+- **THEN** TypeScript infers the type as `Local[] | undefined`
+
+---
+
+### Requirement: useZonasByLocal hook (ADD-03)
+The module SHALL export `useZonasByLocal(localId: string)` from `src/features/incidents/hooks/useZonasByLocal.ts`. The hook SHALL call `GET /api/locales/:localId/zonas`, filter for active zones only, use query key `['locales', localId, 'zonas']`, and be disabled (`enabled: false`) when `localId` is an empty string.
+
+#### Scenario: Disabled when localId is empty
+- **WHEN** `useZonasByLocal('')` is called
+- **THEN** the query is not fired (`enabled: false`)
+
+#### Scenario: Returns zones for the given local
+- **WHEN** `useZonasByLocal('loc-001')` is called and MSW returns 4 zones for LOC-001
+- **THEN** `data` is an array of 4 `Zona` objects
+
+#### Scenario: Typed return
+- **WHEN** `useZonasByLocal('loc-001').data` is accessed
+- **THEN** TypeScript infers the type as `Zona[] | undefined`
+
+#### Scenario: Key changes when localId changes
+- **WHEN** the `localId` argument changes from `'loc-001'` to `'loc-002'`
+- **THEN** TanStack Query fires a new request with key `['locales', 'loc-002', 'zonas']`

@@ -134,8 +134,38 @@ The handler MUST update the specific AC within the incident and return 200.
 - **WHEN** `PATCH /api/incidents/inc-005/acciones/ac-inc-001` is called with `{ estado: 'COMPLETADA' }`
 - **THEN** the response is 200 and the AC's `estado` is `'COMPLETADA'`
 
+### Requirement: GET /api/locales handler (ADD-03)
+The handler MUST return all active locales from `localFixtures` as `ApiResponse<Local[]>` with status 200. The response SHALL include only locales with `activo: true`. The handler MUST apply the standard 400ms simulated latency.
+
+#### Scenario: Returns 4 active locales
+- **WHEN** `GET /api/locales` is requested
+- **THEN** the response is 200, `success: true`, and `data` is an array of 4 `Local` objects
+
+#### Scenario: Response format matches ApiResponse
+- **WHEN** `GET /api/locales` is requested
+- **THEN** the response body has `{ data: Local[], success: true }` with no `pagination` field (full list, no paging)
+
+---
+
+### Requirement: GET /api/locales/:localId/zonas handler (ADD-03)
+The handler MUST filter `zonaFixtures` by the `localId` path parameter and return only active zones as `ApiResponse<Zona[]>` with status 200. If the `localId` does not match any local in `localFixtures`, the handler SHALL return 404 with `success: false`. The handler MUST apply the standard 400ms simulated latency.
+
+#### Scenario: Returns zones for LOC-001
+- **WHEN** `GET /api/locales/loc-001/zonas` is requested
+- **THEN** the response is 200 and `data` contains exactly 4 `Zona` objects whose `localId === 'loc-001'`
+
+#### Scenario: Returns zones for LOC-003
+- **WHEN** `GET /api/locales/loc-003/zonas` is requested
+- **THEN** the response is 200 and `data` contains exactly 3 `Zona` objects whose `localId === 'loc-003'`
+
+#### Scenario: Unknown localId returns 404
+- **WHEN** `GET /api/locales/loc-999/zonas` is requested
+- **THEN** the response status is 404 and `success: false`
+
+---
+
 ### Requirement: Registered in handlers/index.ts
-`incidentHandlers` MUST be imported from `incidents.handlers.ts` and spread into the `handlers` array in `src/mocks/handlers/index.ts` without removing M1 or M2 handlers.
+`incidentHandlers` MUST be imported from `incidents.handlers.ts` and spread into the `handlers` array in `src/mocks/handlers/index.ts` without removing M1 or M2 handlers. The local and zona handlers SHALL be included within `incidentHandlers` (not a separate export).
 
 #### Scenario: handlers/index.ts includes incidentHandlers
 - **WHEN** `handlers/index.ts` is imported

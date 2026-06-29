@@ -110,3 +110,51 @@ The system SHALL define an `AuditTrailEntry` interface in `src/features/incident
 #### Scenario: Incident AuditTrailEntry entidadTipo is narrowed to Incidente
 - **WHEN** a developer reads `auditEntry.entidadTipo` on an incident audit entry
 - **THEN** TypeScript narrows the value to the literal `'Incidente'`
+
+---
+
+### Requirement: Local interface (ADD-03)
+The system SHALL define a `Local` interface in `src/features/incidents/types/incident.types.ts` with the following required fields: `id` (string), `nombre` (string), `codigo` (string, format `LOC-NNN`), `activo` (boolean), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `direccion` (string), `planoPngUrl` (string — URL to a PNG floor plan image, ~300 KB; placeholder `/mock/plano-placeholder.png` until client delivers assets). A maximum of 5 locales may be active simultaneously (RN-LOC-001); this constraint is enforced at the API level, not in the TypeScript type.
+
+#### Scenario: Local requires all mandatory fields
+- **WHEN** a developer constructs a `Local` without `codigo`
+- **THEN** TypeScript emits a compile error for the missing required field
+
+#### Scenario: Local accepts planoPngUrl as undefined
+- **WHEN** a developer constructs a `Local` with `planoPngUrl` omitted
+- **THEN** TypeScript accepts the object without error
+
+---
+
+### Requirement: Zona interface (ADD-03)
+The system SHALL define a `Zona` interface in `src/features/incidents/types/incident.types.ts` with the following required fields: `id` (string), `localId` (string — FK to `Local.id`), `nombre` (string), `codigo` (string, format `ZON-NNN`), `activo` (boolean), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional field: `descripcion` (string). Zones are exclusive to their local (RN-ZON-001); there is no upper limit on zones per local.
+
+#### Scenario: Zona requires localId
+- **WHEN** a developer constructs a `Zona` without `localId`
+- **THEN** TypeScript emits a compile error for the missing required field
+
+---
+
+### Requirement: IncidenteUbicacion interface (ADD-03)
+The system SHALL define an `IncidenteUbicacion` interface in `src/features/incidents/types/incident.types.ts` with two required number fields: `x` (percentage 0–100 of the PNG width) and `y` (percentage 0–100 of the PNG height). This coordinate system maps a pin position on the `Local.planoPngUrl` floor plan image.
+
+#### Scenario: IncidenteUbicacion requires both x and y
+- **WHEN** a developer constructs an `IncidenteUbicacion` with only `x`
+- **THEN** TypeScript emits a compile error for the missing `y` field
+
+---
+
+### Requirement: Incidente interface extended with location fields (ADD-03)
+The `Incidente` interface SHALL include the following additional optional fields from ADD-03: `localId` (string — FK to `Local.id`), `zonaId` (string — FK to `Zona.id`), `ubicacion` (`IncidenteUbicacion` — map pin coordinates on the local's floor plan), `localNombre` (string — denormalized join field for display), `zonaNombre` (string — denormalized join field for display). None of these fields are required; their absence MUST NOT break any existing Zod schema validation (RN-LOC-003). If `zonaId` is provided, it must belong to the `localId` indicated — this constraint is validated at the form level, not at the TypeScript type level (RN-ZON-003).
+
+#### Scenario: Incidente accepts all location fields absent
+- **WHEN** a developer constructs an `Incidente` with no `localId`, `zonaId`, `ubicacion`, `localNombre`, or `zonaNombre`
+- **THEN** TypeScript accepts the object without error
+
+#### Scenario: Incidente accepts all location fields present
+- **WHEN** a developer constructs an `Incidente` with `localId: 'loc-001'`, `zonaId: 'zon-001'`, `ubicacion: { x: 45, y: 30 }`, `localNombre: 'Almacén Principal'`, `zonaNombre: 'Zona de Carga'`
+- **THEN** TypeScript accepts the object without error
+
+#### Scenario: ubicacion is typed as IncidenteUbicacion or undefined
+- **WHEN** a developer reads `incidente.ubicacion`
+- **THEN** TypeScript infers the type as `IncidenteUbicacion | undefined`
