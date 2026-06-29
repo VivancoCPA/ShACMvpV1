@@ -21,7 +21,8 @@
       "CRITICA": "Crítica"
     },
     "nav": {
-      "nonconformities": "No Conformidades"
+      "nonconformities": "No Conformidades",
+      "incidents": "Incidentes SyST"
     }
   },
   "documents": {
@@ -246,7 +247,7 @@
           "confirm": "Eliminar"
         },
         "toast": {
-          "success": "Documento eliminado correctamente.",
+          "success": "Documento {{codigo}} eliminado correctamente.",
           "error": "Error al eliminar el documento."
         }
       }
@@ -327,7 +328,7 @@
           "confirm": "Restaurar"
         },
         "toast": {
-          "success": "Documento restaurado. Ahora está en Borrador.",
+          "success": "Documento {{codigo}} restaurado. Ahora está en Borrador.",
           "error": "Error al restaurar el documento."
         }
       }
@@ -434,7 +435,223 @@
     "toggleLanguage": "Cambiar idioma"
   },
   "qualityEvents": {},
-  "incidents": {},
+  "incidents": {
+    "list": {
+      "title": "Incidentes SyST",
+      "empty": "No se encontraron incidentes.",
+      "emptyWithFilters": "No hay incidentes que coincidan con los filtros aplicados.",
+      "columns": {
+        "numero": "Número",
+        "tipo": "Tipo",
+        "descripcion": "Descripción",
+        "area": "Área",
+        "severidad": "Severidad",
+        "estado": "Estado",
+        "fechaEvento": "Fecha Evento",
+        "acciones": "Acciones"
+      },
+      "actions": {
+        "nuevo": "Nuevo incidente",
+        "verDetalle": "Ver detalle",
+        "reintentar": "Reintentar",
+        "errorMsg": "Error al cargar los incidentes."
+      }
+    },
+    "filters": {
+      "searchLabel": "Buscar incidentes",
+      "searchPlaceholder": "Buscar por número o descripción…",
+      "tipoLabel": "Tipo",
+      "estadoLabel": "Estado",
+      "severidadLabel": "Severidad",
+      "areaLabel": "Área",
+      "turnoLabel": "Turno",
+      "fechaDesdeLabel": "Desde",
+      "fechaHastaLabel": "Hasta",
+      "todos": "Todos",
+      "limpiar": "Limpiar filtros",
+      "mostrarEliminados": "Mostrar eliminados"
+    },
+    "delete": {
+      "confirm": {
+        "title": "¿Eliminar incidente?",
+        "message": "Se eliminará el incidente {{numero}}. Esta acción no se puede deshacer fácilmente.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar"
+      }
+    },
+    "restore": {
+      "confirm": {
+        "title": "¿Restaurar incidente?",
+        "message": "Se restaurará el incidente {{numero}}.",
+        "cancel": "Cancelar",
+        "confirm": "Restaurar"
+      }
+    },
+    "toasts": {
+      "created": "Incidente registrado correctamente.",
+      "createError": "Error al registrar el incidente.",
+      "updated": "Incidente actualizado.",
+      "updateError": "Error al actualizar el incidente.",
+      "statusUpdated": "Estado del incidente actualizado.",
+      "statusUpdateError": "Error al cambiar el estado del incidente.",
+      "deleted": "Incidente {{numero}} eliminado.",
+      "deleteError": "Error al eliminar el incidente.",
+      "restored": "Incidente {{numero}} restaurado correctamente.",
+      "restoreError": "Error al restaurar el incidente.",
+      "acCreada": "Acción correctiva creada.",
+      "acCreateError": "Error al crear la acción correctiva.",
+      "acUpdated": "Acción correctiva actualizada.",
+      "acUpdateError": "Error al actualizar la acción correctiva."
+    },
+    "errors": {
+      "notFound": "Incidente no encontrado.",
+      "acNotFound": "Acción correctiva no encontrada."
+    },
+    "tipo": {
+      "ACCIDENTE": "Accidente",
+      "INCIDENTE": "Incidente",
+      "CUASI_ACCIDENTE": "Cuasi-accidente",
+      "CONDICION_INSEGURA": "Condición insegura"
+    },
+    "status": {
+      "ABIERTO": "Abierto",
+      "EN_INVESTIGACION": "En investigación",
+      "ANALISIS_COMPLETADO": "Análisis completado",
+      "EN_EJECUCION": "En ejecución",
+      "PENDIENTE_CIERRE": "Pendiente de cierre",
+      "CERRADO": "Cerrado",
+      "ANULADO": "Anulado"
+    },
+    "severidad": {
+      "BAJA": "Baja",
+      "MEDIA": "Media",
+      "ALTA": "Alta",
+      "CRITICA": "Crítica"
+    },
+    "turno": {
+      "DIA": "Día",
+      "TARDE": "Tarde",
+      "NOCHE": "Noche"
+    },
+    "form": {
+      "titleNew": "Nuevo Incidente",
+      "titleEdit": "Editar Incidente",
+      "bloques": {
+        "reporteInicial": "Reporte inicial",
+        "investigacion": "Investigación"
+      },
+      "fields": {
+        "tipo": "Tipo de incidente",
+        "descripcion": "Descripción",
+        "area": "Área",
+        "turno": "Turno",
+        "fechaEvento": "Fecha y hora del evento",
+        "severidad": "Severidad",
+        "huboLesionados": "¿Hubo lesionados?",
+        "numPersonasAfectadas": "Número de personas afectadas",
+        "personalInvolucrado": "Personal involucrado",
+        "testigos": "Testigos",
+        "equiposInvolucrados": "Equipos involucrados",
+        "condicionesEntorno": "Condiciones del entorno",
+        "atencionMedicaRequerida": "¿Se requirió atención médica?",
+        "atencionMedicaDescripcion": "Descripción atención médica",
+        "informeMedicoAdjunto": "Informe médico adjunto (PDF, máx 10 MB)"
+      },
+      "placeholders": {
+        "select": "Seleccionar…",
+        "descripcion": "Describa el evento con el mayor detalle posible (mín. 20 caracteres)…",
+        "porLinea": "Un elemento por línea…"
+      },
+      "severidad": {
+        "autocalculada": "(auto-calculada)"
+      },
+      "investigacion": {
+        "plazoDias": "Plazo máximo de investigación: {{dias}} días hábiles",
+        "informeMedicoNota": "Para incidentes de tipo Accidente, el informe médico es requerido para el cierre (RN-INC-002)"
+      },
+      "evidencias": {
+        "label": "Evidencias (fotos / documentos)",
+        "uploadLabel": "Agregar archivos (max {{max}} restante(s))",
+        "errorMaxFiles": "Máximo 5 archivos permitidos",
+        "errorMaxSize": "El archivo '{{nombre}}' supera el límite de 10 MB",
+        "removeFile": "Eliminar archivo",
+        "cerrarLightbox": "Cerrar imagen",
+        "acidenteNota": "Para incidentes de tipo Accidente, la evidencia fotográfica es requerida para el cierre (RN-INC-002)",
+        "existentes": "Evidencias guardadas"
+      },
+      "actions": {
+        "submit": "Guardar incidente",
+        "submitting": "Guardando…",
+        "cancel": "Cancelar"
+      }
+    },
+    "detail": {
+      "backToList": "Volver a Incidentes",
+      "notFound": "El incidente no existe o fue eliminado.",
+      "escalado": "Incidente de severidad {{severidad}} — Requiere atención inmediata",
+      "sections": {
+        "descripcion": "Descripción del evento",
+        "investigacion": "Información de investigación"
+      },
+      "fields": {
+        "fechaEvento": "Fecha del evento",
+        "area": "Área",
+        "turno": "Turno",
+        "fechaReporte": "Fecha de reporte",
+        "reportadoPor": "Reportado por",
+        "estado": "Estado",
+        "huboLesionados": "Lesionados",
+        "siConPersonas": "Sí ({{num}} persona(s))",
+        "condicionesEntorno": "Condiciones del entorno",
+        "equiposInvolucrados": "Equipos involucrados",
+        "personalInvolucrado": "Personal involucrado",
+        "testigos": "Testigos",
+        "atencionMedica": "Atención médica",
+        "informeMedico": "Informe médico"
+      },
+      "investigacion": {
+        "plazoDias": "Plazo máximo de investigación: {{dias}} días hábiles"
+      },
+      "alertas": {
+        "sinInformeMedico": "Falta informe médico — requerido para cerrar este incidente (RN-INC-002)",
+        "sinEvidencias": "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)"
+      },
+      "actions": {
+        "editar": "Editar",
+        "eliminar": "Eliminar"
+      },
+      "evidencias": {
+        "title": "Evidencias adjuntas"
+      }
+    },
+    "acSection": {
+      "title": "Acciones Correctivas",
+      "empty": "Sin acciones correctivas registradas.",
+      "agregarModal": {
+        "title": "Agregar acción correctiva"
+      },
+      "fields": {
+        "descripcion": "Descripción",
+        "responsable": "Responsable",
+        "fechaLimite": "Fecha límite"
+      },
+      "placeholders": {
+        "descripcion": "Describa la acción correctiva…",
+        "responsable": "Seleccionar responsable…"
+      },
+      "acStatus": {
+        "PENDIENTE": "Pendiente",
+        "EN_EJECUCION": "En ejecución",
+        "COMPLETADA": "Completada",
+        "CERRADA": "Cerrada"
+      },
+      "actions": {
+        "add": "Agregar AC",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      }
+    }
+  },
   "nonconformities": {
     "status": {
       "ABIERTA": "Abierta",

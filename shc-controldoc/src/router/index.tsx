@@ -10,6 +10,10 @@ import { DocumentDetailPage } from '../features/documents/pages/DocumentDetailPa
 import { NonconformityListPage } from '../features/nonconformities/pages/NonconformityListPage'
 import { NonconformityNewPage } from '../features/nonconformities/pages/NonconformityNewPage'
 import { NonconformityDetailPage } from '../features/nonconformities/pages/NonconformityDetailPage'
+import { IncidentListPage } from '../features/incidents/pages/IncidentListPage'
+import { IncidentNewPage } from '../features/incidents/pages/IncidentNewPage'
+import { IncidentEditPage } from '../features/incidents/pages/IncidentEditPage'
+import { IncidentDetailPage } from '../features/incidents/pages/IncidentDetailPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 
@@ -105,9 +109,46 @@ export const router = createBrowserRouter([
             handle: { breadcrumb: 'nonconformities' },
           },
           {
-            path: '/incidentes',
-            element: <ComingSoon label="Incidentes SyST" />,
-            handle: { breadcrumb: 'incidents' },
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'OPERARIO',
+                  'SUPERVISOR',
+                  'JEFE_CALIDAD_SYST',
+                  'AUDITOR_INTERNO',
+                  'ALTA_DIRECCION',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/incidents',
+                element: <IncidentListPage />,
+                handle: { breadcrumb: 'incidents' },
+              },
+              {
+                path: '/incidents/nuevo',
+                element: <IncidentNewPage />,
+                handle: { breadcrumb: 'incidents' },
+              },
+              {
+                path: '/incidents/:id',
+                element: <IncidentDetailPage />,
+                handle: { breadcrumb: 'incidents' },
+              },
+            ],
+          },
+          {
+            element: (
+              <RoleGuard requiredRoles={['SUPERVISOR', 'JEFE_CALIDAD_SYST']} />
+            ),
+            children: [
+              {
+                path: '/incidents/:id/editar',
+                element: <IncidentEditPage />,
+                handle: { breadcrumb: 'incidents' },
+              },
+            ],
           },
           {
             path: '/quality-events',

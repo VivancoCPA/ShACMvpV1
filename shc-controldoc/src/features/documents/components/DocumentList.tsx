@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -200,10 +200,10 @@ export function DocumentList() {
 
   const queryClient = useQueryClient()
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteDocument(id),
-    onSuccess: () => {
+    mutationFn: ({ id }: { id: string; codigo: string }) => deleteDocument(id),
+    onSuccess: (_, { codigo }) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
-      toast.success(t('actions.delete.toast.success'))
+      toast.success(t('actions.delete.toast.success', { codigo }))
       setPendingDeleteDoc(null)
     },
     onError: () => {
@@ -213,10 +213,10 @@ export function DocumentList() {
   })
 
   const restoreMutation = useMutation({
-    mutationFn: (id: string) => restaurarDocumento(id),
-    onSuccess: () => {
+    mutationFn: ({ id }: { id: string; codigo: string }) => restaurarDocumento(id),
+    onSuccess: (_, { codigo }) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
-      toast.success(t('deleted.restore.toast.success'))
+      toast.success(t('deleted.restore.toast.success', { codigo }))
       setPendingRestoreDoc(null)
     },
     onError: () => {
@@ -229,6 +229,31 @@ export function DocumentList() {
   const effectiveRole: UserRole = (userRole as UserRole | undefined) ?? 'OPERARIO'
   const canCreate = userRole !== undefined && CREATE_ROLES.has(userRole)
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
+
+  const removeParam = useCallback(
+    (key: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(key)
+        next.set('page', '1')
+        return next
+      })
+    },
+    [setSearchParams],
+  )
+
+  type ChipDef = { key: string; label: string }
+  const activeChips: ChipDef[] = []
+  const searchParam = searchParams.get('search')
+  if (searchParam) activeChips.push({ key: 'search', label: `"${searchParam}"` })
+  const estadoParam = searchParams.get('estado')
+  if (estadoParam) activeChips.push({ key: 'estado', label: estadoParam })
+  const tipoParam = searchParams.get('tipo')
+  if (tipoParam) activeChips.push({ key: 'tipo', label: tipoParam })
+  const areaParam = searchParams.get('area')
+  if (areaParam) activeChips.push({ key: 'area', label: areaParam })
+  if (searchParams.get('pendientes') === 'true') activeChips.push({ key: 'pendientes', label: t('pendientes.filtro') })
+  if (includeDeleted) activeChips.push({ key: 'includeDeleted', label: t('deleted.toggle.label') })
 
   const pendingDocIds = useMemo(() => {
     const ids = new Set<string>()
@@ -276,24 +301,44 @@ export function DocumentList() {
     t('list.columns.acciones'),
   ]
 
+  const thClass =
+    'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft'
+
   return (
     <>
-    <div className="overflow-hidden rounded-lg border border-hairline dark:border-hairline/20">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-canvas text-left dark:bg-surface-dark">
-          <thead>
-            <tr className="border-b border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-elevated">
+    {activeChips.length > 0 && (
+      <div className="mb-4 flex flex-wrap gap-2">
+        {activeChips.map((chip) => (
+          <span
+            key={chip.key}
+            className="inline-flex items-center gap-1 rounded-pill bg-surface-soft px-2.5 py-1 text-xs text-ink dark:bg-surface-dark-soft dark:text-on-dark"
+          >
+            {chip.label}
+            <button
+              type="button"
+              onClick={() => removeParam(chip.key)}
+              aria-label={`${t('list.filters.limpiar')} ${chip.label}`}
+              className="ml-0.5 text-muted hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+      </div>
+    )}
+
+    <div className="overflow-x-auto rounded-lg border border-hairline dark:border-hairline/20">
+        <table className="w-full text-sm">
+          <thead className="border-b border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
+            <tr>
               {columns.map((col) => (
-                <th
-                  key={col}
-                  className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted dark:text-on-dark-soft"
-                >
+                <th key={col} className={thClass}>
                   {col}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-hairline dark:divide-hairline/20">
             {isLoading && <TableSkeleton />}
 
             {!isLoading && isError && (
@@ -381,8 +426,6 @@ export function DocumentList() {
               ))}
           </tbody>
         </table>
-      </div>
-
     </div>
 
     <Pagination
@@ -397,7 +440,7 @@ export function DocumentList() {
       <DeleteConfirmModal
         documento={pendingDeleteDoc}
         isPending={deleteMutation.isPending}
-        onConfirm={() => deleteMutation.mutate(pendingDeleteDoc.id)}
+        onConfirm={() => deleteMutation.mutate({ id: pendingDeleteDoc.id, codigo: pendingDeleteDoc.codigo })}
         onClose={() => setPendingDeleteDoc(null)}
       />
     )}
@@ -406,7 +449,7 @@ export function DocumentList() {
       <RestoreConfirmModal
         documento={pendingRestoreDoc}
         isPending={restoreMutation.isPending}
-        onConfirm={() => restoreMutation.mutate(pendingRestoreDoc.id)}
+        onConfirm={() => restoreMutation.mutate({ id: pendingRestoreDoc.id, codigo: pendingRestoreDoc.codigo })}
         onClose={() => setPendingRestoreDoc(null)}
       />
     )}

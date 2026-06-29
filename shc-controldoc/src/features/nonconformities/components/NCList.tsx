@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Trash2, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, Eye, Trash2, RotateCcw, X } from 'lucide-react'
 import { useNCList } from '../hooks/useNCList'
 import { useDeleteNC, useRestoreNC } from '../hooks/useNonconformities'
 import { getNCPermissions } from '../utils/ncPermissions'
@@ -154,11 +154,60 @@ export function NCList() {
     })
   }
 
+  const removeParam = useCallback(
+    (key: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(key)
+        next.set('page', '1')
+        return next
+      })
+    },
+    [setSearchParams],
+  )
+
+  type ChipDef = { key: string; label: string }
+  const activeChips: ChipDef[] = []
+  const estadoParam = searchParams.get('estado')
+  if (estadoParam) activeChips.push({ key: 'estado', label: t(`status.${estadoParam}`) })
+  const severidadParam = searchParams.get('severidad')
+  if (severidadParam) activeChips.push({ key: 'severidad', label: severidadParam })
+  const areaAfectadaParam = searchParams.get('areaAfectada')
+  if (areaAfectadaParam) activeChips.push({ key: 'areaAfectada', label: areaAfectadaParam })
+  const fechaDesdeParam = searchParams.get('fechaDesde')
+  if (fechaDesdeParam) activeChips.push({ key: 'fechaDesde', label: `Desde: ${fechaDesdeParam}` })
+  const fechaHastaParam = searchParams.get('fechaHasta')
+  if (fechaHastaParam) activeChips.push({ key: 'fechaHasta', label: `Hasta: ${fechaHastaParam}` })
+  const searchParam = searchParams.get('search')
+  if (searchParam) activeChips.push({ key: 'search', label: `"${searchParam}"` })
+  if (searchParams.get('showDeleted') === 'true') activeChips.push({ key: 'showDeleted', label: t('filters.mostrarEliminados') })
+
   const thClass =
     'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft'
 
   return (
     <div>
+      {activeChips.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {activeChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="inline-flex items-center gap-1 rounded-pill bg-surface-soft px-2.5 py-1 text-xs text-ink dark:bg-surface-dark-soft dark:text-on-dark"
+            >
+              {chip.label}
+              <button
+                type="button"
+                onClick={() => removeParam(chip.key)}
+                aria-label={`${t('filters.limpiar')} ${chip.label}`}
+                className="ml-0.5 text-muted hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg border border-hairline dark:border-hairline/20">
         <table className="w-full text-sm">
           <thead className="border-b border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
@@ -280,10 +329,11 @@ export function NCList() {
                               e.stopPropagation()
                               navigate(`/nonconformities/${nc.id}`)
                             }}
-                            className="rounded-md px-2.5 py-1 text-xs font-medium text-coral transition-colors hover:bg-coral/10 dark:hover:bg-coral/15"
                             aria-label={t('list.actions.verDetalle')}
+                            title={t('list.actions.verDetalle')}
+                            className="rounded-sm p-1 text-muted transition-colors hover:text-coral dark:text-on-dark-soft dark:hover:text-coral"
                           >
-                            {t('list.actions.verDetalle')}
+                            <Eye size={14} aria-hidden="true" />
                           </button>
                         )}
                         {showDeleteBtn && (
@@ -294,6 +344,7 @@ export function NCList() {
                               setPendingDeleteNC(nc)
                             }}
                             aria-label={t('delete.actions.confirm')}
+                            title={t('delete.actions.confirm')}
                             className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
                           >
                             <Trash2 size={14} aria-hidden="true" />
@@ -307,6 +358,7 @@ export function NCList() {
                               setPendingRestoreNC(nc)
                             }}
                             aria-label={t('restore.tooltip')}
+                            title={t('restore.tooltip')}
                             className="rounded-sm p-1 text-muted transition-colors hover:text-teal dark:text-on-dark-soft dark:hover:text-teal"
                           >
                             <RotateCcw size={14} aria-hidden="true" />

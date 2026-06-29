@@ -74,7 +74,7 @@ export function DocumentListRow({
       onClick={onClick}
       className={`${TABLE_ROW_CLASS} border-b border-hairline dark:border-hairline/20 ${rowBg} ${pendingBorder} ${isDeleted ? 'opacity-50 cursor-default' : ''}`}
     >
-      <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-ink dark:text-on-dark">
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-ink dark:text-on-dark">
         <span className="flex items-center gap-1.5">
           {hasVersions ? (
             <button
@@ -104,15 +104,15 @@ export function DocumentListRow({
         </span>
       </td>
 
-      <td className={`max-w-[200px] truncate px-4 py-3 text-sm text-ink dark:text-on-dark ${isDeleted ? 'line-through' : ''}`} title={documento.titulo}>
+      <td className={`max-w-[200px] truncate px-4 py-3 text-xs text-ink dark:text-on-dark ${isDeleted ? 'line-through' : ''}`} title={documento.titulo}>
         {documento.titulo}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 text-sm text-muted dark:text-on-dark-soft">
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted dark:text-on-dark-soft">
         {documento.tipo}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 text-sm text-muted dark:text-on-dark-soft">
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted dark:text-on-dark-soft">
         {documento.version}
       </td>
 
@@ -127,7 +127,7 @@ export function DocumentListRow({
         </div>
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 text-sm text-muted dark:text-on-dark-soft">
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted dark:text-on-dark-soft">
         {documento.area}
       </td>
 

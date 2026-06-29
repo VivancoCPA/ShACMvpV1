@@ -21,7 +21,8 @@
       "CRITICA": "Critical"
     },
     "nav": {
-      "nonconformities": "Non-Conformities"
+      "nonconformities": "Non-Conformities",
+      "incidents": "SyST Incidents"
     }
   },
   "documents": {
@@ -246,7 +247,7 @@
           "confirm": "Delete"
         },
         "toast": {
-          "success": "Document deleted successfully.",
+          "success": "Document {{codigo}} deleted successfully.",
           "error": "Failed to delete the document."
         }
       }
@@ -327,7 +328,7 @@
           "confirm": "Restore"
         },
         "toast": {
-          "success": "Document restored. It is now in Draft.",
+          "success": "Document {{codigo}} restored. It is now in Draft.",
           "error": "Failed to restore the document."
         }
       }
@@ -434,7 +435,223 @@
     "toggleLanguage": "Toggle language"
   },
   "qualityEvents": {},
-  "incidents": {},
+  "incidents": {
+    "list": {
+      "title": "SyST Incidents",
+      "empty": "No incidents found.",
+      "emptyWithFilters": "No incidents match the applied filters.",
+      "columns": {
+        "numero": "Number",
+        "tipo": "Type",
+        "descripcion": "Description",
+        "area": "Area",
+        "severidad": "Severity",
+        "estado": "Status",
+        "fechaEvento": "Event Date",
+        "acciones": "Actions"
+      },
+      "actions": {
+        "nuevo": "New incident",
+        "verDetalle": "View details",
+        "reintentar": "Retry",
+        "errorMsg": "Failed to load incidents."
+      }
+    },
+    "filters": {
+      "searchLabel": "Search incidents",
+      "searchPlaceholder": "Search by number or description…",
+      "tipoLabel": "Type",
+      "estadoLabel": "Status",
+      "severidadLabel": "Severity",
+      "areaLabel": "Area",
+      "turnoLabel": "Shift",
+      "fechaDesdeLabel": "From",
+      "fechaHastaLabel": "To",
+      "todos": "All",
+      "limpiar": "Clear filters",
+      "mostrarEliminados": "Show deleted"
+    },
+    "delete": {
+      "confirm": {
+        "title": "Delete incident?",
+        "message": "Incident {{numero}} will be deleted. This action is difficult to undo.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    },
+    "restore": {
+      "confirm": {
+        "title": "Restore incident?",
+        "message": "Incident {{numero}} will be restored.",
+        "cancel": "Cancel",
+        "confirm": "Restore"
+      }
+    },
+    "toasts": {
+      "created": "Incident registered successfully.",
+      "createError": "Failed to register the incident.",
+      "updated": "Incident updated.",
+      "updateError": "Failed to update the incident.",
+      "statusUpdated": "Incident status updated.",
+      "statusUpdateError": "Failed to change the incident status.",
+      "deleted": "Incident {{numero}} deleted.",
+      "deleteError": "Failed to delete the incident.",
+      "restored": "Incident {{numero}} restored successfully.",
+      "restoreError": "Failed to restore the incident.",
+      "acCreada": "Corrective action created.",
+      "acCreateError": "Failed to create the corrective action.",
+      "acUpdated": "Corrective action updated.",
+      "acUpdateError": "Failed to update the corrective action."
+    },
+    "errors": {
+      "notFound": "Incident not found.",
+      "acNotFound": "Corrective action not found."
+    },
+    "tipo": {
+      "ACCIDENTE": "Accident",
+      "INCIDENTE": "Incident",
+      "CUASI_ACCIDENTE": "Near Miss",
+      "CONDICION_INSEGURA": "Unsafe Condition"
+    },
+    "status": {
+      "ABIERTO": "Open",
+      "EN_INVESTIGACION": "Under Investigation",
+      "ANALISIS_COMPLETADO": "Analysis Complete",
+      "EN_EJECUCION": "In Execution",
+      "PENDIENTE_CIERRE": "Pending Closure",
+      "CERRADO": "Closed",
+      "ANULADO": "Voided"
+    },
+    "severidad": {
+      "BAJA": "Low",
+      "MEDIA": "Medium",
+      "ALTA": "High",
+      "CRITICA": "Critical"
+    },
+    "turno": {
+      "DIA": "Day",
+      "TARDE": "Afternoon",
+      "NOCHE": "Night"
+    },
+    "form": {
+      "titleNew": "New Incident",
+      "titleEdit": "Edit Incident",
+      "bloques": {
+        "reporteInicial": "Initial Report",
+        "investigacion": "Investigation"
+      },
+      "fields": {
+        "tipo": "Incident type",
+        "descripcion": "Description",
+        "area": "Area",
+        "turno": "Shift",
+        "fechaEvento": "Date and time of event",
+        "severidad": "Severity",
+        "huboLesionados": "Were there injuries?",
+        "numPersonasAfectadas": "Number of people affected",
+        "personalInvolucrado": "Personnel involved",
+        "testigos": "Witnesses",
+        "equiposInvolucrados": "Equipment involved",
+        "condicionesEntorno": "Environmental conditions",
+        "atencionMedicaRequerida": "Was medical attention required?",
+        "atencionMedicaDescripcion": "Medical attention description",
+        "informeMedicoAdjunto": "Medical report attachment (PDF, max 10 MB)"
+      },
+      "placeholders": {
+        "select": "Select…",
+        "descripcion": "Describe the event in as much detail as possible (min. 20 characters)…",
+        "porLinea": "One item per line…"
+      },
+      "severidad": {
+        "autocalculada": "(auto-calculated)"
+      },
+      "investigacion": {
+        "plazoDias": "Maximum investigation period: {{dias}} business days",
+        "informeMedicoNota": "For Accident type incidents, the medical report is required for closure (RN-INC-002)"
+      },
+      "evidencias": {
+        "label": "Evidence (photos / documents)",
+        "uploadLabel": "Add files (max {{max}} remaining)",
+        "errorMaxFiles": "Maximum 5 files allowed",
+        "errorMaxSize": "File '{{nombre}}' exceeds the 10 MB limit",
+        "removeFile": "Remove file",
+        "cerrarLightbox": "Close image",
+        "acidenteNota": "For Accident type incidents, photographic evidence is required for closure (RN-INC-002)",
+        "existentes": "Saved evidence"
+      },
+      "actions": {
+        "submit": "Save incident",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      }
+    },
+    "detail": {
+      "backToList": "Back to Incidents",
+      "notFound": "The incident does not exist or was deleted.",
+      "escalado": "{{severidad}} severity incident — Requires immediate attention",
+      "sections": {
+        "descripcion": "Event description",
+        "investigacion": "Investigation information"
+      },
+      "fields": {
+        "fechaEvento": "Event date",
+        "area": "Area",
+        "turno": "Shift",
+        "fechaReporte": "Report date",
+        "reportadoPor": "Reported by",
+        "estado": "Status",
+        "huboLesionados": "Injuries",
+        "siConPersonas": "Yes ({{num}} person(s))",
+        "condicionesEntorno": "Environmental conditions",
+        "equiposInvolucrados": "Equipment involved",
+        "personalInvolucrado": "Personnel involved",
+        "testigos": "Witnesses",
+        "atencionMedica": "Medical attention",
+        "informeMedico": "Medical report"
+      },
+      "investigacion": {
+        "plazoDias": "Maximum investigation period: {{dias}} business days"
+      },
+      "alertas": {
+        "sinInformeMedico": "Missing medical report — required to close this incident (RN-INC-002)",
+        "sinEvidencias": "No photographic evidence — required to close this incident (RN-INC-002)"
+      },
+      "actions": {
+        "editar": "Edit",
+        "eliminar": "Delete"
+      },
+      "evidencias": {
+        "title": "Attached evidence"
+      }
+    },
+    "acSection": {
+      "title": "Corrective Actions",
+      "empty": "No corrective actions recorded.",
+      "agregarModal": {
+        "title": "Add corrective action"
+      },
+      "fields": {
+        "descripcion": "Description",
+        "responsable": "Responsible",
+        "fechaLimite": "Due date"
+      },
+      "placeholders": {
+        "descripcion": "Describe the corrective action…",
+        "responsable": "Select responsible…"
+      },
+      "acStatus": {
+        "PENDIENTE": "Pending",
+        "EN_EJECUCION": "In progress",
+        "COMPLETADA": "Completed",
+        "CERRADA": "Closed"
+      },
+      "actions": {
+        "add": "Add CA",
+        "save": "Save",
+        "cancel": "Cancel"
+      }
+    }
+  },
   "nonconformities": {
     "status": {
       "ABIERTA": "Open",

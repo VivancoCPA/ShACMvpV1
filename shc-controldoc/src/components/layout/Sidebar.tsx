@@ -33,7 +33,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: ClipboardX,
     roles: ['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
   },
-  { key: 'incidents', path: '/incidentes', icon: ShieldAlert },
+  {
+    key: 'incidents',
+    path: '/incidents',
+    icon: ShieldAlert,
+    roles: ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
+  },
   {
     key: 'qualityEvents',
     path: '/quality-events',
