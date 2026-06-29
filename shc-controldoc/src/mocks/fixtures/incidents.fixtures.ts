@@ -1,63 +1,4 @@
-import type { Incidente, IncidentEvidencia, Local, Zona } from '../../features/incidents/types/incident.types'
-
-export const localFixtures: Local[] = [
-  {
-    id: 'loc-001',
-    nombre: 'Almacén Principal',
-    codigo: 'LOC-001',
-    activo: true,
-    planoPngUrl: '/mock/plano-placeholder.png',
-    creadoEn: '2026-01-01T00:00:00Z',
-    actualizadoEn: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'loc-002',
-    nombre: 'Patio de Minerales',
-    codigo: 'LOC-002',
-    activo: true,
-    planoPngUrl: '/mock/plano-placeholder.png',
-    creadoEn: '2026-01-01T00:00:00Z',
-    actualizadoEn: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'loc-003',
-    nombre: 'Muelle de Carga',
-    codigo: 'LOC-003',
-    activo: true,
-    planoPngUrl: '/mock/plano-placeholder.png',
-    creadoEn: '2026-01-01T00:00:00Z',
-    actualizadoEn: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'loc-004',
-    nombre: 'Oficinas Administrativas',
-    codigo: 'LOC-004',
-    activo: true,
-    planoPngUrl: '/mock/plano-placeholder.png',
-    creadoEn: '2026-01-01T00:00:00Z',
-    actualizadoEn: '2026-01-01T00:00:00Z',
-  },
-]
-
-export const zonaFixtures: Zona[] = [
-  // LOC-001 — Almacén Principal (4 zonas)
-  { id: 'zon-001', localId: 'loc-001', nombre: 'Zona de Recepción', codigo: 'ZON-001', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-002', localId: 'loc-001', nombre: 'Zona de Almacenamiento', codigo: 'ZON-002', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-003', localId: 'loc-001', nombre: 'Zona de Despacho', codigo: 'ZON-003', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-004', localId: 'loc-001', nombre: 'Zona de Carga', codigo: 'ZON-004', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  // LOC-002 — Patio de Minerales (3 zonas)
-  { id: 'zon-005', localId: 'loc-002', nombre: 'Área de Acopio Norte', codigo: 'ZON-005', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-006', localId: 'loc-002', nombre: 'Área de Acopio Sur', codigo: 'ZON-006', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-007', localId: 'loc-002', nombre: 'Zona de Pesaje', codigo: 'ZON-007', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  // LOC-003 — Muelle de Carga (3 zonas)
-  { id: 'zon-008', localId: 'loc-003', nombre: 'Muelle A', codigo: 'ZON-008', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-009', localId: 'loc-003', nombre: 'Muelle B', codigo: 'ZON-009', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-010', localId: 'loc-003', nombre: 'Zona de Espera', codigo: 'ZON-010', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  // LOC-004 — Oficinas Administrativas (3 zonas)
-  { id: 'zon-011', localId: 'loc-004', nombre: 'Recepción', codigo: 'ZON-011', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-012', localId: 'loc-004', nombre: 'Área Administrativa', codigo: 'ZON-012', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-  { id: 'zon-013', localId: 'loc-004', nombre: 'Sala de Reuniones', codigo: 'ZON-013', activo: true, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-]
+import type { Incidente, IncidentEvidencia } from '../../features/incidents/types/incident.types'
 
 const evidenciasAccidente1: IncidentEvidencia[] = [
   {
@@ -110,8 +51,12 @@ const evidenciasAccidente2: IncidentEvidencia[] = [
   },
 ]
 
+// Orden del array: los 10 con ubicación primero (5 LOC-001 + 5 LOC-002) para que
+// queden en la primera página con pageSize=10, garantizando el clúster rojo visible.
 export const incidentFixtures: Incidente[] = [
-  // #1 — ACCIDENTE / CERRADO / ALTA
+  // ── LOC-001 clúster (5 incidentes — todos dentro de radio 5%) ─────────────
+
+  // #1 — ACCIDENTE / CERRADO / ALTA  (LOC-001 clúster, x:50 y:50)
   {
     id: 'inc-001',
     numero: 'INC-2026-001',
@@ -121,10 +66,10 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Operario sufrió golpe en extremidad superior al manipular contenedor de minerales sin guantes de protección adecuados.',
     areaId: 'Almacén Norte',
     localId: 'loc-001',
-    zonaId: 'zon-002',
-    ubicacion: { x: 35, y: 48 },
+    zonaId: 'zon-001',
+    ubicacion: { x: 50, y: 50 },
     localNombre: 'Almacén Principal',
-    zonaNombre: 'Zona de Almacenamiento',
+    zonaNombre: 'Zona de Recepción',
     turno: 'DIA',
     fechaEvento: '2026-01-10T09:00:00Z',
     fechaReporte: '2026-01-10T09:30:00Z',
@@ -165,7 +110,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-02-15T10:00:00Z',
   },
 
-  // #2 — ACCIDENTE / EN_INVESTIGACION / CRITICA (con REPORTE_TARDIO)
+  // #2 — ACCIDENTE / EN_INVESTIGACION / CRITICA  (LOC-001 clúster, x:51 y:51)
   {
     id: 'inc-002',
     numero: 'INC-2026-002',
@@ -175,10 +120,10 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Dos trabajadores resultaron lesionados al volcarse la carretilla elevadora durante operación de carga nocturna en almacén sur. Se requirió traslado a clínica.',
     areaId: 'Almacén Sur',
     localId: 'loc-001',
-    zonaId: 'zon-004',
-    ubicacion: { x: 72, y: 61 },
+    zonaId: 'zon-002',
+    ubicacion: { x: 51, y: 51 },
     localNombre: 'Almacén Principal',
-    zonaNombre: 'Zona de Carga',
+    zonaNombre: 'Zona de Almacenamiento',
     turno: 'NOCHE',
     fechaEvento: '2026-02-05T02:00:00Z',
     fechaReporte: '2026-02-07T08:00:00Z',
@@ -229,46 +174,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-02-07T09:00:00Z',
   },
 
-  // #3 — ACCIDENTE / ABIERTO / ALTA
-  {
-    id: 'inc-003',
-    numero: 'INC-2026-003',
-    tipo: 'ACCIDENTE',
-    estado: 'ABIERTO',
-    severidad: 'ALTA',
-    descripcion: 'Trabajador resbaló en área de carga debido a derrame de líquido no limpiado. Lesión leve en rodilla izquierda sin incapacidad.',
-    areaId: 'Área de Carga',
-    localId: 'loc-003',
-    zonaId: 'zon-008',
-    ubicacion: { x: 20, y: 55 },
-    localNombre: 'Muelle de Carga',
-    zonaNombre: 'Muelle A',
-    turno: 'TARDE',
-    fechaEvento: '2026-03-12T15:30:00Z',
-    fechaReporte: '2026-03-12T16:00:00Z',
-    reportadoPorId: 'user-006',
-    huboLesionados: true,
-    numPersonasAfectadas: 1,
-    condicionesEntorno: ['PISO', 'SENALIZACION'],
-    auditTrail: [
-      {
-        id: 'aud-inc-003-1',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-003',
-        accion: 'CREADO',
-        estadoNuevo: 'ABIERTO',
-        realizadoPorId: 'user-006',
-        realizadoPorNombre: 'Pedro Quispe',
-        timestamp: '2026-03-12T16:00:00Z',
-        generadoPorIA: false,
-      },
-    ],
-    accionesCorrectivas: [],
-    creadoEn: '2026-03-12T16:00:00Z',
-    actualizadoEn: '2026-03-12T16:00:00Z',
-  },
-
-  // #4 — INCIDENTE / ABIERTO / MEDIA
+  // #4 — INCIDENTE / ABIERTO / MEDIA  (LOC-001 clúster, x:49 y:52)
   {
     id: 'inc-004',
     numero: 'INC-2026-004',
@@ -279,7 +185,7 @@ export const incidentFixtures: Incidente[] = [
     areaId: 'Almacén Norte',
     localId: 'loc-001',
     zonaId: 'zon-001',
-    ubicacion: { x: 15, y: 30 },
+    ubicacion: { x: 49, y: 52 },
     localNombre: 'Almacén Principal',
     zonaNombre: 'Zona de Recepción',
     turno: 'DIA',
@@ -306,7 +212,163 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-03-20T10:15:00Z',
   },
 
-  // #5 — INCIDENTE / EN_EJECUCION / MEDIA (con 2 ACs)
+  // #8 — CUASI_ACCIDENTE / EN_INVESTIGACION / MEDIA  (LOC-001 clúster, x:52 y:49)
+  {
+    id: 'inc-008',
+    numero: 'INC-2026-008',
+    tipo: 'CUASI_ACCIDENTE',
+    estado: 'EN_INVESTIGACION',
+    severidad: 'MEDIA',
+    descripcion: 'Montacargas estuvo a punto de colisionar con operario peatón en cruce no señalizado dentro del galpón C. El conductor frenó a tiempo al percibir el movimiento del peatón.',
+    areaId: 'Galpón C',
+    localId: 'loc-001',
+    zonaId: 'zon-003',
+    ubicacion: { x: 52, y: 49 },
+    localNombre: 'Almacén Principal',
+    zonaNombre: 'Zona de Despacho',
+    turno: 'TARDE',
+    fechaEvento: '2026-04-15T14:00:00Z',
+    fechaReporte: '2026-04-15T14:45:00Z',
+    reportadoPorId: 'user-006',
+    huboLesionados: false,
+    equiposInvolucrados: ['Montacargas N°2'],
+    condicionesEntorno: ['SENALIZACION', 'ILUMINACION'],
+    auditTrail: [
+      {
+        id: 'aud-inc-008-1',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-008',
+        accion: 'CREADO',
+        estadoNuevo: 'ABIERTO',
+        realizadoPorId: 'user-006',
+        realizadoPorNombre: 'Pedro Quispe',
+        timestamp: '2026-04-15T14:45:00Z',
+        generadoPorIA: false,
+      },
+      {
+        id: 'aud-inc-008-2',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-008',
+        accion: 'ESTADO_CAMBIADO',
+        estadoAnterior: 'ABIERTO',
+        estadoNuevo: 'EN_INVESTIGACION',
+        realizadoPorId: 'user-003',
+        realizadoPorNombre: 'María Castro',
+        timestamp: '2026-04-16T08:00:00Z',
+        generadoPorIA: false,
+      },
+    ],
+    accionesCorrectivas: [],
+    creadoEn: '2026-04-15T14:45:00Z',
+    actualizadoEn: '2026-04-16T08:00:00Z',
+  },
+
+  // #11 — CONDICION_INSEGURA / EN_EJECUCION / BAJA  (LOC-001 clúster, x:50 y:53)
+  {
+    id: 'inc-011',
+    numero: 'INC-2026-011',
+    tipo: 'CONDICION_INSEGURA',
+    estado: 'EN_EJECUCION',
+    severidad: 'BAJA',
+    descripcion: 'Sistema de iluminación de emergencia en área de contenedores presenta falla intermitente. Tres lámparas no encienden correctamente durante pruebas de verificación semanal.',
+    areaId: 'Área de Contenedores',
+    localId: 'loc-001',
+    zonaId: 'zon-002',
+    ubicacion: { x: 50, y: 53 },
+    localNombre: 'Almacén Principal',
+    zonaNombre: 'Zona de Almacenamiento',
+    turno: 'TARDE',
+    fechaEvento: '2026-05-15T16:00:00Z',
+    fechaReporte: '2026-05-15T16:30:00Z',
+    reportadoPorId: 'user-006',
+    huboLesionados: false,
+    condicionesEntorno: ['ILUMINACION'],
+    auditTrail: [
+      {
+        id: 'aud-inc-011-1',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-011',
+        accion: 'CREADO',
+        estadoNuevo: 'ABIERTO',
+        realizadoPorId: 'user-006',
+        realizadoPorNombre: 'Pedro Quispe',
+        timestamp: '2026-05-15T16:30:00Z',
+        generadoPorIA: false,
+      },
+      {
+        id: 'aud-inc-011-2',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-011',
+        accion: 'ESTADO_CAMBIADO',
+        estadoAnterior: 'ANALISIS_COMPLETADO',
+        estadoNuevo: 'EN_EJECUCION',
+        realizadoPorId: 'user-003',
+        realizadoPorNombre: 'María Castro',
+        timestamp: '2026-05-20T08:00:00Z',
+        generadoPorIA: false,
+      },
+    ],
+    accionesCorrectivas: [
+      {
+        id: 'ac-inc-003',
+        incidenteId: 'inc-011',
+        titulo: 'Reemplazo de lámparas de emergencia',
+        descripcion: 'Reemplazar las tres lámparas de emergencia defectuosas y verificar el sistema completo.',
+        responsableId: 'user-007',
+        responsableNombre: 'Jorge Ramírez',
+        plazoFecha: '2026-05-30',
+        prioridad: 'MEDIA' as const,
+        estado: 'EN_EJECUCION' as const,
+        creadoEn: '2026-05-20T09:00:00Z',
+        actualizadoEn: '2026-05-22T10:00:00Z',
+      },
+    ],
+    creadoEn: '2026-05-15T16:30:00Z',
+    actualizadoEn: '2026-05-20T08:00:00Z',
+  },
+
+  // ── LOC-002 (5 incidentes) ─────────────────────────────────────────────────
+
+  // #3 — ACCIDENTE / ABIERTO / ALTA  (LOC-002, x:20 y:30)
+  {
+    id: 'inc-003',
+    numero: 'INC-2026-003',
+    tipo: 'ACCIDENTE',
+    estado: 'ABIERTO',
+    severidad: 'ALTA',
+    descripcion: 'Trabajador resbaló en área de carga debido a derrame de líquido no limpiado. Lesión leve en rodilla izquierda sin incapacidad.',
+    areaId: 'Área de Carga',
+    localId: 'loc-002',
+    zonaId: 'zon-004',
+    ubicacion: { x: 20, y: 30 },
+    localNombre: 'Patio de Minerales',
+    zonaNombre: 'Área de Acopio Norte',
+    turno: 'TARDE',
+    fechaEvento: '2026-03-12T15:30:00Z',
+    fechaReporte: '2026-03-12T16:00:00Z',
+    reportadoPorId: 'user-006',
+    huboLesionados: true,
+    numPersonasAfectadas: 1,
+    condicionesEntorno: ['PISO', 'SENALIZACION'],
+    auditTrail: [
+      {
+        id: 'aud-inc-003-1',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-003',
+        accion: 'CREADO',
+        estadoNuevo: 'ABIERTO',
+        realizadoPorId: 'user-006',
+        realizadoPorNombre: 'Pedro Quispe',
+        timestamp: '2026-03-12T16:00:00Z',
+        generadoPorIA: false,
+      },
+    ],
+    accionesCorrectivas: [],
+    creadoEn: '2026-03-12T16:00:00Z',
+    actualizadoEn: '2026-03-12T16:00:00Z',
+  },
+
+  // #5 — INCIDENTE / EN_EJECUCION / MEDIA  (LOC-002, x:50 y:40)
   {
     id: 'inc-005',
     numero: 'INC-2026-005',
@@ -316,7 +378,7 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Falla en el sistema de pesaje automático durante turno tarde causó registro incorrecto de 4 toneladas de cobre. El supervisor detectó la discrepancia en revisión de fin de turno.',
     areaId: 'Control de Calidad',
     localId: 'loc-002',
-    zonaId: 'zon-007',
+    zonaId: 'zon-005',
     ubicacion: { x: 50, y: 40 },
     localNombre: 'Patio de Minerales',
     zonaNombre: 'Zona de Pesaje',
@@ -385,7 +447,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-04-01T08:00:00Z',
   },
 
-  // #6 — INCIDENTE / ANALISIS_COMPLETADO / MEDIA
+  // #6 — INCIDENTE / ANALISIS_COMPLETADO / MEDIA  (LOC-002, x:60 y:25)
   {
     id: 'inc-006',
     numero: 'INC-2026-006',
@@ -395,7 +457,7 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Derrame menor de ácido sulfúrico en laboratorio durante proceso de análisis de muestra. El técnico activó el protocolo de emergencia química de manera oportuna.',
     areaId: 'Laboratorio de Calidad',
     localId: 'loc-002',
-    zonaId: 'zon-005',
+    zonaId: 'zon-004',
     ubicacion: { x: 60, y: 25 },
     localNombre: 'Patio de Minerales',
     zonaNombre: 'Área de Acopio Norte',
@@ -436,96 +498,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-04-08T11:00:00Z',
   },
 
-  // #7 — CUASI_ACCIDENTE / ABIERTO / BAJA
-  {
-    id: 'inc-007',
-    numero: 'INC-2026-007',
-    tipo: 'CUASI_ACCIDENTE',
-    estado: 'ABIERTO',
-    severidad: 'BAJA',
-    descripcion: 'Caja de herramientas cayó desde plataforma a un metro de altura sin impactar a ningún trabajador. El área fue despejada preventivamente antes del incidente.',
-    areaId: 'Galpón B',
-    localId: 'loc-003',
-    zonaId: 'zon-009',
-    ubicacion: { x: 80, y: 70 },
-    localNombre: 'Muelle de Carga',
-    zonaNombre: 'Muelle B',
-    turno: 'DIA',
-    fechaEvento: '2026-04-10T11:00:00Z',
-    fechaReporte: '2026-04-10T11:20:00Z',
-    reportadoPorId: 'user-001',
-    huboLesionados: false,
-    testigos: ['user-002'],
-    auditTrail: [
-      {
-        id: 'aud-inc-007-1',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-007',
-        accion: 'CREADO',
-        estadoNuevo: 'ABIERTO',
-        realizadoPorId: 'user-001',
-        realizadoPorNombre: 'Carlos Mendoza',
-        timestamp: '2026-04-10T11:20:00Z',
-        generadoPorIA: false,
-      },
-    ],
-    accionesCorrectivas: [],
-    creadoEn: '2026-04-10T11:20:00Z',
-    actualizadoEn: '2026-04-10T11:20:00Z',
-  },
-
-  // #8 — CUASI_ACCIDENTE / EN_INVESTIGACION / MEDIA
-  {
-    id: 'inc-008',
-    numero: 'INC-2026-008',
-    tipo: 'CUASI_ACCIDENTE',
-    estado: 'EN_INVESTIGACION',
-    severidad: 'MEDIA',
-    descripcion: 'Montacargas estuvo a punto de colisionar con operario peatón en cruce no señalizado dentro del galpón C. El conductor frenó a tiempo al percibir el movimiento del peatón.',
-    areaId: 'Galpón C',
-    localId: 'loc-001',
-    zonaId: 'zon-003',
-    ubicacion: { x: 45, y: 80 },
-    localNombre: 'Almacén Principal',
-    zonaNombre: 'Zona de Despacho',
-    turno: 'TARDE',
-    fechaEvento: '2026-04-15T14:00:00Z',
-    fechaReporte: '2026-04-15T14:45:00Z',
-    reportadoPorId: 'user-006',
-    huboLesionados: false,
-    equiposInvolucrados: ['Montacargas N°2'],
-    condicionesEntorno: ['SENALIZACION', 'ILUMINACION'],
-    auditTrail: [
-      {
-        id: 'aud-inc-008-1',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-008',
-        accion: 'CREADO',
-        estadoNuevo: 'ABIERTO',
-        realizadoPorId: 'user-006',
-        realizadoPorNombre: 'Pedro Quispe',
-        timestamp: '2026-04-15T14:45:00Z',
-        generadoPorIA: false,
-      },
-      {
-        id: 'aud-inc-008-2',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-008',
-        accion: 'ESTADO_CAMBIADO',
-        estadoAnterior: 'ABIERTO',
-        estadoNuevo: 'EN_INVESTIGACION',
-        realizadoPorId: 'user-003',
-        realizadoPorNombre: 'María Castro',
-        timestamp: '2026-04-16T08:00:00Z',
-        generadoPorIA: false,
-      },
-    ],
-    accionesCorrectivas: [],
-    creadoEn: '2026-04-15T14:45:00Z',
-    actualizadoEn: '2026-04-16T08:00:00Z',
-  },
-
-  // #9 — CUASI_ACCIDENTE / PENDIENTE_CIERRE / BAJA
+  // #9 — CUASI_ACCIDENTE / PENDIENTE_CIERRE / BAJA  (LOC-002, x:30 y:65)
   {
     id: 'inc-009',
     numero: 'INC-2026-009',
@@ -535,10 +508,10 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Instalación eléctrica provisional en área de operaciones presentó chispa al conectarse equipo de medición. No se produjeron lesiones ni daños materiales significativos.',
     areaId: 'Operaciones',
     localId: 'loc-002',
-    zonaId: 'zon-006',
+    zonaId: 'zon-005',
     ubicacion: { x: 30, y: 65 },
     localNombre: 'Patio de Minerales',
-    zonaNombre: 'Área de Acopio Sur',
+    zonaNombre: 'Zona de Pesaje',
     turno: 'DIA',
     fechaEvento: '2026-04-20T09:30:00Z',
     fechaReporte: '2026-04-20T10:00:00Z',
@@ -575,109 +548,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-05-05T10:00:00Z',
   },
 
-  // #10 — CONDICION_INSEGURA / ABIERTO / BAJA
-  {
-    id: 'inc-010',
-    numero: 'INC-2026-010',
-    tipo: 'CONDICION_INSEGURA',
-    estado: 'ABIERTO',
-    severidad: 'BAJA',
-    descripcion: 'Pasillo de evacuación del almacén norte se encuentra parcialmente obstruido por paletas de materiales de embalaje, reduciendo el ancho libre por debajo del mínimo reglamentario.',
-    areaId: 'Almacén Norte',
-    localId: 'loc-003',
-    zonaId: 'zon-010',
-    ubicacion: { x: 55, y: 90 },
-    localNombre: 'Muelle de Carga',
-    zonaNombre: 'Zona de Espera',
-    turno: 'DIA',
-    fechaEvento: '2026-05-08T08:00:00Z',
-    fechaReporte: '2026-05-08T08:30:00Z',
-    reportadoPorId: 'user-002',
-    huboLesionados: false,
-    condicionesEntorno: ['SENALIZACION'],
-    auditTrail: [
-      {
-        id: 'aud-inc-010-1',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-010',
-        accion: 'CREADO',
-        estadoNuevo: 'ABIERTO',
-        realizadoPorId: 'user-002',
-        realizadoPorNombre: 'Carlos Mendoza',
-        timestamp: '2026-05-08T08:30:00Z',
-        generadoPorIA: false,
-      },
-    ],
-    accionesCorrectivas: [],
-    creadoEn: '2026-05-08T08:30:00Z',
-    actualizadoEn: '2026-05-08T08:30:00Z',
-  },
-
-  // #11 — CONDICION_INSEGURA / EN_EJECUCION / BAJA (con 1 AC)
-  {
-    id: 'inc-011',
-    numero: 'INC-2026-011',
-    tipo: 'CONDICION_INSEGURA',
-    estado: 'EN_EJECUCION',
-    severidad: 'BAJA',
-    descripcion: 'Sistema de iluminación de emergencia en área de contenedores presenta falla intermitente. Tres lámparas no encienden correctamente durante pruebas de verificación semanal.',
-    areaId: 'Área de Contenedores',
-    localId: 'loc-001',
-    zonaId: 'zon-003',
-    ubicacion: { x: 88, y: 42 },
-    localNombre: 'Almacén Principal',
-    zonaNombre: 'Zona de Despacho',
-    turno: 'TARDE',
-    fechaEvento: '2026-05-15T16:00:00Z',
-    fechaReporte: '2026-05-15T16:30:00Z',
-    reportadoPorId: 'user-006',
-    huboLesionados: false,
-    condicionesEntorno: ['ILUMINACION'],
-    auditTrail: [
-      {
-        id: 'aud-inc-011-1',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-011',
-        accion: 'CREADO',
-        estadoNuevo: 'ABIERTO',
-        realizadoPorId: 'user-006',
-        realizadoPorNombre: 'Pedro Quispe',
-        timestamp: '2026-05-15T16:30:00Z',
-        generadoPorIA: false,
-      },
-      {
-        id: 'aud-inc-011-2',
-        entidadTipo: 'Incidente',
-        entidadId: 'inc-011',
-        accion: 'ESTADO_CAMBIADO',
-        estadoAnterior: 'ANALISIS_COMPLETADO',
-        estadoNuevo: 'EN_EJECUCION',
-        realizadoPorId: 'user-003',
-        realizadoPorNombre: 'María Castro',
-        timestamp: '2026-05-20T08:00:00Z',
-        generadoPorIA: false,
-      },
-    ],
-    accionesCorrectivas: [
-      {
-        id: 'ac-inc-003',
-        incidenteId: 'inc-011',
-        titulo: 'Reemplazo de lámparas de emergencia',
-        descripcion: 'Reemplazar las tres lámparas de emergencia defectuosas y verificar el sistema completo.',
-        responsableId: 'user-007',
-        responsableNombre: 'Jorge Ramírez',
-        plazoFecha: '2026-05-30',
-        prioridad: 'MEDIA' as const,
-        estado: 'EN_EJECUCION' as const,
-        creadoEn: '2026-05-20T09:00:00Z',
-        actualizadoEn: '2026-05-22T10:00:00Z',
-      },
-    ],
-    creadoEn: '2026-05-15T16:30:00Z',
-    actualizadoEn: '2026-05-20T08:00:00Z',
-  },
-
-  // #12 — CONDICION_INSEGURA / CERRADO / BAJA
+  // #12 — CONDICION_INSEGURA / CERRADO / BAJA  (LOC-002, x:42 y:58)
   {
     id: 'inc-012',
     numero: 'INC-2026-012',
@@ -687,10 +558,10 @@ export const incidentFixtures: Incidente[] = [
     descripcion: 'Grieta en el piso del área de carga que representa riesgo de tropiezo para el personal. La grieta fue identificada durante inspección de orden y limpieza del turno mañana.',
     areaId: 'Área de Carga',
     localId: 'loc-002',
-    zonaId: 'zon-007',
+    zonaId: 'zon-004',
     ubicacion: { x: 42, y: 58 },
     localNombre: 'Patio de Minerales',
-    zonaNombre: 'Zona de Pesaje',
+    zonaNombre: 'Área de Acopio Norte',
     turno: 'DIA',
     fechaEvento: '2026-05-20T08:00:00Z',
     fechaReporte: '2026-05-20T08:45:00Z',
@@ -727,7 +598,75 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-06-10T09:00:00Z',
   },
 
-  // #13 — ACCIDENTE / ANULADO / ALTA
+  // ── Sin ubicación (4 incidentes) ───────────────────────────────────────────
+
+  // #7 — CUASI_ACCIDENTE / ABIERTO / BAJA  (sin ubicación)
+  {
+    id: 'inc-007',
+    numero: 'INC-2026-007',
+    tipo: 'CUASI_ACCIDENTE',
+    estado: 'ABIERTO',
+    severidad: 'BAJA',
+    descripcion: 'Caja de herramientas cayó desde plataforma a un metro de altura sin impactar a ningún trabajador. El área fue despejada preventivamente antes del incidente.',
+    areaId: 'Galpón B',
+    turno: 'DIA',
+    fechaEvento: '2026-04-10T11:00:00Z',
+    fechaReporte: '2026-04-10T11:20:00Z',
+    reportadoPorId: 'user-001',
+    huboLesionados: false,
+    testigos: ['user-002'],
+    auditTrail: [
+      {
+        id: 'aud-inc-007-1',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-007',
+        accion: 'CREADO',
+        estadoNuevo: 'ABIERTO',
+        realizadoPorId: 'user-001',
+        realizadoPorNombre: 'Carlos Mendoza',
+        timestamp: '2026-04-10T11:20:00Z',
+        generadoPorIA: false,
+      },
+    ],
+    accionesCorrectivas: [],
+    creadoEn: '2026-04-10T11:20:00Z',
+    actualizadoEn: '2026-04-10T11:20:00Z',
+  },
+
+  // #10 — CONDICION_INSEGURA / ABIERTO / BAJA  (sin ubicación)
+  {
+    id: 'inc-010',
+    numero: 'INC-2026-010',
+    tipo: 'CONDICION_INSEGURA',
+    estado: 'ABIERTO',
+    severidad: 'BAJA',
+    descripcion: 'Pasillo de evacuación del almacén norte se encuentra parcialmente obstruido por paletas de materiales de embalaje, reduciendo el ancho libre por debajo del mínimo reglamentario.',
+    areaId: 'Almacén Norte',
+    turno: 'DIA',
+    fechaEvento: '2026-05-08T08:00:00Z',
+    fechaReporte: '2026-05-08T08:30:00Z',
+    reportadoPorId: 'user-002',
+    huboLesionados: false,
+    condicionesEntorno: ['SENALIZACION'],
+    auditTrail: [
+      {
+        id: 'aud-inc-010-1',
+        entidadTipo: 'Incidente',
+        entidadId: 'inc-010',
+        accion: 'CREADO',
+        estadoNuevo: 'ABIERTO',
+        realizadoPorId: 'user-002',
+        realizadoPorNombre: 'Carlos Mendoza',
+        timestamp: '2026-05-08T08:30:00Z',
+        generadoPorIA: false,
+      },
+    ],
+    accionesCorrectivas: [],
+    creadoEn: '2026-05-08T08:30:00Z',
+    actualizadoEn: '2026-05-08T08:30:00Z',
+  },
+
+  // #13 — ACCIDENTE / ANULADO / ALTA  (sin ubicación — registro duplicado)
   {
     id: 'inc-013',
     numero: 'INC-2026-013',
@@ -771,7 +710,7 @@ export const incidentFixtures: Incidente[] = [
     actualizadoEn: '2026-05-25T09:00:00Z',
   },
 
-  // #14 — INCIDENTE / ABIERTO / MEDIA (soft-deleted)
+  // #14 — INCIDENTE / ABIERTO / MEDIA  (sin ubicación — soft-deleted)
   {
     id: 'inc-014',
     numero: 'INC-2026-014',

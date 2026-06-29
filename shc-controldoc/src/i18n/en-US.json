@@ -23,6 +23,9 @@
     "nav": {
       "nonconformities": "Non-Conformities",
       "incidents": "SyST Incidents"
+    },
+    "actions": {
+      "close": "Close"
     }
   },
   "documents": {
@@ -455,6 +458,23 @@
         "verDetalle": "View details",
         "reintentar": "Retry",
         "errorMsg": "Failed to load incidents."
+      },
+      "tabs": {
+        "list": "List",
+        "map": "Map"
+      }
+    },
+    "map": {
+      "planUnavailable": "Floor plan unavailable",
+      "noIncidents": "No incidents with recorded location for this site",
+      "multipleZones": "Multiple zones",
+      "legend": {
+        "single": "1 incident",
+        "twoToFour": "2–4 incidents",
+        "fivePlus": "5 or more incidents"
+      },
+      "localSelector": {
+        "label": "Site"
       }
     },
     "filters": {

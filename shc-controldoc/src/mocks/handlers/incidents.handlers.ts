@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
-import { incidentFixtures, localFixtures, zonaFixtures } from '../fixtures/incidents.fixtures'
+import { incidentFixtures } from '../fixtures/incidents.fixtures'
+import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { userFixtures } from '../fixtures/users.fixtures'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
@@ -64,22 +65,6 @@ function err(message: string, status: number, errors?: string[]) {
 }
 
 export const incidentHandlers = [
-  // GET /api/locales — all active locales
-  http.get('/api/locales', async () => {
-    await delay(LATENCY)
-    const active = localFixtures.filter((l) => l.activo)
-    return ok(active)
-  }),
-
-  // GET /api/locales/:localId/zonas — active zones for a local
-  http.get('/api/locales/:localId/zonas', async ({ params }) => {
-    await delay(LATENCY)
-    const local = localFixtures.find((l) => l.id === params.localId)
-    if (!local) return err(`Local ${params.localId} no encontrado`, 404)
-    const zones = zonaFixtures.filter((z) => z.localId === params.localId && z.activo)
-    return ok(zones)
-  }),
-
   // GET /api/incidents — list with filters + pagination
   http.get('/api/incidents', async ({ request }) => {
     await delay(LATENCY)

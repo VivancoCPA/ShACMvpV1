@@ -23,6 +23,9 @@
     "nav": {
       "nonconformities": "No Conformidades",
       "incidents": "Incidentes SyST"
+    },
+    "actions": {
+      "close": "Cerrar"
     }
   },
   "documents": {
@@ -455,6 +458,23 @@
         "verDetalle": "Ver detalle",
         "reintentar": "Reintentar",
         "errorMsg": "Error al cargar los incidentes."
+      },
+      "tabs": {
+        "list": "Lista",
+        "map": "Mapa"
+      }
+    },
+    "map": {
+      "planUnavailable": "Plano no disponible",
+      "noIncidents": "Sin incidentes con ubicación registrada para este local",
+      "multipleZones": "Varias zonas",
+      "legend": {
+        "single": "1 incidente",
+        "twoToFour": "2–4 incidentes",
+        "fivePlus": "5 o más incidentes"
+      },
+      "localSelector": {
+        "label": "Local"
       }
     },
     "filters": {
