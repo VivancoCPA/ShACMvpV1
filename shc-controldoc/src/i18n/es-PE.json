@@ -437,7 +437,43 @@
     "toggleTheme": "Cambiar tema",
     "toggleLanguage": "Cambiar idioma"
   },
-  "qualityEvents": {},
+  "qualityEvents": {
+    "list": {
+      "title": "Quality Events",
+      "empty": "No se encontraron quality events con los filtros aplicados.",
+      "reincidencia": "Reincidencia ×{{count}}",
+      "columns": {
+        "numero": "Número",
+        "tipoOrigen": "Tipo / Origen",
+        "descripcion": "Descripción",
+        "area": "Área",
+        "severidad": "Severidad",
+        "estado": "Estado",
+        "ciclo": "Ciclo",
+        "vencimiento": "Vencimiento",
+        "acciones": "Acciones"
+      },
+      "filters": {
+        "estado": "Estado",
+        "tipo": "Tipo",
+        "severidad": "Severidad",
+        "origen": "Origen",
+        "fechaEvento": "Fecha del evento — Desde / Hasta",
+        "fechaDesde": "Desde",
+        "fechaHasta": "Hasta",
+        "soloReincidencias": "Solo reincidencias",
+        "limpiar": "Limpiar filtros",
+        "todos": "Todos"
+      },
+      "actions": {
+        "nueva": "Nuevo Quality Event",
+        "ver": "Ver detalle",
+        "editar": "Editar",
+        "reintentar": "Reintentar",
+        "errorMsg": "Error al cargar los quality events."
+      }
+    }
+  },
   "incidents": {
     "list": {
       "title": "Incidentes SyST",

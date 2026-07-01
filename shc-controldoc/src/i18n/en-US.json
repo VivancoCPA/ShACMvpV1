@@ -437,7 +437,43 @@
     "toggleTheme": "Toggle theme",
     "toggleLanguage": "Toggle language"
   },
-  "qualityEvents": {},
+  "qualityEvents": {
+    "list": {
+      "title": "Quality Events",
+      "empty": "No quality events found matching the applied filters.",
+      "reincidencia": "Recurrence ×{{count}}",
+      "columns": {
+        "numero": "Number",
+        "tipoOrigen": "Type / Origin",
+        "descripcion": "Description",
+        "area": "Area",
+        "severidad": "Severity",
+        "estado": "Status",
+        "ciclo": "Cycle",
+        "vencimiento": "Due Date",
+        "acciones": "Actions"
+      },
+      "filters": {
+        "estado": "Status",
+        "tipo": "Type",
+        "severidad": "Severity",
+        "origen": "Origin",
+        "fechaEvento": "Event Date — From / To",
+        "fechaDesde": "From",
+        "fechaHasta": "To",
+        "soloReincidencias": "Recurrences only",
+        "limpiar": "Clear filters",
+        "todos": "All"
+      },
+      "actions": {
+        "nueva": "New Quality Event",
+        "ver": "View detail",
+        "editar": "Edit",
+        "reintentar": "Retry",
+        "errorMsg": "Error loading quality events."
+      }
+    }
+  },
   "incidents": {
     "list": {
       "title": "SyST Incidents",
