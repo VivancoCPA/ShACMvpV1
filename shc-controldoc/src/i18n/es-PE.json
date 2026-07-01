@@ -26,6 +26,11 @@
     },
     "actions": {
       "close": "Cerrar"
+    },
+    "clear": "Limpiar",
+    "searchableSelect": {
+      "noResults": "No hay resultados para '{{query}}'",
+      "searching": "Buscar…"
     }
   },
   "documents": {
@@ -471,6 +476,50 @@
         "editar": "Editar",
         "reintentar": "Reintentar",
         "errorMsg": "Error al cargar los quality events."
+      }
+    },
+    "form": {
+      "createTitle": "Nuevo Quality Event",
+      "noIncidents": "No hay incidentes disponibles para vincular.",
+      "noNonconformities": "No hay no conformidades disponibles para vincular.",
+      "hallazgoPlaceholder": "Ej. NC-ISO-9001-2015-§8.4.1 — Evaluación de proveedores",
+      "criticaBanner": "Severidad CRÍTICA — se notificará a Gerencia al guardar (RN-QE-005)",
+      "mineralOtro": "Otro (texto libre)…",
+      "errors": {
+        "generic": "Error al guardar el Quality Event. Inténtalo de nuevo.",
+        "fechaFutura": "La fecha y hora del evento no pueden ser en el futuro."
+      },
+      "fields": {
+        "origen": "Origen del QE",
+        "tipo": "Tipo de QE",
+        "severidad": "Severidad",
+        "descripcion": "Descripción del evento",
+        "areaAfectada": "Área Afectada",
+        "mineralInvolucrado": "Mineral Involucrado (opcional)",
+        "turno": "Turno",
+        "fechaHoraEvento": "Fecha y hora del evento",
+        "incidenteId": "Incidente vinculado",
+        "ncId": "No conformidad vinculada",
+        "hallazgoAuditoriaRef": "Referencia de hallazgo de auditoría",
+        "nombreCliente": "Nombre del cliente",
+        "fechaRecepcion": "Fecha de recepción del reporte"
+      },
+      "placeholders": {
+        "select": "Seleccionar…",
+        "search": "Buscar…",
+        "descripcion": "Describe el evento con detalle (mín. 10 caracteres)…",
+        "mineralInvolucrado": "Especificar mineral…",
+        "nombreCliente": "Nombre del cliente o empresa"
+      },
+      "turno": {
+        "DIA": "Día",
+        "TARDE": "Tarde",
+        "NOCHE": "Noche"
+      },
+      "actions": {
+        "submit": "Guardar QE",
+        "submitting": "Guardando…",
+        "cancel": "Cancelar"
       }
     }
   },

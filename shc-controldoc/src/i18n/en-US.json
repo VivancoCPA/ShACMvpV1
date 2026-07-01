@@ -26,6 +26,11 @@
     },
     "actions": {
       "close": "Close"
+    },
+    "clear": "Clear",
+    "searchableSelect": {
+      "noResults": "No results for '{{query}}'",
+      "searching": "Search…"
     }
   },
   "documents": {
@@ -471,6 +476,50 @@
         "editar": "Edit",
         "reintentar": "Retry",
         "errorMsg": "Error loading quality events."
+      }
+    },
+    "form": {
+      "createTitle": "New Quality Event",
+      "noIncidents": "No incidents available to link.",
+      "noNonconformities": "No non-conformities available to link.",
+      "hallazgoPlaceholder": "E.g. NC-ISO-9001-2015-§8.4.1 — Supplier evaluation",
+      "criticaBanner": "CRITICAL severity — Management will be notified on save (RN-QE-005)",
+      "mineralOtro": "Other (free text)…",
+      "errors": {
+        "generic": "Error saving the Quality Event. Please try again.",
+        "fechaFutura": "The event date and time cannot be in the future."
+      },
+      "fields": {
+        "origen": "QE Origin",
+        "tipo": "QE Type",
+        "severidad": "Severity",
+        "descripcion": "Event Description",
+        "areaAfectada": "Affected Area",
+        "mineralInvolucrado": "Mineral Involved (optional)",
+        "turno": "Shift",
+        "fechaHoraEvento": "Event Date & Time",
+        "incidenteId": "Linked Incident",
+        "ncId": "Linked Non-Conformity",
+        "hallazgoAuditoriaRef": "Audit Finding Reference",
+        "nombreCliente": "Client Name",
+        "fechaRecepcion": "Report Reception Date"
+      },
+      "placeholders": {
+        "select": "Select…",
+        "search": "Search…",
+        "descripcion": "Describe the event in detail (min. 10 characters)…",
+        "mineralInvolucrado": "Specify mineral…",
+        "nombreCliente": "Client or company name"
+      },
+      "turno": {
+        "DIA": "Day",
+        "TARDE": "Afternoon",
+        "NOCHE": "Night"
+      },
+      "actions": {
+        "submit": "Save QE",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
       }
     }
   },

@@ -24,7 +24,10 @@ const baseFields = {
   descripcion: z.string().min(10).max(2000),
   areaAfectada: z.string().min(1),
   turno: z.enum(['DIA', 'TARDE', 'NOCHE']),
-  fechaHoraEvento: z.string().datetime({ message: 'Fecha/hora inválida' }),
+  fechaHoraEvento: z
+    .string()
+    .min(1, 'La fecha y hora del evento es requerida')
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Fecha/hora inválida (dd/mm/yyyy hh:mm)'),
   mineralInvolucrado: z.string().optional(),
 }
 

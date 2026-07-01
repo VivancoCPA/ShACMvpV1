@@ -15,6 +15,7 @@ import { IncidentNewPage } from '../features/incidents/pages/IncidentNewPage'
 import { IncidentEditPage } from '../features/incidents/pages/IncidentEditPage'
 import { IncidentDetailPage } from '../features/incidents/pages/IncidentDetailPage'
 import { QualityEventListPage } from '../features/quality-events/pages/QualityEventListPage'
+import { QualityEventForm } from '../features/quality-events/pages/QualityEventForm'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 
@@ -168,6 +169,20 @@ export const router = createBrowserRouter([
               {
                 path: '/quality-events',
                 element: <QualityEventListPage />,
+                handle: { breadcrumb: 'qualityEvents' },
+              },
+            ],
+          },
+          {
+            element: (
+              <RoleGuard
+                requiredRoles={['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST']}
+              />
+            ),
+            children: [
+              {
+                path: '/quality-events/nuevo',
+                element: <QualityEventForm />,
                 handle: { breadcrumb: 'qualityEvents' },
               },
             ],
