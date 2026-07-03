@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Plus, X, CheckCircle, Play, AlertTriangle } from 'lucide-react'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { useUsers } from '../../nonconformities/hooks/useUsers'
@@ -288,6 +289,21 @@ export function QEACSection({ qeId, qeEstado, accionesCorrectivas, solicitudesAC
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [closingAcId, setClosingAcId] = useState<string | null>(null)
+
+  // The close-AC endpoint returns only the AC, not the parent QE — the auto-transition to
+  // PENDIENTE_CIERRE (RN-QE-003) is observed via the qeEstado prop changing after the query
+  // invalidation refetches the QE detail, not from the mutation's own response.
+  const previousEstadoRef = useRef(qeEstado)
+  useEffect(() => {
+    if (
+      previousEstadoRef.current === 'EN_EJECUCION' &&
+      qeEstado === 'PENDIENTE_CIERRE' &&
+      (user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'SUPERVISOR')
+    ) {
+      toast.info(t('detail.acSection.autoTransitionToast'))
+    }
+    previousEstadoRef.current = qeEstado
+  }, [qeEstado, user?.rol, t])
 
   const createAC = useCreateQEAccion(qeId)
   const updateAC = useUpdateQEAccion(qeId)

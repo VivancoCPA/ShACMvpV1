@@ -9,7 +9,7 @@ export const VALID_QE_TRANSITIONS: Record<QEStatus, QEStatus[]> = {
   CERRADO: ['EN_VERIFICACION'],
   EN_VERIFICACION: ['VERIFICADO', 'REABIERTO'],
   VERIFICADO: [],
-  REABIERTO: ['EN_EJECUCION'],
+  REABIERTO: ['EN_INVESTIGACION'],
 }
 
 export function getValidQETransitions(estado: QEStatus): QEStatus[] {

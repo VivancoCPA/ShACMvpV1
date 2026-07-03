@@ -13,6 +13,11 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+const toastInfo = vi.fn()
+vi.mock('sonner', () => ({
+  toast: { info: (...args: unknown[]) => toastInfo(...args), success: vi.fn(), error: vi.fn() },
+}))
+
 const cerrarMutate = vi.fn()
 const iniciarMutate = vi.fn()
 const createMutateAsync = vi.fn()
@@ -109,6 +114,61 @@ describe('QEACSection — cierre con evidencia', () => {
         expect.anything(),
       )
     })
+  })
+})
+
+describe('QEACSection — notificación de transición automática a PENDIENTE_CIERRE', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows a toast.info for JEFE_CALIDAD_SYST when qeEstado transitions EN_EJECUCION → PENDIENTE_CIERRE', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-005',
+        nombre: 'Luis',
+        apellido: 'Paredes',
+        email: 'luis@shac.internal',
+        rol: 'JEFE_CALIDAD_SYST',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+
+    const { rerender } = render(
+      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" accionesCorrectivas={[]} solicitudesAC={0} />,
+    )
+    expect(toastInfo).not.toHaveBeenCalled()
+
+    rerender(
+      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" accionesCorrectivas={[]} solicitudesAC={0} />,
+    )
+
+    expect(toastInfo).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses the toast for roles other than JEFE_CALIDAD_SYST/SUPERVISOR', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-002',
+        nombre: 'Carlos',
+        apellido: 'Mendoza',
+        email: 'carlos@shac.internal',
+        rol: 'OPERARIO',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+
+    const { rerender } = render(
+      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" accionesCorrectivas={[]} solicitudesAC={0} />,
+    )
+
+    rerender(
+      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" accionesCorrectivas={[]} solicitudesAC={0} />,
+    )
+
+    expect(toastInfo).not.toHaveBeenCalled()
   })
 })
 

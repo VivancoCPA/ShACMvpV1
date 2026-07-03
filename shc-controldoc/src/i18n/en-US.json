@@ -540,7 +540,14 @@
         "hallazgoAuditoria": "Audit finding",
         "nombreCliente": "Client",
         "fechaRecepcion": "Reception date",
-        "criticaBanner": "CRITICAL severity — requires priority Management attention (RN-QE-005)"
+        "criticaBanner": "CRITICAL severity — requires priority Management attention (RN-QE-005)",
+        "fechaCierre": "Closure date",
+        "resultadoCierre": "Closure result",
+        "plazoVerificacionDias": "Verification deadline (days)",
+        "verificacionCountdown": "Effectiveness verification",
+        "verificacionVencida": "Overdue",
+        "verificacionDiasRestantes": "{{count}} days",
+        "plazoPendienteCierre": "{{count}} business days (informational closure deadline)"
       },
       "transitions": {
         "title": "Status transitions",
@@ -628,14 +635,17 @@
           "EN_EJECUCION": "In Progress",
           "CERRADA": "Closed"
         },
-        "agregarModal": { "title": "Add Corrective Action" },
+        "agregarModal": {
+          "title": "Add Corrective Action"
+        },
         "cerrarModal": {
           "title": "Close Corrective Action",
           "body": "Record the evidence that the action was completed satisfactorily."
         },
         "errors": {
           "evidenciaRequerida": "The evidence description is required."
-        }
+        },
+        "autoTransitionToast": "All corrective actions were closed — the QE moved to Pending Closure."
       },
       "auditTrail": {
         "title": "Audit Trail",
@@ -656,7 +666,77 @@
         "message": "The requested Quality Event does not exist or was deleted.",
         "volver": "Back to list"
       },
-      "deletedBanner": "This Quality Event has been deleted."
+      "deletedBanner": "This Quality Event has been deleted.",
+      "cierre": {
+        "title": "Quality Event Closure",
+        "form": {
+          "resultadoCierre": "Closure result",
+          "resultadoCierrePlaceholder": "Describe the closure result (minimum 100 characters)…",
+          "resultadoCierreCharCount": "{{count}}/{{max}}",
+          "resultadoCierreCharCountRemaining": "{{count}} more characters needed to reach the minimum of {{min}}",
+          "plazoVerificacionDias": "Verification deadline (days)",
+          "plazoCustom": "Custom",
+          "submit": "Record closure"
+        },
+        "firstSignature": {
+          "button": "Sign as Quality Manager"
+        },
+        "pendingSecondSignature": {
+          "signedBy": "Signed by {{nombre}} on {{fecha}}",
+          "waitingForSupervisor": "Quality Manager signature recorded. Waiting for Supervisor signature.",
+          "waitingForAltaDireccion": "Quality Manager signature recorded. Waiting for Senior Management signature."
+        },
+        "secondSignature": {
+          "buttonSupervisor": "Sign as Supervisor",
+          "buttonAltaDireccion": "Sign as Senior Management"
+        },
+        "pinModal": {
+          "titleJefeCalidad": "Confirm signature — Quality Manager",
+          "titleSupervisor": "Confirm signature — Supervisor",
+          "titleAltaDireccion": "Confirm signature — Senior Management",
+          "body": "Enter your signature PIN to confirm the closure.",
+          "placeholder": "PIN",
+          "confirm": "Confirm",
+          "cancel": "Cancel",
+          "error": "Incorrect PIN."
+        },
+        "summary": {
+          "resultado": "Closure result",
+          "plazo": "Verification deadline (days)",
+          "fechaCierre": "Closure date"
+        },
+        "toasts": {
+          "closed": "Quality Event closed successfully.",
+          "gerenciaNotificada": "Management has been notified.",
+          "reportanteNotificado": "The original reporter has been notified."
+        }
+      },
+      "verificacion": {
+        "title": "Effectiveness Verification",
+        "form": {
+          "resultado": "Verification result",
+          "resultadoOptions": {
+            "EFECTIVO": "Effective",
+            "NO_EFECTIVO": "Not effective"
+          },
+          "evidencia": "Evidence",
+          "evidenciaPlaceholder": "Describe the evidence supporting the verification result…",
+          "submit": "Record verification"
+        },
+        "summary": {
+          "resultado": "Result",
+          "evidencia": "Evidence",
+          "fechaVerificacionRealizada": "Verification date"
+        },
+        "forzarVencimiento": "Force deadline (dev)",
+        "toasts": {
+          "forzadoAVerificacion": "Deadline forced: the QE moved to EN_VERIFICACION.",
+          "verificado": "Verification recorded: the Quality Event has been VERIFIED.",
+          "gerenciaNotificada": "Management has been notified.",
+          "reportanteNotificado": "The original reporter has been notified.",
+          "reaperturaEscalada": "Management, Quality Manager, and Supervisor were notified of the reopening."
+        }
+      }
     },
     "delete": {
       "confirm": {

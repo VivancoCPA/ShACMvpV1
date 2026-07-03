@@ -540,7 +540,14 @@
         "hallazgoAuditoria": "Hallazgo de auditoría",
         "nombreCliente": "Cliente",
         "fechaRecepcion": "Fecha de recepción",
-        "criticaBanner": "Severidad CRÍTICA — requiere atención prioritaria de Gerencia (RN-QE-005)"
+        "criticaBanner": "Severidad CRÍTICA — requiere atención prioritaria de Gerencia (RN-QE-005)",
+        "fechaCierre": "Fecha de cierre",
+        "resultadoCierre": "Resultado del cierre",
+        "plazoVerificacionDias": "Plazo de verificación (días)",
+        "verificacionCountdown": "Verificación de eficacia",
+        "verificacionVencida": "Vencido",
+        "verificacionDiasRestantes": "{{count}} días",
+        "plazoPendienteCierre": "{{count}} días hábiles (plazo informativo de cierre)"
       },
       "transitions": {
         "title": "Transiciones de estado",
@@ -628,14 +635,17 @@
           "EN_EJECUCION": "En Ejecución",
           "CERRADA": "Cerrada"
         },
-        "agregarModal": { "title": "Agregar Acción Correctiva" },
+        "agregarModal": {
+          "title": "Agregar Acción Correctiva"
+        },
         "cerrarModal": {
           "title": "Cerrar Acción Correctiva",
           "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
         },
         "errors": {
           "evidenciaRequerida": "La descripción de la evidencia es obligatoria."
-        }
+        },
+        "autoTransitionToast": "Todas las acciones correctivas fueron cerradas — el QE pasó a Pendiente de Cierre."
       },
       "auditTrail": {
         "title": "Historial de Auditoría",
@@ -656,7 +666,77 @@
         "message": "El Quality Event solicitado no existe o fue eliminado.",
         "volver": "Volver al listado"
       },
-      "deletedBanner": "Este Quality Event ha sido eliminado."
+      "deletedBanner": "Este Quality Event ha sido eliminado.",
+      "cierre": {
+        "title": "Cierre del Quality Event",
+        "form": {
+          "resultadoCierre": "Resultado del cierre",
+          "resultadoCierrePlaceholder": "Describe el resultado del cierre (mínimo 100 caracteres)…",
+          "resultadoCierreCharCount": "{{count}}/{{max}}",
+          "resultadoCierreCharCountRemaining": "Faltan {{count}} caracteres para el mínimo de {{min}}",
+          "plazoVerificacionDias": "Plazo de verificación (días)",
+          "plazoCustom": "Personalizado",
+          "submit": "Registrar cierre"
+        },
+        "firstSignature": {
+          "button": "Firmar como Jefe de Calidad"
+        },
+        "pendingSecondSignature": {
+          "signedBy": "Firmado por {{nombre}} el {{fecha}}",
+          "waitingForSupervisor": "Firma de Jefe de Calidad registrada. Esperando firma de Supervisor.",
+          "waitingForAltaDireccion": "Firma de Jefe de Calidad registrada. Esperando firma de Alta Dirección."
+        },
+        "secondSignature": {
+          "buttonSupervisor": "Firmar como Supervisor",
+          "buttonAltaDireccion": "Firmar como Alta Dirección"
+        },
+        "pinModal": {
+          "titleJefeCalidad": "Confirmar firma — Jefe de Calidad",
+          "titleSupervisor": "Confirmar firma — Supervisor",
+          "titleAltaDireccion": "Confirmar firma — Alta Dirección",
+          "body": "Ingresa tu PIN de firma para confirmar el cierre.",
+          "placeholder": "PIN",
+          "confirm": "Confirmar",
+          "cancel": "Cancelar",
+          "error": "PIN incorrecto."
+        },
+        "summary": {
+          "resultado": "Resultado del cierre",
+          "plazo": "Plazo de verificación (días)",
+          "fechaCierre": "Fecha de cierre"
+        },
+        "toasts": {
+          "closed": "Quality Event cerrado exitosamente.",
+          "gerenciaNotificada": "Se notificó a Gerencia.",
+          "reportanteNotificado": "Se notificó al reportante original."
+        }
+      },
+      "verificacion": {
+        "title": "Verificación de Eficacia",
+        "form": {
+          "resultado": "Resultado de la verificación",
+          "resultadoOptions": {
+            "EFECTIVO": "Efectivo",
+            "NO_EFECTIVO": "No efectivo"
+          },
+          "evidencia": "Evidencia",
+          "evidenciaPlaceholder": "Describe la evidencia que sustenta el resultado de la verificación…",
+          "submit": "Registrar verificación"
+        },
+        "summary": {
+          "resultado": "Resultado",
+          "evidencia": "Evidencia",
+          "fechaVerificacionRealizada": "Fecha de verificación"
+        },
+        "forzarVencimiento": "Forzar vencimiento (dev)",
+        "toasts": {
+          "forzadoAVerificacion": "Se forzó el vencimiento: el QE pasó a EN_VERIFICACION.",
+          "verificado": "Verificación registrada: el Quality Event ha sido VERIFICADO.",
+          "gerenciaNotificada": "Se notificó a Gerencia.",
+          "reportanteNotificado": "Se notificó al reportante original.",
+          "reaperturaEscalada": "Se notificó a Gerencia, Jefe de Calidad y Supervisor por la reapertura."
+        }
+      }
     },
     "delete": {
       "confirm": {

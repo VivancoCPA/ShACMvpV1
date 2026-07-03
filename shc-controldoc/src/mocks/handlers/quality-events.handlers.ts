@@ -1,9 +1,17 @@
 import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
 import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
+import { resolveRolSegundaFirma } from '../../features/quality-events/utils/qualityEventPermissions'
+import { useAuthStore } from '../../stores/authStore'
 import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
 
 const LATENCY = 400
+
+function getCurrentUser(): { id: string; nombre: string } {
+  const user = useAuthStore.getState().user
+  if (!user) return { id: 'user-current', nombre: 'Usuario actual' }
+  return { id: user.id, nombre: `${user.nombre} ${user.apellido}` }
+}
 
 let qeStore: QualityEvent[] = [...qualityEventFixtures]
 
@@ -153,6 +161,7 @@ export const qualityEventHandlers = [
     }
 
     const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
     const auditEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent' as const,
@@ -160,8 +169,8 @@ export const qualityEventHandlers = [
       accion: 'ESTADO_CAMBIADO',
       estadoAnterior: qe.estado,
       estadoNuevo: body.nuevoEstado,
-      realizadoPorId: 'user-current',
-      realizadoPorNombre: 'Usuario actual',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
       timestamp: now,
       generadoPorIA: false,
     }
@@ -188,14 +197,15 @@ export const qualityEventHandlers = [
 
     const qe = qeStore[idx]
     const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
     const auditEntry: QEAuditTrailEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
       entidadId: qe.id,
       accion: 'ELIMINADO',
       valorNuevo: now,
-      realizadoPorId: 'user-current',
-      realizadoPorNombre: 'Usuario actual',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
       timestamp: now,
       generadoPorIA: false,
     }
@@ -222,6 +232,7 @@ export const qualityEventHandlers = [
 
     const qe = qeStore[idx]
     const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
     const auditEntry: QEAuditTrailEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
@@ -229,8 +240,8 @@ export const qualityEventHandlers = [
       accion: 'REACTIVADO',
       estadoAnterior: qe.estado,
       estadoNuevo: 'ABIERTO',
-      realizadoPorId: 'user-current',
-      realizadoPorNombre: 'Usuario actual',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
       timestamp: now,
       generadoPorIA: false,
     }
@@ -288,14 +299,15 @@ export const qualityEventHandlers = [
       actualizadoEn: now,
     }
 
+    const currentUser = getCurrentUser()
     const auditEntry: QEAuditTrailEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
       entidadId: qe.id,
       accion: 'AC_CREADA',
       valorNuevo: acId,
-      realizadoPorId: 'user-current',
-      realizadoPorNombre: 'Usuario actual',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
       timestamp: now,
       generadoPorIA: false,
     }
@@ -391,6 +403,7 @@ export const qualityEventHandlers = [
     const accionesCorrectivas = [...qe.accionesCorrectivas]
     accionesCorrectivas[acIdx] = updatedAC
 
+    const currentUser = getCurrentUser()
     const auditEntry: QEAuditTrailEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
@@ -399,20 +412,377 @@ export const qualityEventHandlers = [
       estadoAnterior: previous.estado,
       estadoNuevo: body.estado,
       valorNuevo: updatedAC.id,
-      realizadoPorId: 'user-current',
-      realizadoPorNombre: 'Usuario actual',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    let auditTrail = [...qe.auditTrail, auditEntry]
+    let nuevoEstado: QEStatus = qe.estado
+
+    const todasCerradasConEvidencia = accionesCorrectivas.every(
+      (ac) => ac.estado === 'CERRADA' && !!ac.descripcionEvidencia && ac.descripcionEvidencia.trim() !== '',
+    )
+
+    if (qe.estado === 'EN_EJECUCION' && body.estado === 'CERRADA' && todasCerradasConEvidencia) {
+      nuevoEstado = 'PENDIENTE_CIERRE'
+      const transicionEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 2}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'TRANSICION_AUTOMATICA',
+        estadoAnterior: 'EN_EJECUCION',
+        estadoNuevo: 'PENDIENTE_CIERRE',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      auditTrail = [...auditTrail, transicionEntry]
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      estado: nuevoEstado,
+      accionesCorrectivas,
+      auditTrail,
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updatedAC })
+  }),
+
+  http.patch('/api/quality-events/:id/cerrar', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    if (qe.estado !== 'PENDIENTE_CIERRE') {
+      return HttpResponse.json(
+        { success: false, message: 'El Quality Event no está en PENDIENTE_CIERRE' },
+        { status: 422 }
+      )
+    }
+
+    const body = await request.json() as { resultadoCierre: string; plazoVerificacionDias: number }
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'CIERRE_INICIADO',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
       timestamp: now,
       generadoPorIA: false,
     }
 
     const updated: QualityEvent = {
       ...qe,
-      accionesCorrectivas,
+      resultadoCierre: body.resultadoCierre,
+      plazoVerificacionDias: body.plazoVerificacionDias,
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
     qeStore[idx] = updated
-    return HttpResponse.json({ success: true, data: updatedAC })
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.patch('/api/quality-events/:id/firmar-cierre', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const body = await request.json() as {
+      rol: 'JEFE_CALIDAD_SYST' | 'SUPERVISOR' | 'ALTA_DIRECCION'
+      pin: string
+    }
+
+    if (!qe.resultadoCierre) {
+      return HttpResponse.json(
+        { success: false, message: 'QE-AC-006: debe registrarse el cierre antes de firmar' },
+        { status: 422 }
+      )
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    if (body.rol === 'JEFE_CALIDAD_SYST') {
+      if (qe.cerradoPorId) {
+        return HttpResponse.json(
+          { success: false, message: 'QE-AC-006: la primera firma ya fue registrada' },
+          { status: 422 }
+        )
+      }
+
+      const auditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'FIRMA_CIERRE_JEFE_CALIDAD',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+
+      const updated: QualityEvent = {
+        ...qe,
+        cerradoPorId: currentUser.id,
+        auditTrail: [...qe.auditTrail, auditEntry],
+        actualizadoEn: now,
+      }
+      qeStore[idx] = updated
+      return HttpResponse.json({ success: true, data: updated })
+    }
+
+    // Second signature: SUPERVISOR or ALTA_DIRECCION
+    if (!qe.cerradoPorId) {
+      return HttpResponse.json(
+        { success: false, message: 'QE-AC-006: falta la primera firma (Jefe de Calidad)' },
+        { status: 422 }
+      )
+    }
+    if (qe.cierreFirmaSupervisorId) {
+      return HttpResponse.json(
+        { success: false, message: 'QE-AC-006: la segunda firma ya fue registrada' },
+        { status: 422 }
+      )
+    }
+
+    const rolEsperado = resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)
+    if (body.rol !== rolEsperado) {
+      return HttpResponse.json(
+        { success: false, message: 'QE-AC-006: rol de segunda firma inválido' },
+        { status: 422 }
+      )
+    }
+
+    const fechaCierre = now
+    const plazo = qe.plazoVerificacionDias ?? 60
+    const fechaVerificacionProgramada = new Date(
+      new Date(fechaCierre).getTime() + plazo * 24 * 60 * 60 * 1000,
+    ).toISOString()
+
+    const firmaEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'FIRMA_CIERRE_SEGUNDA',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const transicionEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 2}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'ESTADO_CAMBIADO',
+      estadoAnterior: qe.estado,
+      estadoNuevo: 'CERRADO',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      cierreFirmaSupervisorId: currentUser.id,
+      cierreFirmaSupervisorRol: body.rol,
+      estado: 'CERRADO',
+      fechaCierre,
+      fechaVerificacionProgramada,
+      auditTrail: [...qe.auditTrail, firmaEntry, transicionEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.patch('/api/quality-events/:id/forzar-vencimiento-verificacion', async ({ params }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    if (qe.estado === 'CERRADO') {
+      const auditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'ESTADO_CAMBIADO',
+        estadoAnterior: qe.estado,
+        estadoNuevo: 'EN_VERIFICACION',
+        campoModificado: 'forzarVencimiento',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      const updated: QualityEvent = {
+        ...qe,
+        estado: 'EN_VERIFICACION',
+        auditTrail: [...qe.auditTrail, auditEntry],
+        actualizadoEn: now,
+      }
+      qeStore[idx] = updated
+      return HttpResponse.json({ success: true, data: updated })
+    }
+
+    if (qe.estado === 'EN_VERIFICACION') {
+      const timeoutEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'VERIFICACION_VENCIDA',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      const reaperturaEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 2}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'REABIERTO',
+        estadoAnterior: qe.estado,
+        estadoNuevo: 'EN_INVESTIGACION',
+        campoModificado: 'motivo',
+        valorNuevo: 'VENCIMIENTO_PLAZO',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      const updated: QualityEvent = {
+        ...qe,
+        estado: 'EN_INVESTIGACION',
+        ciclo: qe.ciclo + 1,
+        auditTrail: [...qe.auditTrail, timeoutEntry, reaperturaEntry],
+        actualizadoEn: now,
+      }
+      qeStore[idx] = updated
+      return HttpResponse.json({ success: true, data: updated })
+    }
+
+    return HttpResponse.json(
+      { success: false, message: 'No hay nada que forzar para el estado actual' },
+      { status: 422 }
+    )
+  }),
+
+  http.post('/api/quality-events/:id/verificacion-eficacia', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const body = await request.json() as { resultado: 'EFECTIVO' | 'NO_EFECTIVO'; evidencia: string }
+
+    if (qe.estado !== 'EN_VERIFICACION' || !body.evidencia || body.evidencia.trim() === '') {
+      return HttpResponse.json(
+        { success: false, message: 'Solicitud inválida para registrar verificación de eficacia' },
+        { status: 422 }
+      )
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    if (body.resultado === 'EFECTIVO') {
+      const auditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'ESTADO_CAMBIADO',
+        estadoAnterior: qe.estado,
+        estadoNuevo: 'VERIFICADO',
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      const updated: QualityEvent = {
+        ...qe,
+        resultadoVerificacion: 'EFECTIVO',
+        evidenciaVerificacion: body.evidencia,
+        verificadoPorId: currentUser.id,
+        fechaVerificacionRealizada: now,
+        estado: 'VERIFICADO',
+        auditTrail: [...qe.auditTrail, auditEntry],
+        actualizadoEn: now,
+      }
+      qeStore[idx] = updated
+      return HttpResponse.json({ success: true, data: updated })
+    }
+
+    const resultEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'VERIFICACION_NO_EFECTIVA',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const reaperturaEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 2}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'REABIERTO',
+      estadoAnterior: qe.estado,
+      estadoNuevo: 'EN_INVESTIGACION',
+      campoModificado: 'motivo',
+      valorNuevo: 'NO_EFECTIVO',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const updated: QualityEvent = {
+      ...qe,
+      resultadoVerificacion: 'NO_EFECTIVO',
+      evidenciaVerificacion: body.evidencia,
+      fechaVerificacionRealizada: now,
+      ciclo: qe.ciclo + 1,
+      estado: 'EN_INVESTIGACION',
+      auditTrail: [...qe.auditTrail, resultEntry, reaperturaEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
   }),
 
   http.patch('/api/quality-events/:id/solicitar-ac', async ({ params }) => {

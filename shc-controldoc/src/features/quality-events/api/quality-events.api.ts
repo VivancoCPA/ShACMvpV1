@@ -10,6 +10,9 @@ import type {
 import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.schema'
 import type { CreateQEACInput } from '../schemas/createQEAccion.schema'
 import type { CerrarQEACInput } from '../schemas/cerrarQEAccion.schema'
+import type { QualityEventCierreFormInput } from '../schemas/qualityEventCierre.schema'
+import type { FirmarCierreInput } from '../schemas/firmarCierre.schema'
+import type { VerificacionEficaciaInput } from '../schemas/verificacionEficacia.schema'
 
 export interface QEListResponse {
   items: QualityEvent[]
@@ -106,5 +109,28 @@ export async function getQEAuditTrail(qeId: string): Promise<QEAuditTrailEntry[]
 
 export async function solicitarACEnQE(qeId: string): Promise<QualityEvent> {
   const response = await api.patch<QualityEvent>(`/api/quality-events/${qeId}/solicitar-ac`)
+  return response.data
+}
+
+export async function cerrarQE(id: string, data: QualityEventCierreFormInput): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/cerrar`, data)
+  return response.data
+}
+
+export async function firmarCierre(id: string, data: FirmarCierreInput): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/firmar-cierre`, data)
+  return response.data
+}
+
+export async function forzarVencimientoVerificacion(id: string): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/forzar-vencimiento-verificacion`)
+  return response.data
+}
+
+export async function registrarVerificacionEficacia(
+  id: string,
+  data: VerificacionEficaciaInput,
+): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${id}/verificacion-eficacia`, data)
   return response.data
 }

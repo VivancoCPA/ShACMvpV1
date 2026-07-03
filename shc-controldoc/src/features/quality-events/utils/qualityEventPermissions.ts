@@ -1,6 +1,7 @@
 import type { QEStatus, QualityEvent } from '../types/qualityEvent.types'
 import type { QEPermissions } from '../types/qualityEventPermissions.types'
 import type { UserRole } from '../../../types/auth.types'
+import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
 
 const DENY_ALL: QEPermissions = {
   puedeEditarCabecera: false,
@@ -41,6 +42,7 @@ export function getQualityEventPermissions(
         estado === 'EN_INVESTIGACION' || estado === 'ANALISIS_COMPLETADO'
       const puedeAvanzarEstado = estado !== 'VERIFICADO'
       const puedeCerrar = estado === 'PENDIENTE_CIERRE'
+      const puedeVerificar = estado === 'EN_VERIFICACION'
       const puedeReabrir = estado === 'EN_VERIFICACION'
       return {
         ...DENY_ALL,
@@ -48,6 +50,7 @@ export function getQualityEventPermissions(
         puedeEditarCausaRaiz,
         puedeAvanzarEstado,
         puedeCerrar,
+        puedeVerificar,
         puedeReabrir,
         soloLectura: false,
       }
@@ -62,12 +65,29 @@ export function getQualityEventPermissions(
       }
     }
 
-    case 'ALTA_DIRECCION':
-      return { ...DENY_ALL, soloLectura: true }
+    case 'ALTA_DIRECCION': {
+      const puedeFirmarCierre = estado === 'PENDIENTE_CIERRE' && esResponsable
+      return {
+        ...DENY_ALL,
+        puedeFirmarCierre,
+        soloLectura: !puedeFirmarCierre,
+      }
+    }
 
     case 'JEFE_CONTROL_DOCUMENTARIO':
       return { ...DENY_ALL, soloLectura: true }
   }
+}
+
+export function resolveRolSegundaFirma(
+  primerFirmanteId: string,
+  areaAfectada: string,
+): 'SUPERVISOR' | 'ALTA_DIRECCION' {
+  const firmante = userFixtures.find((u) => u.id === primerFirmanteId)
+  if (firmante?.rol === 'SUPERVISOR' && firmante.area === areaAfectada) {
+    return 'ALTA_DIRECCION'
+  }
+  return 'SUPERVISOR'
 }
 
 export function validateTransitionToEnEjecucion(qe: QualityEvent): {

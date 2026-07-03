@@ -37,7 +37,7 @@ describe('getValidQETransitions', () => {
     expect(getValidQETransitions('VERIFICADO')).toEqual([])
   })
 
-  it('REABIERTO → EN_EJECUCION', () => {
-    expect(getValidQETransitions('REABIERTO')).toEqual(['EN_EJECUCION'])
+  it('REABIERTO → EN_INVESTIGACION', () => {
+    expect(getValidQETransitions('REABIERTO')).toEqual(['EN_INVESTIGACION'])
   })
 })

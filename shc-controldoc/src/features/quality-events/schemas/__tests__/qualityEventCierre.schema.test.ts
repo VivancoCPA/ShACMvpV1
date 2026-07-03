@@ -1,53 +1,43 @@
 import { describe, it, expect } from 'vitest'
-import { qualityEventCierreSchema } from '../qualityEventCierre.schema'
+import { qualityEventCierreFormSchema } from '../qualityEventCierre.schema'
 
 const LONG_RESULT = 'Resultado de cierre con descripción suficientemente larga para superar el mínimo de cien caracteres requerido por el schema'
 
-describe('qualityEventCierreSchema', () => {
+describe('qualityEventCierreFormSchema', () => {
   it('rejects resultadoCierre shorter than 100 characters', () => {
-    const result = qualityEventCierreSchema.safeParse({
+    const result = qualityEventCierreFormSchema.safeParse({
       resultadoCierre: 'Muy corto',
-      cerradoPorId: 'jc-1',
-      cierreFirmaSupervisorId: 'sup-1',
       plazoVerificacionDias: 60,
     })
     expect(result.success).toBe(false)
-  })
-
-  it('rejects when cerradoPorId is absent', () => {
-    const result = qualityEventCierreSchema.safeParse({
-      resultadoCierre: LONG_RESULT,
-      cierreFirmaSupervisorId: 'sup-1',
-      plazoVerificacionDias: 60,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects when cierreFirmaSupervisorId is absent', () => {
-    const result = qualityEventCierreSchema.safeParse({
-      resultadoCierre: LONG_RESULT,
-      cerradoPorId: 'jc-1',
-      plazoVerificacionDias: 60,
-    })
-    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('resultadoCierre'))).toBe(true)
+    }
   })
 
   it('applies default plazoVerificacionDias of 60 when not provided', () => {
-    const result = qualityEventCierreSchema.parse({
+    const result = qualityEventCierreFormSchema.parse({
       resultadoCierre: LONG_RESULT,
-      cerradoPorId: 'jc-1',
-      cierreFirmaSupervisorId: 'sup-1',
     })
     expect(result.plazoVerificacionDias).toBe(60)
   })
 
-  it('accepts valid full payload', () => {
-    const result = qualityEventCierreSchema.safeParse({
+  it('accepts a valid full payload', () => {
+    const result = qualityEventCierreFormSchema.safeParse({
       resultadoCierre: LONG_RESULT,
-      cerradoPorId: 'jc-1',
-      cierreFirmaSupervisorId: 'sup-1',
-      plazoVerificacionDias: 30,
+      plazoVerificacionDias: 90,
     })
     expect(result.success).toBe(true)
+  })
+
+  it('rejects resultadoCierre over 500 characters', () => {
+    const result = qualityEventCierreFormSchema.safeParse({
+      resultadoCierre: 'x'.repeat(501),
+      plazoVerificacionDias: 60,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('resultadoCierre'))).toBe(true)
+    }
   })
 })

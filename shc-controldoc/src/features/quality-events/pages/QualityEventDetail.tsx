@@ -7,6 +7,8 @@ import { QEHeaderSection } from '../components/QEHeaderSection'
 import { QEStatusTransitionPanel } from '../components/QEStatusTransitionPanel'
 import { QEInvestigationSection } from '../components/QEInvestigationSection'
 import { QEACSection } from '../components/QEACSection'
+import { QECierreSection } from '../components/QECierreSection'
+import { QEVerificacionSection } from '../components/QEVerificacionSection'
 import { QEAuditTrail } from '../components/QEAuditTrail'
 
 function SectionSkeleton() {
@@ -94,6 +96,8 @@ export function QualityEventDetail() {
           solicitudesAC={qe.solicitudesAC}
           readOnly={isDeleted}
         />
+        <QECierreSection qe={qe} />
+        <QEVerificacionSection qe={qe} />
         <QEAuditTrail qeId={qe.id} />
       </div>
     </div>

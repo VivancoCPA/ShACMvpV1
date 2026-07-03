@@ -1,11 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getQualityEventPermissions,
   validateTransitionToEnEjecucion,
   validateTransitionToPendienteCierre,
   validateTransitionToCerrado,
+  resolveRolSegundaFirma,
 } from '../qualityEventPermissions'
 import type { QualityEvent } from '../../types/qualityEvent.types'
+
+vi.mock('../../../../mocks/fixtures/users.fixtures', () => ({
+  userFixtures: [
+    { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
+    { id: 'user-005', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },
+    { id: 'user-999', nombre: 'Dual', apellido: 'Hat', email: 'dual@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
+  ],
+}))
 
 const baseQE: QualityEvent = {
   id: 'qe-1',
@@ -104,6 +113,41 @@ describe('getQualityEventPermissions', () => {
     expect(perms.soloLectura).toBe(true)
     expect(perms.puedeAvanzarEstado).toBe(false)
     expect(perms.puedeEditarCabecera).toBe(false)
+  })
+
+  it('ALTA_DIRECCION PENDIENTE_CIERRE esResponsable=true: puedeFirmarCierre true, soloLectura false', () => {
+    const perms = getQualityEventPermissions('PENDIENTE_CIERRE', 'ALTA_DIRECCION', true)
+    expect(perms.puedeFirmarCierre).toBe(true)
+    expect(perms.soloLectura).toBe(false)
+  })
+
+  it('ALTA_DIRECCION PENDIENTE_CIERRE esResponsable=false: puedeFirmarCierre false, soloLectura true', () => {
+    const perms = getQualityEventPermissions('PENDIENTE_CIERRE', 'ALTA_DIRECCION', false)
+    expect(perms.puedeFirmarCierre).toBe(false)
+    expect(perms.soloLectura).toBe(true)
+  })
+
+  it('JEFE_CALIDAD_SYST EN_VERIFICACION: puedeVerificar true', () => {
+    const perms = getQualityEventPermissions('EN_VERIFICACION', 'JEFE_CALIDAD_SYST', false)
+    expect(perms.puedeVerificar).toBe(true)
+  })
+})
+
+describe('resolveRolSegundaFirma (RN-QE-004 escalation)', () => {
+  it('returns SUPERVISOR for the normal JEFE_CALIDAD_SYST first signer', () => {
+    expect(resolveRolSegundaFirma('user-005', 'Calidad')).toBe('SUPERVISOR')
+  })
+
+  it('returns ALTA_DIRECCION when the first signer doubles as the area supervisor', () => {
+    expect(resolveRolSegundaFirma('user-999', 'Operaciones')).toBe('ALTA_DIRECCION')
+  })
+
+  it('returns SUPERVISOR when the first signer is SUPERVISOR of a different area', () => {
+    expect(resolveRolSegundaFirma('user-003', 'Almacén Norte')).toBe('SUPERVISOR')
+  })
+
+  it('falls back to SUPERVISOR when the user cannot be found', () => {
+    expect(resolveRolSegundaFirma('user-desconocido', 'Calidad')).toBe('SUPERVISOR')
   })
 })
 

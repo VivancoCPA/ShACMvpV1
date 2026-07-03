@@ -25,9 +25,10 @@ export {
   validateTransitionToEnEjecucion,
   validateTransitionToPendienteCierre,
   validateTransitionToCerrado,
+  resolveRolSegundaFirma,
 } from './utils/qualityEventPermissions'
 
-export { requiereNotificacionUrgente, estaVencidaVerificacion } from './utils/qualityEventHelpers'
+export { requiereNotificacionUrgente, estaVencidaVerificacion, contarDiasHabiles } from './utils/qualityEventHelpers'
 
 export {
   cincoPorquesSchema,
@@ -40,8 +41,14 @@ export type {
   QualityEventCreateInput,
 } from './schemas/qualityEventCreate.schema'
 
-export { qualityEventCierreSchema } from './schemas/qualityEventCierre.schema'
-export type { QualityEventCierreInput } from './schemas/qualityEventCierre.schema'
+export { qualityEventCierreFormSchema } from './schemas/qualityEventCierre.schema'
+export type { QualityEventCierreFormInput } from './schemas/qualityEventCierre.schema'
+
+export { firmarCierreSchema } from './schemas/firmarCierre.schema'
+export type { FirmarCierreInput } from './schemas/firmarCierre.schema'
+
+export { verificacionEficaciaSchema } from './schemas/verificacionEficacia.schema'
+export type { VerificacionEficaciaInput } from './schemas/verificacionEficacia.schema'
 
 export { createQEAccionSchema } from './schemas/createQEAccion.schema'
 export type { CreateQEACInput } from './schemas/createQEAccion.schema'
@@ -62,6 +69,10 @@ export {
   cerrarQEAccion,
   getQEAuditTrail,
   solicitarACEnQE,
+  cerrarQE,
+  firmarCierre,
+  forzarVencimientoVerificacion,
+  registrarVerificacionEficacia,
 } from './api/quality-events.api'
 export type { QEListResponse, UpdateQEACStatusInput } from './api/quality-events.api'
 
@@ -78,6 +89,10 @@ export { useUpdateQEAccion } from './hooks/useUpdateQEAccion'
 export { useCerrarQEAccion } from './hooks/useCerrarQEAccion'
 export { useQEAuditTrail } from './hooks/useQEAuditTrail'
 export { useSolicitarACEnQE } from './hooks/useSolicitarACEnQE'
+export { useCerrarQE } from './hooks/useCerrarQE'
+export { useFirmarCierre } from './hooks/useFirmarCierre'
+export { useForzarVencimientoVerificacion } from './hooks/useForzarVencimientoVerificacion'
+export { useVerificacionEficacia } from './hooks/useVerificacionEficacia'
 
 export { QualityEventListPage } from './pages/QualityEventListPage'
 export { QualityEventDetail } from './pages/QualityEventDetail'
@@ -89,4 +104,6 @@ export { QEHeaderSection } from './components/QEHeaderSection'
 export { QEStatusTransitionPanel } from './components/QEStatusTransitionPanel'
 export { QEInvestigationSection } from './components/QEInvestigationSection'
 export { QEACSection } from './components/QEACSection'
+export { QECierreSection } from './components/QECierreSection'
+export { QEVerificacionSection } from './components/QEVerificacionSection'
 export { QEAuditTrail } from './components/QEAuditTrail'

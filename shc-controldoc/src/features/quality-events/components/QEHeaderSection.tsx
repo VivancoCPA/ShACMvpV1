@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
 import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+import { contarDiasHabiles } from '../utils/qualityEventHelpers'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
 import { QEOriginBadge } from './QEOriginBadge'
@@ -33,6 +34,27 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
   const formatDateTime = (value?: string | null) => (value ? dateFormatter.format(new Date(value)) : '—')
   const formatDateOnly = (value?: string | null) => (value ? dateOnlyFormatter.format(new Date(value)) : '—')
 
+  let verificacionCountdownLabel: string | null = null
+  if (qe.fechaVerificacionProgramada) {
+    const diasRestantes = Math.ceil(
+      (new Date(qe.fechaVerificacionProgramada).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    )
+    const vencida = diasRestantes < 0 && !qe.fechaVerificacionRealizada
+    verificacionCountdownLabel = vencida
+      ? t('detail.header.verificacionVencida')
+      : t('detail.header.verificacionDiasRestantes', { count: diasRestantes })
+  }
+
+  let plazoPendienteCierreLabel: string | null = null
+  if (qe.estado === 'PENDIENTE_CIERRE') {
+    const transicionEntry = qe.auditTrail.find((e) => e.accion === 'TRANSICION_AUTOMATICA')
+    if (transicionEntry) {
+      const diasTranscurridos = contarDiasHabiles(new Date(transicionEntry.timestamp), new Date())
+      const diasRestantes = 5 - diasTranscurridos
+      plazoPendienteCierreLabel = t('detail.header.plazoPendienteCierre', { count: diasRestantes })
+    }
+  }
+
   return (
     <section
       aria-labelledby="qe-header-title"
@@ -56,6 +78,11 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
         {qe.ciclo > 1 && (
           <span className="inline-flex items-center rounded-pill bg-amber/15 px-2 py-0.5 text-xs font-medium text-amber">
             {t('detail.header.reincidencia', { count: qe.ciclo })}
+          </span>
+        )}
+        {plazoPendienteCierreLabel && (
+          <span className="inline-flex items-center rounded-pill bg-teal/15 px-2 py-0.5 text-xs font-medium text-teal">
+            {plazoPendienteCierreLabel}
           </span>
         )}
       </div>
@@ -101,6 +128,19 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
             <FieldRow label={t('detail.header.fechaRecepcion')}>
               {formatDateOnly(qe.reporteExternoRef.fechaRecepcion)}
             </FieldRow>
+          </>
+        )}
+
+        {qe.fechaCierre && (
+          <>
+            <FieldRow label={t('detail.header.fechaCierre')}>{formatDateTime(qe.fechaCierre)}</FieldRow>
+            <FieldRow label={t('detail.header.resultadoCierre')}>{qe.resultadoCierre}</FieldRow>
+            <FieldRow label={t('detail.header.plazoVerificacionDias')}>{qe.plazoVerificacionDias}</FieldRow>
+            {verificacionCountdownLabel && (
+              <FieldRow label={t('detail.header.verificacionCountdown')}>
+                {verificacionCountdownLabel}
+              </FieldRow>
+            )}
           </>
         )}
       </dl>

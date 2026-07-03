@@ -4,7 +4,7 @@ export function requiereNotificacionUrgente(qe: QualityEvent): boolean {
   return qe.severidad === 'CRITICA'
 }
 
-function contarDiasHabiles(desde: Date, hasta: Date): number {
+export function contarDiasHabiles(desde: Date, hasta: Date): number {
   let count = 0
   const cursor = new Date(desde)
   cursor.setHours(0, 0, 0, 0)

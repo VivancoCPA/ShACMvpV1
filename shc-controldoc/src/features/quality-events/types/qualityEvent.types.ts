@@ -115,11 +115,14 @@ export interface QualityEvent {
   resultadoCierre?: string
   cerradoPorId?: string
   cierreFirmaSupervisorId?: string
+  cierreFirmaSupervisorRol?: 'SUPERVISOR' | 'ALTA_DIRECCION'
+  fechaCierre?: string
   plazoVerificacionDias?: number
   fechaVerificacionProgramada?: string
   fechaVerificacionRealizada?: string
   verificadoPorId?: string
   resultadoVerificacion?: 'EFECTIVO' | 'NO_EFECTIVO'
+  evidenciaVerificacion?: string
   deletedAt?: string
 }
 

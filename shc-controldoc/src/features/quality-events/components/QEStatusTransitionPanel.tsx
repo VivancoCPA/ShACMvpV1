@@ -5,7 +5,6 @@ import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
 import { useTransitionQEStatus } from '../hooks/useTransitionQEStatus'
 import { QE_STATUS_LABELS } from '../../../constants/shared.constants'
 import type { QualityEvent, QEStatus } from '../types/qualityEvent.types'
-import type { QEPermissions } from '../types/qualityEventPermissions.types'
 import type { UserRole } from '../../../types/auth.types'
 
 interface QEStatusTransitionPanelProps {
@@ -13,18 +12,7 @@ interface QEStatusTransitionPanelProps {
   rol: UserRole
 }
 
-function permissionKeyForTarget(target: QEStatus): keyof QEPermissions {
-  switch (target) {
-    case 'CERRADO':
-      return 'puedeCerrar'
-    case 'VERIFICADO':
-      return 'puedeVerificar'
-    case 'REABIERTO':
-      return 'puedeReabrir'
-    default:
-      return 'puedeAvanzarEstado'
-  }
-}
+const EXCLUDED_TARGETS: QEStatus[] = ['CERRADO', 'EN_VERIFICACION', 'VERIFICADO', 'REABIERTO']
 
 export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProps) {
   const { t } = useTranslation('qualityEvents')
@@ -32,7 +20,7 @@ export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProp
 
   const permissions = getQualityEventPermissions(qe.estado, rol, false)
   const validTargets = getValidQETransitions(qe.estado).filter(
-    (target) => permissions[permissionKeyForTarget(target)],
+    (target) => !EXCLUDED_TARGETS.includes(target) && permissions.puedeAvanzarEstado,
   )
 
   if (validTargets.length === 0) return null
@@ -51,22 +39,21 @@ export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProp
   return (
     <div className="flex flex-wrap items-center gap-2.5" role="group" aria-label={t('detail.transitions.title')}>
       {validTargets.map((target) => {
-        if (target === 'CERRADO') {
+        if (target === 'PENDIENTE_CIERRE') {
           const bloqueadaPorACs = qe.accionesCorrectivas.some((ac) => ac.estado !== 'CERRADA')
-          const tooltip = bloqueadaPorACs
-            ? t('detail.transitions.rnQe003Tooltip')
-            : t('detail.transitions.disponibleEnCierreTooltip')
-          return (
-            <button
-              key={target}
-              type="button"
-              disabled
-              title={tooltip}
-              className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-muted opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft"
-            >
-              {t('detail.transitions.disponibleEnCierre')}
-            </button>
-          )
+          if (bloqueadaPorACs) {
+            return (
+              <button
+                key={target}
+                type="button"
+                disabled
+                title={t('detail.transitions.rnQe003Tooltip')}
+                className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-muted opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft"
+              >
+                {QE_STATUS_LABELS[target]}
+              </button>
+            )
+          }
         }
 
         if (target === 'ANALISIS_COMPLETADO' && qe.solicitudesAC > 0) {

@@ -63,51 +63,29 @@ describe('QEStatusTransitionPanel — RN-QE-002 / RN-QE-003 guards', () => {
     expect(button).not.toBeDisabled()
   })
 
-  it('renders the CERRADO button disabled with the RN-QE-003 tooltip when ACs are still open', () => {
-    const qe = buildQE({
-      estado: 'PENDIENTE_CIERRE',
-      accionesCorrectivas: [
-        {
-          id: 'ac-1',
-          qeId: 'qe-2026-001',
-          descripcion: 'AC abierta',
-          responsableId: 'user-003',
-          responsableNombre: 'María Castro',
-          plazoFecha: '2026-08-01',
-          estado: 'EN_EJECUCION',
-          creadoEn: '2026-01-01T00:00:00Z',
-          actualizadoEn: '2026-01-01T00:00:00Z',
-        },
-      ],
-    })
-    render(<QEStatusTransitionPanel qe={qe} rol="JEFE_CALIDAD_SYST" />)
+  it('renders no CERRADO button, even as a disabled stub', () => {
+    const qe = buildQE({ estado: 'PENDIENTE_CIERRE' })
+    const { container } = render(<QEStatusTransitionPanel qe={qe} rol="JEFE_CALIDAD_SYST" />)
 
-    const button = screen.getByText('detail.transitions.disponibleEnCierre').closest('button')
-    expect(button).toBeDisabled()
-    expect(button).toHaveAttribute('title', 'detail.transitions.rnQe003Tooltip')
+    expect(screen.queryByText('detail.transitions.disponibleEnCierre')).not.toBeInTheDocument()
+    expect(container.querySelector('button')).toBeNull()
   })
 
-  it('renders the CERRADO button always disabled, even with all ACs closed (pending M4-S06)', () => {
-    const qe = buildQE({
-      estado: 'PENDIENTE_CIERRE',
-      accionesCorrectivas: [
-        {
-          id: 'ac-1',
-          qeId: 'qe-2026-001',
-          descripcion: 'AC cerrada',
-          responsableId: 'user-003',
-          responsableNombre: 'María Castro',
-          plazoFecha: '2026-08-01',
-          estado: 'CERRADA',
-          descripcionEvidencia: 'Evidencia',
-          creadoEn: '2026-01-01T00:00:00Z',
-          actualizadoEn: '2026-01-01T00:00:00Z',
-        },
-      ],
-    })
-    render(<QEStatusTransitionPanel qe={qe} rol="JEFE_CALIDAD_SYST" />)
+  it('renders no EN_VERIFICACION button from CERRADO', () => {
+    const qe = buildQE({ estado: 'CERRADO' })
+    const { container } = render(<QEStatusTransitionPanel qe={qe} rol="JEFE_CALIDAD_SYST" />)
 
-    const button = screen.getByText('detail.transitions.disponibleEnCierre').closest('button')
-    expect(button).toBeDisabled()
+    expect(container.querySelector('button')).toBeNull()
+  })
+
+  it('renders no VERIFICADO or REABIERTO buttons from EN_VERIFICACION', () => {
+    const qe = buildQE({ estado: 'EN_VERIFICACION' })
+    const { container: containerJefe } = render(<QEStatusTransitionPanel qe={qe} rol="JEFE_CALIDAD_SYST" />)
+    expect(containerJefe.querySelector('button')).toBeNull()
+
+    cleanup()
+
+    const { container: containerAuditor } = render(<QEStatusTransitionPanel qe={qe} rol="AUDITOR_INTERNO" />)
+    expect(containerAuditor.querySelector('button')).toBeNull()
   })
 })
