@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FilterBar } from '../../../components/shared/FilterBar'
+import { Switch } from '../../../components/ui/Switch'
+import { useAuthStore } from '../../../stores/authStore'
 import { QE_STATUS_LABELS, QE_TYPE_LABELS, QE_SEVERITY_LABELS, QE_ORIGIN_LABELS } from '../../../constants/shared.constants'
 import type { QEStatus, QEType, QESeverity, QEOrigin } from '../types/qualityEvent.types'
 
@@ -34,11 +36,14 @@ const FILTER_PARAMS = [
   'fechaDesde',
   'fechaHasta',
   'soloReincidencias',
+  'showDeleted',
 ]
 
 export function QEListFilters() {
   const { t } = useTranslation('qualityEvents')
   const [searchParams, setSearchParams] = useSearchParams()
+  const user = useAuthStore((s) => s.user)
+  const canSeeDeleted = user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'ALTA_DIRECCION'
 
   const hasActiveFilters = FILTER_PARAMS.some((p) => searchParams.has(p))
 
@@ -191,6 +196,22 @@ export function QEListFilters() {
           {t('list.filters.soloReincidencias')}
         </label>
       </div>
+
+      {/* Mostrar eliminados — solo JEFE_CALIDAD_SYST y ALTA_DIRECCION */}
+      {canSeeDeleted && (
+        <div className="self-end">
+          <Switch
+            id="qe-show-deleted"
+            checked={searchParams.get('showDeleted') === 'true'}
+            onChange={() => {
+              const current = searchParams.get('showDeleted') === 'true'
+              setParam('showDeleted', current ? '' : 'true')
+            }}
+            label={t('list.filters.mostrarEliminados')}
+            danger
+          />
+        </div>
+      )}
 
       {/* Limpiar filtros */}
       {hasActiveFilters && (

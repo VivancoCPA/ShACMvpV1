@@ -1,0 +1,173 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { QEACSection } from './QEACSection'
+import { useAuthStore } from '../../../stores/authStore'
+import type { AccionCorrectivaQE } from '../types/qualityEvent.types'
+
+afterEach(() => cleanup())
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key),
+    i18n: { language: 'es-PE' },
+  }),
+}))
+
+const cerrarMutate = vi.fn()
+const iniciarMutate = vi.fn()
+const createMutateAsync = vi.fn()
+
+vi.mock('../hooks/useCreateQEAccion', () => ({
+  useCreateQEAccion: () => ({ mutateAsync: createMutateAsync, isPending: false }),
+}))
+
+vi.mock('../hooks/useUpdateQEAccion', () => ({
+  useUpdateQEAccion: () => ({ mutate: iniciarMutate, isPending: false }),
+}))
+
+vi.mock('../hooks/useCerrarQEAccion', () => ({
+  useCerrarQEAccion: () => ({ mutate: cerrarMutate, isPending: false }),
+}))
+
+vi.mock('../../nonconformities/hooks/useUsers', () => ({
+  useUsers: () => ({ data: [] }),
+}))
+
+const enEjecucionAC: AccionCorrectivaQE = {
+  id: 'ac-1',
+  qeId: 'qe-2026-001',
+  titulo: 'Reforzar EPP',
+  descripcion: 'Reforzar el uso de EPP en almacén',
+  responsableId: 'user-003',
+  responsableNombre: 'María Castro',
+  plazoFecha: '2026-08-01',
+  estado: 'EN_EJECUCION',
+  creadoEn: '2026-01-01T00:00:00Z',
+  actualizadoEn: '2026-01-01T00:00:00Z',
+}
+
+describe('QEACSection — cierre con evidencia', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthStore.setState({
+      user: {
+        id: 'user-005',
+        nombre: 'Luis',
+        apellido: 'Paredes',
+        email: 'luis@shac.internal',
+        rol: 'JEFE_CALIDAD_SYST',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+  })
+
+  it('blocks submission and does not call the mutation when descripcionEvidencia is empty', async () => {
+    render(
+      <QEACSection
+        qeId="qe-2026-001"
+        qeEstado="EN_EJECUCION"
+        accionesCorrectivas={[enEjecucionAC]}
+        solicitudesAC={0}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('detail.acSection.actions.cerrar'))
+
+    const submitButton = screen.getByText('detail.acSection.actions.cerrarModal')
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/obligatoria/i).length).toBeGreaterThan(0)
+    })
+    expect(cerrarMutate).not.toHaveBeenCalled()
+  })
+
+  it('calls the mutation once descripcionEvidencia is provided', async () => {
+    render(
+      <QEACSection
+        qeId="qe-2026-001"
+        qeEstado="EN_EJECUCION"
+        accionesCorrectivas={[enEjecucionAC]}
+        solicitudesAC={0}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('detail.acSection.actions.cerrar'))
+
+    const textarea = screen.getByPlaceholderText('detail.acSection.placeholders.evidencia')
+    fireEvent.change(textarea, { target: { value: 'Evidencia adjunta con fotos.' } })
+
+    fireEvent.click(screen.getByText('detail.acSection.actions.cerrarModal'))
+
+    await waitFor(() => {
+      expect(cerrarMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          acId: 'ac-1',
+          data: expect.objectContaining({ descripcionEvidencia: 'Evidencia adjunta con fotos.' }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+})
+
+describe('QEACSection — banner de solicitudes de AC', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows the pending-AC-requests banner for JEFE_CALIDAD_SYST when solicitudesAC > 0', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-005',
+        nombre: 'Luis',
+        apellido: 'Paredes',
+        email: 'luis@shac.internal',
+        rol: 'JEFE_CALIDAD_SYST',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={2} />)
+
+    expect(screen.getByText(/detail\.acSection\.solicitudesACBanner/)).toBeInTheDocument()
+  })
+
+  it('hides the banner when solicitudesAC is 0', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-005',
+        nombre: 'Luis',
+        apellido: 'Paredes',
+        email: 'luis@shac.internal',
+        rol: 'JEFE_CALIDAD_SYST',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={0} />)
+
+    expect(screen.queryByText(/detail\.acSection\.solicitudesACBanner/)).not.toBeInTheDocument()
+  })
+
+  it('hides the banner for roles other than JEFE_CALIDAD_SYST even when solicitudesAC > 0', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-003',
+        nombre: 'María',
+        apellido: 'Castro',
+        email: 'maria@shac.internal',
+        rol: 'SUPERVISOR',
+      },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={2} />)
+
+    expect(screen.queryByText(/detail\.acSection\.solicitudesACBanner/)).not.toBeInTheDocument()
+  })
+})

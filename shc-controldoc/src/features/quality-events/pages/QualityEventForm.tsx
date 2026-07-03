@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -61,8 +61,14 @@ type QEFormValues = {
 export function QualityEventForm() {
   const { t } = useTranslation('qualityEvents')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { mutate, isPending } = useCreateQualityEvent()
   const [mineralFreeText, setMineralFreeText] = useState(false)
+
+  const origenParam = searchParams.get('origen') as QEOrigin | null
+  const initialOrigen = origenParam && QE_ORIGINS.includes(origenParam) ? origenParam : ''
+  const initialNcId = searchParams.get('ncId') ?? ''
+  const initialIncidenteId = searchParams.get('incidenteId') ?? ''
 
   const {
     register,
@@ -76,7 +82,7 @@ export function QualityEventForm() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(qualityEventCreateSchema) as any,
     defaultValues: {
-      origen: '',
+      origen: initialOrigen,
       tipo: '',
       severidad: '',
       descripcion: '',
@@ -84,8 +90,8 @@ export function QualityEventForm() {
       turno: '',
       fechaHoraEvento: '',
       mineralInvolucrado: '',
-      incidenteId: '',
-      ncId: '',
+      incidenteId: initialOrigen === 'O1_INCIDENTE_CAMPO' ? initialIncidenteId : '',
+      ncId: initialOrigen === 'O2_NC_DETECTADA' ? initialNcId : '',
       hallazgoAuditoriaRef: '',
       reporteExternoRef: { nombreCliente: '', fechaRecepcion: '' },
     },

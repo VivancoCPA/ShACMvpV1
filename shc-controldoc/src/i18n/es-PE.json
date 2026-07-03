@@ -447,6 +447,7 @@
       "title": "Quality Events",
       "empty": "No se encontraron quality events con los filtros aplicados.",
       "reincidencia": "Reincidencia ×{{count}}",
+      "solicitudesACPendientes": "{{count}} AC pendiente(s)",
       "columns": {
         "numero": "Número",
         "tipoOrigen": "Tipo / Origen",
@@ -468,7 +469,8 @@
         "fechaHasta": "Hasta",
         "soloReincidencias": "Solo reincidencias",
         "limpiar": "Limpiar filtros",
-        "todos": "Todos"
+        "todos": "Todos",
+        "mostrarEliminados": "Mostrar eliminados"
       },
       "actions": {
         "nueva": "Nuevo Quality Event",
@@ -521,6 +523,163 @@
         "submitting": "Guardando…",
         "cancel": "Cancelar"
       }
+    },
+    "detail": {
+      "back": "Volver a la lista",
+      "header": {
+        "areaAfectada": "Área Afectada",
+        "mineralInvolucrado": "Mineral Involucrado",
+        "turno": "Turno",
+        "fechaHoraEvento": "Fecha y hora del evento",
+        "fechaHoraReporte": "Fecha y hora del reporte",
+        "reportadoPor": "Reportado por",
+        "reincidencia": "Reincidencia ×{{count}}",
+        "origenRef": "Origen",
+        "verIncidente": "Ver Incidente",
+        "verNoConformidad": "Ver No Conformidad",
+        "hallazgoAuditoria": "Hallazgo de auditoría",
+        "nombreCliente": "Cliente",
+        "fechaRecepcion": "Fecha de recepción",
+        "criticaBanner": "Severidad CRÍTICA — requiere atención prioritaria de Gerencia (RN-QE-005)"
+      },
+      "transitions": {
+        "title": "Transiciones de estado",
+        "rnQe002Tooltip": "Debe aprobar la causa raíz antes de iniciar ejecución",
+        "rnQe003Tooltip": "Hay acciones correctivas pendientes de cierre",
+        "rnQe009Tooltip": "Hay {{count}} solicitudes de AC pendientes de crear en este QE",
+        "disponibleEnCierre": "Disponible en cierre",
+        "disponibleEnCierreTooltip": "El flujo de cierre estará disponible en una futura iteración (M4-S06)",
+        "success": "Estado actualizado a {{estado}}"
+      },
+      "investigation": {
+        "title": "Investigación",
+        "metodoAnalisis": "Método de análisis",
+        "tool5Porques": "5 Porqués",
+        "toolIshikawa": "Diagrama Ishikawa",
+        "porque": "¿Por qué {{n}}?",
+        "respuestaPlaceholder": "Describe la causa identificada…",
+        "ishikawaCategoria": {
+          "METODO": "Método",
+          "MAQUINA": "Máquina",
+          "MATERIAL": "Material",
+          "MANO_DE_OBRA": "Mano de obra",
+          "MEDICION": "Medición",
+          "MEDIO_AMBIENTE": "Medio ambiente"
+        },
+        "causaRaizDefinitiva": "Causa raíz definitiva",
+        "causaRaizPlaceholder": "Describe la causa raíz definitiva (100–500 caracteres)…",
+        "guardar": "Guardar investigación",
+        "aprobarCausaRaiz": "Aprobar causa raíz",
+        "aprobadoPor": "Aprobado por {{nombre}} el {{fecha}}",
+        "asistirIA": "Asistir con IA",
+        "asistirIATooltip": "Próximamente disponible",
+        "switchToastMessage": "¿Cambiar de herramienta de análisis? Se perderán los datos de la herramienta actual.",
+        "confirmarCambio": "Confirmar cambio",
+        "pinModal": {
+          "title": "Confirmar aprobación",
+          "body": "Ingresa tu PIN de firma para aprobar la causa raíz definitiva.",
+          "placeholder": "PIN",
+          "confirm": "Confirmar",
+          "cancel": "Cancelar",
+          "error": "PIN incorrecto."
+        },
+        "errors": {
+          "causaRaizLength": "La causa raíz debe tener entre 100 y 500 caracteres."
+        }
+      },
+      "acSection": {
+        "title": "Acciones Correctivas",
+        "progreso": "{{cerradas}} de {{total}} ACs cerradas",
+        "solicitudesACBanner": "{{count}} solicitud(es) de nueva AC pendientes — registradas desde el origen del QE",
+        "empty": "No hay acciones correctivas registradas.",
+        "actions": {
+          "add": "Nueva AC",
+          "iniciar": "Iniciar",
+          "cerrar": "Cerrar con evidencia",
+          "save": "Guardar",
+          "cancel": "Cancelar",
+          "cerrarModal": "Confirmar cierre"
+        },
+        "fields": {
+          "titulo": "Título",
+          "descripcion": "Descripción",
+          "responsable": "Responsable",
+          "prioridad": "Prioridad",
+          "plazoFecha": "Fecha de Vencimiento",
+          "evidencia": "Descripción de Evidencia",
+          "evidenciaUrl": "URL de Evidencia (opcional)"
+        },
+        "placeholders": {
+          "titulo": "Título de la acción correctiva…",
+          "descripcion": "Describe la acción correctiva a tomar…",
+          "responsable": "Selecciona el responsable…",
+          "prioridad": "Selecciona la prioridad…",
+          "evidencia": "Describe la evidencia que demuestra la efectividad de la acción…",
+          "evidenciaUrl": "https://…"
+        },
+        "prioridad": {
+          "BAJA": "Baja",
+          "MEDIA": "Media",
+          "ALTA": "Alta",
+          "CRITICA": "Crítica"
+        },
+        "acStatus": {
+          "PENDIENTE": "Pendiente",
+          "EN_EJECUCION": "En Ejecución",
+          "CERRADA": "Cerrada"
+        },
+        "agregarModal": { "title": "Agregar Acción Correctiva" },
+        "cerrarModal": {
+          "title": "Cerrar Acción Correctiva",
+          "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
+        },
+        "errors": {
+          "evidenciaRequerida": "La descripción de la evidencia es obligatoria."
+        }
+      },
+      "auditTrail": {
+        "title": "Historial de Auditoría",
+        "empty": "No hay entradas de auditoría.",
+        "generadoPorIA": "Generado por IA",
+        "acciones": {
+          "CREADO": "Quality Event creado",
+          "ESTADO_CAMBIADO": "Estado cambiado",
+          "CAMPO_EDITADO": "Campo editado",
+          "CAUSA_RAIZ_APROBADA": "Causa raíz aprobada",
+          "NOTIFICACION_GERENCIA": "Notificación enviada a Gerencia",
+          "AC_CREADA": "Acción correctiva creada",
+          "AC_ESTADO_CAMBIADO": "Estado de acción correctiva cambiado"
+        }
+      },
+      "notFound": {
+        "title": "Quality Event no encontrado",
+        "message": "El Quality Event solicitado no existe o fue eliminado.",
+        "volver": "Volver al listado"
+      },
+      "deletedBanner": "Este Quality Event ha sido eliminado."
+    },
+    "delete": {
+      "confirm": {
+        "title": "¿Eliminar Quality Event?",
+        "message": "Esta acción no se puede deshacer. El QE {{numero}} quedará registrado como eliminado en el audit trail.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar"
+      }
+    },
+    "reactivate": {
+      "confirm": {
+        "title": "¿Reactivar Quality Event?",
+        "message": "El QE {{numero}} volverá a estado ABIERTO y estará disponible para gestión.",
+        "cancel": "Cancelar",
+        "confirm": "Reactivar"
+      }
+    },
+    "deletedBadge": "Eliminado",
+    "toasts": {
+      "deleted": "QE eliminado correctamente",
+      "deleteError": "Error al eliminar el Quality Event.",
+      "reactivated": "QE reactivado correctamente",
+      "reactivateError": "Error al reactivar el Quality Event."
     }
   },
   "incidents": {
@@ -747,6 +906,7 @@
     "acSection": {
       "title": "Acciones Correctivas",
       "empty": "Sin acciones correctivas registradas.",
+      "qeRequerido": "Las acciones correctivas se gestionan desde el Quality Event. Crea un QE para este incidente para poder registrar ACs.",
       "agregarModal": {
         "title": "Agregar Acción Correctiva"
       },
@@ -790,7 +950,15 @@
         "cancel": "Cancelar",
         "iniciar": "Iniciar",
         "cerrar": "Cerrar con evidencia",
-        "cerrarModal": "Confirmar cierre"
+        "cerrarModal": "Confirmar cierre",
+        "solicitarQE": "Solicitar AC en QE",
+        "solicitudEnviada": "✓ Solicitud enviada — pendiente en el QE",
+        "crearQE": "Crear QE",
+        "verQE": "Ver QE →"
+      },
+      "verEnQE": "Ver en QE →",
+      "toasts": {
+        "solicitudEnviada": "Solicitud enviada — pendiente en el QE"
       }
     }
   },
@@ -1036,6 +1204,7 @@
     "acSection": {
       "title": "Acciones Correctivas",
       "empty": "No hay acciones correctivas registradas.",
+      "qeRequerido": "Las acciones correctivas se gestionan desde el Quality Event. Crea un QE para esta NC para poder registrar ACs.",
       "acStatus": {
         "PENDIENTE": "Pendiente",
         "EN_EJECUCION": "En Ejecución",
@@ -1074,7 +1243,11 @@
         "iniciar": "Iniciar",
         "completar": "Completar",
         "cerrar": "Cerrar con evidencia",
-        "cerrarModal": "Confirmar cierre"
+        "cerrarModal": "Confirmar cierre",
+        "solicitarQE": "Solicitar AC en QE",
+        "solicitudEnviada": "✓ Solicitud enviada — pendiente en el QE",
+        "crearQE": "Crear QE",
+        "verQE": "Ver QE →"
       },
       "agregarModal": {
         "title": "Agregar Acción Correctiva"
@@ -1082,6 +1255,11 @@
       "cerrarModal": {
         "title": "Cerrar Acción Correctiva",
         "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
+      },
+      "verQE": "Ver QE → {{numero}}",
+      "verEnQE": "Ver en QE →",
+      "toasts": {
+        "solicitudEnviada": "Solicitud enviada — el Jefe de Calidad creará la AC en el QE"
       }
     },
     "errors": {

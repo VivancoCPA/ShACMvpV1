@@ -542,6 +542,7 @@ export function IncidentDetailPage() {
             accionesCorrectivas={incident.accionesCorrectivas ?? []}
             canAsignarAC={permissions?.canAddAC ?? false}
             canCerrarAC={permissions?.canCerrarAC ?? false}
+            qeId={incident.qeId}
           />
         </div>
       </div>

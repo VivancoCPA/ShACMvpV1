@@ -260,11 +260,11 @@ export function NonconformityDetailPage() {
           <ACSection
             ncId={nc.id}
             ncNumero={nc.numero}
-            ncTitulo={nc.titulo}
             accionesCorrectivas={nc.accionesCorrectivas}
             ncEstado={nc.estado}
             canAsignarAC={permissions?.canAsignarAC ?? false}
             canCerrarAC={permissions?.canCerrarAC ?? false}
+            qeGeneradoId={nc.qeGeneradoId}
           />
         </div>
 

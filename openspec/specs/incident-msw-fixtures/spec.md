@@ -185,3 +185,16 @@ Each geolocated fixture with `localId === 'loc-001'` SHALL have `zonaId` matchin
 #### Scenario: LOC-002 fixture zonaIds are valid
 - **WHEN** a LOC-002 geolocated fixture's `zonaId` is looked up in `zonaFixtures`
 - **THEN** a matching zone with `localId === 'loc-002'` is found
+
+---
+
+### Requirement: ACs of QE-referenced incident fixtures carry qeId
+`inc-001` and `inc-002` — the two incident fixtures cross-referenced from `quality-events.fixtures.ts` via `incidenteId` (by `qe-2026-005` and `qe-2026-001` respectively) — currently have `accionesCorrectivas: []`. The system SHALL add at least one `AccionCorrectivaIncidente` to each, with `qeId` set to the id of the QE that references it.
+
+#### Scenario: inc-001 has an AC carrying qe-2026-005's id
+- **WHEN** `incidentFixtures` entry `id === 'inc-001'` is inspected
+- **THEN** `accionesCorrectivas` is non-empty and at least one entry has `qeId === 'qe-2026-005'`
+
+#### Scenario: inc-002 has an AC carrying qe-2026-001's id
+- **WHEN** `incidentFixtures` entry `id === 'inc-002'` is inspected
+- **THEN** `accionesCorrectivas` is non-empty and at least one entry has `qeId === 'qe-2026-001'`

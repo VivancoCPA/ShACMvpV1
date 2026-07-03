@@ -23,6 +23,7 @@ const baseQE: QualityEvent = {
   reportadoPorId: 'user-1',
   documentosVinculados: [],
   requiereEvaluacionRiesgos: false,
+  solicitudesAC: 0,
   accionesCorrectivas: [],
   auditTrail: [],
   creadoEn: '2025-06-01T09:00:00Z',
@@ -144,7 +145,8 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
     qeId: 'qe-1',
     descripcion: '...',
     responsableId: 'u1',
-    fechaLimite: '2025-12-31',
+    responsableNombre: 'Usuario Uno',
+    plazoFecha: '2025-12-31',
     creadoEn: '2025-06-01T00:00:00Z',
     actualizadoEn: '2025-06-01T00:00:00Z',
   }
@@ -152,7 +154,7 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
   it('invalid when AC has estado PENDIENTE without evidencia', () => {
     const result = validateTransitionToPendienteCierre({
       ...baseQE,
-      accionesCorrectivas: [{ ...acBase, estado: 'PENDIENTE', evidencia: undefined }],
+      accionesCorrectivas: [{ ...acBase, estado: 'PENDIENTE', descripcionEvidencia: undefined }],
     })
     expect(result.valid).toBe(false)
     expect(result.reason).toBeTruthy()
@@ -161,7 +163,7 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
   it('invalid when AC is EN_EJECUCION without evidencia', () => {
     const result = validateTransitionToPendienteCierre({
       ...baseQE,
-      accionesCorrectivas: [{ ...acBase, estado: 'EN_EJECUCION', evidencia: undefined }],
+      accionesCorrectivas: [{ ...acBase, estado: 'EN_EJECUCION', descripcionEvidencia: undefined }],
     })
     expect(result.valid).toBe(false)
   })
@@ -169,7 +171,7 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
   it('valid when all ACs have estado CERRADA', () => {
     const result = validateTransitionToPendienteCierre({
       ...baseQE,
-      accionesCorrectivas: [{ ...acBase, estado: 'CERRADA', evidencia: 'url-evidencia' }],
+      accionesCorrectivas: [{ ...acBase, estado: 'CERRADA', descripcionEvidencia: 'url-evidencia' }],
     })
     expect(result.valid).toBe(true)
   })

@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
-import type { QualityEvent, QEStatus } from '../../features/quality-events/types/qualityEvent.types'
+import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
+import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
 
 const LATENCY = 400
 
@@ -24,10 +25,11 @@ export const qualityEventHandlers = [
     const fechaDesde = url.searchParams.get('fechaDesde')
     const fechaHasta = url.searchParams.get('fechaHasta')
     const soloReincidencias = url.searchParams.get('soloReincidencias') === 'true'
+    const incluirEliminados = url.searchParams.get('incluirEliminados') === 'true'
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '10', 10)
 
-    let filtered = qeStore
+    let filtered = incluirEliminados ? [...qeStore] : qeStore.filter(qe => !qe.deletedAt)
     if (estado) filtered = filtered.filter(qe => qe.estado === estado)
     if (tipo) filtered = filtered.filter(qe => qe.tipo === tipo)
     if (severidad) filtered = filtered.filter(qe => qe.severidad === severidad)
@@ -84,6 +86,7 @@ export const qualityEventHandlers = [
       estado: 'ABIERTO',
       ciclo: 1,
       requiereEvaluacionRiesgos: (body.requiereEvaluacionRiesgos as boolean) ?? false,
+      solicitudesAC: 0,
       documentosVinculados: [],
       accionesCorrectivas: [],
       auditTrail: [
@@ -171,5 +174,279 @@ export const qualityEventHandlers = [
     }
     qeStore[idx] = updated
     return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.delete('/api/quality-events/:id', async ({ params }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const now = new Date().toISOString()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'ELIMINADO',
+      valorNuevo: now,
+      realizadoPorId: 'user-current',
+      realizadoPorNombre: 'Usuario actual',
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      deletedAt: now,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.patch('/api/quality-events/:id/reactivar', async ({ params }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const now = new Date().toISOString()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'REACTIVADO',
+      estadoAnterior: qe.estado,
+      estadoNuevo: 'ABIERTO',
+      realizadoPorId: 'user-current',
+      realizadoPorNombre: 'Usuario actual',
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      estado: 'ABIERTO',
+      deletedAt: undefined,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.get('/api/quality-events/:id/acciones-correctivas', async ({ params }) => {
+    await delay(LATENCY)
+    const qe = qeStore.find(q => q.id === params.id)
+    if (!qe) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+    return HttpResponse.json({ success: true, data: qe.accionesCorrectivas })
+  }),
+
+  http.post('/api/quality-events/:id/acciones-correctivas', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const body = await request.json() as Record<string, unknown>
+    const now = new Date().toISOString()
+    const responsableId = body.responsableId as string
+    const acId = `ac-qe-${qe.id}-${qe.accionesCorrectivas.length + 1}-${Date.now().toString(36)}`
+
+    const newAC: AccionCorrectivaQE = {
+      id: acId,
+      qeId: qe.id,
+      titulo: body.titulo as string | undefined,
+      descripcion: body.descripcion as string,
+      responsableId,
+      responsableNombre: USER_NOMBRE_MAP[responsableId] ?? 'Usuario',
+      plazoFecha: body.plazoFecha as string,
+      prioridad: body.prioridad as AccionCorrectivaQE['prioridad'],
+      estado: 'PENDIENTE',
+      creadoEn: now,
+      actualizadoEn: now,
+    }
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'AC_CREADA',
+      valorNuevo: acId,
+      realizadoPorId: 'user-current',
+      realizadoPorNombre: 'Usuario actual',
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      accionesCorrectivas: [...qe.accionesCorrectivas, newAC],
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: newAC }, { status: 201 })
+  }),
+
+  http.patch('/api/quality-events/:id/acciones-correctivas/:acId', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const acIdx = qe.accionesCorrectivas.findIndex(a => a.id === params.acId)
+    if (acIdx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Acción correctiva no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json() as Partial<AccionCorrectivaQE>
+    const now = new Date().toISOString()
+    const updatedAC: AccionCorrectivaQE = {
+      ...qe.accionesCorrectivas[acIdx],
+      ...body,
+      actualizadoEn: now,
+    }
+
+    const accionesCorrectivas = [...qe.accionesCorrectivas]
+    accionesCorrectivas[acIdx] = updatedAC
+
+    const updated: QualityEvent = { ...qe, accionesCorrectivas, actualizadoEn: now }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updatedAC })
+  }),
+
+  http.patch('/api/quality-events/:id/acciones-correctivas/:acId/status', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const acIdx = qe.accionesCorrectivas.findIndex(a => a.id === params.acId)
+    if (acIdx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Acción correctiva no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json() as {
+      estado: AccionCorrectivaQE['estado']
+      descripcionEvidencia?: string
+      evidenciaUrl?: string
+    }
+
+    if (body.estado === 'CERRADA' && (!body.descripcionEvidencia || body.descripcionEvidencia.trim() === '')) {
+      return HttpResponse.json(
+        { success: false, message: 'descripcionEvidencia es obligatoria para cerrar la AC' },
+        { status: 422 }
+      )
+    }
+
+    const now = new Date().toISOString()
+    const previous = qe.accionesCorrectivas[acIdx]
+    const updatedAC: AccionCorrectivaQE = {
+      ...previous,
+      estado: body.estado,
+      actualizadoEn: now,
+      ...(body.descripcionEvidencia ? { descripcionEvidencia: body.descripcionEvidencia } : {}),
+      ...(body.evidenciaUrl ? { evidenciaUrl: body.evidenciaUrl } : {}),
+      ...(body.estado === 'CERRADA' ? { fechaCierre: now } : {}),
+    }
+
+    const accionesCorrectivas = [...qe.accionesCorrectivas]
+    accionesCorrectivas[acIdx] = updatedAC
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'AC_ESTADO_CAMBIADO',
+      estadoAnterior: previous.estado,
+      estadoNuevo: body.estado,
+      valorNuevo: updatedAC.id,
+      realizadoPorId: 'user-current',
+      realizadoPorNombre: 'Usuario actual',
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      accionesCorrectivas,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updatedAC })
+  }),
+
+  http.patch('/api/quality-events/:id/solicitar-ac', async ({ params }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const updated: QualityEvent = {
+      ...qe,
+      solicitudesAC: qe.solicitudesAC + 1,
+      actualizadoEn: new Date().toISOString(),
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.get('/api/quality-events/:id/audit-trail', async ({ params }) => {
+    await delay(LATENCY)
+    const qe = qeStore.find(q => q.id === params.id)
+    if (!qe) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+    const sorted = [...qe.auditTrail].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    )
+    return HttpResponse.json({ success: true, data: sorted })
   }),
 ]

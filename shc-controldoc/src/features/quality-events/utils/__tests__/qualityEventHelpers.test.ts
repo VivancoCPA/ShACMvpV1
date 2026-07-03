@@ -18,6 +18,7 @@ const baseQE: QualityEvent = {
   reportadoPorId: 'user-1',
   documentosVinculados: [],
   requiereEvaluacionRiesgos: false,
+  solicitudesAC: 0,
   accionesCorrectivas: [],
   auditTrail: [],
   creadoEn: '2025-06-01T09:00:00Z',

@@ -1,8 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Eye, Pencil, X } from 'lucide-react'
+import { AlertTriangle, Eye, Pencil, Trash2, RotateCcw, X } from 'lucide-react'
 import { useQEList } from '../hooks/useQEList'
+import { useDeleteQualityEvent } from '../hooks/useDeleteQualityEvent'
+import { useReactivateQualityEvent } from '../hooks/useReactivateQualityEvent'
 import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
 import { useAuthStore } from '../../../stores/authStore'
 import { QEStatusBadge } from './QEStatusBadge'
@@ -33,6 +35,107 @@ function TableSkeleton() {
   )
 }
 
+interface DeleteModalProps {
+  qe: QualityEvent
+  isPending: boolean
+  onConfirm: () => void
+  onClose: () => void
+}
+
+function DeleteConfirmModal({ qe, isPending, onConfirm, onClose }: DeleteModalProps) {
+  const { t } = useTranslation('qualityEvents')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60">
+      <div className="relative w-full max-w-md rounded-xl bg-canvas p-6 shadow-xl dark:bg-surface-dark-elevated">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('delete.confirm.cancel')}
+          className="absolute right-4 top-4 text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+        >
+          <X size={18} />
+        </button>
+        <div className="mb-4 flex items-start gap-3">
+          <AlertTriangle size={20} className="mt-0.5 shrink-0 text-error" />
+          <div>
+            <h2 className="font-medium text-ink dark:text-on-dark">{t('delete.confirm.title')}</h2>
+            <p className="mt-1 text-sm text-muted dark:text-on-dark-soft">
+              {t('delete.confirm.message', { numero: qe.numero })}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft disabled:opacity-60"
+          >
+            {t('delete.confirm.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className="rounded-md bg-error px-4 py-2 text-sm font-medium text-white hover:bg-error/80 disabled:opacity-60"
+          >
+            {t('delete.confirm.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface ReactivateModalProps {
+  qe: QualityEvent
+  isPending: boolean
+  onConfirm: () => void
+  onClose: () => void
+}
+
+function ReactivateConfirmModal({ qe, isPending, onConfirm, onClose }: ReactivateModalProps) {
+  const { t } = useTranslation('qualityEvents')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60">
+      <div className="relative w-full max-w-md rounded-xl bg-canvas p-6 shadow-xl dark:bg-surface-dark-elevated">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('reactivate.confirm.cancel')}
+          className="absolute right-4 top-4 text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+        >
+          <X size={18} />
+        </button>
+        <div className="mb-4">
+          <h2 className="font-medium text-ink dark:text-on-dark">{t('reactivate.confirm.title')}</h2>
+          <p className="mt-1 text-sm text-muted dark:text-on-dark-soft">
+            {t('reactivate.confirm.message', { numero: qe.numero })}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft disabled:opacity-60"
+          >
+            {t('reactivate.confirm.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className="rounded-md bg-success px-4 py-2 text-sm font-medium text-white hover:bg-success/80 disabled:opacity-60"
+          >
+            {t('reactivate.confirm.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const CHIP_FILTER_KEYS = [
   'estado',
   'tipo',
@@ -41,6 +144,7 @@ const CHIP_FILTER_KEYS = [
   'fechaDesde',
   'fechaHasta',
   'soloReincidencias',
+  'showDeleted',
 ] as const
 
 function getChipLabel(
@@ -55,6 +159,7 @@ function getChipLabel(
   if (key === 'fechaDesde') return `Desde: ${value}`
   if (key === 'fechaHasta') return `Hasta: ${value}`
   if (key === 'soloReincidencias') return t('list.filters.soloReincidencias')
+  if (key === 'showDeleted') return t('list.filters.mostrarEliminados')
   return value
 }
 
@@ -65,6 +170,13 @@ export function QEList() {
   const user = useAuthStore((s) => s.user)
 
   const { qualityEvents, isLoading, isError, pagination, refetch } = useQEList()
+  const deleteQE = useDeleteQualityEvent()
+  const reactivateQE = useReactivateQualityEvent()
+
+  const [pendingDelete, setPendingDelete] = useState<QualityEvent | null>(null)
+  const [pendingReactivate, setPendingReactivate] = useState<QualityEvent | null>(null)
+
+  const canDelete = user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'ALTA_DIRECCION'
 
   const currentPage = parseInt(searchParams.get('page') ?? '1', 10)
 
@@ -169,7 +281,11 @@ export function QEList() {
                   ? getQualityEventPermissions(qe.estado, user.rol, false)
                   : null
 
-                const rowClass = `${TABLE_ROW_CLASS}${qe.severidad === 'CRITICA' ? ' border-l-4 border-error' : ''}`
+                const isDeleted = !!qe.deletedAt
+                const showDeleteBtn = canDelete && !isDeleted
+                const showReactivateBtn = canDelete && isDeleted
+
+                const rowClass = `${TABLE_ROW_CLASS}${qe.severidad === 'CRITICA' ? ' border-l-4 border-error' : ''}${isDeleted ? ' opacity-50' : ''}`
 
                 return (
                   <tr
@@ -221,7 +337,20 @@ export function QEList() {
 
                     {/* Estado */}
                     <td className="px-4 py-3">
-                      <QEStatusBadge status={qe.estado} />
+                      <div className="flex items-center gap-1.5">
+                        <QEStatusBadge status={qe.estado} />
+                        {isDeleted && (
+                          <span className="rounded-full bg-error/15 px-2 py-0.5 text-xs font-medium text-error dark:bg-error/20 dark:text-error">
+                            {t('deletedBadge')}
+                          </span>
+                        )}
+                      </div>
+                      {user?.rol === 'JEFE_CALIDAD_SYST' && qe.solicitudesAC > 0 && (
+                        <span className="mt-1 flex items-center gap-1 text-xs font-medium text-warning">
+                          <AlertTriangle size={11} aria-hidden="true" />
+                          {t('list.solicitudesACPendientes', { count: qe.solicitudesAC })}
+                        </span>
+                      )}
                     </td>
 
                     {/* Ciclo */}
@@ -256,7 +385,7 @@ export function QEList() {
                         >
                           <Eye size={14} aria-hidden="true" />
                         </button>
-                        {perms?.puedeEditarCabecera && (
+                        {perms?.puedeEditarCabecera && !isDeleted && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -268,6 +397,34 @@ export function QEList() {
                             className="rounded-sm p-1 text-muted transition-colors hover:text-coral dark:text-on-dark-soft dark:hover:text-coral"
                           >
                             <Pencil size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                        {showDeleteBtn && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPendingDelete(qe)
+                            }}
+                            aria-label={t('delete.confirm.confirm')}
+                            title={t('delete.confirm.confirm')}
+                            className="rounded-sm p-1 text-muted transition-colors hover:text-error dark:text-on-dark-soft dark:hover:text-error"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                        {showReactivateBtn && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPendingReactivate(qe)
+                            }}
+                            aria-label={t('reactivate.confirm.confirm')}
+                            title={t('reactivate.confirm.confirm')}
+                            className="rounded-sm p-1 text-muted transition-colors hover:text-success dark:text-on-dark-soft dark:hover:text-success"
+                          >
+                            <RotateCcw size={14} aria-hidden="true" />
                           </button>
                         )}
                       </div>
@@ -287,6 +444,32 @@ export function QEList() {
           totalItems={pagination.totalItems}
           pageSize={pagination.pageSize}
           onPageChange={setPage}
+        />
+      )}
+
+      {pendingDelete && (
+        <DeleteConfirmModal
+          qe={pendingDelete}
+          isPending={deleteQE.isPending}
+          onConfirm={() => {
+            deleteQE.mutate(pendingDelete.id, {
+              onSettled: () => setPendingDelete(null),
+            })
+          }}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+
+      {pendingReactivate && (
+        <ReactivateConfirmModal
+          qe={pendingReactivate}
+          isPending={reactivateQE.isPending}
+          onConfirm={() => {
+            reactivateQE.mutate(pendingReactivate.id, {
+              onSettled: () => setPendingReactivate(null),
+            })
+          }}
+          onClose={() => setPendingReactivate(null)}
         />
       )}
     </div>

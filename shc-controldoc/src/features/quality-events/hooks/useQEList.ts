@@ -12,6 +12,7 @@ export function useQEList() {
   const fechaDesde = searchParams.get('fechaDesde') ?? undefined
   const fechaHasta = searchParams.get('fechaHasta') ?? undefined
   const soloReincidencias = searchParams.get('soloReincidencias') === 'true' ? true : undefined
+  const incluirEliminados = searchParams.get('showDeleted') === 'true' ? true : undefined
   const page = parseInt(searchParams.get('page') ?? '1', 10)
 
   const query = useQualityEvents({
@@ -22,6 +23,7 @@ export function useQEList() {
     fechaDesde,
     fechaHasta,
     soloReincidencias,
+    incluirEliminados,
     page,
     pageSize: 10,
   })

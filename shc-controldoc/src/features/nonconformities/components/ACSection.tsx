@@ -2,16 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { Plus, X, CheckCircle, Play } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Plus, X, CheckCircle, Play, ArrowUpRight, Check } from 'lucide-react'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
-import { useUsers } from '../hooks/useUsers'
-import {
-  useCreateAccionCorrectiva,
-  useUpdateAccionCorrectiva,
-  useCerrarAccionCorrectiva,
-} from '../hooks/useNonconformities'
-import { createACSchema, type CreateACInput } from '../schemas/createAC.schema'
+import { useUpdateAccionCorrectiva, useCerrarAccionCorrectiva } from '../hooks/useNonconformities'
 import { cerrarACSchema, type CerrarACInput } from '../schemas/cerrarAC.schema'
+import { qualityEventFixtures } from '../../../mocks/fixtures/quality-events.fixtures'
+import { useSolicitarACEnQE } from '../../quality-events/hooks/useSolicitarACEnQE'
 import type { AccionCorrectiva, NCStatus } from '../types/nonconformity.types'
 
 const TERMINAL_NC: NCStatus[] = ['CERRADA', 'ANULADA']
@@ -129,213 +127,37 @@ function CerrarACModal({ onConfirm, onClose, isPending }: CerrarACModalProps) {
   )
 }
 
-// ─── AgregarACModal ───────────────────────────────────────────────────────────
-
-interface AgregarACModalProps {
-  ncId: string
-  ncLabel: string
-  onConfirm: (data: CreateACInput) => Promise<void>
-  onClose: () => void
-  isPending: boolean
-}
-
-function AgregarACModal({ ncLabel, onConfirm, onClose, isPending }: AgregarACModalProps) {
-  const { t } = useTranslation('nonconformities')
-  const { data: users = [] } = useUsers()
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateACInput>({ resolver: zodResolver(createACSchema) })
-
-  const inputClass =
-    'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink h-10 focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
-  const labelClass = 'mb-1 block text-sm font-medium text-body dark:text-on-dark-soft'
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 dark:bg-black/60">
-      <div className="relative w-full max-w-lg rounded-xl bg-canvas shadow-xl dark:bg-surface-dark-elevated">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-hairline px-6 py-4 dark:border-hairline/20">
-          <h2 className="font-medium text-ink dark:text-on-dark">
-            {t('acSection.agregarModal.title')}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('acSection.actions.cancel')}
-            className="text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <form onSubmit={(e) => void handleSubmit(onConfirm)(e)}>
-          <div className="space-y-4 px-6 py-5">
-            {/* NC pre-cargada (readonly) */}
-            <div>
-              <label className={labelClass}>{t('acSection.fields.nc')}</label>
-              <input
-                type="text"
-                value={ncLabel}
-                readOnly
-                className="w-full rounded-md border border-hairline bg-surface-soft px-3.5 py-2.5 text-sm text-muted dark:border-hairline/20 dark:bg-surface-dark-soft dark:text-on-dark-soft"
-              />
-            </div>
-
-            {/* Título */}
-            <div>
-              <label htmlFor="ac-titulo" className={labelClass}>
-                {t('acSection.fields.titulo')} <span className="text-error">*</span>
-              </label>
-              <input
-                id="ac-titulo"
-                type="text"
-                maxLength={200}
-                className={inputClass}
-                placeholder={t('acSection.placeholders.titulo')}
-                {...register('titulo')}
-              />
-              {errors.titulo && (
-                <p className="mt-1 text-xs text-error">{errors.titulo.message}</p>
-              )}
-            </div>
-
-            {/* Descripción */}
-            <div>
-              <label htmlFor="ac-descripcion" className={labelClass}>
-                {t('acSection.fields.descripcion')} <span className="text-error">*</span>
-              </label>
-              <textarea
-                id="ac-descripcion"
-                rows={3}
-                maxLength={2000}
-                className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:border-coral focus:outline-none focus:ring-2 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
-                placeholder={t('acSection.placeholders.descripcion')}
-                {...register('descripcion')}
-              />
-              {errors.descripcion && (
-                <p className="mt-1 text-xs text-error">{errors.descripcion.message}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* Responsable */}
-              <div>
-                <label htmlFor="ac-responsable" className={labelClass}>
-                  {t('acSection.fields.responsable')} <span className="text-error">*</span>
-                </label>
-                <select id="ac-responsable" className={inputClass} {...register('responsableId')}>
-                  <option value="">{t('acSection.placeholders.responsable')}</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre} {u.apellido}
-                    </option>
-                  ))}
-                </select>
-                {errors.responsableId && (
-                  <p className="mt-1 text-xs text-error">{errors.responsableId.message}</p>
-                )}
-              </div>
-
-              {/* Prioridad */}
-              <div>
-                <label htmlFor="ac-prioridad" className={labelClass}>
-                  {t('acSection.fields.prioridad')} <span className="text-error">*</span>
-                </label>
-                <select id="ac-prioridad" className={inputClass} {...register('prioridad')}>
-                  <option value="">{t('acSection.placeholders.prioridad')}</option>
-                  {(['BAJA', 'MEDIA', 'ALTA', 'CRITICA'] as const).map((p) => (
-                    <option key={p} value={p}>
-                      {t(`acSection.prioridad.${p}`)}
-                    </option>
-                  ))}
-                </select>
-                {errors.prioridad && (
-                  <p className="mt-1 text-xs text-error">{errors.prioridad.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Fecha de vencimiento */}
-            <div>
-              <label htmlFor="ac-plazo" className={labelClass}>
-                {t('acSection.fields.plazoFecha')} <span className="text-error">*</span>
-              </label>
-              <input
-                id="ac-plazo"
-                type="date"
-                className={inputClass}
-                {...register('plazoFecha')}
-              />
-              {errors.plazoFecha && (
-                <p className="mt-1 text-xs text-error">{errors.plazoFecha.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-end gap-2 border-t border-hairline px-6 py-4 dark:border-hairline/20">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
-            >
-              {t('acSection.actions.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || isPending}
-              className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-60"
-            >
-              {t('acSection.actions.save')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 // ─── ACSection ───────────────────────────────────────────────────────────────
 
 interface ACSectionProps {
   ncId: string
   ncNumero: string
-  ncTitulo?: string
   accionesCorrectivas: AccionCorrectiva[]
   ncEstado: NCStatus
   canAsignarAC: boolean
   canCerrarAC: boolean
+  qeGeneradoId?: string
 }
 
 export function ACSection({
   ncId,
-  ncNumero,
-  ncTitulo,
   accionesCorrectivas,
   ncEstado,
   canAsignarAC,
   canCerrarAC,
+  qeGeneradoId,
 }: ACSectionProps) {
   const { t } = useTranslation('nonconformities')
 
-  const [showAddModal, setShowAddModal] = useState(false)
   const [closingAcId, setClosingAcId] = useState<string | null>(null)
+  const [solicitadoExitoso, setSolicitadoExitoso] = useState(false)
 
-  const createAC = useCreateAccionCorrectiva(ncId)
   const updateAC = useUpdateAccionCorrectiva(ncId)
   const cerrarAC = useCerrarAccionCorrectiva(ncId)
+  const solicitarACEnQE = useSolicitarACEnQE()
 
   const isTerminal = TERMINAL_NC.includes(ncEstado)
-
-  const ncLabel = ncTitulo ? `${ncNumero} — ${ncTitulo}` : ncNumero
-
-  const onAddAC = async (data: CreateACInput) => {
-    await createAC.mutateAsync(data)
-    setShowAddModal(false)
-  }
+  const isQELinked = !!qeGeneradoId
 
   const onTransition = (acId: string, newEstado: string) => {
     updateAC.mutate({ acId, data: { estado: newEstado as AccionCorrectiva['estado'] } })
@@ -349,18 +171,38 @@ export function ACSection({
     )
   }
 
+  const onSolicitarACEnQE = () => {
+    if (!qeGeneradoId) return
+    solicitarACEnQE.mutate(qeGeneradoId, {
+      onSuccess: () => {
+        setSolicitadoExitoso(true)
+        toast.success(t('acSection.toasts.solicitudEnviada'))
+      },
+    })
+  }
+
+  const solicitarACButton =
+    isQELinked && canAsignarAC ? (
+      solicitadoExitoso ? (
+        <span className="flex items-center gap-1.5 text-xs font-medium text-success">
+          <Check size={14} />
+          {t('acSection.actions.solicitudEnviada')}
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onSolicitarACEnQE}
+          disabled={solicitarACEnQE.isPending}
+          className="flex items-center gap-1.5 rounded-md bg-coral px-3 py-1.5 text-xs font-medium text-white hover:bg-coral-dark disabled:opacity-60"
+        >
+          <Plus size={14} />
+          {t('acSection.actions.solicitarQE')}
+        </button>
+      )
+    ) : null
+
   return (
     <section aria-labelledby="ac-section-title">
-      {showAddModal && (
-        <AgregarACModal
-          ncId={ncId}
-          ncLabel={ncLabel}
-          onConfirm={onAddAC}
-          onClose={() => setShowAddModal(false)}
-          isPending={createAC.isPending}
-        />
-      )}
-
       {closingAcId && (
         <CerrarACModal
           onConfirm={onCerrarConfirm}
@@ -382,21 +224,42 @@ export function ACSection({
           )}
         </h3>
 
-        {canAsignarAC && !isTerminal && (
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 rounded-md bg-coral px-3 py-1.5 text-xs font-medium text-white hover:bg-coral-dark"
-          >
-            <Plus size={14} />
-            {t('acSection.actions.add')}
-          </button>
+        {isQELinked ? (
+          <div className="flex items-center gap-3">
+            {accionesCorrectivas.length === 0 && solicitarACButton}
+            <Link
+              to={`/quality-events/${qeGeneradoId}`}
+              className="flex items-center gap-1 text-xs font-medium text-coral hover:underline"
+            >
+              <ArrowUpRight size={14} />
+              {t('acSection.actions.verQE')}
+            </Link>
+          </div>
+        ) : (
+          canAsignarAC &&
+          !isTerminal && (
+            <Link
+              to={`/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=${ncId}`}
+              className="flex items-center gap-1.5 rounded-md bg-coral px-3 py-1.5 text-xs font-medium text-white hover:bg-coral-dark"
+            >
+              <Plus size={14} />
+              {t('acSection.actions.crearQE')}
+            </Link>
+          )
         )}
       </div>
 
+      {!isQELinked && (
+        <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
+          {t('acSection.qeRequerido')}
+        </p>
+      )}
+
       {/* AC List */}
       {accionesCorrectivas.length === 0 ? (
-        <p className="py-4 text-sm text-muted dark:text-on-dark-soft">{t('acSection.empty')}</p>
+        isQELinked && (
+          <p className="py-4 text-sm text-muted dark:text-on-dark-soft">{t('acSection.empty')}</p>
+        )
       ) : (
         <ul className="divide-y divide-hairline dark:divide-hairline/20">
           {accionesCorrectivas.map((ac) => (
@@ -431,10 +294,21 @@ export function ACSection({
                       {ac.descripcionEvidencia}
                     </p>
                   )}
+                  {ac.qeId && (
+                    <Link
+                      to={`/quality-events/${ac.qeId}`}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-coral hover:underline"
+                    >
+                      <ArrowUpRight size={12} />
+                      {t('acSection.verQE', {
+                        numero: qualityEventFixtures.find((qe) => qe.id === ac.qeId)?.numero ?? ac.qeId,
+                      })}
+                    </Link>
+                  )}
                 </div>
 
                 {/* Transition buttons */}
-                {!isTerminal && (
+                {!isTerminal && !isQELinked && (
                   <div className="shrink-0">
                     {ac.estado === 'PENDIENTE' && (
                       <button
@@ -463,6 +337,10 @@ export function ACSection({
             </li>
           ))}
         </ul>
+      )}
+
+      {accionesCorrectivas.length > 0 && solicitarACButton && (
+        <div className="mt-3 flex justify-end">{solicitarACButton}</div>
       )}
     </section>
   )

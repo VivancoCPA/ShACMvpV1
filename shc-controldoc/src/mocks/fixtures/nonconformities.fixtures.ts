@@ -78,6 +78,7 @@ export const nonconformityFixtures: NoConformidad[] = [
         estado: 'EN_EJECUCION',
         creadoEn: '2025-12-16T08:00:00.000Z',
         actualizadoEn: '2025-12-20T10:00:00.000Z',
+        qeId: 'qe-2026-002',
       },
       {
         id: 'ac-003',
@@ -120,7 +121,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     ],
     creadoEn: '2025-12-15T14:00:00.000Z',
     actualizadoEn: '2025-12-16T08:00:00.000Z',
-    qeGeneradoId: 'qe-001',
+    qeGeneradoId: 'qe-2026-002',
   },
 
   // NC-SST-1: EN_EJECUCION, CRITICA, requiereIPER — fechaCierre rojo (vencida)
@@ -158,6 +159,7 @@ export const nonconformityFixtures: NoConformidad[] = [
         fechaCierre: '2026-01-24T16:00:00.000Z',
         creadoEn: '2026-01-20T15:30:00.000Z',
         actualizadoEn: '2026-01-24T16:00:00.000Z',
+        qeId: 'qe-2026-006',
       },
       {
         id: 'ac-005',
@@ -214,6 +216,7 @@ export const nonconformityFixtures: NoConformidad[] = [
     actualizadoEn: '2026-01-21T08:00:00.000Z',
     turno: 'TARDE',
     mineralInvolucrado: 'Cobre',
+    qeGeneradoId: 'qe-2026-006',
   },
 
   // NC-SST-2: CERRADA, ALTA

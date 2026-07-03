@@ -115,3 +115,12 @@ The system SHALL re-export `nonconformityFixtures` from `src/mocks/fixtures/inde
 #### Scenario: nonconformityFixtures importable from fixtures index
 - **WHEN** a developer writes `import { nonconformityFixtures } from 'src/mocks/fixtures'`
 - **THEN** TypeScript resolves the import without error
+
+---
+
+### Requirement: ACs of QE-referenced NC fixtures carry qeId
+For the NC fixtures already cross-referenced from `quality-events.fixtures.ts` (i.e., NCs whose `id` matches an `ncId` used by a QE fixture), at least one of that NC's `accionesCorrectivas` SHALL have `qeId` set to the id of the QE that references it.
+
+#### Scenario: Referenced NC's AC carries the owning QE's id
+- **WHEN** a `nonconformityFixtures` entry has `id === 'nc-002'` (referenced by `qe-2026-002` via `ncId`)
+- **THEN** at least one AC in that NC's `accionesCorrectivas` has `qeId === 'qe-2026-002'`

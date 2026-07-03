@@ -61,17 +61,21 @@ export interface QEAuditTrailEntry {
   generadoPorIA: boolean
 }
 
-// TODO(M4-S0X): migrar ACSection de ncId/qeId stub a qeId real
 export interface AccionCorrectivaQE {
   id: string
   qeId: string
+  titulo?: string
   descripcion: string
   responsableId: string
-  fechaLimite: string
-  estado: 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA'
-  evidencia?: string
+  responsableNombre: string
+  plazoFecha: string
+  prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
+  estado: 'PENDIENTE' | 'EN_EJECUCION' | 'CERRADA'
   creadoEn: string
   actualizadoEn: string
+  descripcionEvidencia?: string
+  evidenciaUrl?: string
+  fechaCierre?: string
 }
 
 export interface QualityEvent {
@@ -90,6 +94,7 @@ export interface QualityEvent {
   reportadoPorId: string
   documentosVinculados: string[]
   requiereEvaluacionRiesgos: boolean
+  solicitudesAC: number
   accionesCorrectivas: AccionCorrectivaQE[]
   auditTrail: QEAuditTrailEntry[]
   creadoEn: string
@@ -115,6 +120,7 @@ export interface QualityEvent {
   fechaVerificacionRealizada?: string
   verificadoPorId?: string
   resultadoVerificacion?: 'EFECTIVO' | 'NO_EFECTIVO'
+  deletedAt?: string
 }
 
 // fechaDesde / fechaHasta filter on fechaHoraEvento (event occurrence date), not fechaVerificacionProgramada
@@ -127,6 +133,7 @@ export interface QEListParams {
   fechaHasta?: string
   ciclo?: number
   soloReincidencias?: boolean
+  incluirEliminados?: boolean
   page: number
   pageSize: number
 }
@@ -148,6 +155,7 @@ export type QualityEventUpdateInput = Partial<Pick<QualityEvent,
   | 'ishikawa'
   | 'causaRaizDefinitiva'
   | 'causaRaizAprobadaPorId'
+  | 'causaRaizFirmadaEn'
   | 'resultadoCierre'
   | 'plazoVerificacionDias'
   | 'fechaVerificacionProgramada'

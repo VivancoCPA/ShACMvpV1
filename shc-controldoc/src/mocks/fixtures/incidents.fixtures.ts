@@ -80,6 +80,7 @@ export const incidentFixtures: Incidente[] = [
     atencionMedicaDescripcion: 'Atención en tópico. Curación y vendaje.',
     condicionesEntorno: ['EPP'],
     evidencias: evidenciasAccidente1,
+    qeId: 'qe-2026-005',
     auditTrail: [
       {
         id: 'aud-inc-001-1',
@@ -105,7 +106,22 @@ export const incidentFixtures: Incidente[] = [
         generadoPorIA: false,
       },
     ],
-    accionesCorrectivas: [],
+    accionesCorrectivas: [
+      {
+        id: 'ac-inc-004',
+        incidenteId: 'inc-001',
+        titulo: 'Reforzar supervisión de uso de EPP',
+        descripcion: 'Reforzar la supervisión del uso de EPP durante turnos con alta carga de trabajo.',
+        responsableId: 'user-003',
+        responsableNombre: 'María Castro',
+        plazoFecha: '2026-03-01',
+        prioridad: 'ALTA',
+        estado: 'EN_EJECUCION',
+        creadoEn: '2026-02-10T10:05:00Z',
+        actualizadoEn: '2026-02-15T09:00:00Z',
+        qeId: 'qe-2026-005',
+      },
+    ],
     creadoEn: '2026-01-10T09:30:00Z',
     actualizadoEn: '2026-02-15T10:00:00Z',
   },
@@ -134,6 +150,7 @@ export const incidentFixtures: Incidente[] = [
     atencionMedicaDescripcion: 'Traslado a Clínica San Pablo para evaluación de fracturas.',
     condicionesEntorno: ['ILUMINACION', 'PISO'],
     evidencias: evidenciasAccidente2,
+    qeId: 'qe-2026-001',
     auditTrail: [
       {
         id: 'aud-inc-002-1',
@@ -169,7 +186,22 @@ export const incidentFixtures: Incidente[] = [
         generadoPorIA: false,
       },
     ],
-    accionesCorrectivas: [],
+    accionesCorrectivas: [
+      {
+        id: 'ac-inc-005',
+        incidenteId: 'inc-002',
+        titulo: 'Auditoría de uso de EPP en carga nocturna',
+        descripcion: 'Realizar auditoría de uso de EPP y protocolos de carga durante turno nocturno.',
+        responsableId: 'user-003',
+        responsableNombre: 'María Castro',
+        plazoFecha: '2026-03-15',
+        prioridad: 'CRITICA',
+        estado: 'PENDIENTE',
+        creadoEn: '2026-02-07T09:35:00Z',
+        actualizadoEn: '2026-02-07T09:35:00Z',
+        qeId: 'qe-2026-001',
+      },
+    ],
     creadoEn: '2026-02-07T08:00:00Z',
     actualizadoEn: '2026-02-07T09:00:00Z',
   },

@@ -90,7 +90,7 @@ export function validateTransitionToPendienteCierre(qe: QualityEvent): {
   const bloqueada = qe.accionesCorrectivas.some(
     (ac) =>
       (ac.estado === 'PENDIENTE' || ac.estado === 'EN_EJECUCION') &&
-      (!ac.evidencia || ac.evidencia.trim() === ''),
+      (!ac.descripcionEvidencia || ac.descripcionEvidencia.trim() === ''),
   )
   if (bloqueada) {
     return {

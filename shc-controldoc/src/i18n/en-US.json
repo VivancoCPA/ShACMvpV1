@@ -447,6 +447,7 @@
       "title": "Quality Events",
       "empty": "No quality events found matching the applied filters.",
       "reincidencia": "Recurrence ×{{count}}",
+      "solicitudesACPendientes": "{{count}} pending AC request(s)",
       "columns": {
         "numero": "Number",
         "tipoOrigen": "Type / Origin",
@@ -468,7 +469,8 @@
         "fechaHasta": "To",
         "soloReincidencias": "Recurrences only",
         "limpiar": "Clear filters",
-        "todos": "All"
+        "todos": "All",
+        "mostrarEliminados": "Show deleted"
       },
       "actions": {
         "nueva": "New Quality Event",
@@ -521,6 +523,163 @@
         "submitting": "Saving…",
         "cancel": "Cancel"
       }
+    },
+    "detail": {
+      "back": "Back to list",
+      "header": {
+        "areaAfectada": "Affected Area",
+        "mineralInvolucrado": "Mineral Involved",
+        "turno": "Shift",
+        "fechaHoraEvento": "Event date & time",
+        "fechaHoraReporte": "Report date & time",
+        "reportadoPor": "Reported by",
+        "reincidencia": "Recurrence ×{{count}}",
+        "origenRef": "Origin",
+        "verIncidente": "View Incident",
+        "verNoConformidad": "View Non-Conformity",
+        "hallazgoAuditoria": "Audit finding",
+        "nombreCliente": "Client",
+        "fechaRecepcion": "Reception date",
+        "criticaBanner": "CRITICAL severity — requires priority Management attention (RN-QE-005)"
+      },
+      "transitions": {
+        "title": "Status transitions",
+        "rnQe002Tooltip": "You must approve the root cause before starting execution",
+        "rnQe003Tooltip": "There are corrective actions pending closure",
+        "rnQe009Tooltip": "There are {{count}} AC requests pending creation on this QE",
+        "disponibleEnCierre": "Available at closure",
+        "disponibleEnCierreTooltip": "The closure flow will be available in a future iteration (M4-S06)",
+        "success": "Status updated to {{estado}}"
+      },
+      "investigation": {
+        "title": "Investigation",
+        "metodoAnalisis": "Analysis method",
+        "tool5Porques": "5 Whys",
+        "toolIshikawa": "Ishikawa Diagram",
+        "porque": "Why {{n}}?",
+        "respuestaPlaceholder": "Describe the identified cause…",
+        "ishikawaCategoria": {
+          "METODO": "Method",
+          "MAQUINA": "Machine",
+          "MATERIAL": "Material",
+          "MANO_DE_OBRA": "Manpower",
+          "MEDICION": "Measurement",
+          "MEDIO_AMBIENTE": "Environment"
+        },
+        "causaRaizDefinitiva": "Definitive root cause",
+        "causaRaizPlaceholder": "Describe the definitive root cause (100–500 characters)…",
+        "guardar": "Save investigation",
+        "aprobarCausaRaiz": "Approve root cause",
+        "aprobadoPor": "Approved by {{nombre}} on {{fecha}}",
+        "asistirIA": "Assist with AI",
+        "asistirIATooltip": "Coming soon",
+        "switchToastMessage": "Switch analysis tool? Data from the current tool will be lost.",
+        "confirmarCambio": "Confirm change",
+        "pinModal": {
+          "title": "Confirm approval",
+          "body": "Enter your signature PIN to approve the definitive root cause.",
+          "placeholder": "PIN",
+          "confirm": "Confirm",
+          "cancel": "Cancel",
+          "error": "Incorrect PIN."
+        },
+        "errors": {
+          "causaRaizLength": "The root cause must be between 100 and 500 characters."
+        }
+      },
+      "acSection": {
+        "title": "Corrective Actions",
+        "progreso": "{{cerradas}} of {{total}} ACs closed",
+        "solicitudesACBanner": "{{count}} pending new AC request(s) — logged from the QE's origin",
+        "empty": "No corrective actions registered.",
+        "actions": {
+          "add": "New AC",
+          "iniciar": "Start",
+          "cerrar": "Close with evidence",
+          "save": "Save",
+          "cancel": "Cancel",
+          "cerrarModal": "Confirm closure"
+        },
+        "fields": {
+          "titulo": "Title",
+          "descripcion": "Description",
+          "responsable": "Owner",
+          "prioridad": "Priority",
+          "plazoFecha": "Due Date",
+          "evidencia": "Evidence Description",
+          "evidenciaUrl": "Evidence URL (optional)"
+        },
+        "placeholders": {
+          "titulo": "Corrective action title…",
+          "descripcion": "Describe the corrective action to take…",
+          "responsable": "Select the owner…",
+          "prioridad": "Select the priority…",
+          "evidencia": "Describe the evidence that shows the action's effectiveness…",
+          "evidenciaUrl": "https://…"
+        },
+        "prioridad": {
+          "BAJA": "Low",
+          "MEDIA": "Medium",
+          "ALTA": "High",
+          "CRITICA": "Critical"
+        },
+        "acStatus": {
+          "PENDIENTE": "Pending",
+          "EN_EJECUCION": "In Progress",
+          "CERRADA": "Closed"
+        },
+        "agregarModal": { "title": "Add Corrective Action" },
+        "cerrarModal": {
+          "title": "Close Corrective Action",
+          "body": "Record the evidence that the action was completed satisfactorily."
+        },
+        "errors": {
+          "evidenciaRequerida": "The evidence description is required."
+        }
+      },
+      "auditTrail": {
+        "title": "Audit Trail",
+        "empty": "No audit trail entries.",
+        "generadoPorIA": "AI generated",
+        "acciones": {
+          "CREADO": "Quality Event created",
+          "ESTADO_CAMBIADO": "Status changed",
+          "CAMPO_EDITADO": "Field edited",
+          "CAUSA_RAIZ_APROBADA": "Root cause approved",
+          "NOTIFICACION_GERENCIA": "Notification sent to Management",
+          "AC_CREADA": "Corrective action created",
+          "AC_ESTADO_CAMBIADO": "Corrective action status changed"
+        }
+      },
+      "notFound": {
+        "title": "Quality Event not found",
+        "message": "The requested Quality Event does not exist or was deleted.",
+        "volver": "Back to list"
+      },
+      "deletedBanner": "This Quality Event has been deleted."
+    },
+    "delete": {
+      "confirm": {
+        "title": "Delete Quality Event?",
+        "message": "This action cannot be undone. QE {{numero}} will be recorded as deleted in the audit trail.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    },
+    "reactivate": {
+      "confirm": {
+        "title": "Reactivate Quality Event?",
+        "message": "QE {{numero}} will return to ABIERTO status and be available for management.",
+        "cancel": "Cancel",
+        "confirm": "Reactivate"
+      }
+    },
+    "deletedBadge": "Deleted",
+    "toasts": {
+      "deleted": "QE deleted successfully",
+      "deleteError": "Error deleting the Quality Event.",
+      "reactivated": "QE reactivated successfully",
+      "reactivateError": "Error reactivating the Quality Event."
     }
   },
   "incidents": {
@@ -747,6 +906,7 @@
     "acSection": {
       "title": "Corrective Actions",
       "empty": "No corrective actions recorded.",
+      "qeRequerido": "Corrective actions are managed from the Quality Event. Create a QE for this incident to register CAs.",
       "agregarModal": {
         "title": "Add Corrective Action"
       },
@@ -790,7 +950,15 @@
         "cancel": "Cancel",
         "iniciar": "Start",
         "cerrar": "Close with evidence",
-        "cerrarModal": "Confirm closure"
+        "cerrarModal": "Confirm closure",
+        "solicitarQE": "Request CA in QE",
+        "solicitudEnviada": "✓ Request sent — pending in QE",
+        "crearQE": "Create QE",
+        "verQE": "View QE →"
+      },
+      "verEnQE": "View in QE →",
+      "toasts": {
+        "solicitudEnviada": "Request sent — pending in QE"
       }
     }
   },
@@ -1036,6 +1204,7 @@
     "acSection": {
       "title": "Corrective Actions",
       "empty": "No corrective actions registered.",
+      "qeRequerido": "Corrective actions are managed from the Quality Event. Create a QE for this NC to register CAs.",
       "acStatus": {
         "PENDIENTE": "Pending",
         "EN_EJECUCION": "In Progress",
@@ -1074,7 +1243,11 @@
         "iniciar": "Start",
         "completar": "Complete",
         "cerrar": "Close with evidence",
-        "cerrarModal": "Confirm closure"
+        "cerrarModal": "Confirm closure",
+        "solicitarQE": "Request CA in QE",
+        "solicitudEnviada": "✓ Request sent — pending in QE",
+        "crearQE": "Create QE",
+        "verQE": "View QE →"
       },
       "agregarModal": {
         "title": "Add Corrective Action"
@@ -1082,6 +1255,11 @@
       "cerrarModal": {
         "title": "Close Corrective Action",
         "body": "Record the evidence that the action was completed satisfactorily."
+      },
+      "verQE": "View QE → {{numero}}",
+      "verEnQE": "View in QE →",
+      "toasts": {
+        "solicitudEnviada": "Request sent — the Quality Manager will create the CA in the QE"
       }
     },
     "errors": {

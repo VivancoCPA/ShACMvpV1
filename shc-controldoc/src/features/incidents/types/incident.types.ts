@@ -60,6 +60,8 @@ export interface AccionCorrectivaIncidente {
   descripcionEvidencia?: string
   evidenciaUrl?: string
   fechaCierre?: string
+  /** Modelo B: referencia al Quality Event que ahora posee la continuación de esta AC */
+  qeId?: string
 }
 
 export interface IncidentEvidencia {
