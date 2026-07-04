@@ -1,7 +1,15 @@
 import type { QEStatus, QualityEvent } from '../types/qualityEvent.types'
-import type { QEPermissions } from '../types/qualityEventPermissions.types'
-import type { UserRole } from '../../../types/auth.types'
+import type { QEPermissions, QEEditAccess } from '../types/qualityEventPermissions.types'
+import type { UserRole, User } from '../../../types/auth.types'
 import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+
+const ANTES_DE_CERRADO: QEStatus[] = [
+  'ABIERTO',
+  'EN_INVESTIGACION',
+  'ANALISIS_COMPLETADO',
+  'EN_EJECUCION',
+  'PENDIENTE_CIERRE',
+]
 
 const DENY_ALL: QEPermissions = {
   puedeEditarCabecera: false,
@@ -77,6 +85,40 @@ export function getQualityEventPermissions(
     case 'JEFE_CONTROL_DOCUMENTARIO':
       return { ...DENY_ALL, soloLectura: true }
   }
+}
+
+export function ventanaReporteInicialAbierta(qe: QualityEvent, ahora: Date): boolean {
+  if (qe.estado !== 'ABIERTO') return false
+  const transcurridoMs = ahora.getTime() - new Date(qe.fechaHoraReporte).getTime()
+  return transcurridoMs <= 2 * 60 * 60 * 1000
+}
+
+export function resolveQEEditAccess(
+  qe: QualityEvent,
+  usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>,
+  ahora: Date = new Date(),
+): QEEditAccess {
+  const esSupervisorDelArea =
+    usuario.rol === 'SUPERVISOR' && (usuario.areasAsignadas ?? []).includes(qe.areaAfectada)
+
+  const reporteInicial =
+    ventanaReporteInicialAbierta(qe, ahora) &&
+    (usuario.id === qe.reportadoPorId || esSupervisorDelArea)
+
+  const rolEstadoValido = usuario.rol === 'JEFE_CALIDAD_SYST' && ANTES_DE_CERRADO.includes(qe.estado)
+  const severidad = rolEstadoValido
+  const mineral = rolEstadoValido && (qe.tipo === 'CALIDAD' || qe.tipo === 'OPERACIONAL')
+
+  return { reporteInicial, severidad, mineral }
+}
+
+export function puedeEditarQE(
+  qe: QualityEvent,
+  usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>,
+  ahora: Date = new Date(),
+): boolean {
+  const access = resolveQEEditAccess(qe, usuario, ahora)
+  return access.reporteInicial || access.severidad || access.mineral
 }
 
 export function resolveRolSegundaFirma(

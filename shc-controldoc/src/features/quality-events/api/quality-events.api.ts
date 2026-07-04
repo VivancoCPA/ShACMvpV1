@@ -13,6 +13,11 @@ import type { CerrarQEACInput } from '../schemas/cerrarQEAccion.schema'
 import type { QualityEventCierreFormInput } from '../schemas/qualityEventCierre.schema'
 import type { FirmarCierreInput } from '../schemas/firmarCierre.schema'
 import type { VerificacionEficaciaInput } from '../schemas/verificacionEficacia.schema'
+import type { QualityEventEditReporteInicialInput } from '../schemas/qualityEventEditReporteInicial.schema'
+import type { QualityEventEditSeveridadInput } from '../schemas/qualityEventEditSeveridad.schema'
+import type { QualityEventEditMineralInput } from '../schemas/qualityEventEditMineral.schema'
+
+export type EditarSeveridadResponse = QualityEvent & { requiereNotificacionUrgente: boolean }
 
 export interface QEListResponse {
   items: QualityEvent[]
@@ -99,6 +104,30 @@ export async function cerrarQEAccion(
     `/api/quality-events/${qeId}/acciones-correctivas/${acId}/status`,
     { estado: 'CERRADA', ...data },
   )
+  return response.data
+}
+
+export async function editarReporteInicial(
+  id: string,
+  data: QualityEventEditReporteInicialInput,
+): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/editar-reporte-inicial`, data)
+  return response.data
+}
+
+export async function editarSeveridad(
+  id: string,
+  data: QualityEventEditSeveridadInput,
+): Promise<EditarSeveridadResponse> {
+  const response = await api.patch<EditarSeveridadResponse>(`/api/quality-events/${id}/editar-severidad`, data)
+  return response.data
+}
+
+export async function editarMineral(
+  id: string,
+  data: QualityEventEditMineralInput,
+): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/editar-mineral`, data)
   return response.data
 }
 

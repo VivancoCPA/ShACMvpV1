@@ -8,6 +8,7 @@ export interface MockUser {
   password: string
   rol: UserRole
   area: string
+  areasAsignadas?: string[]
   avatarUrl: undefined
 }
 
@@ -32,6 +33,18 @@ export const authFixtures: MockUser[] = [
     password: 'Shac2025!',
     rol: 'SUPERVISOR',
     area: 'Operaciones',
+    areasAsignadas: ['Galpón B', 'Galpón C'],
+    avatarUrl: undefined,
+  },
+  {
+    id: 'user-supervisor-002',
+    nombre: 'Diego',
+    apellido: 'Salazar',
+    email: 'supervisor.almacen@shac.pe',
+    password: 'Shac2025!',
+    rol: 'SUPERVISOR',
+    area: 'Almacén Norte',
+    areasAsignadas: ['Almacén Norte', 'Almacén Sur'],
     avatarUrl: undefined,
   },
   {

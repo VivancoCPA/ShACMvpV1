@@ -13,6 +13,8 @@ export interface User {
   email: string
   rol: UserRole
   area?: string
+  /** Áreas que este Supervisor gestiona para efectos de permisos de QE (RN-QE-010). Solo relevante para `rol === 'SUPERVISOR'`; subconjunto de AREAS_SHAC. */
+  areasAsignadas?: string[]
   avatarUrl?: string
 }
 

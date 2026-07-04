@@ -186,6 +186,11 @@ export const router = createBrowserRouter([
                 element: <QualityEventForm />,
                 handle: { breadcrumb: 'qualityEvents' },
               },
+              {
+                path: '/quality-events/:id/editar',
+                element: <QualityEventForm />,
+                handle: { breadcrumb: 'qualityEvents' },
+              },
             ],
           },
           {

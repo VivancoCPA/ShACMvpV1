@@ -5,13 +5,16 @@ import {
   validateTransitionToPendienteCierre,
   validateTransitionToCerrado,
   resolveRolSegundaFirma,
+  ventanaReporteInicialAbierta,
+  resolveQEEditAccess,
+  puedeEditarQE,
 } from '../qualityEventPermissions'
 import type { QualityEvent } from '../../types/qualityEvent.types'
 
 vi.mock('../../../../mocks/fixtures/users.fixtures', () => ({
   userFixtures: [
-    { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
-    { id: 'user-005', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },
+    { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones', areasAsignadas: ['Almacén Norte'] },
+    { id: 'user-005', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
     { id: 'user-999', nombre: 'Dual', apellido: 'Hat', email: 'dual@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
   ],
 }))
@@ -148,6 +151,143 @@ describe('resolveRolSegundaFirma (RN-QE-004 escalation)', () => {
 
   it('falls back to SUPERVISOR when the user cannot be found', () => {
     expect(resolveRolSegundaFirma('user-desconocido', 'Calidad')).toBe('SUPERVISOR')
+  })
+})
+
+describe('ventanaReporteInicialAbierta (RN-QE-010 time window)', () => {
+  it('is true within 2 hours and estado ABIERTO', () => {
+    const result = ventanaReporteInicialAbierta(
+      { ...baseQE, estado: 'ABIERTO', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      new Date('2026-05-01T09:30:00Z'),
+    )
+    expect(result).toBe(true)
+  })
+
+  it('is false after 2 hours even in ABIERTO', () => {
+    const result = ventanaReporteInicialAbierta(
+      { ...baseQE, estado: 'ABIERTO', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      new Date('2026-05-01T10:01:00Z'),
+    )
+    expect(result).toBe(false)
+  })
+
+  it('is false once estado leaves ABIERTO, even within 2 hours', () => {
+    const result = ventanaReporteInicialAbierta(
+      { ...baseQE, estado: 'EN_INVESTIGACION', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      new Date('2026-05-01T08:30:00Z'),
+    )
+    expect(result).toBe(false)
+  })
+})
+
+describe('resolveQEEditAccess (RN-QE-010/011/012)', () => {
+  it('creator within window gets reporteInicial true, others false', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', tipo: 'SST', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-1', rol: 'OPERARIO' },
+      new Date('2026-05-01T09:00:00Z'),
+    )
+    expect(result).toEqual({ reporteInicial: true, severidad: false, mineral: false })
+  })
+
+  it('Supervisor with the affected area in areasAsignadas (not creator) within window gets reporteInicial true', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: ['Almacén Norte', 'Almacén Sur'] },
+      new Date('2026-05-01T09:00:00Z'),
+    )
+    expect(result.reporteInicial).toBe(true)
+  })
+
+  it('Supervisor whose areasAsignadas does not include the affected area gets reporteInicial false', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: ['Almacén Sur'] },
+      new Date('2026-05-01T09:00:00Z'),
+    )
+    expect(result.reporteInicial).toBe(false)
+  })
+
+  it('Supervisor with no areasAsignadas at all gets reporteInicial false', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: undefined },
+      new Date('2026-05-01T09:00:00Z'),
+    )
+    expect(result.reporteInicial).toBe(false)
+  })
+
+  it('JEFE_CALIDAD_SYST gets severidad and mineral true for CALIDAD tipo before CERRADO', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'EN_EJECUCION', tipo: 'CALIDAD' },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+    )
+    expect(result).toEqual({ reporteInicial: false, severidad: true, mineral: true })
+  })
+
+  it('JEFE_CALIDAD_SYST gets mineral false for SST tipo', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'EN_INVESTIGACION', tipo: 'SST' },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+    )
+    expect(result.severidad).toBe(true)
+    expect(result.mineral).toBe(false)
+  })
+
+  it('JEFE_CALIDAD_SYST per state: all edit flags false once CERRADO', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'CERRADO', tipo: 'CALIDAD' },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+    )
+    expect(result).toEqual({ reporteInicial: false, severidad: false, mineral: false })
+  })
+
+  it('JEFE_CALIDAD_SYST remains editable after reopen (EN_INVESTIGACION via REABIERTO cycle)', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'EN_INVESTIGACION', tipo: 'OPERACIONAL', ciclo: 2 },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+    )
+    expect(result.severidad).toBe(true)
+    expect(result.mineral).toBe(true)
+  })
+
+  it('double-role user gets both reporteInicial and severidad/mineral true', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'jc-1', tipo: 'OPERACIONAL', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+      new Date('2026-05-01T08:30:00Z'),
+    )
+    expect(result).toEqual({ reporteInicial: true, severidad: true, mineral: true })
+  })
+
+  it('OPERARIO who is neither creator nor supervisor gets all flags false', () => {
+    const result = resolveQEEditAccess(
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1' },
+      { id: 'user-9', rol: 'OPERARIO' },
+    )
+    expect(result).toEqual({ reporteInicial: false, severidad: false, mineral: false })
+  })
+})
+
+describe('puedeEditarQE (RN-QE-010/011/012 visibility)', () => {
+  it('is true when any access flag is true', () => {
+    const result = puedeEditarQE(
+      { ...baseQE, estado: 'EN_INVESTIGACION', tipo: 'SST' },
+      { id: 'jc-1', rol: 'JEFE_CALIDAD_SYST' },
+    )
+    expect(result).toBe(true)
+  })
+
+  it('is false when all access flags are false', () => {
+    const result = puedeEditarQE(
+      { ...baseQE, estado: 'CERRADO', reportadoPorId: 'user-1' },
+      { id: 'user-9', rol: 'OPERARIO' },
+    )
+    expect(result).toBe(false)
+  })
+
+  it('defaults ahora to the current time without throwing', () => {
+    expect(() => puedeEditarQE(baseQE, { id: 'user-9', rol: 'OPERARIO' })).not.toThrow()
   })
 })
 

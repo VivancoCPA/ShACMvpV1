@@ -8,3 +8,9 @@ export interface QEPermissions {
   puedeReabrir: boolean
   soloLectura: boolean
 }
+
+export interface QEEditAccess {
+  reporteInicial: boolean
+  severidad: boolean
+  mineral: boolean
+}

@@ -9,6 +9,9 @@ import {
   RefreshCw,
   Circle,
   Sparkles,
+  FileEdit,
+  AlertOctagon,
+  Gem,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQEAuditTrail } from '../hooks/useQEAuditTrail'
@@ -23,6 +26,9 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   NOTIFICACION_GERENCIA: Bell,
   AC_CREADA: ListPlus,
   AC_ESTADO_CAMBIADO: RefreshCw,
+  QE_REPORTE_INICIAL_EDITADO: FileEdit,
+  QE_SEVERIDAD_EDITADA: AlertOctagon,
+  QE_MINERAL_EDITADO: Gem,
 }
 
 interface QEAuditTrailProps {
@@ -45,6 +51,14 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
   }
   if (entry.accion === 'CAMPO_EDITADO' && entry.campoModificado) {
     return `${label} (${entry.campoModificado})`
+  }
+  if (entry.accion === 'QE_REPORTE_INICIAL_EDITADO' && entry.campoModificado) {
+    const campoKey = `form.fields.${entry.campoModificado}`
+    const campoLabel = t(campoKey) === campoKey ? entry.campoModificado : t(campoKey)
+    return `${campoLabel}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'QE_SEVERIDAD_EDITADA' || entry.accion === 'QE_MINERAL_EDITADO') {
+    return `${label}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
   }
   return label
 }

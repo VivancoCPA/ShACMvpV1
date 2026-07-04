@@ -1,8 +1,9 @@
 import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
 import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
-import { resolveRolSegundaFirma } from '../../features/quality-events/utils/qualityEventPermissions'
+import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
 import { useAuthStore } from '../../stores/authStore'
+import type { User } from '../../types/auth.types'
 import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
 
 const LATENCY = 400
@@ -12,6 +13,35 @@ function getCurrentUser(): { id: string; nombre: string } {
   if (!user) return { id: 'user-current', nombre: 'Usuario actual' }
   return { id: user.id, nombre: `${user.nombre} ${user.apellido}` }
 }
+
+function getCurrentUserForEditAccess(): Pick<User, 'id' | 'rol' | 'areasAsignadas'> {
+  const user = useAuthStore.getState().user
+  if (!user) return { id: 'user-current', rol: 'OPERARIO', areasAsignadas: [] }
+  return { id: user.id, rol: user.rol, areasAsignadas: user.areasAsignadas }
+}
+
+const PROTECTED_REPORTE_INICIAL_FIELDS = [
+  'numero',
+  'origen',
+  'tipo',
+  'fechaHoraReporte',
+  'reportadoPorId',
+  'severidad',
+]
+
+const REPORTE_INICIAL_EDITABLE_FIELDS = [
+  'descripcion',
+  'areaAfectada',
+  'turno',
+  'fechaHoraEvento',
+  'mineralInvolucrado',
+  'incidenteId',
+  'ncId',
+  'hallazgoAuditoriaRef',
+  'reporteExternoRef',
+]
+
+const ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL: QEStatus[] = ['CERRADO', 'EN_VERIFICACION', 'VERIFICADO']
 
 let qeStore: QualityEvent[] = [...qualityEventFixtures]
 
@@ -87,12 +117,15 @@ export const qualityEventHandlers = [
 
     const numero = `QE-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`
     const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
     const newQE: QualityEvent = {
       ...(body as Partial<QualityEvent>),
       id: `qe-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`,
       numero,
       estado: 'ABIERTO',
       ciclo: 1,
+      fechaHoraReporte: now,
+      reportadoPorId: currentUser.id,
       requiereEvaluacionRiesgos: (body.requiereEvaluacionRiesgos as boolean) ?? false,
       solicitudesAC: 0,
       documentosVinculados: [],
@@ -104,8 +137,8 @@ export const qualityEventHandlers = [
           entidadId: `qe-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`,
           accion: 'CREADO',
           estadoNuevo: 'ABIERTO',
-          realizadoPorId: (body.reportadoPorId as string) ?? 'user-001',
-          realizadoPorNombre: 'Sistema',
+          realizadoPorId: currentUser.id,
+          realizadoPorNombre: currentUser.nombre,
           timestamp: now,
           generadoPorIA: false,
         },
@@ -818,5 +851,180 @@ export const qualityEventHandlers = [
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     )
     return HttpResponse.json({ success: true, data: sorted })
+  }),
+
+  http.patch('/api/quality-events/:id/editar-reporte-inicial', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json() as Record<string, unknown>
+    const hasProtectedField = PROTECTED_REPORTE_INICIAL_FIELDS.some((field) => field in body)
+    if (hasProtectedField) {
+      return HttpResponse.json(
+        { success: false, message: 'RN-QE-010: no se pueden editar campos protegidos del reporte inicial' },
+        { status: 422 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const usuario = getCurrentUserForEditAccess()
+    const access = resolveQEEditAccess(qe, usuario, new Date())
+    if (!access.reporteInicial) {
+      return HttpResponse.json(
+        { success: false, message: 'RN-QE-010: fuera de la ventana de corrección o sin permiso para editar' },
+        { status: 422 }
+      )
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    const cambios = REPORTE_INICIAL_EDITABLE_FIELDS.filter((campo) => campo in body).filter((campo) => {
+      const anterior = (qe as unknown as Record<string, unknown>)[campo]
+      return JSON.stringify(body[campo]) !== JSON.stringify(anterior)
+    })
+
+    const auditEntries: QEAuditTrailEntry[] = cambios.map((campo, i) => {
+      const anterior = (qe as unknown as Record<string, unknown>)[campo]
+      const nuevo = body[campo]
+      return {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1 + i}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'QE_REPORTE_INICIAL_EDITADO',
+        campoModificado: campo,
+        valorAnterior: anterior !== undefined ? String(anterior) : undefined,
+        valorNuevo: nuevo !== undefined ? String(nuevo) : undefined,
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+    })
+
+    const patch: Record<string, unknown> = {}
+    for (const campo of cambios) patch[campo] = body[campo]
+
+    const updated: QualityEvent = {
+      ...qe,
+      ...patch,
+      auditTrail: [...qe.auditTrail, ...auditEntries],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.patch('/api/quality-events/:id/editar-severidad', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const usuario = getCurrentUserForEditAccess()
+    if (usuario.rol !== 'JEFE_CALIDAD_SYST' || ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL.includes(qe.estado)) {
+      return HttpResponse.json(
+        { success: false, message: 'RN-QE-011: sin permiso para editar la severidad' },
+        { status: 422 }
+      )
+    }
+
+    const body = await request.json() as { severidad: QualityEvent['severidad'] }
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const severidadAnterior = qe.severidad
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'QE_SEVERIDAD_EDITADA',
+      campoModificado: 'severidad',
+      valorAnterior: severidadAnterior,
+      valorNuevo: body.severidad,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const requiereNotificacionUrgente =
+      (body.severidad === 'CRITICA' && severidadAnterior !== 'CRITICA') ||
+      (severidadAnterior === 'CRITICA' && body.severidad !== 'CRITICA')
+
+    const updated: QualityEvent = {
+      ...qe,
+      severidad: body.severidad,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({
+      success: true,
+      data: { ...updated, requiereNotificacionUrgente },
+    })
+  }),
+
+  http.patch('/api/quality-events/:id/editar-mineral', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const usuario = getCurrentUserForEditAccess()
+    const tipoValido = qe.tipo === 'CALIDAD' || qe.tipo === 'OPERACIONAL'
+    if (
+      usuario.rol !== 'JEFE_CALIDAD_SYST' ||
+      ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL.includes(qe.estado) ||
+      !tipoValido
+    ) {
+      return HttpResponse.json(
+        { success: false, message: 'RN-QE-012: sin permiso para editar el mineral involucrado' },
+        { status: 422 }
+      )
+    }
+
+    const body = await request.json() as { mineralInvolucrado: string }
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'QE_MINERAL_EDITADO',
+      campoModificado: 'mineralInvolucrado',
+      valorAnterior: qe.mineralInvolucrado,
+      valorNuevo: body.mineralInvolucrado,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      mineralInvolucrado: body.mineralInvolucrado,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
   }),
 ]

@@ -482,6 +482,7 @@
     },
     "form": {
       "createTitle": "New Quality Event",
+      "editTitle": "Edit Quality Event",
       "noIncidents": "No incidents available to link.",
       "noNonconformities": "No non-conformities available to link.",
       "hallazgoPlaceholder": "E.g. NC-ISO-9001-2015-§8.4.1 — Supplier evaluation",
@@ -504,7 +505,10 @@
         "ncId": "Linked Non-Conformity",
         "hallazgoAuditoriaRef": "Audit Finding Reference",
         "nombreCliente": "Client Name",
-        "fechaRecepcion": "Report Reception Date"
+        "fechaRecepcion": "Report Reception Date",
+        "numero": "Number",
+        "fechaHoraReporte": "Report Date",
+        "reportadoPor": "Reported By"
       },
       "placeholders": {
         "select": "Select…",
@@ -522,6 +526,24 @@
         "submit": "Save QE",
         "submitting": "Saving…",
         "cancel": "Cancel"
+      }
+    },
+    "editSeveridadMineralModal": {
+      "title": "Edit Severity / Mineral",
+      "fields": {
+        "severidad": "Severity",
+        "mineralInvolucrado": "Mineral Involved"
+      },
+      "criticaBanner": "Switching to CRITICAL will notify Management on save (RN-QE-005/011)",
+      "actions": {
+        "submit": "Save Changes",
+        "submitting": "Saving…",
+        "cancel": "Cancel",
+        "close": "Close"
+      },
+      "toasts": {
+        "success": "Changes saved successfully",
+        "error": "Error saving changes. Please try again."
       }
     },
     "detail": {
@@ -658,7 +680,10 @@
           "CAUSA_RAIZ_APROBADA": "Root cause approved",
           "NOTIFICACION_GERENCIA": "Notification sent to Management",
           "AC_CREADA": "Corrective action created",
-          "AC_ESTADO_CAMBIADO": "Corrective action status changed"
+          "AC_ESTADO_CAMBIADO": "Corrective action status changed",
+          "QE_REPORTE_INICIAL_EDITADO": "Initial report edited",
+          "QE_SEVERIDAD_EDITADA": "Severity edited",
+          "QE_MINERAL_EDITADO": "Mineral involved edited"
         }
       },
       "notFound": {
@@ -759,7 +784,8 @@
       "deleted": "QE deleted successfully",
       "deleteError": "Error deleting the Quality Event.",
       "reactivated": "QE reactivated successfully",
-      "reactivateError": "Error reactivating the Quality Event."
+      "reactivateError": "Error reactivating the Quality Event.",
+      "edited": "QE updated successfully"
     }
   },
   "incidents": {

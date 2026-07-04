@@ -482,6 +482,7 @@
     },
     "form": {
       "createTitle": "Nuevo Quality Event",
+      "editTitle": "Editar Quality Event",
       "noIncidents": "No hay incidentes disponibles para vincular.",
       "noNonconformities": "No hay no conformidades disponibles para vincular.",
       "hallazgoPlaceholder": "Ej. NC-ISO-9001-2015-§8.4.1 — Evaluación de proveedores",
@@ -504,7 +505,10 @@
         "ncId": "No conformidad vinculada",
         "hallazgoAuditoriaRef": "Referencia de hallazgo de auditoría",
         "nombreCliente": "Nombre del cliente",
-        "fechaRecepcion": "Fecha de recepción del reporte"
+        "fechaRecepcion": "Fecha de recepción del reporte",
+        "numero": "Número",
+        "fechaHoraReporte": "Fecha de reporte",
+        "reportadoPor": "Reportado por"
       },
       "placeholders": {
         "select": "Seleccionar…",
@@ -522,6 +526,24 @@
         "submit": "Guardar QE",
         "submitting": "Guardando…",
         "cancel": "Cancelar"
+      }
+    },
+    "editSeveridadMineralModal": {
+      "title": "Editar severidad / mineral",
+      "fields": {
+        "severidad": "Severidad",
+        "mineralInvolucrado": "Mineral involucrado"
+      },
+      "criticaBanner": "Cambiar a CRÍTICA notificará a Gerencia al guardar (RN-QE-005/011)",
+      "actions": {
+        "submit": "Guardar cambios",
+        "submitting": "Guardando…",
+        "cancel": "Cancelar",
+        "close": "Cerrar"
+      },
+      "toasts": {
+        "success": "Cambios guardados correctamente",
+        "error": "Error al guardar los cambios. Inténtalo de nuevo."
       }
     },
     "detail": {
@@ -658,7 +680,10 @@
           "CAUSA_RAIZ_APROBADA": "Causa raíz aprobada",
           "NOTIFICACION_GERENCIA": "Notificación enviada a Gerencia",
           "AC_CREADA": "Acción correctiva creada",
-          "AC_ESTADO_CAMBIADO": "Estado de acción correctiva cambiado"
+          "AC_ESTADO_CAMBIADO": "Estado de acción correctiva cambiado",
+          "QE_REPORTE_INICIAL_EDITADO": "Reporte inicial editado",
+          "QE_SEVERIDAD_EDITADA": "Severidad editada",
+          "QE_MINERAL_EDITADO": "Mineral involucrado editado"
         }
       },
       "notFound": {
@@ -759,7 +784,8 @@
       "deleted": "QE eliminado correctamente",
       "deleteError": "Error al eliminar el Quality Event.",
       "reactivated": "QE reactivado correctamente",
-      "reactivateError": "Error al reactivar el Quality Event."
+      "reactivateError": "Error al reactivar el Quality Event.",
+      "edited": "QE actualizado correctamente"
     }
   },
   "incidents": {

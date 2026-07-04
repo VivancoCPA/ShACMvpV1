@@ -67,6 +67,20 @@ export const QE_SEVERITY_COLORS: Record<QESeverity, string> = {
   CRITICA: 'bg-error text-white border-error',
 }
 
+export const QE_MINERALES = [
+  'Cobre',
+  'Zinc',
+  'Plomo',
+  'Hierro',
+  'Molibdeno',
+  'Plata',
+  'Oro',
+  'Estaño',
+  'Concentrado de cobre',
+  'Concentrado de zinc',
+  'Concentrado de plomo',
+] as const
+
 export const AREAS_SHAC: readonly string[] = [
   'Almacén Norte',
   'Almacén Sur',

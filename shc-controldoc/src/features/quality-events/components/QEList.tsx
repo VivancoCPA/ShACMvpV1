@@ -5,12 +5,13 @@ import { AlertTriangle, Eye, Pencil, Trash2, RotateCcw, X } from 'lucide-react'
 import { useQEList } from '../hooks/useQEList'
 import { useDeleteQualityEvent } from '../hooks/useDeleteQualityEvent'
 import { useReactivateQualityEvent } from '../hooks/useReactivateQualityEvent'
-import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
+import { resolveQEEditAccess } from '../utils/qualityEventPermissions'
 import { useAuthStore } from '../../../stores/authStore'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
 import { QEOriginBadge } from './QEOriginBadge'
 import { QESeverityBadge } from './QESeverityBadge'
+import { QEEditSeveridadMineralModal } from './QEEditSeveridadMineralModal'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { Pagination } from '../../../components/shared/Pagination'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
@@ -175,6 +176,7 @@ export function QEList() {
 
   const [pendingDelete, setPendingDelete] = useState<QualityEvent | null>(null)
   const [pendingReactivate, setPendingReactivate] = useState<QualityEvent | null>(null)
+  const [editModalQE, setEditModalQE] = useState<QualityEvent | null>(null)
 
   const canDelete = user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'ALTA_DIRECCION'
 
@@ -277,9 +279,7 @@ export function QEList() {
               </tr>
             ) : (
               qualityEvents.map((qe: QualityEvent) => {
-                const perms = user?.rol
-                  ? getQualityEventPermissions(qe.estado, user.rol, false)
-                  : null
+                const editAccess = user ? resolveQEEditAccess(qe, user) : null
 
                 const isDeleted = !!qe.deletedAt
                 const showDeleteBtn = canDelete && !isDeleted
@@ -385,12 +385,16 @@ export function QEList() {
                         >
                           <Eye size={14} aria-hidden="true" />
                         </button>
-                        {perms?.puedeEditarCabecera && !isDeleted && (
+                        {editAccess && (editAccess.reporteInicial || editAccess.severidad || editAccess.mineral) && !isDeleted && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
-                              navigate(`/quality-events/${qe.id}/editar`)
+                              if (editAccess.reporteInicial) {
+                                navigate(`/quality-events/${qe.id}/editar`)
+                              } else {
+                                setEditModalQE(qe)
+                              }
                             }}
                             aria-label={t('list.actions.editar')}
                             title={t('list.actions.editar')}
@@ -470,6 +474,14 @@ export function QEList() {
             })
           }}
           onClose={() => setPendingReactivate(null)}
+        />
+      )}
+
+      {editModalQE && user && (
+        <QEEditSeveridadMineralModal
+          qe={editModalQE}
+          access={resolveQEEditAccess(editModalQE, user)}
+          onClose={() => setEditModalQE(null)}
         />
       )}
     </div>

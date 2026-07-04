@@ -360,7 +360,20 @@ type UserRole =
   | "JEFE_CONTROL_DOCUMENTARIO"
   | "AUDITOR_INTERNO"
   | "ALTA_DIRECCION";
+
+interface User {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  rol: UserRole;
+  area?: string; // Departamento/área propia del usuario (home area)
+  areasAsignadas?: string[]; // Solo relevante para rol === 'SUPERVISOR'. Subconjunto de AREAS_SHAC: áreas que este Supervisor gestiona para efectos de permisos (p.ej. RN-QE-010). Un Supervisor puede tener más de un área asignada. Vacío o ausente para otros roles.
+  avatarUrl?: string;
+}
 ```
+
+**Importante:** `areasAsignadas` es distinto de `area`. `area` es el departamento propio del usuario; `areasAsignadas` es la lista de áreas que un Supervisor supervisa para efectos de reglas de negocio (p.ej. quién puede editar un QE recién reportado). Cualquier regla que necesite saber "¿este Supervisor gestiona el área X?" debe verificar `areasAsignadas.includes(area)`, nunca comparar contra `area` directamente.
 
 ### Guards de ruta
 
