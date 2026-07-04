@@ -176,6 +176,19 @@ export function NonconformityDetailPage() {
         {/* Action buttons */}
         {permissions && (
           <div className="mb-6 flex flex-wrap gap-2">
+            {permissions.canCrearQE && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=${encodeURIComponent(nc.id)}&ncNumero=${encodeURIComponent(nc.numero)}&ncArea=${encodeURIComponent(nc.areaAfectada)}`,
+                  )
+                }
+                className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark"
+              >
+                {t('detail.actions.crearQE')}
+              </button>
+            )}
             {permissions.canAnular && nc.estado !== 'ANULADA' && (
               <button
                 type="button"

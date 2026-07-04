@@ -224,7 +224,7 @@ export function ACSection({
           )}
         </h3>
 
-        {isQELinked ? (
+        {isQELinked && (
           <div className="flex items-center gap-3">
             {accionesCorrectivas.length === 0 && solicitarACButton}
             <Link
@@ -235,17 +235,6 @@ export function ACSection({
               {t('acSection.actions.verQE')}
             </Link>
           </div>
-        ) : (
-          canAsignarAC &&
-          !isTerminal && (
-            <Link
-              to={`/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=${ncId}`}
-              className="flex items-center gap-1.5 rounded-md bg-coral px-3 py-1.5 text-xs font-medium text-white hover:bg-coral-dark"
-            >
-              <Plus size={14} />
-              {t('acSection.actions.crearQE')}
-            </Link>
-          )
         )}
       </div>
 

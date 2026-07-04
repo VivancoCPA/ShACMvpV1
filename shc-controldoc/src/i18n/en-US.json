@@ -492,6 +492,7 @@
         "generic": "Error saving the Quality Event. Please try again.",
         "fechaFutura": "The event date and time cannot be in the future."
       },
+      "areaDivergeWarning": "This area differs from the one registered in {{tipoEtiqueta}} {{numero}}: {{areaOrigen}}.",
       "fields": {
         "origen": "QE Origin",
         "tipo": "QE Type",
@@ -1003,7 +1004,8 @@
       },
       "actions": {
         "editar": "Edit",
-        "eliminar": "Delete"
+        "eliminar": "Delete",
+        "crearQE": "Create QE"
       },
       "evidencias": {
         "title": "Attached evidence"
@@ -1059,7 +1061,6 @@
         "cerrarModal": "Confirm closure",
         "solicitarQE": "Request CA in QE",
         "solicitudEnviada": "✓ Request sent — pending in QE",
-        "crearQE": "Create QE",
         "verQE": "View QE →"
       },
       "verEnQE": "View in QE →",
@@ -1286,7 +1287,8 @@
       "actions": {
         "anular": "Void NC",
         "iniciarInvestigacion": "Start Investigation",
-        "solicitarCierre": "Request Closure"
+        "solicitarCierre": "Request Closure",
+        "crearQE": "Create QE"
       }
     },
     "anular": {
@@ -1352,7 +1354,6 @@
         "cerrarModal": "Confirm closure",
         "solicitarQE": "Request CA in QE",
         "solicitudEnviada": "✓ Request sent — pending in QE",
-        "crearQE": "Create QE",
         "verQE": "View QE →"
       },
       "agregarModal": {

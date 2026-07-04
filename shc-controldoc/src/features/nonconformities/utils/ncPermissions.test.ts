@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { getNCPermissions } from './ncPermissions'
 import type { NoConformidad, NCPermissions } from '../types/nonconformity.types'
 
-function makeNC(estado: NoConformidad['estado']): NoConformidad {
+function makeNC(estado: NoConformidad['estado'], qeGeneradoId?: string): NoConformidad {
   return {
     id: 'test-id',
     numero: 'NC-CAL-2026-001',
@@ -22,6 +22,7 @@ function makeNC(estado: NoConformidad['estado']): NoConformidad {
     auditTrail: [],
     creadoEn: '2026-01-01T00:00:00Z',
     actualizadoEn: '2026-01-01T00:00:00Z',
+    qeGeneradoId,
   }
 }
 
@@ -41,6 +42,7 @@ function deny(overrides: Partial<NCPermissions> = {}): NCPermissions {
     canAsignarAC: false,
     canCerrarAC: false,
     canVerAuditTrail: false,
+    canCrearQE: false,
     ...overrides,
   }
 }
@@ -201,5 +203,35 @@ describe('getNCPermissions — new flags', () => {
     expect(permsActive.canAnular).toBe(false)
     const permsClosed = getNCPermissions(makeNC('CERRADA'), 'SUPERVISOR')
     expect(permsClosed.canAsignarAC).toBe(false)
+  })
+})
+
+describe('getNCPermissions — canCrearQE', () => {
+  it('is true for SUPERVISOR on an active NC without a linked QE', () => {
+    expect(getNCPermissions(makeNC('EN_EJECUCION'), 'SUPERVISOR').canCrearQE).toBe(true)
+  })
+
+  it('is true for SUPERVISOR on ABIERTA without a linked QE', () => {
+    expect(getNCPermissions(makeNC('ABIERTA'), 'SUPERVISOR').canCrearQE).toBe(true)
+  })
+
+  it('is true for JEFE_CALIDAD_SYST on an active NC without a linked QE', () => {
+    expect(getNCPermissions(makeNC('ABIERTA'), 'JEFE_CALIDAD_SYST').canCrearQE).toBe(true)
+  })
+
+  it('is false when the NC already has a linked QE', () => {
+    expect(getNCPermissions(makeNC('ABIERTA', 'qe-2026-005'), 'SUPERVISOR').canCrearQE).toBe(false)
+  })
+
+  it('is false for a CERRADA NC', () => {
+    expect(getNCPermissions(makeNC('CERRADA'), 'JEFE_CALIDAD_SYST').canCrearQE).toBe(false)
+  })
+
+  it('is false for an ANULADA NC', () => {
+    expect(getNCPermissions(makeNC('ANULADA'), 'SUPERVISOR').canCrearQE).toBe(false)
+  })
+
+  it('is false for OPERARIO regardless of state', () => {
+    expect(getNCPermissions(makeNC('ABIERTA'), 'OPERARIO').canCrearQE).toBe(false)
   })
 })

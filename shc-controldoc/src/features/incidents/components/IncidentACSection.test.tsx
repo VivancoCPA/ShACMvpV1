@@ -57,21 +57,11 @@ function renderSection(overrides: Partial<ComponentProps<typeof IncidentACSectio
 }
 
 describe('IncidentACSection — modo solo lectura cuando el incidente tiene QE vinculado', () => {
-  it('renders Crear QE link and info message when there is no linked QE', () => {
+  it('renders the info message and no Crear QE link when there is no linked QE', () => {
     renderSection({ qeId: undefined })
 
-    expect(screen.getByText('acSection.actions.crearQE')).toBeInTheDocument()
+    expect(screen.queryByText('acSection.actions.crearQE')).not.toBeInTheDocument()
     expect(screen.getByText('acSection.qeRequerido')).toBeInTheDocument()
-  })
-
-  it('Crear QE link navigates to the QE creation form pre-filled with the incident origin', () => {
-    renderSection({ qeId: undefined })
-
-    const link = screen.getByText('acSection.actions.crearQE').closest('a')
-    expect(link).toHaveAttribute(
-      'href',
-      '/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-1',
-    )
   })
 
   it('hides Crear QE link and transition buttons when qeId is set', () => {

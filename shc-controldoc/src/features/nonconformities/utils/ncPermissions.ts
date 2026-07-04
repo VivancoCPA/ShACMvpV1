@@ -16,6 +16,7 @@ const DENY_ALL: NCPermissions = {
   canAsignarAC: false,
   canCerrarAC: false,
   canVerAuditTrail: false,
+  canCrearQE: false,
 }
 
 const isTerminal = (estado: NCStatus) => estado === 'CERRADA' || estado === 'ANULADA'
@@ -87,13 +88,18 @@ function getAltaDireccionPermissions(estado: NCStatus): NCPermissions {
 }
 
 export function getNCPermissions(nc: NoConformidad, userRole: UserRole): NCPermissions {
+  const canCrearQE =
+    (userRole === 'SUPERVISOR' || userRole === 'JEFE_CALIDAD_SYST') &&
+    !isTerminal(nc.estado) &&
+    !nc.qeGeneradoId
+
   switch (userRole) {
     case 'OPERARIO':
       return getOperarioPermissions(nc.estado)
     case 'SUPERVISOR':
-      return getSupervisorPermissions(nc.estado)
+      return { ...getSupervisorPermissions(nc.estado), canCrearQE }
     case 'JEFE_CALIDAD_SYST':
-      return getJefeCalidadPermissions(nc.estado)
+      return { ...getJefeCalidadPermissions(nc.estado), canCrearQE }
     case 'AUDITOR_INTERNO':
       return { ...DENY_ALL, canRead: true, canComment: true, canVerAuditTrail: true }
     case 'ALTA_DIRECCION':

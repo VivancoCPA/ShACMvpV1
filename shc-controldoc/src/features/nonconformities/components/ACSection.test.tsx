@@ -57,21 +57,11 @@ function renderSection(overrides: Partial<ComponentProps<typeof ACSection>> = {}
 }
 
 describe('ACSection — modo solo lectura cuando la NC tiene QE generado', () => {
-  it('renders Crear QE link and info message when there is no linked QE', () => {
+  it('renders the info message and no Crear QE link when there is no linked QE', () => {
     renderSection({ qeGeneradoId: undefined })
 
-    expect(screen.getByText('acSection.actions.crearQE')).toBeInTheDocument()
+    expect(screen.queryByText('acSection.actions.crearQE')).not.toBeInTheDocument()
     expect(screen.getByText('acSection.qeRequerido')).toBeInTheDocument()
-  })
-
-  it('Crear QE link navigates to the QE creation form pre-filled with the NC origin', () => {
-    renderSection({ qeGeneradoId: undefined })
-
-    const link = screen.getByText('acSection.actions.crearQE').closest('a')
-    expect(link).toHaveAttribute(
-      'href',
-      '/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=nc-1',
-    )
   })
 
   it('hides Crear QE link and transition buttons when qeGeneradoId is set', () => {

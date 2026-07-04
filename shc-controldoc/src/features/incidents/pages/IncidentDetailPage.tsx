@@ -270,6 +270,19 @@ export function IncidentDetailPage() {
           {/* Acción buttons */}
           {!isAnulado && permissions && (
             <div className="flex items-center gap-2">
+              {permissions.canCrearQE && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=${encodeURIComponent(incident.id)}&incidenteNumero=${encodeURIComponent(incident.numero)}&incidenteArea=${encodeURIComponent(incident.areaId)}`,
+                    )
+                  }
+                  className="flex items-center gap-1.5 rounded-md bg-coral px-3 py-1.5 text-sm font-medium text-white hover:bg-coral-dark"
+                >
+                  {t('detail.actions.crearQE')}
+                </button>
+              )}
               {permissions.canEdit && (
                 <button
                   type="button"

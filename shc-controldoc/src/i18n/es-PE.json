@@ -492,6 +492,7 @@
         "generic": "Error al guardar el Quality Event. Inténtalo de nuevo.",
         "fechaFutura": "La fecha y hora del evento no pueden ser en el futuro."
       },
+      "areaDivergeWarning": "Esta área difiere de la registrada en {{tipoEtiqueta}} {{numero}}: {{areaOrigen}}.",
       "fields": {
         "origen": "Origen del QE",
         "tipo": "Tipo de QE",
@@ -1003,7 +1004,8 @@
       },
       "actions": {
         "editar": "Editar",
-        "eliminar": "Eliminar"
+        "eliminar": "Eliminar",
+        "crearQE": "Crear QE"
       },
       "evidencias": {
         "title": "Evidencias adjuntas"
@@ -1059,7 +1061,6 @@
         "cerrarModal": "Confirmar cierre",
         "solicitarQE": "Solicitar AC en QE",
         "solicitudEnviada": "✓ Solicitud enviada — pendiente en el QE",
-        "crearQE": "Crear QE",
         "verQE": "Ver QE →"
       },
       "verEnQE": "Ver en QE →",
@@ -1286,7 +1287,8 @@
       "actions": {
         "anular": "Anular NC",
         "iniciarInvestigacion": "Iniciar Investigación",
-        "solicitarCierre": "Solicitar Cierre"
+        "solicitarCierre": "Solicitar Cierre",
+        "crearQE": "Crear QE"
       }
     },
     "anular": {
@@ -1352,7 +1354,6 @@
         "cerrarModal": "Confirmar cierre",
         "solicitarQE": "Solicitar AC en QE",
         "solicitudEnviada": "✓ Solicitud enviada — pendiente en el QE",
-        "crearQE": "Crear QE",
         "verQE": "Ver QE →"
       },
       "agregarModal": {

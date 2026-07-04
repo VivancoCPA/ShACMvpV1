@@ -83,6 +83,7 @@ export interface NCPermissions {
   canAsignarAC: boolean
   canCerrarAC: boolean
   canVerAuditTrail: boolean
+  canCrearQE: boolean
 }
 
 export interface NCFilters {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom'
@@ -86,6 +86,23 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const initialOrigen = origenParam && QE_ORIGINS.includes(origenParam) ? origenParam : ''
   const initialNcId = searchParams.get('ncId') ?? ''
   const initialIncidenteId = searchParams.get('incidenteId') ?? ''
+  const initialNcNumero = searchParams.get('ncNumero') ?? ''
+  const initialNcArea = searchParams.get('ncArea') ?? ''
+  const initialIncidenteNumero = searchParams.get('incidenteNumero') ?? ''
+  const initialIncidenteArea = searchParams.get('incidenteArea') ?? ''
+
+  // RN-QE-013 — mount-time fallback from query params, used as the initial areaAfectada default
+  // and as a placeholder until the linked NC/Incidente list loads (see `origenEntidad` below).
+  const initialOrigenEntidad = useMemo(() => {
+    if (initialOrigen === 'O2_NC_DETECTADA' && initialNcArea) {
+      return { tipoEtiqueta: 'la NC' as const, numero: initialNcNumero, area: initialNcArea }
+    }
+    if (initialOrigen === 'O1_INCIDENTE_CAMPO' && initialIncidenteArea) {
+      return { tipoEtiqueta: 'el Incidente' as const, numero: initialIncidenteNumero, area: initialIncidenteArea }
+    }
+    return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const {
     register,
@@ -118,7 +135,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           tipo: '',
           severidad: '',
           descripcion: '',
-          areaAfectada: '',
+          areaAfectada: initialOrigenEntidad?.area ?? '',
           turno: '',
           fechaHoraEvento: '',
           mineralInvolucrado: '',
@@ -133,6 +150,9 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const severidadValue = watch('severidad')
   const descripcionValue = watch('descripcion') ?? ''
   const mineralValue = watch('mineralInvolucrado') ?? ''
+  const areaAfectadaValue = watch('areaAfectada') ?? ''
+  const ncIdValue = watch('ncId')
+  const incidenteIdValue = watch('incidenteId')
 
   // O1 — incidents query (enabled only when origin is O1)
   const incidentsQuery = useQuery({
@@ -148,8 +168,28 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
     enabled: origenValue === 'O2_NC_DETECTADA',
   })
 
-  const incidents = incidentsQuery.data?.items ?? []
-  const nonconformities = ncsQuery.data?.items ?? []
+  const incidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data])
+  const nonconformities = useMemo(() => ncsQuery.data?.items ?? [], [ncsQuery.data])
+
+  // RN-QE-013 — shared by both entry points: query-param prefill (button on NC/Incidente detail)
+  // and manual selection via the searchable combobox below. Falls back to `initialOrigenEntidad`
+  // (query params) until the linked entity is found in the loaded list.
+  const origenEntidad = useMemo(() => {
+    if (origenValue === 'O2_NC_DETECTADA') {
+      const nc = nonconformities.find((n) => n.id === ncIdValue)
+      if (nc) return { tipoEtiqueta: 'la NC' as const, numero: nc.numero, area: nc.areaAfectada }
+      return initialOrigenEntidad?.tipoEtiqueta === 'la NC' ? initialOrigenEntidad : null
+    }
+    if (origenValue === 'O1_INCIDENTE_CAMPO') {
+      const inc = incidents.find((i) => i.id === incidenteIdValue)
+      if (inc) return { tipoEtiqueta: 'el Incidente' as const, numero: inc.numero, area: inc.areaId }
+      return initialOrigenEntidad?.tipoEtiqueta === 'el Incidente' ? initialOrigenEntidad : null
+    }
+    return null
+  }, [origenValue, nonconformities, ncIdValue, incidents, incidenteIdValue, initialOrigenEntidad])
+
+  const showAreaDivergeWarning =
+    !!origenEntidad && !!areaAfectadaValue && areaAfectadaValue !== origenEntidad.area
 
   const clearOriginFields = () => {
     setValue('incidenteId', '')
@@ -377,7 +417,11 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
                       sublabel: `${inc.descripcion.slice(0, 60)}${inc.descripcion.length > 60 ? '…' : ''} (${inc.areaId})`,
                     }))}
                     value={field.value || undefined}
-                    onChange={(id) => field.onChange(id ?? '')}
+                    onChange={(id) => {
+                      field.onChange(id ?? '')
+                      const inc = incidents.find((i) => i.id === id)
+                      if (inc) setValue('areaAfectada', inc.areaId)
+                    }}
                   />
                 )}
               />
@@ -415,7 +459,11 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
                       }
                     })}
                     value={field.value || undefined}
-                    onChange={(id) => field.onChange(id ?? '')}
+                    onChange={(id) => {
+                      field.onChange(id ?? '')
+                      const nc = nonconformities.find((n) => n.id === id)
+                      if (nc) setValue('areaAfectada', nc.areaAfectada)
+                    }}
                   />
                 )}
               />
@@ -568,6 +616,16 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           </select>
           {errors.areaAfectada && (
             <p className={errorClass}>{errors.areaAfectada.message as string}</p>
+          )}
+          {showAreaDivergeWarning && origenEntidad && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-sm text-warning">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              {t('form.areaDivergeWarning', {
+                tipoEtiqueta: origenEntidad.tipoEtiqueta,
+                numero: origenEntidad.numero,
+                areaOrigen: origenEntidad.area,
+              })}
+            </p>
           )}
         </div>
 

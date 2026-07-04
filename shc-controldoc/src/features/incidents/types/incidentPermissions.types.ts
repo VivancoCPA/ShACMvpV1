@@ -8,4 +8,5 @@ export interface IncidentPermissions {
   canDelete: boolean
   canRestore: boolean
   canAnular: boolean
+  canCrearQE: boolean
 }

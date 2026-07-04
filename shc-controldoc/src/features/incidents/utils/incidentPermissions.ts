@@ -12,6 +12,7 @@ const DENY_ALL: IncidentPermissions = {
   canDelete: false,
   canRestore: false,
   canAnular: false,
+  canCrearQE: false,
 }
 
 const ANULABLE_STATES: IncidentStatus[] = ['ABIERTO', 'EN_INVESTIGACION']
@@ -34,9 +35,10 @@ export function getIncidentPermissions(
     return { ...DENY_ALL, canView: userRole !== 'JEFE_CONTROL_DOCUMENTARIO', canCreate }
   }
 
-  const { estado, deletedAt } = incidente
+  const { estado, deletedAt, qeId } = incidente
   const isDeleted = deletedAt !== undefined
   const isActive = ACTIVE_STATES.includes(estado)
+  const canCrearQE = !isDeleted && isActive && !qeId
 
   switch (userRole) {
     case 'OPERARIO':
@@ -56,6 +58,7 @@ export function getIncidentPermissions(
         canChangeStatus,
         canAddAC,
         canCerrarAC,
+        canCrearQE,
       }
     }
 
@@ -78,6 +81,7 @@ export function getIncidentPermissions(
         canDelete,
         canRestore,
         canAnular,
+        canCrearQE,
       }
     }
 

@@ -1,15 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { QualityEventForm } from './QualityEventForm'
 import { useAuthStore } from '../../../stores/authStore'
+import { getIncidents } from '../../incidents/api/incidents.api'
+import { getNonconformities } from '../../nonconformities/api/nonconformities.api'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, opts?: Record<string, unknown>) => {
+      if (key === 'form.areaDivergeWarning' && opts) {
+        return `Esta área difiere de la registrada en ${opts.tipoEtiqueta} ${opts.numero}: ${opts.areaOrigen}.`
+      }
+      return key
+    },
     i18n: { language: 'es-PE' },
   }),
 }))
@@ -190,5 +197,240 @@ describe('QualityEventForm — edit mode', () => {
     await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
 
     expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
+  })
+})
+
+describe('QualityEventForm — create mode / RN-QE-013 vinculación query params', () => {
+  function renderCreateRoute(search = '') {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/quality-events/nuevo${search}`]}>
+          <Routes>
+            <Route path="/quality-events/nuevo" element={<QualityEventForm />} />
+            <Route path="/quality-events/:id" element={<div data-testid="detail-page">detalle</div>} />
+            <Route path="/quality-events" element={<div data-testid="list-page">lista</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  async function fillRequiredFields() {
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /form.fields.tipo/i }), 'CALIDAD')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /form.fields.severidad/i }), 'MEDIA')
+    await userEvent.type(
+      screen.getByLabelText(/form.fields.descripcion/i),
+      'Descripción de prueba con más de diez caracteres',
+    )
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /form.fields.turno/i }), 'DIA')
+    const fechaInput = document.getElementById('fechaHoraEvento') as HTMLInputElement
+    fireEvent.change(fechaInput, { target: { value: '2026-01-01T08:00' } })
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockQE = undefined
+    mockQELoading = false
+    useAuthStore.setState({
+      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'SUPERVISOR', area: 'Almacén Norte' },
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+    vi.mocked(getNonconformities).mockResolvedValue({
+      items: [
+        {
+          id: 'nc-014',
+          numero: 'NC-2026-014',
+          descripcion: 'NC de prueba',
+          areaAfectada: 'Almacén Norte',
+        },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    vi.mocked(getIncidents).mockResolvedValue({
+      items: [
+        {
+          id: 'inc-003',
+          numero: 'INC-2026-003',
+          descripcion: 'Incidente de prueba',
+          areaId: 'SyST',
+        },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+  })
+
+  afterEach(() => cleanup())
+
+  it('prefills origen and ncId from O2 query params', async () => {
+    renderCreateRoute(
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+    )
+
+    expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O2_NC_DETECTADA')
+    expect(await screen.findByDisplayValue('NC-2026-014')).toBeInTheDocument()
+  })
+
+  it('prefills origen and incidenteId from O1 query params', async () => {
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST',
+    )
+
+    expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O1_INCIDENTE_CAMPO')
+    expect(await screen.findByDisplayValue('INC-2026-003')).toBeInTheDocument()
+  })
+
+  it('leaves the form with empty defaults when there are no query params', () => {
+    renderCreateRoute()
+
+    expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('')
+  })
+
+  it('ignores an unrecognized origen query param', () => {
+    renderCreateRoute('?origen=O3_HALLAZGO_AUDITORIA&ncId=nc-014')
+
+    expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O3_HALLAZGO_AUDITORIA')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('')
+  })
+
+  it('prefills areaAfectada from the NC origin area with no warning when unchanged', () => {
+    renderCreateRoute(
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+    )
+
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('Almacén Norte')
+    expect(
+      screen.queryByText('Esta área difiere de la registrada en la NC NC-2026-014: Almacén Norte.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the exact warning when areaAfectada diverges from the NC origin', async () => {
+    renderCreateRoute(
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
+      'Logística',
+    )
+
+    expect(
+      screen.getByText('Esta área difiere de la registrada en la NC NC-2026-014: Almacén Norte.'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the exact warning when areaAfectada diverges from the Incidente origin', async () => {
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST',
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
+      'Almacén Norte',
+    )
+
+    expect(
+      screen.getByText('Esta área difiere de la registrada en el Incidente INC-2026-003: SyST.'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not block submission when the divergence warning is visible', async () => {
+    renderCreateRoute(
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
+      'Logística',
+    )
+    await fillRequiredFields()
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(createMutate).toHaveBeenCalledTimes(1)
+    const [payload] = createMutate.mock.calls[0] as [{ areaAfectada: string }]
+    expect(payload.areaAfectada).toBe('Logística')
+  })
+
+  it('warning disappears when the user restores the original origin area', async () => {
+    renderCreateRoute(
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+    )
+
+    const areaSelect = screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })
+    await userEvent.selectOptions(areaSelect, 'Logística')
+    expect(
+      screen.getByText('Esta área difiere de la registrada en la NC NC-2026-014: Almacén Norte.'),
+    ).toBeInTheDocument()
+
+    await userEvent.selectOptions(areaSelect, 'Almacén Norte')
+    expect(
+      screen.queryByText('Esta área difiere de la registrada en la NC NC-2026-014: Almacén Norte.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('has no prefill or warning for O1 selected manually without vinculación query params', async () => {
+    renderCreateRoute()
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form\.fields\.origen\b/i }),
+      'O1_INCIDENTE_CAMPO',
+    )
+    const areaSelect = screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })
+    expect(areaSelect).toHaveValue('')
+
+    await userEvent.selectOptions(areaSelect, 'SyST')
+    expect(screen.queryByText(/Esta área difiere/)).not.toBeInTheDocument()
+  })
+
+  it('disables prefill and warning when the origin area query param is missing', async () => {
+    renderCreateRoute('?origen=O2_NC_DETECTADA&ncId=nc-099&ncNumero=NC-2025-099')
+
+    const areaSelect = screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })
+    expect(areaSelect).toHaveValue('')
+
+    await userEvent.selectOptions(areaSelect, 'Logística')
+    expect(screen.queryByText(/Esta área difiere/)).not.toBeInTheDocument()
+  })
+
+  it('prefills areaAfectada from an NC selected manually in the origin combobox (no query params)', async () => {
+    renderCreateRoute()
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form\.fields\.origen\b/i }),
+      'O2_NC_DETECTADA',
+    )
+    const ncCombobox = await screen.findByRole('combobox', { name: 'form.fields.ncId' })
+    await userEvent.click(ncCombobox)
+    await userEvent.click(await screen.findByRole('option', { name: /NC-2026-014/ }))
+
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue(
+      'Almacén Norte',
+    )
+    expect(screen.queryByText(/Esta área difiere/)).not.toBeInTheDocument()
+  })
+
+  it('shows the divergence warning after manually selecting an Incidente then changing areaAfectada', async () => {
+    renderCreateRoute()
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form\.fields\.origen\b/i }),
+      'O1_INCIDENTE_CAMPO',
+    )
+    const incidenteCombobox = await screen.findByRole('combobox', { name: 'form.fields.incidenteId' })
+    await userEvent.click(incidenteCombobox)
+    await userEvent.click(await screen.findByRole('option', { name: /INC-2026-003/ }))
+
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('SyST')
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
+      'Almacén Norte',
+    )
+
+    expect(
+      screen.getByText('Esta área difiere de la registrada en el Incidente INC-2026-003: SyST.'),
+    ).toBeInTheDocument()
   })
 })
