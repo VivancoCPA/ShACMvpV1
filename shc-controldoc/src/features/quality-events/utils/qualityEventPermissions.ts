@@ -84,6 +84,9 @@ export function getQualityEventPermissions(
 
     case 'JEFE_CONTROL_DOCUMENTARIO':
       return { ...DENY_ALL, soloLectura: true }
+
+    case 'ADMINISTRADOR_SISTEMA':
+      return { ...DENY_ALL, soloLectura: true }
   }
 }
 

@@ -93,5 +93,8 @@ export function getIncidentPermissions(
 
     case 'JEFE_CONTROL_DOCUMENTARIO':
       return { ...DENY_ALL }
+
+    case 'ADMINISTRADOR_SISTEMA':
+      return { ...DENY_ALL }
   }
 }

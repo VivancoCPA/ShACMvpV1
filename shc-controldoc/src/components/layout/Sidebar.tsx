@@ -7,6 +7,7 @@ import {
   ClipboardList,
   BarChart2,
   Users,
+  MapPin,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -26,7 +27,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'documents', path: '/documentos', icon: FileText },
+  {
+    key: 'documents',
+    path: '/documentos',
+    icon: FileText,
+    roles: ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
+  },
   {
     key: 'nonconformities',
     path: '/nonconformities',
@@ -56,6 +62,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/usuarios',
     icon: Users,
     roles: ['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'],
+  },
+  {
+    key: 'locations',
+    path: '/admin/locales',
+    icon: MapPin,
+    roles: ['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST'],
   },
 ]
 

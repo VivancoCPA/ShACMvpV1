@@ -19,6 +19,8 @@ import { QualityEventForm } from '../features/quality-events/pages/QualityEventF
 import { QualityEventDetail } from '../features/quality-events/pages/QualityEventDetail'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
+import { LocalesAdminPage } from '../features/locations/pages/LocalesAdminPage'
+import { LocalDetailPage } from '../features/locations/pages/LocalDetailPage'
 
 function ComingSoon({ label }: { label: string }) {
   return (
@@ -46,14 +48,30 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/documentos" replace /> },
           {
-            path: '/documentos',
-            element: <DocumentsPage />,
-            handle: { breadcrumb: 'documents' },
-          },
-          {
-            path: '/documentos/:id',
-            element: <DocumentDetailPage />,
-            handle: { breadcrumb: 'documents' },
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'OPERARIO',
+                  'SUPERVISOR',
+                  'JEFE_CALIDAD_SYST',
+                  'JEFE_CONTROL_DOCUMENTARIO',
+                  'AUDITOR_INTERNO',
+                  'ALTA_DIRECCION',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/documentos',
+                element: <DocumentsPage />,
+                handle: { breadcrumb: 'documents' },
+              },
+              {
+                path: '/documentos/:id',
+                element: <DocumentDetailPage />,
+                handle: { breadcrumb: 'documents' },
+              },
+            ],
           },
           // English-path aliases used by form navigation
           { path: '/documents', element: <Navigate to="/documentos" replace /> },
@@ -90,9 +108,25 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: '/nonconformities',
-            element: <NonconformityListPage />,
-            handle: { breadcrumb: 'nonconformities' },
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'OPERARIO',
+                  'SUPERVISOR',
+                  'JEFE_CALIDAD_SYST',
+                  'JEFE_CONTROL_DOCUMENTARIO',
+                  'AUDITOR_INTERNO',
+                  'ALTA_DIRECCION',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/nonconformities',
+                element: <NonconformityListPage />,
+                handle: { breadcrumb: 'nonconformities' },
+              },
+            ],
           },
           {
             element: (
@@ -107,9 +141,25 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: '/nonconformities/:id',
-            element: <NonconformityDetailPage />,
-            handle: { breadcrumb: 'nonconformities' },
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'OPERARIO',
+                  'SUPERVISOR',
+                  'JEFE_CALIDAD_SYST',
+                  'JEFE_CONTROL_DOCUMENTARIO',
+                  'AUDITOR_INTERNO',
+                  'ALTA_DIRECCION',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/nonconformities/:id',
+                element: <NonconformityDetailPage />,
+                handle: { breadcrumb: 'nonconformities' },
+              },
+            ],
           },
           {
             element: (
@@ -226,6 +276,23 @@ export const router = createBrowserRouter([
                 path: '/usuarios',
                 element: <ComingSoon label="Usuarios y Roles" />,
                 handle: { breadcrumb: 'users' },
+              },
+            ],
+          },
+          {
+            element: (
+              <RoleGuard requiredRoles={['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST']} />
+            ),
+            children: [
+              {
+                path: '/admin/locales',
+                element: <LocalesAdminPage />,
+                handle: { breadcrumb: 'locations' },
+              },
+              {
+                path: '/admin/locales/:id',
+                element: <LocalDetailPage />,
+                handle: { breadcrumb: 'locations' },
               },
             ],
           },

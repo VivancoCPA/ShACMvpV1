@@ -421,7 +421,8 @@
       "JEFE_CALIDAD_SYST": "Quality & HSE Manager",
       "JEFE_CONTROL_DOCUMENTARIO": "Document Control Manager",
       "AUDITOR_INTERNO": "Internal Auditor",
-      "ALTA_DIRECCION": "Senior Management"
+      "ALTA_DIRECCION": "Senior Management",
+      "ADMINISTRADOR_SISTEMA": "System Administrator"
     },
     "devMode": {
       "roleSelector": "Dev mode — select role"
@@ -437,6 +438,7 @@
     "qualityEvents": "Quality Events",
     "dashboard": "Dashboard",
     "users": "Users",
+    "locations": "Locations and Zones",
     "logout": "Sign out",
     "myProfile": "My profile",
     "toggleTheme": "Toggle theme",

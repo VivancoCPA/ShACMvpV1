@@ -22,7 +22,7 @@ interface DocumentListRowProps {
   onRestoreClick?: (doc: Documento) => void
 }
 
-const READ_ONLY_ROLES: Set<UserRole> = new Set(['AUDITOR_INTERNO', 'ALTA_DIRECCION'])
+const READ_ONLY_ROLES: Set<UserRole> = new Set(['AUDITOR_INTERNO', 'ALTA_DIRECCION', 'ADMINISTRADOR_SISTEMA'])
 
 function userRoleToDocRole(role: UserRole): DocRole {
   switch (role) {
@@ -35,6 +35,7 @@ function userRoleToDocRole(role: UserRole): DocRole {
       return 'OPERARIO'
     case 'AUDITOR_INTERNO':
     case 'ALTA_DIRECCION':
+    case 'ADMINISTRADOR_SISTEMA':
       return 'OPERARIO'
   }
 }

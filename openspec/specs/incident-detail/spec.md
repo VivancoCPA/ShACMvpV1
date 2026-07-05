@@ -64,6 +64,25 @@ La cabecera SHALL mostrar botones de acción según `getIncidentPermissions()`: 
 - **WHEN** el usuario hace clic en "Eliminar"
 - **THEN** aparece un modal de confirmación antes de ejecutar la acción
 
+### Requirement: Botón "Crear QE" visible cuando el incidente no tiene QE vinculado
+El sistema SHALL renderizar un botón "Crear QE" en la cabecera de acciones de la página de detalle del incidente cuando `getIncidentPermissions(incidente, userRole).canCrearQE === true`. Al hacer clic, el sistema SHALL navegar a `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId={incidente.id}&incidenteNumero={incidente.numero}&incidenteArea={incidente.areaId}` (con los valores codificados para URL). El botón SHALL estar ausente del DOM — no solo deshabilitado — cuando `canCrearQE` es `false`. Este botón es independiente del enlace "Ver en QE" y del botón "Solicitar AC en QE", los cuales solo aparecen cuando `incidente.qeId` YA está poblado.
+
+#### Scenario: Botón Crear QE visible para SUPERVISOR en incidente activo sin QE vinculado
+- **WHEN** un usuario con rol `SUPERVISOR` ve el detalle de un incidente en estado `EN_INVESTIGACION` sin `qeId`
+- **THEN** el botón "Crear QE" es visible
+
+#### Scenario: Botón Crear QE ausente cuando el incidente ya tiene un QE vinculado
+- **WHEN** `incidente.qeId` está poblado
+- **THEN** el botón "Crear QE" no aparece, independientemente del rol, y en su lugar se muestra el enlace "Ver en QE" según la regla existente
+
+#### Scenario: Botón Crear QE ausente para OPERARIO
+- **WHEN** un usuario con rol `OPERARIO` ve el detalle de cualquier incidente
+- **THEN** el botón "Crear QE" no aparece
+
+#### Scenario: Clic en Crear QE navega con los query params de vinculación
+- **WHEN** un usuario autorizado hace clic en "Crear QE" en el incidente `INC-2026-003` (`id: 'inc-003'`, `areaId: 'SyST'`)
+- **THEN** el router navega a `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST`
+
 ### Requirement: Bloque "Descripción del evento" con datos del reporte
 La sección de detalle SHALL incluir un bloque "Descripción del evento" (expandido por defecto) con: `descripcion`, indicador de lesionados y número si aplica, `condicionesEntorno` como badges, `equiposInvolucrados` / `personalInvolucrado` / `testigos` cuando tienen valor, y `atencionMedicaRequerida` + `descripcionAtencionMedica` si aplica. Si `informeMedicoAdjunto` existe, se muestra como enlace de descarga con ícono FileText. Después de `condicionesEntorno`, SHALL renderizar un sub-bloque "Evidencias adjuntas" (solo si `incidente.evidencias?.length > 0`) con ícono Paperclip, grid de thumbnails 80×80 px para imágenes, y lista de PDFs con ícono FileText + nombre + peso en KB. Si `tipo = ACCIDENTE` y no hay evidencias, SHALL mostrar alerta amarilla "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)".
 

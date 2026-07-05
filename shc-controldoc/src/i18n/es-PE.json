@@ -421,7 +421,8 @@
       "JEFE_CALIDAD_SYST": "Jefe de Calidad y SyST",
       "JEFE_CONTROL_DOCUMENTARIO": "Jefe de Control Documentario",
       "AUDITOR_INTERNO": "Auditor Interno",
-      "ALTA_DIRECCION": "Alta Dirección"
+      "ALTA_DIRECCION": "Alta Dirección",
+      "ADMINISTRADOR_SISTEMA": "Administrador de Sistema"
     },
     "devMode": {
       "roleSelector": "Modo desarrollo — seleccionar rol"
@@ -437,6 +438,7 @@
     "qualityEvents": "Quality Events",
     "dashboard": "Dashboard",
     "users": "Usuarios",
+    "locations": "Locales y Zonas",
     "logout": "Cerrar sesión",
     "myProfile": "Mi perfil",
     "toggleTheme": "Cambiar tema",

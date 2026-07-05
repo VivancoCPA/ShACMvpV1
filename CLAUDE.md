@@ -359,7 +359,8 @@ type UserRole =
   | "JEFE_CALIDAD_SYST"
   | "JEFE_CONTROL_DOCUMENTARIO"
   | "AUDITOR_INTERNO"
-  | "ALTA_DIRECCION";
+  | "ALTA_DIRECCION"
+  | "ADMINISTRADOR_SISTEMA";
 
 interface User {
   id: string;
@@ -371,9 +372,21 @@ interface User {
   areasAsignadas?: string[]; // Solo relevante para rol === 'SUPERVISOR'. Subconjunto de AREAS_SHAC: áreas que este Supervisor gestiona para efectos de permisos (p.ej. RN-QE-010). Un Supervisor puede tener más de un área asignada. Vacío o ausente para otros roles.
   avatarUrl?: string;
 }
+
+`ADMINISTRADOR_SISTEMA` es un rol de sistema puro. Su alcance es EXCLUSIVAMENTE:
+- M6 (Admin CRUD Locales/Zonas)
+- Futuros módulos de administración de sistema
+
+`ADMINISTRADOR_SISTEMA` NO tiene acceso a ningún módulo operativo (M1 Control Documentario, M2 No Conformidades, M3 Incidentes, M4 Quality Events, M5 KPIs/Dashboard).
+
+La matriz RACI oficial de M1 (SHAC-M1-Matriz-Responsabilidades-v1.0.docx) define únicamente 6 roles y ADMINISTRADOR_SISTEMA no es uno de ellos — cualquier guard de ruta o item de sidebar que le otorgue acceso a M1 (u otro módulo operativo) es un bug, no una excepción.
 ```
 
 **Importante:** `areasAsignadas` es distinto de `area`. `area` es el departamento propio del usuario; `areasAsignadas` es la lista de áreas que un Supervisor supervisa para efectos de reglas de negocio (p.ej. quién puede editar un QE recién reportado). Cualquier regla que necesite saber "¿este Supervisor gestiona el área X?" debe verificar `areasAsignadas.includes(area)`, nunca comparar contra `area` directamente.
+
+**Nota técnica (M6-S01):** al agregar un rol nuevo al enum UserRole, revisar TODOS los switch exhaustivos sobre rol/UserRole en el código (incidentPermissions.ts, ncPermissions.ts, qualityEventPermissions.ts, documents/permissions.ts) y agregar explícitamente el caso "deny-all" para el rol nuevo en cada dominio que no le corresponda — no confiar en un `default` genérico que oculte roles faltantes.
+
+**Nota técnica adicional (auditoría de rutas, M6-S01):** se detectó que algunas rutas del router (/nonconformities, /nonconformities/:id) carecían de requiredRoles en RoleGuard, permitiendo acceso a cualquier rol autenticado. Al agregar una ruta nueva, SIEMPRE definir requiredRoles explícitamente basado en el helper de permisos del dominio correspondiente — nunca dejarla sin guard por omisión.
 
 ### Guards de ruta
 

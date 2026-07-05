@@ -5,6 +5,7 @@ export type UserRole =
   | 'JEFE_CONTROL_DOCUMENTARIO'
   | 'AUDITOR_INTERNO'
   | 'ALTA_DIRECCION'
+  | 'ADMINISTRADOR_SISTEMA'
 
 export interface User {
   id: string

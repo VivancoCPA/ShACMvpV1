@@ -7,6 +7,7 @@ export const ROLE_BG_CLASSES: Record<UserRole, string> = {
   JEFE_CONTROL_DOCUMENTARIO: 'bg-amber/20 text-amber',
   AUDITOR_INTERNO: 'bg-success/20 text-success',
   ALTA_DIRECCION: 'bg-error/20 text-error',
+  ADMINISTRADOR_SISTEMA: 'bg-warning/20 text-warning',
 }
 
 export const ROLE_AVATAR_BG: Record<UserRole, string> = {
@@ -16,4 +17,5 @@ export const ROLE_AVATAR_BG: Record<UserRole, string> = {
   JEFE_CONTROL_DOCUMENTARIO: 'bg-amber/30',
   AUDITOR_INTERNO: 'bg-success/30',
   ALTA_DIRECCION: 'bg-error/30',
+  ADMINISTRADOR_SISTEMA: 'bg-warning/30',
 }
