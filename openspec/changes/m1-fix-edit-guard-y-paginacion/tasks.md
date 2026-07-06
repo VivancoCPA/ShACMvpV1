@@ -15,4 +15,4 @@
 ## 3. Cierre
 
 - [x] 3.1 `npx tsc --noEmit` limpio. `npx vitest run`: 576/578 tests pasan (65/68 archivos); las 2 fallas restantes (`qualityEventCreate.schema.test.ts`) y los 2 archivos que no cargan (`Pagination.test.tsx`, `DeadlineBadge.test.tsx`, por un import roto a `../../i18n/config` que no existe) son preexistentes y no relacionados — confirmado que ninguno de esos tres archivos fue tocado por este change (`git status` solo muestra `router/index.tsx`, `useDocumentList.ts` y los archivos nuevos).
-- [ ] 3.2 Revisar que ambos cambios quedaron aislados en commits/verificación separada según lo pedido en el spec (guard de autoría vs. paginación), aunque compartan el mismo change de OpenSpec.
+- [x] 3.2 Confirmado: dos commits separados en `master` — `4d7f3b7` (guard de autoría: `DocumentEditGuard.tsx`, su test, `router/index.tsx`, artefactos de OpenSpec) y `ad0d9e5` (pageSize: `useDocumentList.ts` + su test).
