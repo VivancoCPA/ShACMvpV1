@@ -21,16 +21,13 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 import { LocalesAdminPage } from '../features/locations/pages/LocalesAdminPage'
 import { LocalDetailPage } from '../features/locations/pages/LocalDetailPage'
-
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-4xl">🚧</p>
-      <h2 className="mt-4 text-lg font-medium text-ink dark:text-on-dark">{label}</h2>
-      <p className="mt-1 text-sm text-muted dark:text-on-dark-soft">Próximamente</p>
-    </div>
-  )
-}
+import {
+  ComingSoon,
+  LocalNewComingSoon,
+  LocalEditComingSoon,
+  ZonaNewComingSoon,
+  ZonaEditComingSoon,
+} from './ComingSoonPages'
 
 export const router = createBrowserRouter([
   // Public routes
@@ -287,6 +284,26 @@ export const router = createBrowserRouter([
               {
                 path: '/admin/locales',
                 element: <LocalesAdminPage />,
+                handle: { breadcrumb: 'locations' },
+              },
+              {
+                path: '/admin/locales/new',
+                element: <LocalNewComingSoon />,
+                handle: { breadcrumb: 'locations' },
+              },
+              {
+                path: '/admin/locales/:id/editar',
+                element: <LocalEditComingSoon />,
+                handle: { breadcrumb: 'locations' },
+              },
+              {
+                path: '/admin/locales/:localId/zonas/new',
+                element: <ZonaNewComingSoon />,
+                handle: { breadcrumb: 'locations' },
+              },
+              {
+                path: '/admin/locales/:localId/zonas/:zonaId/editar',
+                element: <ZonaEditComingSoon />,
                 handle: { breadcrumb: 'locations' },
               },
               {

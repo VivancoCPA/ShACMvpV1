@@ -13,8 +13,8 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (credentials: LoginInput) => loginUser(credentials),
-    onSuccess: ({ user, accessToken }) => {
-      useAuthStore.getState().login({ user, accessToken })
+    onSuccess: ({ user, accessToken, mockRefreshToken }) => {
+      useAuthStore.getState().login({ user, accessToken, mockRefreshToken })
       navigate('/documentos')
     },
     onError: (error: unknown) => {

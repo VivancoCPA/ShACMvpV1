@@ -6,6 +6,8 @@ import type { ForgotPasswordInput } from '../schemas/forgotPassword.schema'
 export interface LoginResponse {
   accessToken: string
   user: User
+  /** Mock-only substitute for the real backend's httpOnly refresh cookie — see src/lib/mockSession.ts. */
+  mockRefreshToken?: string
 }
 
 export async function loginUser(credentials: LoginInput): Promise<LoginResponse> {

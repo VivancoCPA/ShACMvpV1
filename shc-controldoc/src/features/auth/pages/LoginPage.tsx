@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -9,11 +9,21 @@ import type { LoginInput } from '../schemas/login.schema'
 import { useLogin } from '../hooks/useLogin'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
 import type { UserRole } from '../../../types/auth.types'
+import { useAuthStore } from '../../../stores/authStore'
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
   const [showPassword, setShowPassword] = useState(false)
   const { mutate: login, isPending } = useLogin()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+
+  // A session already in memory (e.g. an untouched admin session still open
+  // in this tab) must never survive a subsequent login submission on this
+  // page — redirect away instead of letting the form attach a stale token
+  // to the next login request.
+  if (isAuthenticated) {
+    return <Navigate to="/documentos" replace />
+  }
 
   const {
     register,

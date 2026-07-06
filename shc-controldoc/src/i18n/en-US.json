@@ -31,6 +31,9 @@
     "searchableSelect": {
       "noResults": "No results for '{{query}}'",
       "searching": "Search…"
+    },
+    "session": {
+      "restoring": "Restoring session…"
     }
   },
   "documents": {
@@ -1396,5 +1399,76 @@
     },
     "deletedBadge": "Deleted"
   },
-  "dashboard": {}
+  "dashboard": {},
+  "locations": {
+    "header": {
+      "title": "Locations and zones",
+      "localesActivos": "{{activos}} of {{total}} active locations",
+      "nuevoLocal": "New location"
+    },
+    "list": {
+      "zonasActivas": "{{activas}} of {{total}} active zones",
+      "nuevaZona": "New zone",
+      "empty": "No locations registered",
+      "incidentesActivos_one": "{{count}} active incident",
+      "incidentesActivos_other": "{{count}} active incidents"
+    },
+    "badges": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "actions": {
+      "editar": "Edit",
+      "desactivar": "Deactivate",
+      "reactivar": "Reactivate",
+      "expandir": "Expand zones",
+      "colapsar": "Collapse zones"
+    },
+    "confirmarDesactivar": {
+      "tituloLocal": "Deactivate location",
+      "tituloZona": "Deactivate zone",
+      "mensajeLocal": "Are you sure you want to deactivate the location \"{{nombre}}\"?",
+      "mensajeZona": "Are you sure you want to deactivate the zone \"{{nombre}}\"?",
+      "cancelar": "Cancel",
+      "confirmar": "Deactivate"
+    },
+    "confirmarReactivar": {
+      "tituloLocal": "Reactivate location",
+      "tituloZona": "Reactivate zone",
+      "mensajeLocal": "Reactivate the location \"{{nombre}}\"? This location will become available again for new incidents or quality events.",
+      "mensajeZona": "Reactivate the zone \"{{nombre}}\"? This zone will become available again for new incidents or quality events.",
+      "cancelar": "Cancel",
+      "confirmar": "Reactivate"
+    },
+    "bloqueoIncidentes": {
+      "titulo": "Cannot deactivate",
+      "mensajeLocal": "This location has active or under-investigation incidents and cannot be deactivated.",
+      "mensajeZona": "This zone has active, under-investigation, or in-progress incidents and cannot be deactivated.",
+      "verIncidentes": "View incidents",
+      "verIncidentesNota": "Filtering incidents by location/zone is not yet available.",
+      "cerrar": "Close"
+    },
+    "placeholders": {
+      "nuevoLocal": "New location form — Coming soon",
+      "nuevaZona": "New zone form — Coming soon"
+    },
+    "toasts": {
+      "localCreado": "Local created successfully",
+      "localCreateError": "Could not create the local",
+      "localActualizado": "Local updated successfully",
+      "localActualizarError": "Could not update the local",
+      "localDesactivado": "Local deactivated successfully",
+      "localDesactivarError": "Could not deactivate the local",
+      "localReactivado": "Local reactivated successfully",
+      "localReactivarError": "Could not reactivate the local",
+      "zonaCreada": "Zone created successfully",
+      "zonaCreateError": "Could not create the zone",
+      "zonaActualizada": "Zone updated successfully",
+      "zonaActualizarError": "Could not update the zone",
+      "zonaDesactivada": "Zone deactivated successfully",
+      "zonaDesactivarError": "Could not deactivate the zone",
+      "zonaReactivada": "Zone reactivated successfully",
+      "zonaReactivarError": "Could not reactivate the zone"
+    }
+  }
 }

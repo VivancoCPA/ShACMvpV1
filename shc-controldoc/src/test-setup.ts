@@ -4,7 +4,7 @@ expect.extend(matchers)
 
 // jsdom doesn't implement matchMedia; uiStore reads it at module-load time to
 // resolve the 'system' theme, which throws for any test that imports AppShell.
-if (!window.matchMedia) {
+if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,

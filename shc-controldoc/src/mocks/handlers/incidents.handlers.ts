@@ -18,6 +18,12 @@ const LATENCY = 400
 
 let incidents: Incidente[] = [...incidentFixtures]
 
+// Expone el store mutable en vivo para que otros handlers (p.ej. locales.handlers.ts)
+// validen contra el estado real de incidentes, no contra el fixture estático.
+export function getIncidentsStore(): Incidente[] {
+  return incidents
+}
+
 const VALID_TRANSITIONS: Record<IncidentStatus, IncidentStatus[]> = {
   ABIERTO: ['EN_INVESTIGACION', 'ANULADO'],
   EN_INVESTIGACION: ['ANALISIS_COMPLETADO'],

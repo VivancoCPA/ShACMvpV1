@@ -31,6 +31,9 @@
     "searchableSelect": {
       "noResults": "No hay resultados para '{{query}}'",
       "searching": "Buscar…"
+    },
+    "session": {
+      "restoring": "Restaurando sesión…"
     }
   },
   "documents": {
@@ -1396,5 +1399,76 @@
     },
     "deletedBadge": "Eliminado"
   },
-  "dashboard": {}
+  "dashboard": {},
+  "locations": {
+    "header": {
+      "title": "Locales y zonas",
+      "localesActivos": "{{activos}} de {{total}} locales activos",
+      "nuevoLocal": "Nuevo local"
+    },
+    "list": {
+      "zonasActivas": "{{activas}} de {{total}} zonas activas",
+      "nuevaZona": "Nueva zona",
+      "empty": "No hay locales registrados",
+      "incidentesActivos_one": "{{count}} incidente activo",
+      "incidentesActivos_other": "{{count}} incidentes activos"
+    },
+    "badges": {
+      "activo": "Activo",
+      "inactivo": "Inactivo"
+    },
+    "actions": {
+      "editar": "Editar",
+      "desactivar": "Desactivar",
+      "reactivar": "Reactivar",
+      "expandir": "Expandir zonas",
+      "colapsar": "Colapsar zonas"
+    },
+    "confirmarDesactivar": {
+      "tituloLocal": "Desactivar local",
+      "tituloZona": "Desactivar zona",
+      "mensajeLocal": "¿Confirma que desea desactivar el local \"{{nombre}}\"?",
+      "mensajeZona": "¿Confirma que desea desactivar la zona \"{{nombre}}\"?",
+      "cancelar": "Cancelar",
+      "confirmar": "Desactivar"
+    },
+    "confirmarReactivar": {
+      "tituloLocal": "Reactivar local",
+      "tituloZona": "Reactivar zona",
+      "mensajeLocal": "¿Reactivar el local \"{{nombre}}\"? Este local volverá a estar disponible para nuevos incidentes o eventos de calidad.",
+      "mensajeZona": "¿Reactivar la zona \"{{nombre}}\"? Esta zona volverá a estar disponible para nuevos incidentes o eventos de calidad.",
+      "cancelar": "Cancelar",
+      "confirmar": "Reactivar"
+    },
+    "bloqueoIncidentes": {
+      "titulo": "No se puede desactivar",
+      "mensajeLocal": "Este local tiene incidentes activos o en investigación asociados y no puede desactivarse.",
+      "mensajeZona": "Esta zona tiene incidentes activos, en investigación o en ejecución asociados y no puede desactivarse.",
+      "verIncidentes": "Ver incidentes",
+      "verIncidentesNota": "El filtrado de incidentes por local/zona todavía no está disponible.",
+      "cerrar": "Cerrar"
+    },
+    "placeholders": {
+      "nuevoLocal": "Formulario de nuevo local — Próximamente",
+      "nuevaZona": "Formulario de nueva zona — Próximamente"
+    },
+    "toasts": {
+      "localCreado": "Local creado correctamente",
+      "localCreateError": "No se pudo crear el local",
+      "localActualizado": "Local actualizado correctamente",
+      "localActualizarError": "No se pudo actualizar el local",
+      "localDesactivado": "Local desactivado correctamente",
+      "localDesactivarError": "No se pudo desactivar el local",
+      "localReactivado": "Local reactivado correctamente",
+      "localReactivarError": "No se pudo reactivar el local",
+      "zonaCreada": "Zona creada correctamente",
+      "zonaCreateError": "No se pudo crear la zona",
+      "zonaActualizada": "Zona actualizada correctamente",
+      "zonaActualizarError": "No se pudo actualizar la zona",
+      "zonaDesactivada": "Zona desactivada correctamente",
+      "zonaDesactivarError": "No se pudo desactivar la zona",
+      "zonaReactivada": "Zona reactivada correctamente",
+      "zonaReactivarError": "No se pudo reactivar la zona"
+    }
+  }
 }
