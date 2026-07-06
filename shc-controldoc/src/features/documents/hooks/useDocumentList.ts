@@ -24,7 +24,7 @@ export function useDocumentList(): UseDocumentListResult {
     tipo: searchParams.get('tipo') ?? '',
     area: searchParams.get('area') ?? '',
     page,
-    pageSize: 5,
+    pageSize: 10,
     includeDeleted,
     pendientes,
   }
