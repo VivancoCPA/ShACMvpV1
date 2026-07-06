@@ -1448,10 +1448,6 @@
       "verIncidentesNota": "Filtering incidents by location/zone is not yet available.",
       "cerrar": "Close"
     },
-    "placeholders": {
-      "nuevoLocal": "New location form — Coming soon",
-      "nuevaZona": "New zone form — Coming soon"
-    },
     "toasts": {
       "localCreado": "Local created successfully",
       "localCreateError": "Could not create the local",
@@ -1469,6 +1465,42 @@
       "zonaDesactivarError": "Could not deactivate the zone",
       "zonaReactivada": "Zone reactivated successfully",
       "zonaReactivarError": "Could not reactivate the zone"
+    },
+    "form": {
+      "fields": {
+        "nombre": "Name",
+        "direccion": "Address",
+        "plano": "Warehouse floor plan (PNG)",
+        "descripcion": "Description"
+      },
+      "placeholders": {
+        "nombre": "E.g. Southern Warehouse",
+        "direccion": "E.g. 450 Industrial Ave.",
+        "descripcion": "Optional description"
+      },
+      "actions": {
+        "submit": "Save",
+        "submitting": "Saving...",
+        "cancel": "Cancel"
+      },
+      "plano": {
+        "dragHint": "Drag a PNG file or click to select one",
+        "formatoInvalido": "Only PNG format is accepted",
+        "tamanoInvalido": "The file must not exceed 2 MB",
+        "reemplazar": "Replace",
+        "previewAlt": "Floor plan preview",
+        "quitar": "Remove floor plan"
+      },
+      "titles": {
+        "nuevoLocal": "New location",
+        "editarLocal": "Edit location",
+        "nuevaZona": "New zone",
+        "editarZona": "Edit zone"
+      },
+      "errors": {
+        "limiteLocalesActivos": "Cannot create the location: 5 active locations already exist",
+        "localNoEncontrado": "Location not found"
+      }
     }
   }
 }

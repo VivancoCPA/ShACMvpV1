@@ -1,5 +1,3 @@
-import { useParams } from 'react-router-dom'
-
 export function ComingSoon({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -8,23 +6,4 @@ export function ComingSoon({ label }: { label: string }) {
       <p className="mt-1 text-sm text-muted dark:text-on-dark-soft">Próximamente</p>
     </div>
   )
-}
-
-export function LocalNewComingSoon() {
-  return <ComingSoon label="Nuevo local" />
-}
-
-export function LocalEditComingSoon() {
-  const { id } = useParams()
-  return <ComingSoon label={`Editar local ${id}`} />
-}
-
-export function ZonaNewComingSoon() {
-  const { localId } = useParams()
-  return <ComingSoon label={`Nueva zona (local ${localId})`} />
-}
-
-export function ZonaEditComingSoon() {
-  const { localId, zonaId } = useParams()
-  return <ComingSoon label={`Editar zona ${zonaId} (local ${localId})`} />
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import { loginUser } from '../api/auth.api'
 import { useAuthStore } from '../../../stores/authStore'
+import { getDefaultRouteForRole } from '../../../router/getDefaultRoute'
 import type { LoginInput } from '../schemas/login.schema'
 
 export function useLogin() {
@@ -15,7 +16,7 @@ export function useLogin() {
     mutationFn: (credentials: LoginInput) => loginUser(credentials),
     onSuccess: ({ user, accessToken, mockRefreshToken }) => {
       useAuthStore.getState().login({ user, accessToken, mockRefreshToken })
-      navigate('/documentos')
+      navigate(getDefaultRouteForRole(user.rol))
     },
     onError: (error: unknown) => {
       const axiosError = error as AxiosError<{ message?: string }>

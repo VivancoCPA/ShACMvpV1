@@ -114,6 +114,29 @@ describe('router — ADMINISTRADOR_SISTEMA sin acceso a M1 (Control Documentario
 // (a) RoleGuard/redirect logic itself, and (b) loss of in-memory session state
 // across what a real browser does on a typed-URL navigation (a full page
 // reload), which this test process never performs.
+// Regression test for M6-S05: the index route `/` used to hardcode a redirect
+// to /documentos for every authenticated user, which stranded
+// ADMINISTRADOR_SISTEMA (no access to /documentos) on /no-autorizado right
+// after login, hard-refresh, or a direct navigation to `/`.
+describe('router — ruta índice `/` redirige según getDefaultRouteForRole (M6-S05)', () => {
+  it('ADMINISTRADOR_SISTEMA autenticado en / aterriza en /admin/locales sin pasar por /no-autorizado', async () => {
+    await loginReal('admin@shac.pe')
+
+    renderRouterAt('/')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/locales'))
+    expect(screen.queryByText('Acceso denegado')).not.toBeInTheDocument()
+  })
+
+  it('un rol operativo autenticado en / sigue aterrizando en /documentos', async () => {
+    await loginReal('jefe.calidad@shac.pe')
+
+    renderRouterAt('/')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/documentos'))
+  })
+})
+
 describe('router — investigación: sesión perdida al navegar directo a /admin/locales', () => {
   it('con el estado de auth intacto, login + navegación inmediata SÍ llega a /admin/locales (descarta bug en RoleGuard)', async () => {
     await loginReal('admin@shac.pe')

@@ -148,7 +148,7 @@ export const localesHandlers = [
       creadoEn: now,
       actualizadoEn: now,
       ...(body.direccion ? { direccion: body.direccion as string } : {}),
-      ...(planoResult.file ? { planoPngUrl: `/mock/plano-${id}.png` } : {}),
+      ...(planoResult.file ? { planoPngUrl: '/mock/plano-placeholder.png' } : {}),
     }
 
     locales = [...locales, newLocal]
@@ -175,7 +175,7 @@ export const localesHandlers = [
       ...local,
       ...(body.nombre !== undefined ? { nombre: body.nombre as string } : {}),
       ...(body.direccion !== undefined ? { direccion: body.direccion as string } : {}),
-      ...(planoResult.file ? { planoPngUrl: `/mock/plano-${local.id}.png` } : {}),
+      ...(planoResult.file ? { planoPngUrl: '/mock/plano-placeholder.png' } : {}),
       actualizadoEn: now,
     }
 

@@ -8,22 +8,15 @@ import { loginSchema } from '../schemas/login.schema'
 import type { LoginInput } from '../schemas/login.schema'
 import { useLogin } from '../hooks/useLogin'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
-import type { UserRole } from '../../../types/auth.types'
 import { useAuthStore } from '../../../stores/authStore'
+import { getDefaultRouteForRole } from '../../../router/getDefaultRoute'
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
   const [showPassword, setShowPassword] = useState(false)
   const { mutate: login, isPending } = useLogin()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-
-  // A session already in memory (e.g. an untouched admin session still open
-  // in this tab) must never survive a subsequent login submission on this
-  // page — redirect away instead of letting the form attach a stale token
-  // to the next login request.
-  if (isAuthenticated) {
-    return <Navigate to="/documentos" replace />
-  }
+  const user = useAuthStore((state) => state.user)
 
   const {
     register,
@@ -32,13 +25,21 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
 
+  // A session already in memory (e.g. an untouched admin session still open
+  // in this tab) must never survive a subsequent login submission on this
+  // page — redirect away instead of letting the form attach a stale token
+  // to the next login request.
+  if (isAuthenticated) {
+    return <Navigate to={getDefaultRouteForRole(user?.rol ?? 'OPERARIO')} replace />
+  }
+
   const onSubmit = (data: LoginInput) => {
     login(data)
   }
 
-  const handleRoleSelect = (rol: UserRole | '') => {
-    if (!rol) return
-    const fixture = authFixtures.find((u) => u.rol === rol)
+  const handleRoleSelect = (userId: string) => {
+    if (!userId) return
+    const fixture = authFixtures.find((u) => u.id === userId)
     if (fixture) {
       setValue('email', fixture.email)
       setValue('password', fixture.password)
@@ -61,11 +62,11 @@ export function LoginPage() {
             <select
               className="h-9 w-full rounded-md border border-hairline bg-canvas px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
               defaultValue=""
-              onChange={(e) => handleRoleSelect(e.target.value as UserRole | '')}
+              onChange={(e) => handleRoleSelect(e.target.value)}
             >
               <option value="">—</option>
               {authFixtures.map((u) => (
-                <option key={u.rol} value={u.rol}>
+                <option key={u.id} value={u.id}>
                   {t(`roles.${u.rol}`)} — {u.email}
                 </option>
               ))}

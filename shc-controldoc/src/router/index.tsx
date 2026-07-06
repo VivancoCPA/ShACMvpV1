@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { RoleGuard } from './RoleGuard'
+import { getDefaultRouteForRole } from './getDefaultRoute'
+import { useAuthStore } from '../stores/authStore'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
@@ -21,13 +23,15 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { UnauthorizedPage } from '../pages/UnauthorizedPage'
 import { LocalesAdminPage } from '../features/locations/pages/LocalesAdminPage'
 import { LocalDetailPage } from '../features/locations/pages/LocalDetailPage'
-import {
-  ComingSoon,
-  LocalNewComingSoon,
-  LocalEditComingSoon,
-  ZonaNewComingSoon,
-  ZonaEditComingSoon,
-} from './ComingSoonPages'
+import { LocalNewPage } from '../features/locations/pages/LocalNewPage'
+import { LocalEditPage } from '../features/locations/pages/LocalEditPage'
+import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
+import { ComingSoon } from './ComingSoonPages'
+
+function DefaultRouteRedirect() {
+  const user = useAuthStore((state) => state.user)
+  return <Navigate to={getDefaultRouteForRole(user?.rol ?? 'OPERARIO')} replace />
+}
 
 export const router = createBrowserRouter([
   // Public routes
@@ -43,7 +47,7 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { index: true, element: <Navigate to="/documentos" replace /> },
+          { index: true, element: <DefaultRouteRedirect /> },
           {
             element: (
               <RoleGuard
@@ -288,22 +292,22 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/admin/locales/new',
-                element: <LocalNewComingSoon />,
+                element: <LocalNewPage />,
                 handle: { breadcrumb: 'locations' },
               },
               {
                 path: '/admin/locales/:id/editar',
-                element: <LocalEditComingSoon />,
+                element: <LocalEditPage />,
                 handle: { breadcrumb: 'locations' },
               },
               {
                 path: '/admin/locales/:localId/zonas/new',
-                element: <ZonaNewComingSoon />,
+                element: <ZonaFormPage />,
                 handle: { breadcrumb: 'locations' },
               },
               {
                 path: '/admin/locales/:localId/zonas/:zonaId/editar',
-                element: <ZonaEditComingSoon />,
+                element: <ZonaFormPage />,
                 handle: { breadcrumb: 'locations' },
               },
               {

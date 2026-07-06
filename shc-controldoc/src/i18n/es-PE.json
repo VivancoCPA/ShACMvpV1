@@ -1448,10 +1448,6 @@
       "verIncidentesNota": "El filtrado de incidentes por local/zona todavía no está disponible.",
       "cerrar": "Cerrar"
     },
-    "placeholders": {
-      "nuevoLocal": "Formulario de nuevo local — Próximamente",
-      "nuevaZona": "Formulario de nueva zona — Próximamente"
-    },
     "toasts": {
       "localCreado": "Local creado correctamente",
       "localCreateError": "No se pudo crear el local",
@@ -1469,6 +1465,42 @@
       "zonaDesactivarError": "No se pudo desactivar la zona",
       "zonaReactivada": "Zona reactivada correctamente",
       "zonaReactivarError": "No se pudo reactivar la zona"
+    },
+    "form": {
+      "fields": {
+        "nombre": "Nombre",
+        "direccion": "Dirección",
+        "plano": "Plano del almacén (PNG)",
+        "descripcion": "Descripción"
+      },
+      "placeholders": {
+        "nombre": "Ej. Almacén Sur",
+        "direccion": "Ej. Av. Industrial 450",
+        "descripcion": "Descripción opcional"
+      },
+      "actions": {
+        "submit": "Guardar",
+        "submitting": "Guardando...",
+        "cancel": "Cancelar"
+      },
+      "plano": {
+        "dragHint": "Arrastra un archivo PNG o haz clic para seleccionar",
+        "formatoInvalido": "Solo se acepta formato PNG",
+        "tamanoInvalido": "El archivo no debe superar 2 MB",
+        "reemplazar": "Reemplazar",
+        "previewAlt": "Vista previa del plano",
+        "quitar": "Quitar plano"
+      },
+      "titles": {
+        "nuevoLocal": "Nuevo local",
+        "editarLocal": "Editar local",
+        "nuevaZona": "Nueva zona",
+        "editarZona": "Editar zona"
+      },
+      "errors": {
+        "limiteLocalesActivos": "No se puede crear el local: ya existen 5 locales activos",
+        "localNoEncontrado": "Local no encontrado"
+      }
     }
   }
 }
