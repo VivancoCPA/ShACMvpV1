@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { RoleGuard } from './RoleGuard'
+import { DocumentEditGuard } from './DocumentEditGuard'
 import { getDefaultRouteForRole } from './getDefaultRoute'
 import { useAuthStore } from '../stores/authStore'
 import { LoginPage } from '../features/auth/pages/LoginPage'
@@ -91,15 +92,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'JEFE_CALIDAD_SYST',
-                  'SUPERVISOR',
-                ]}
-              />
-            ),
+            element: <DocumentEditGuard />,
             children: [
               {
                 path: '/documents/:id/edit',
