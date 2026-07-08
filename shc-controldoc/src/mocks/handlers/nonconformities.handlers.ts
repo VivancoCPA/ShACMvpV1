@@ -15,6 +15,12 @@ const LATENCY = 400
 
 let nonconformities: NoConformidad[] = [...nonconformityFixtures]
 
+// Expone el store mutable en vivo para que otros handlers (p.ej. dashboard.handlers.ts)
+// agreguen sobre el estado real de No Conformidades, no sobre el fixture estático.
+export function getNonconformitiesStore(): NoConformidad[] {
+  return nonconformities
+}
+
 const DOMINIO_PREFIX: Record<NCDominio, string> = {
   CALIDAD: 'CAL',
   SST: 'SST',

@@ -1399,7 +1399,86 @@
     },
     "deletedBadge": "Deleted"
   },
-  "dashboard": {},
+  "dashboard": {
+    "semaforo": {
+      "venceEn": "Due in {{dias}}d",
+      "venceHoy": "Due today",
+      "vencidoHace": "Overdue by {{dias}}d",
+      "criticoBanner": {
+        "title": "Critical events not closed",
+        "count": "{{count}} critical event not closed",
+        "count_other": "{{count}} critical events not closed"
+      }
+    },
+    "operario": {
+      "title": "My Dashboard",
+      "crearReporte": "Create new report",
+      "misQEs": {
+        "title": "My reported QEs",
+        "empty": "You haven't reported any Quality Event yet"
+      },
+      "misACs": {
+        "title": "My assigned CAs",
+        "empty": "You have no corrective actions assigned",
+        "origen": {
+          "QE": "Quality Event",
+          "NC": "Nonconformity",
+          "INCIDENTE": "Incident"
+        }
+      }
+    },
+    "supervisor": {
+      "title": "Supervisor Dashboard",
+      "panelPendientes": {
+        "title": "Area pending panel",
+        "empty": "No QEs in verification or pending corrective actions in your area"
+      },
+      "qePorTipo": {
+        "title": "Open QEs by type",
+        "tipos": {
+          "CALIDAD": "Quality",
+          "SST": "H&S",
+          "ADUANERO": "Customs",
+          "OPERACIONAL": "Operational"
+        }
+      },
+      "acsVencidas": {
+        "title": "Area overdue CAs",
+        "empty": "No overdue corrective actions in your area"
+      },
+      "incidentesRecientes": {
+        "title": "Recent incident alerts",
+        "empty": "No recent incidents in your area"
+      }
+    },
+    "jefeCalidad": {
+      "title": "Quality Management Dashboard",
+      "kpis": {
+        "title": "Management indicators",
+        "meta": "Target: {{meta}}",
+        "metaReduccionInteranual": "Reduction ≥{{meta}}% year over year",
+        "distribucionTitulo": "Top areas"
+      },
+      "qePorEstado": {
+        "title": "Quality Events by status",
+        "estados": {
+          "ABIERTO": "Open",
+          "EN_INVESTIGACION": "Under investigation",
+          "ANALISIS_COMPLETADO": "Analysis completed",
+          "EN_EJECUCION": "In execution",
+          "PENDIENTE_CIERRE": "Pending closure",
+          "CERRADO": "Closed",
+          "EN_VERIFICACION": "Under verification",
+          "VERIFICADO": "Verified",
+          "REABIERTO": "Reopened"
+        }
+      },
+      "acsPorVencer": {
+        "title": "Corrective actions due within 5 days",
+        "empty": "No corrective actions due soon"
+      }
+    }
+  },
   "locations": {
     "header": {
       "title": "Locations and zones",

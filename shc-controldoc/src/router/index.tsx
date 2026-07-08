@@ -28,6 +28,8 @@ import { LocalNewPage } from '../features/locations/pages/LocalNewPage'
 import { LocalEditPage } from '../features/locations/pages/LocalEditPage'
 import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
 import { ComingSoon } from './ComingSoonPages'
+import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
+import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 
 function DefaultRouteRedirect() {
   const user = useAuthStore((state) => state.user)
@@ -49,6 +51,8 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <DefaultRouteRedirect /> },
+          // Dev-only preview route — not linked in Sidebar, no RBAC restriction beyond auth.
+          { path: '/dev/semaforo-preview', element: <SemaforoPreviewPage /> },
           {
             element: (
               <RoleGuard
@@ -259,9 +263,25 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: '/dashboard',
-            element: <ComingSoon label="Dashboard" />,
-            handle: { breadcrumb: 'dashboard' },
+            element: (
+              <RoleGuard
+                requiredRoles={[
+                  'OPERARIO',
+                  'SUPERVISOR',
+                  'JEFE_CALIDAD_SYST',
+                  'JEFE_CONTROL_DOCUMENTARIO',
+                  'AUDITOR_INTERNO',
+                  'ALTA_DIRECCION',
+                ]}
+              />
+            ),
+            children: [
+              {
+                path: '/dashboard',
+                element: <DashboardPage />,
+                handle: { breadcrumb: 'dashboard' },
+              },
+            ],
           },
           {
             element: <RoleGuard requiredRoles={['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION']} />,

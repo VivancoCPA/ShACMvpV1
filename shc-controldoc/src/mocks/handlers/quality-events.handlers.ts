@@ -45,6 +45,12 @@ const ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL: QEStatus[] = ['CERRADO', 'EN_VERIFIC
 
 let qeStore: QualityEvent[] = [...qualityEventFixtures]
 
+// Expone el store mutable en vivo para que otros handlers (p.ej. dashboard.handlers.ts)
+// agreguen sobre el estado real de QE, no sobre el fixture estático.
+export function getQeStore(): QualityEvent[] {
+  return qeStore
+}
+
 const ORIGIN_REQUIRED_FIELD: Record<string, string> = {
   O1_INCIDENTE_CAMPO: 'incidenteId',
   O2_NC_DETECTADA: 'ncId',

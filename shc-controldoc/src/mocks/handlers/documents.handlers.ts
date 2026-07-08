@@ -69,6 +69,12 @@ const LATENCY = 400
 
 let store: Documento[] = documentFixtures.map((d) => ({ ...d }))
 
+// Expone el store mutable en vivo para que otros handlers (p.ej. dashboard.handlers.ts)
+// agreguen sobre el estado real de Documentos, no sobre el fixture estático.
+export function getDocumentsStore(): Documento[] {
+  return store
+}
+
 function resetStore() {
   store = documentFixtures.map((d) => ({ ...d }))
 }

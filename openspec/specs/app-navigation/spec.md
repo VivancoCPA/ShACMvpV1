@@ -30,17 +30,17 @@ El sidebar SHALL mostrar ítems de navegación según el rol del usuario autenti
 
 #### Scenario: Usuario OPERARIO ve navegación reducida
 - **WHEN** el usuario autenticado tiene rol `OPERARIO`
-- **THEN** el sidebar muestra solo: Documentos, Incidentes SyST
-- **THEN** los ítems No Conformidades, Quality Events, Dashboard y Usuarios NO aparecen
+- **THEN** el sidebar muestra: Documentos, Incidentes SyST, Dashboard
+- **THEN** los ítems No Conformidades, Quality Events y Usuarios NO aparecen
 
 #### Scenario: Usuario JEFE_CALIDAD_SYST ve navegación completa
 - **WHEN** el usuario tiene rol `JEFE_CALIDAD_SYST`
 - **THEN** el sidebar muestra todos los ítems incluyendo No Conformidades, Dashboard y Usuarios
 
-#### Scenario: Usuario SUPERVISOR ve navegación sin Dashboard ni Usuarios
+#### Scenario: Usuario SUPERVISOR ve navegación sin Usuarios
 - **WHEN** el usuario tiene rol `SUPERVISOR`
-- **THEN** el sidebar muestra: Documentos, No Conformidades, Incidentes SyST, Quality Events
-- **THEN** los ítems Dashboard y Usuarios NO aparecen
+- **THEN** el sidebar muestra: Documentos, No Conformidades, Incidentes SyST, Quality Events, Dashboard
+- **THEN** el ítem Usuarios NO aparece
 
 #### Scenario: Ítem activo resaltado
 - **WHEN** la ruta actual coincide con el path de un ítem del sidebar
@@ -123,6 +123,27 @@ El sistema SHALL agregar un ítem "Incidentes SyST" al sidebar con path `/incide
 - **THEN** el ítem muestra "Incidentes SyST"
 - **WHEN** el idioma de la UI es `en-US`
 - **THEN** el ítem muestra "SyST Incidents"
+
+---
+
+### Requirement: Sidebar incluye ítem de navegación "Dashboard" visible para los 6 roles de dominio
+El sistema SHALL corregir el ítem `dashboard` de `NAV_ITEMS` en `Sidebar.tsx` para que su lista de `roles` sea exactamente `['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION']`, alineada con el `RoleGuard` real de la ruta `/dashboard`. Antes de este change el ítem solo mostraba `['JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION']`, ocultando la navegación a `OPERARIO` y `SUPERVISOR` pese a que ahora tienen acceso real a la ruta.
+
+#### Scenario: Ítem Dashboard visible para OPERARIO
+- **WHEN** el usuario autenticado tiene rol `OPERARIO`
+- **THEN** el ítem "Dashboard" con ícono `BarChart2` aparece en el sidebar
+
+#### Scenario: Ítem Dashboard visible para SUPERVISOR
+- **WHEN** el usuario autenticado tiene rol `SUPERVISOR`
+- **THEN** el ítem "Dashboard" aparece en el sidebar
+
+#### Scenario: Ítem Dashboard sigue visible para los 4 roles que ya lo veían
+- **WHEN** el usuario autenticado tiene rol `JEFE_CALIDAD_SYST`, `JEFE_CONTROL_DOCUMENTARIO`, `AUDITOR_INTERNO` o `ALTA_DIRECCION`
+- **THEN** el ítem "Dashboard" aparece en el sidebar
+
+#### Scenario: Ítem Dashboard NO visible para ADMINISTRADOR_SISTEMA
+- **WHEN** el usuario autenticado tiene rol `ADMINISTRADOR_SISTEMA`
+- **THEN** el ítem "Dashboard" NO aparece en el sidebar
 
 ---
 

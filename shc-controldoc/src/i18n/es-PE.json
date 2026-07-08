@@ -1399,7 +1399,86 @@
     },
     "deletedBadge": "Eliminado"
   },
-  "dashboard": {},
+  "dashboard": {
+    "semaforo": {
+      "venceEn": "Vence en {{dias}}d",
+      "venceHoy": "Vence hoy",
+      "vencidoHace": "Vencido hace {{dias}}d",
+      "criticoBanner": {
+        "title": "Eventos críticos sin cerrar",
+        "count": "{{count}} evento crítico sin cerrar",
+        "count_other": "{{count}} eventos críticos sin cerrar"
+      }
+    },
+    "operario": {
+      "title": "Mi Dashboard",
+      "crearReporte": "Crear nuevo reporte",
+      "misQEs": {
+        "title": "Mis QEs reportados",
+        "empty": "No has reportado ningún Quality Event todavía"
+      },
+      "misACs": {
+        "title": "Mis ACs asignadas",
+        "empty": "No tienes acciones correctivas asignadas",
+        "origen": {
+          "QE": "Quality Event",
+          "NC": "No Conformidad",
+          "INCIDENTE": "Incidente"
+        }
+      }
+    },
+    "supervisor": {
+      "title": "Dashboard de Supervisor",
+      "panelPendientes": {
+        "title": "Panel de pendientes del área",
+        "empty": "No hay QEs en verificación ni acciones correctivas pendientes en tu área"
+      },
+      "qePorTipo": {
+        "title": "QEs abiertos por tipo",
+        "tipos": {
+          "CALIDAD": "Calidad",
+          "SST": "SyST",
+          "ADUANERO": "Aduanero",
+          "OPERACIONAL": "Operacional"
+        }
+      },
+      "acsVencidas": {
+        "title": "ACs vencidas del área",
+        "empty": "No hay acciones correctivas vencidas en tu área"
+      },
+      "incidentesRecientes": {
+        "title": "Alertas de incidentes recientes",
+        "empty": "No hay incidentes recientes en tu área"
+      }
+    },
+    "jefeCalidad": {
+      "title": "Dashboard de Jefatura de Calidad",
+      "kpis": {
+        "title": "Indicadores de gestión",
+        "meta": "Meta: {{meta}}",
+        "metaReduccionInteranual": "Reducción ≥{{meta}}% anual",
+        "distribucionTitulo": "Top áreas"
+      },
+      "qePorEstado": {
+        "title": "Quality Events por estado",
+        "estados": {
+          "ABIERTO": "Abierto",
+          "EN_INVESTIGACION": "En investigación",
+          "ANALISIS_COMPLETADO": "Análisis completado",
+          "EN_EJECUCION": "En ejecución",
+          "PENDIENTE_CIERRE": "Pendiente de cierre",
+          "CERRADO": "Cerrado",
+          "EN_VERIFICACION": "En verificación",
+          "VERIFICADO": "Verificado",
+          "REABIERTO": "Reabierto"
+        }
+      },
+      "acsPorVencer": {
+        "title": "Acciones correctivas por vencer en 5 días",
+        "empty": "No hay acciones correctivas por vencer"
+      }
+    }
+  },
   "locations": {
     "header": {
       "title": "Locales y zonas",

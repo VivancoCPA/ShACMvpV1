@@ -338,6 +338,23 @@ function getSemaforoColor(
 
 ---
 
+## Páginas de referencia visual (dev-only, no producción)
+
+Rutas bajo `/dev/*` son páginas de previsualización del design system para componentes reutilizables que aún no tienen un consumidor real en producción (p.ej. mientras se construyen specs intermedias de un módulo). Convenciones:
+
+- Viven en `src/pages/dev/[Nombre]Page.tsx`.
+- Se registran directo en `router/index.tsx` como hijas de `<AppShell>`, fuera de cualquier `<RoleGuard requiredRoles={...}>` — solo requieren sesión autenticada (heredado del `RoleGuard` raíz sin roles). Nunca se agregan a `Sidebar.tsx` ni a la matriz RBAC de un módulo.
+- Solo se navegan escribiendo la URL directamente; no son parte de ningún flujo de usuario.
+- Texto de la página puede ser literal (sin `t()`) ya que no es UI de producción — no aplica el criterio de aceptación de i18n.
+
+| Ruta                       | Componentes previsualizados                       | Motivo                                                              |
+| --------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
+| `/dev/semaforo-preview`     | `SemaforoRow` (standalone, fuera del contexto de `ACsPorVencerWidget`) | `SemaforoRow` aislado sigue sin una página de producción propia que lo previsualice. `SemaforoCriticoBanner` ya NO depende de esta página: desde M5-S05a tiene consumidor real en `ACsPorVencerWidget` (`features/dashboard/components/ACsPorVencerWidget.tsx`), usado por `JefeCalidadDashboard` en `/dashboard` para `JEFE_CALIDAD_SYST`/`JEFE_CONTROL_DOCUMENTARIO`. |
+
+**Mantenimiento:** al agregar nuevos componentes reutilizables de dashboard en specs futuras (M5-S05b en adelante) que aún no tengan una página real que los consuma, o al finalmente construir esa página real, actualizar esta tabla y la página de preview correspondiente (agregar el componente nuevo, o eliminar la ruta dev si ya quedó cubierta por producción).
+
+---
+
 ## Autenticación y Roles
 
 ### Flujo JWT
