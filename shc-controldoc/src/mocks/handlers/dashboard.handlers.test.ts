@@ -496,6 +496,67 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       expect(data.data.resumenPorModulo.qualityEvents.total).toBeGreaterThan(0)
     }
   })
+
+  it('tendenciaMensualVolumen tiene 12 entradas ordenadas cronológicamente y cuenta correctamente un mes conocido', async () => {
+    const { data } = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
+    )
+    if (data.rol !== 'JEFE_CALIDAD') throw new Error('esperaba rol JEFE_CALIDAD')
+    const volumen = data.data.tendenciaMensualVolumen
+    expect(volumen).toHaveLength(12)
+    const periodos = volumen.map((v) => v.periodo)
+    expect(periodos).toEqual([...periodos].sort())
+
+    const qes = getQeStore()
+    const mesConocido = periodos[periodos.length - 1]
+    const [anio, mes] = mesConocido.split('-').map(Number)
+    const start = Date.UTC(anio, mes - 1, 1)
+    const end = Date.UTC(anio, mes, 1)
+    const abiertosEsperados = qes.filter((qe) => {
+      const t = new Date(qe.fechaHoraReporte).getTime()
+      return t >= start && t < end
+    }).length
+    const cerradosEsperados = qes.filter((qe) => {
+      if (!qe.fechaCierre) return false
+      const t = new Date(qe.fechaCierre).getTime()
+      return t >= start && t < end
+    }).length
+    const entry = volumen.find((v) => v.periodo === mesConocido)
+    expect(entry?.abiertos).toBe(abiertosEsperados)
+    expect(entry?.cerrados).toBe(cerradosEsperados)
+  })
+
+  it('tendenciaMensualKpis tiene exactamente KPI-01/04/05 y coincide con /api/dashboard/kpis para el mismo periodo', async () => {
+    const { data } = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
+    )
+    if (data.rol !== 'JEFE_CALIDAD') throw new Error('esperaba rol JEFE_CALIDAD')
+    const tendenciaKpis = data.data.tendenciaMensualKpis
+    expect(Object.keys(tendenciaKpis).sort()).toEqual(['KPI-01', 'KPI-04', 'KPI-05'])
+    expect(tendenciaKpis['KPI-01']).toHaveLength(12)
+    expect(tendenciaKpis['KPI-04']).toHaveLength(12)
+    expect(tendenciaKpis['KPI-05']).toHaveLength(12)
+
+    const primerPeriodo = tendenciaKpis['KPI-01'][0].periodo
+    const kpisDelPeriodo = await fetchKpis(primerPeriodo)
+    expect(tendenciaKpis['KPI-01'][0].valor).toBe(kpi(kpisDelPeriodo, 'KPI-01').valor)
+    expect(tendenciaKpis['KPI-04'][0].valor).toBe(kpi(kpisDelPeriodo, 'KPI-04').valor)
+    expect(tendenciaKpis['KPI-05'][0].valor).toBe(kpi(kpisDelPeriodo, 'KPI-05').valor)
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO recibe la misma tendenciaMensualVolumen/Kpis que JEFE_CALIDAD_SYST', async () => {
+    const jc = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
+    )
+    const jcd = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.docs@shac.pe')),
+    )
+    if (jc.data.rol !== 'JEFE_CALIDAD' || jcd.data.rol !== 'JEFE_CALIDAD') {
+      throw new Error('esperaba rol JEFE_CALIDAD')
+    }
+    expect(jcd.data.data.tendenciaMensualVolumen).toEqual(jc.data.data.tendenciaMensualVolumen)
+    expect(jcd.data.data.tendenciaMensualKpis).toEqual(jc.data.data.tendenciaMensualKpis)
+  })
 })
 
 function kpi(results: KpiResult[], id: string): KpiResult {

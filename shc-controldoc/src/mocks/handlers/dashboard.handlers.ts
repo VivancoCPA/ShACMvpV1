@@ -526,11 +526,28 @@ function buildSupervisorData(usuario: MockUser): SupervisorDashboardData {
   }
 }
 
-function buildTendenciaMensualCierres(qes: QualityEvent[]): { periodo: string; cerrados: number }[] {
-  return ultimosMeses(6).map((periodo) => {
+function buildTendenciaMensualVolumen(qes: QualityEvent[]): JefeCalidadDashboardData['tendenciaMensualVolumen'] {
+  return ultimosMeses(12).map((periodo) => {
     const { start, end } = monthRange(periodo)
-    return { periodo, cerrados: qes.filter((qe) => inRange(qe.fechaCierre, start, end)).length }
+    return {
+      periodo,
+      abiertos: qes.filter((qe) => inRange(qe.fechaHoraReporte, start, end)).length,
+      cerrados: qes.filter((qe) => inRange(qe.fechaCierre, start, end)).length,
+    }
   })
+}
+
+function buildTendenciaMensualKpis(
+  qes: QualityEvent[],
+  ncs: NoConformidad[],
+  incidentes: Incidente[],
+): JefeCalidadDashboardData['tendenciaMensualKpis'] {
+  const meses = ultimosMeses(12)
+  return {
+    'KPI-01': meses.map((periodo) => ({ periodo, valor: calcularKpi01(qes, periodo) })),
+    'KPI-04': meses.map((periodo) => ({ periodo, valor: calcularKpi04(incidentes, periodo) })),
+    'KPI-05': meses.map((periodo) => ({ periodo, valor: calcularKpi05(qes, ncs, periodo) })),
+  }
 }
 
 const ALL_QE_STATUSES: QEStatus[] = [
@@ -548,6 +565,7 @@ const ALL_QE_STATUSES: QEStatus[] = [
 function buildJefeCalidadData(usuario: MockUser): JefeCalidadDashboardData {
   const qes = getQeStore()
   const ncs = getNonconformitiesStore()
+  const incidentes = getIncidentsStore()
   const esControlDocumentario = usuario.rol === 'JEFE_CONTROL_DOCUMENTARIO'
 
   // Control Documentario comparte el tipo JefeCalidadDashboardData (ver design.md,
@@ -595,7 +613,8 @@ function buildJefeCalidadData(usuario: MockUser): JefeCalidadDashboardData {
     distribucionQEPorTipo,
     qePorEstado,
     accionesCorrectivasPorVencer,
-    tendenciaMensualCierres: buildTendenciaMensualCierres(qes),
+    tendenciaMensualVolumen: buildTendenciaMensualVolumen(qes),
+    tendenciaMensualKpis: buildTendenciaMensualKpis(qes, ncs, incidentes),
   }
 }
 

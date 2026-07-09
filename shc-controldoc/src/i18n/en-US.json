@@ -1476,6 +1476,28 @@
       "acsPorVencer": {
         "title": "Corrective actions due within 5 days",
         "empty": "No corrective actions due soon"
+      },
+      "tendencia": {
+        "title": "Monthly trend",
+        "rango": {
+          "label": "Range",
+          "opciones": {
+            "3": "3 months",
+            "6": "6 months",
+            "12": "12 months"
+          }
+        },
+        "volumen": {
+          "title": "Quality Event volume by month",
+          "abiertos": "Opened",
+          "cerrados": "Closed"
+        },
+        "kpis": {
+          "title": "Key KPI trend",
+          "kpi01": "KPI-01 · On-time closure rate",
+          "kpi04": "KPI-04 · Incident frequency rate",
+          "kpi05": "KPI-05 · Corrective action effectiveness rate"
+        }
       }
     }
   },

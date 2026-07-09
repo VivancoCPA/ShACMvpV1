@@ -26,6 +26,17 @@ export interface SupervisorDashboardData {
   semaforoPlazos: { verde: number; amarillo: number; rojo: number }
 }
 
+export interface TendenciaMensualVolumenEntry {
+  periodo: string
+  abiertos: number
+  cerrados: number
+}
+
+export interface TendenciaMensualKpiEntry {
+  periodo: string
+  valor: number
+}
+
 export interface JefeCalidadDashboardData {
   kpis: KpiResult[]
   qeCriticosAbiertos: QEResumen[]
@@ -33,7 +44,8 @@ export interface JefeCalidadDashboardData {
   distribucionQEPorTipo: Record<QEType, number>
   qePorEstado: Record<QEStatus, number>
   accionesCorrectivasPorVencer: AccionCorrectivaResumen[]
-  tendenciaMensualCierres: { periodo: string; cerrados: number }[]
+  tendenciaMensualVolumen: TendenciaMensualVolumenEntry[]
+  tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', TendenciaMensualKpiEntry[]>
 }
 
 export interface AltaDireccionDashboardData {

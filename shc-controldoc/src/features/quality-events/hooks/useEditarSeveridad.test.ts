@@ -56,8 +56,8 @@ describe('PATCH /api/quality-events/:id/editar-severidad', () => {
   it('updates severidad and appends an audit entry for a valid request', async () => {
     loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
     const { result } = renderHook(() => useEditarSeveridad(), { wrapper: createWrapper() })
-    // qe-2026-001 is EN_INVESTIGACION with severidad CRITICA
-    result.current.mutate({ id: 'qe-2026-001', data: { severidad: 'ALTA' } })
+    // qe-2026-012 is EN_INVESTIGACION with severidad CRITICA
+    result.current.mutate({ id: 'qe-2026-012', data: { severidad: 'ALTA' } })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.severidad).toBe('ALTA')
     const entries = result.current.data?.auditTrail.filter((e) => e.accion === 'QE_SEVERIDAD_EDITADA')
@@ -67,8 +67,8 @@ describe('PATCH /api/quality-events/:id/editar-severidad', () => {
   it('flags the notification requirement when changing to CRITICA', async () => {
     loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
     const { result } = renderHook(() => useEditarSeveridad(), { wrapper: createWrapper() })
-    // qe-2026-002 has severidad ALTA
-    result.current.mutate({ id: 'qe-2026-002', data: { severidad: 'CRITICA' } })
+    // qe-2026-018 is ABIERTO with severidad ALTA
+    result.current.mutate({ id: 'qe-2026-018', data: { severidad: 'CRITICA' } })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.requiereNotificacionUrgente).toBe(true)
   })

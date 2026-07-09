@@ -16,3 +16,13 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     dispatchEvent: vi.fn(),
   }))
 }
+
+// jsdom doesn't implement ResizeObserver; recharts' ResponsiveContainer reads
+// it to size charts, which throws for any test that renders a recharts component.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}

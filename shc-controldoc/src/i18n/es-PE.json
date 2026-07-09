@@ -1476,6 +1476,28 @@
       "acsPorVencer": {
         "title": "Acciones correctivas por vencer en 5 días",
         "empty": "No hay acciones correctivas por vencer"
+      },
+      "tendencia": {
+        "title": "Tendencia mensual",
+        "rango": {
+          "label": "Rango",
+          "opciones": {
+            "3": "3 meses",
+            "6": "6 meses",
+            "12": "12 meses"
+          }
+        },
+        "volumen": {
+          "title": "Volumen de Quality Events por mes",
+          "abiertos": "Abiertos",
+          "cerrados": "Cerrados"
+        },
+        "kpis": {
+          "title": "Evolución de KPIs clave",
+          "kpi01": "KPI-01 · Tasa de cierre en plazo",
+          "kpi04": "KPI-04 · Índice de frecuencia de incidentes",
+          "kpi05": "KPI-05 · Tasa de eficacia de ACs"
+        }
       }
     }
   },

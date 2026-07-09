@@ -28,13 +28,14 @@ function createWrapper() {
 }
 
 describe('useTransitionQEStatus', () => {
-  it('calls toast.error with RN-QE-002 message when transitioning qe-2026-001 to EN_EJECUCION', async () => {
+  it('calls toast.error with RN-QE-002 message when transitioning qe-2026-007 to EN_EJECUCION', async () => {
     const { toast } = await import('sonner')
     const { result } = renderHook(() => useTransitionQEStatus(), {
       wrapper: createWrapper(),
     })
 
-    result.current.mutate({ id: 'qe-2026-001', data: { nuevoEstado: 'EN_EJECUCION' } })
+    // qe-2026-007 is ANALISIS_COMPLETADO with causaRaizFirmadaEn ausente
+    result.current.mutate({ id: 'qe-2026-007', data: { nuevoEstado: 'EN_EJECUCION' } })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
 

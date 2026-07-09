@@ -4,6 +4,7 @@ import { useDashboardSummary } from '../hooks/useDashboardSummary'
 import { KpiGridWidget } from '../components/KpiGridWidget'
 import { QEPorEstadoWidget } from '../components/QEPorEstadoWidget'
 import { ACsPorVencerWidget } from '../components/ACsPorVencerWidget'
+import { TendenciaMensualWidget } from '../components/TendenciaMensualWidget'
 
 function WidgetSkeleton() {
   return (
@@ -26,12 +27,17 @@ export function JefeCalidadDashboard() {
           <WidgetSkeleton />
           <WidgetSkeleton />
           <WidgetSkeleton />
+          <WidgetSkeleton />
         </div>
       ) : (
         <div className="space-y-8">
           <KpiGridWidget kpis={data.data.kpis} />
           <QEPorEstadoWidget qePorEstado={data.data.qePorEstado} />
           <ACsPorVencerWidget accionesCorrectivasPorVencer={data.data.accionesCorrectivasPorVencer} />
+          <TendenciaMensualWidget
+            tendenciaMensualVolumen={data.data.tendenciaMensualVolumen}
+            tendenciaMensualKpis={data.data.tendenciaMensualKpis}
+          />
         </div>
       )}
     </PageWrapper>

@@ -1,4 +1,12 @@
-﻿import type { QualityEvent, AccionCorrectivaQE } from '../../features/quality-events/types/qualityEvent.types'
+﻿import type {
+  QualityEvent,
+  AccionCorrectivaQE,
+  QEAuditTrailEntry,
+  QEType,
+  QEOrigin,
+  QESeverity,
+} from '../../features/quality-events/types/qualityEvent.types'
+import { USER_NOMBRE_MAP } from './users.fixtures'
 
 // Modelo B: las ACs pertenecen al QE (qeId primario). Este mapa se usa solo
 // para sembrar accionesCorrectivas en los fixtures que corresponden — no es
@@ -256,6 +264,213 @@ export const qeAccionesCorrectivas: Record<string, AccionCorrectivaQE[]> = {
   ],
 }
 
+// Ver M5-S05b (fix de fixtures pre-archivo, "Fix 3"): los 21 QE anteriores dejan la mayoría
+// de los 12 meses de tendencia con denominadores de 1-4 casos para KPI-01/05, forzando valores
+// binarios (0%/100%) mes a mes en TendenciaMensualWidget. Este bloque agrega QE sintéticos
+// (id `qe-tendencia-N`) — sin narrativa cruzada con los 21 anteriores, solo necesitan ser
+// internamente consistentes — para elevar la muestra mensual a ~5 casos sin tocar los fixtures
+// existentes ni sus tests (ver design.md M5-S05b, decisión 6, para el criterio de no reutilizar
+// una fórmula genérica sobre fixtures YA narrados; aquí no aplica porque son registros nuevos).
+const MESES_TENDENCIA = [
+  '2025-08', '2025-09', '2025-10', '2025-11', '2025-12',
+  '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07',
+] as const
+
+// Cantidad de QE de refuerzo por mes de fechaCierre, para llevar el denominador mensual de
+// KPI-01 (y, para la mitad que además queda VERIFICADO, de KPI-05) de 0-4 a ~5-6 casos.
+const REFUERZO_POR_MES: Record<string, number> = {
+  '2025-08': 4, '2025-09': 4, '2025-10': 5, '2025-11': 4, '2025-12': 4,
+  '2026-01': 5, '2026-02': 4, '2026-03': 5, '2026-04': 4, '2026-05': 4,
+  '2026-06': 5, '2026-07': 2,
+}
+
+const TIPOS_ROTACION: QEType[] = ['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL']
+const ORIGENES_ROTACION: QEOrigin[] = ['O1_INCIDENTE_CAMPO', 'O2_NC_DETECTADA', 'O3_HALLAZGO_AUDITORIA', 'O4_REPORTE_EXTERNO']
+const SEVERIDADES_ROTACION: QESeverity[] = ['BAJA', 'MEDIA', 'ALTA']
+// Excluye deliberadamente 'Almacén Norte'/'Almacén Sur'/'Galpón B'/'Galpón C': son las
+// áreas asignadas a los 2 Supervisores de auth.fixtures.ts, y useDashboardSummary.test.ts
+// verifica un conteo exacto de QE por Supervisor sobre esas áreas — cualquier QE sintético
+// ahí infla ese conteo y rompe la aserción.
+const AREAS_ROTACION = [
+  'Área de Carga', 'Área de Contenedores', 'Archivo Documentario',
+  'Operaciones Aduaneras', 'Laboratorio de Calidad', 'Laboratorio de Muestras', 'RR.HH.',
+]
+const REPORTEROS_ROTACION = ['user-001', 'user-002', 'user-003', 'user-005', 'user-008']
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString()
+}
+
+function nombrePor(id: string): string {
+  return USER_NOMBRE_MAP[id] ?? id
+}
+
+function buildTendenciaSeedQE(): QualityEvent[] {
+  const seeds: QualityEvent[] = []
+  let contador = 0
+
+  for (const mes of MESES_TENDENCIA) {
+    const refuerzo = REFUERZO_POR_MES[mes] ?? 0
+    for (let i = 0; i < refuerzo; i++) {
+      contador += 1
+      const [anio, mesNum] = mes.split('-').map(Number)
+      const dia = 3 + ((i * 6) % 24)
+      const fechaCierre = new Date(Date.UTC(anio, mesNum - 1, dia, 10, 0, 0)).toISOString()
+
+      const severidad = SEVERIDADES_ROTACION[contador % SEVERIDADES_ROTACION.length]
+      // ~1/3 de los casos queda fuera de plazo (gap más largo), para que KPI-01 mensual
+      // no sea siempre 100% por el solo hecho de aumentar la muestra.
+      const fueraDePlazo = contador % 3 === 0
+      const gapReporteACierreDias = fueraDePlazo ? 34 : 12
+      const fechaHoraReporte = addDaysISO(fechaCierre, -gapReporteACierreDias)
+      const causaRaizFirmadaEn = addDaysISO(fechaCierre, -3)
+
+      const tipo = TIPOS_ROTACION[contador % TIPOS_ROTACION.length]
+      const origen = ORIGENES_ROTACION[contador % ORIGENES_ROTACION.length]
+      const area = AREAS_ROTACION[contador % AREAS_ROTACION.length]
+      const turno = (['DIA', 'TARDE', 'NOCHE'] as const)[contador % 3]
+      const reportero = REPORTEROS_ROTACION[contador % REPORTEROS_ROTACION.length]
+
+      // La mitad, además de cerrarse, completa verificación — da muestra a KPI-05 sin
+      // necesitar un segundo lote de fixtures separado.
+      const esVerificado = contador % 2 === 0
+      const efectivo = contador % 4 !== 0
+      const fechaVerificacionRealizada = esVerificado ? addDaysISO(fechaCierre, 22) : undefined
+
+      const id = `qe-tendencia-${contador}`
+      const numero = `QE-${anio}-${String(900 + contador).padStart(3, '0')}`
+
+      const auditTrail: QEAuditTrailEntry[] = [
+        {
+          id: `aud-${id}-1`,
+          entidadTipo: 'QualityEvent',
+          entidadId: id,
+          accion: 'CREADO',
+          estadoNuevo: 'ABIERTO',
+          realizadoPorId: reportero,
+          realizadoPorNombre: nombrePor(reportero),
+          timestamp: fechaHoraReporte,
+          generadoPorIA: false,
+        },
+        {
+          id: `aud-${id}-2`,
+          entidadTipo: 'QualityEvent',
+          entidadId: id,
+          accion: 'ESTADO_CAMBIADO',
+          estadoAnterior: 'ABIERTO',
+          estadoNuevo: 'EN_INVESTIGACION',
+          realizadoPorId: 'user-003',
+          realizadoPorNombre: nombrePor('user-003'),
+          timestamp: addDaysISO(fechaHoraReporte, 1),
+          generadoPorIA: false,
+        },
+        {
+          id: `aud-${id}-3`,
+          entidadTipo: 'QualityEvent',
+          entidadId: id,
+          accion: 'CAUSA_RAIZ_APROBADA',
+          campoModificado: 'causaRaizFirmadaEn',
+          valorNuevo: causaRaizFirmadaEn,
+          realizadoPorId: 'user-004',
+          realizadoPorNombre: nombrePor('user-004'),
+          timestamp: causaRaizFirmadaEn,
+          generadoPorIA: false,
+        },
+        {
+          id: `aud-${id}-4`,
+          entidadTipo: 'QualityEvent',
+          entidadId: id,
+          accion: 'ESTADO_CAMBIADO',
+          estadoAnterior: 'PENDIENTE_CIERRE',
+          estadoNuevo: 'CERRADO',
+          realizadoPorId: 'user-004',
+          realizadoPorNombre: nombrePor('user-004'),
+          timestamp: fechaCierre,
+          generadoPorIA: false,
+        },
+      ]
+      if (esVerificado && fechaVerificacionRealizada) {
+        auditTrail.push({
+          id: `aud-${id}-5`,
+          entidadTipo: 'QualityEvent',
+          entidadId: id,
+          accion: 'ESTADO_CAMBIADO',
+          estadoAnterior: 'EN_VERIFICACION',
+          estadoNuevo: 'VERIFICADO',
+          realizadoPorId: 'user-004',
+          realizadoPorNombre: nombrePor('user-004'),
+          timestamp: fechaVerificacionRealizada,
+          generadoPorIA: false,
+        })
+      }
+
+      const qe: QualityEvent = {
+        id,
+        numero,
+        origen,
+        tipo,
+        severidad,
+        estado: esVerificado ? 'VERIFICADO' : 'CERRADO',
+        ciclo: 1,
+        descripcion: `Quality Event sintético de refuerzo estadístico para la tendencia mensual (cierre ${mes}) — ver design.md M5-S05b, Fix 3.`,
+        areaAfectada: area,
+        turno,
+        fechaHoraEvento: fechaHoraReporte,
+        fechaHoraReporte,
+        reportadoPorId: reportero,
+        requiereEvaluacionRiesgos: false,
+        causaRaizDefinitiva: 'Causa raíz sintética de refuerzo estadístico (dato de seed, no narrativo).',
+        causaRaizAprobadaPorId: 'user-004',
+        causaRaizFirmadaEn,
+        resultadoCierre: 'Cierre sintético de refuerzo estadístico para la tendencia mensual (dato de seed, no narrativo).',
+        cerradoPorId: 'user-004',
+        cierreFirmaSupervisorId: 'user-003',
+        fechaCierre,
+        documentosVinculados: [],
+        solicitudesAC: 0,
+        accionesCorrectivas: [],
+        auditTrail,
+        creadoEn: fechaHoraReporte,
+        actualizadoEn: esVerificado && fechaVerificacionRealizada ? fechaVerificacionRealizada : fechaCierre,
+        ...(esVerificado && fechaVerificacionRealizada
+          ? {
+              plazoVerificacionDias: 22,
+              fechaVerificacionProgramada: fechaVerificacionRealizada,
+              fechaVerificacionRealizada,
+              verificadoPorId: 'user-004',
+              resultadoVerificacion: (efectivo ? 'EFECTIVO' : 'NO_EFECTIVO') as 'EFECTIVO' | 'NO_EFECTIVO',
+            }
+          : {}),
+      }
+      seeds.push(qe)
+
+      if (esVerificado) {
+        qeAccionesCorrectivas[id] = [
+          {
+            id: `ac-${id}-1`,
+            qeId: id,
+            titulo: 'Acción correctiva de refuerzo estadístico',
+            descripcion: 'Acción correctiva sintética creada para dar variación estadística a KPI-05 (dato de seed, no narrativo).',
+            responsableId: reportero,
+            responsableNombre: nombrePor(reportero),
+            plazoFecha: causaRaizFirmadaEn,
+            prioridad: 'MEDIA',
+            estado: 'CERRADA',
+            descripcionEvidencia: 'Evidencia sintética de cierre de AC (dato de seed).',
+            fechaCierre: causaRaizFirmadaEn,
+            creadoEn: fechaHoraReporte,
+            actualizadoEn: causaRaizFirmadaEn,
+          },
+        ]
+      }
+    }
+  }
+
+  return seeds
+}
+
 const baseQualityEventFixtures: QualityEvent[] = [
   // qe-2026-001: O1·SST·CRITICA·EN_INVESTIGACION
   // Guard RN-QE-002: causaRaizFirmadaEn ausente — bloqueará transición a EN_EJECUCION
@@ -266,7 +481,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     origen: 'O1_INCIDENTE_CAMPO',
     tipo: 'SST',
     severidad: 'CRITICA',
-    estado: 'EN_INVESTIGACION',
+    estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'Dos trabajadores resultaron lesionados por el volcamiento de una carretilla elevadora durante carga nocturna en almacén sur. El evento generó lesiones graves con traslado a clínica.',
     areaAfectada: 'Almacén Sur',
@@ -276,6 +491,8 @@ const baseQualityEventFixtures: QualityEvent[] = [
     reportadoPorId: 'user-operario-001',
     incidenteId: 'inc-002',
     requiereEvaluacionRiesgos: true,
+    causaRaizFirmadaEn: '2026-02-14T10:00:00Z',
+    fechaCierre: '2026-02-24T10:00:00Z',
     documentosVinculados: [],
     solicitudesAC: 2,
     accionesCorrectivas: [],
@@ -341,7 +558,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     origen: 'O2_NC_DETECTADA',
     tipo: 'CALIDAD',
     severidad: 'ALTA',
-    estado: 'EN_EJECUCION',
+    estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'No conformidad detectada en auditoría interna: control de distribución de documentos críticos sin registro conforme a ISO 9001:2015 §7.5.',
     areaAfectada: 'Control Documentario',
@@ -353,7 +570,8 @@ const baseQualityEventFixtures: QualityEvent[] = [
     requiereEvaluacionRiesgos: false,
     causaRaizDefinitiva: 'El procedimiento de control de documentos no contemplaba el registro de distribución controlada para procedimientos críticos de operación.',
     causaRaizAprobadaPorId: 'user-004',
-    causaRaizFirmadaEn: '2026-01-10T10:00:00Z',
+    causaRaizFirmadaEn: '2025-12-22T10:00:00Z',
+    fechaCierre: '2025-12-29T10:00:00Z',
     documentosVinculados: ['doc-prc-cd-001'],
     solicitudesAC: 0,
     accionesCorrectivas: [],
@@ -705,16 +923,18 @@ const baseQualityEventFixtures: QualityEvent[] = [
     origen: 'O2_NC_DETECTADA',
     tipo: 'SST',
     severidad: 'CRITICA',
-    estado: 'ABIERTO',
+    estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'No conformidad CRITICA detectada en operación de campo: trabajador expuesto a polvo de mineral sin EPP adecuado por ventilación inoperativa en almacén sur.',
     areaAfectada: 'Almacén Sur',
     turno: 'TARDE',
     fechaHoraEvento: '2026-01-20T14:45:00Z',
-    fechaHoraReporte: '2026-01-20T15:00:00Z',
+    fechaHoraReporte: '2025-08-20T15:00:00Z',
     reportadoPorId: 'user-006',
     ncId: 'nc-003',
     requiereEvaluacionRiesgos: true,
+    causaRaizFirmadaEn: '2025-08-25T10:00:00Z',
+    fechaCierre: '2025-08-29T10:00:00Z',
     documentosVinculados: [],
     solicitudesAC: 0,
     accionesCorrectivas: [],
@@ -1136,16 +1356,18 @@ const baseQualityEventFixtures: QualityEvent[] = [
     origen: 'O3_HALLAZGO_AUDITORIA',
     tipo: 'SST',
     severidad: 'ALTA',
-    estado: 'ABIERTO',
+    estado: 'CERRADO',
     ciclo: 2,
     descripcion: 'Hallazgo de auditoría externa ISO 45001: señalización de rutas de evacuación en almacén norte incompleta. Segundo hallazgo en el mismo punto tras AC del ciclo anterior.',
     areaAfectada: 'Almacén Norte',
     hallazgoAuditoriaRef: 'HAL-2026-003 · ISO 45001:2018 · §8.2',
     turno: 'DIA',
     fechaHoraEvento: '2026-04-15T09:00:00Z',
-    fechaHoraReporte: '2026-04-15T10:00:00Z',
+    fechaHoraReporte: '2025-09-15T10:00:00Z',
     reportadoPorId: 'user-004',
     requiereEvaluacionRiesgos: true,
+    causaRaizFirmadaEn: '2025-09-22T10:00:00Z',
+    fechaCierre: '2025-09-29T10:00:00Z',
     documentosVinculados: [],
     solicitudesAC: 0,
     accionesCorrectivas: [],
@@ -1365,7 +1587,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     origen: 'O2_NC_DETECTADA',
     tipo: 'CALIDAD',
     severidad: 'MEDIA',
-    estado: 'ANALISIS_COMPLETADO',
+    estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'NC detectada: mediciones de temperatura de almacenamiento de muestras fuera de rango especificado durante 6 horas. Afecta integridad de 12 muestras de prueba.',
     areaAfectada: 'Laboratorio de Calidad',
@@ -1375,6 +1597,8 @@ const baseQualityEventFixtures: QualityEvent[] = [
     reportadoPorId: 'user-006',
     requiereEvaluacionRiesgos: false,
     metodoAnalisis: 'ISHIKAWA',
+    causaRaizFirmadaEn: '2026-04-12T10:00:00Z',
+    fechaCierre: '2026-04-24T10:00:00Z',
     documentosVinculados: [],
     solicitudesAC: 0,
     accionesCorrectivas: [],
@@ -1630,7 +1854,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     causaRaizAprobadaPorId: 'user-004',
     causaRaizFirmadaEn: '2026-02-01T10:00:00Z',
     resultadoVerificacion: 'NO_EFECTIVO',
-    fechaVerificacionRealizada: '2026-07-12T10:00:00Z',
+    fechaVerificacionRealizada: '2026-05-10T10:00:00Z',
     documentosVinculados: [],
     solicitudesAC: 0,
     accionesCorrectivas: [],
@@ -1999,7 +2223,9 @@ const baseQualityEventFixtures: QualityEvent[] = [
   },
 ]
 
-export const qualityEventFixtures: QualityEvent[] = baseQualityEventFixtures.map((qe) => ({
+const tendenciaSeedQualityEvents = buildTendenciaSeedQE()
+
+export const qualityEventFixtures: QualityEvent[] = [...baseQualityEventFixtures, ...tendenciaSeedQualityEvents].map((qe) => ({
   ...qe,
   accionesCorrectivas: qeAccionesCorrectivas[qe.id] ?? qe.accionesCorrectivas,
 }))

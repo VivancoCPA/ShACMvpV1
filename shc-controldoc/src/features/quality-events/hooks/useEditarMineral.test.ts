@@ -56,8 +56,8 @@ describe('PATCH /api/quality-events/:id/editar-mineral', () => {
   it('updates mineralInvolucrado and appends an audit entry for a valid request', async () => {
     loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
     const { result } = renderHook(() => useEditarMineral(), { wrapper: createWrapper() })
-    // qe-2026-002 is tipo CALIDAD, EN_EJECUCION
-    result.current.mutate({ id: 'qe-2026-002', data: { mineralInvolucrado: 'Zinc' } })
+    // qe-2026-019 is tipo CALIDAD, EN_INVESTIGACION
+    result.current.mutate({ id: 'qe-2026-019', data: { mineralInvolucrado: 'Zinc' } })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.mineralInvolucrado).toBe('Zinc')
     const entries = result.current.data?.auditTrail.filter((e) => e.accion === 'QE_MINERAL_EDITADO')

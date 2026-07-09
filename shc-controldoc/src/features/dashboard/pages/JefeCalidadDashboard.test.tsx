@@ -71,7 +71,12 @@ describe('JefeCalidadDashboard', () => {
             estado: 'EN_EJECUCION',
           },
         ],
-        tendenciaMensualCierres: [],
+        tendenciaMensualVolumen: [{ periodo: '2026-07', abiertos: 1, cerrados: 1 }],
+        tendenciaMensualKpis: {
+          'KPI-01': [{ periodo: '2026-07', valor: 80 }],
+          'KPI-04': [{ periodo: '2026-07', valor: 2 }],
+          'KPI-05': [{ periodo: '2026-07', valor: 90 }],
+        },
       },
     }
     renderDashboard()
@@ -79,5 +84,6 @@ describe('JefeCalidadDashboard', () => {
     expect(screen.getByText(i18n.t('dashboard:jefeCalidad.qePorEstado.title'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t('dashboard:jefeCalidad.acsPorVencer.title'))).toBeInTheDocument()
     expect(screen.getByText('AC por vencer de prueba')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('dashboard:jefeCalidad.tendencia.title'))).toBeInTheDocument()
   })
 })

@@ -6,8 +6,22 @@ export interface HorasTrabajadasEntry {
   horas: number
 }
 
-// Alineado con el rango de fechas usado en incidents.fixtures.ts (2026-01 a 2026-05+).
-const PERIODOS = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'] as const
+// Cobertura de 12 meses hacia atrás desde el mes actual del sistema (2026-07), necesaria
+// para la tendencia mensual de KPI-04 en JefeCalidadDashboard (rango de hasta 12 meses).
+const PERIODOS = [
+  '2025-08',
+  '2025-09',
+  '2025-10',
+  '2025-11',
+  '2025-12',
+  '2026-01',
+  '2026-02',
+  '2026-03',
+  '2026-04',
+  '2026-05',
+  '2026-06',
+  '2026-07',
+] as const
 
 function horasParaAreaYMes(areaIndex: number, mesIndex: number): number {
   const base = 800 + (areaIndex * 173) % 3200
