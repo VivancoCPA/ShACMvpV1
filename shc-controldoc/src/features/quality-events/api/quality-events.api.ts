@@ -151,8 +151,14 @@ export async function firmarCierre(id: string, data: FirmarCierreInput): Promise
   return response.data
 }
 
-export async function forzarVencimientoVerificacion(id: string): Promise<QualityEvent> {
-  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/forzar-vencimiento-verificacion`)
+export async function forzarVencimientoVerificacion(
+  id: string,
+  auditorAsignadoId?: string,
+): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(
+    `/api/quality-events/${id}/forzar-vencimiento-verificacion`,
+    { auditorAsignadoId },
+  )
   return response.data
 }
 

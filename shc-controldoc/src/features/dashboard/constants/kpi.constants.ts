@@ -1,5 +1,5 @@
 import type { KpiDefinition, KpiId } from '../types/kpi.types'
-import type { QESeverity } from '../../quality-events/types/qualityEvent.types'
+import type { QESeverity, QEStatus } from '../../quality-events/types/qualityEvent.types'
 
 // Plazo máximo (días hábiles) para que un QE se considere "en plazo" al cerrar (KPI-01),
 // derivado de sumar los plazos por severidad de SHAC-PRD-003 §1.3 para EN_INVESTIGACION
@@ -11,6 +11,27 @@ export const PLAZO_MAXIMO_QE_DIAS_HABILES: Record<QESeverity, number> = {
   MEDIA: 17, // 10 + 2 + 5
   ALTA: 14, // 7 + 2 + 5
   CRITICA: 10, // 3 + 2 + 5
+}
+
+// Plazo máximo (días hábiles) que un QE puede permanecer en su ESTADO ACTUAL antes de
+// considerarse "vencido" (KpisEjecutivosWidget, "QEs vencidos"), por estado y severidad,
+// según SHAC-PRD-003 §1.3. A diferencia de PLAZO_MAXIMO_QE_DIAS_HABILES (que suma los 3
+// estados para juzgar un QE ya CERRADO/VERIFICADO en KPI-01), esta tabla se consulta con
+// el estado vigente de un QE todavía abierto.
+export const PLAZO_MAXIMO_QE_POR_ESTADO_DIAS_HABILES: Partial<Record<QEStatus, Record<QESeverity, number>>> = {
+  EN_INVESTIGACION: { BAJA: 15, MEDIA: 10, ALTA: 7, CRITICA: 3 },
+  ANALISIS_COMPLETADO: { BAJA: 2, MEDIA: 2, ALTA: 2, CRITICA: 2 },
+  PENDIENTE_CIERRE: { BAJA: 5, MEDIA: 5, ALTA: 5, CRITICA: 5 },
+}
+
+// RN-QE-008: verificación no completada en 10 días hábiles → reapertura automática. Fijo, sin distinción de severidad.
+export const PLAZO_MAXIMO_QE_EN_VERIFICACION_DIAS_HABILES = 10
+
+// ABIERTO, EN_EJECUCION (plazo por AC individual, no a nivel de QE) y REABIERTO no tienen
+// presupuesto propio citado en el PRD: un QE en esos estados nunca se marca "vencido" aquí.
+export function plazoMaximoQEPorEstado(estado: QEStatus, severidad: QESeverity): number | undefined {
+  if (estado === 'EN_VERIFICACION') return PLAZO_MAXIMO_QE_EN_VERIFICACION_DIAS_HABILES
+  return PLAZO_MAXIMO_QE_POR_ESTADO_DIAS_HABILES[estado]?.[severidad]
 }
 
 export const KPI_DEFINITIONS: Record<KpiId, KpiDefinition> = {

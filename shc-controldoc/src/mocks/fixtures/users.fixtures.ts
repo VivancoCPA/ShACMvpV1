@@ -49,6 +49,19 @@ export const userFixtures: User[] = [
     rol: 'JEFE_CONTROL_DOCUMENTARIO',
     area: 'Control Documentario',
   },
+  {
+    // Matches the id issued by /api/auth/login for auditor@shac.pe (see
+    // auth.fixtures.ts) — without this entry, the only loginable
+    // AUDITOR_INTERNO account can never appear in the /api/users
+    // auditor-assignment picker, so no real session could ever satisfy
+    // `user.id === qe.auditorAsignadoId` (M5-S10).
+    id: 'user-auditor-001',
+    nombre: 'Miguel',
+    apellido: 'Flores',
+    email: 'auditor@shac.pe',
+    rol: 'AUDITOR_INTERNO',
+    area: 'Auditoría',
+  },
 ]
 
 export const USER_NOMBRE_MAP: Record<string, string> = {
@@ -61,4 +74,5 @@ export const USER_NOMBRE_MAP: Record<string, string> = {
   'user-007': 'Jorge Ramos',
   'user-008': 'Roberto Silva',
   'user-009': 'Rosa Villanueva',
+  'user-auditor-001': 'Miguel Flores',
 }

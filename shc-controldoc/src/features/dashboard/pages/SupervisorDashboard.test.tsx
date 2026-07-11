@@ -15,6 +15,10 @@ vi.mock('../hooks/useDashboardSummary', () => ({
   useDashboardSummary: () => ({ data: mockData, isLoading: mockIsLoading }),
 }))
 
+vi.mock('../hooks/useAccionesRequeridas', () => ({
+  useAccionesRequeridas: () => ({ items: [], isLoading: false }),
+}))
+
 function renderDashboard() {
   return render(
     <I18nextProvider i18n={i18n}>

@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useDashboardSummary } from '../hooks/useDashboardSummary'
+import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget'
 import { KpiGridWidget } from '../components/KpiGridWidget'
 import { QEPorEstadoWidget } from '../components/QEPorEstadoWidget'
 import { ACsPorVencerWidget } from '../components/ACsPorVencerWidget'
 import { TendenciaMensualWidget } from '../components/TendenciaMensualWidget'
+import { HeatmapIncidentesWidget } from '../components/HeatmapIncidentesWidget'
 
 function WidgetSkeleton() {
   return (
@@ -22,6 +24,9 @@ export function JefeCalidadDashboard() {
 
   return (
     <PageWrapper title={t('jefeCalidad.title')}>
+      <div className="mb-8">
+        <AccionesRequeridasWidget />
+      </div>
       {isLoading || !data || data.rol !== 'JEFE_CALIDAD' ? (
         <div className="space-y-8">
           <WidgetSkeleton />
@@ -38,6 +43,7 @@ export function JefeCalidadDashboard() {
             tendenciaMensualVolumen={data.data.tendenciaMensualVolumen}
             tendenciaMensualKpis={data.data.tendenciaMensualKpis}
           />
+          <HeatmapIncidentesWidget />
         </div>
       )}
     </PageWrapper>

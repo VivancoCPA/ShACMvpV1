@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useDashboardSummary } from '../hooks/useDashboardSummary'
+import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget'
 import { PanelPendientesAreaWidget } from '../components/PanelPendientesAreaWidget'
 import { QEPorTipoWidget } from '../components/QEPorTipoWidget'
 import { ACsVencidasWidget } from '../components/ACsVencidasWidget'
@@ -25,6 +26,9 @@ export function SupervisorDashboard() {
 
   return (
     <PageWrapper title={t('supervisor.title')}>
+      <div className="mb-8">
+        <AccionesRequeridasWidget />
+      </div>
       {isLoading || !data || data.rol !== 'SUPERVISOR' ? (
         <div className="space-y-8">
           <WidgetSkeleton />

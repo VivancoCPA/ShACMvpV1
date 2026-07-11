@@ -16,6 +16,10 @@ vi.mock('../hooks/useDashboardSummary', () => ({
   useDashboardSummary: () => ({ data: mockData, isLoading: mockIsLoading }),
 }))
 
+vi.mock('../hooks/useAccionesRequeridas', () => ({
+  useAccionesRequeridas: () => ({ items: [], isLoading: false }),
+}))
+
 function NuevoReportePage() {
   const [searchParams] = useSearchParams()
   return <div data-testid="nuevo-reporte-page">{searchParams.get('origen')}</div>

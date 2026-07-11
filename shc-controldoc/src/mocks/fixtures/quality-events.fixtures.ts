@@ -41,6 +41,13 @@ export const qeAccionesCorrectivas: Record<string, AccionCorrectivaQE[]> = {
       estado: 'EN_EJECUCION',
       creadoEn: '2026-01-15T08:10:00Z',
       actualizadoEn: '2026-01-20T09:00:00Z',
+      solicitudAjustePlazo: {
+        fechaSolicitada: '2026-03-20',
+        justificacion: 'Proveedor de impresión de etiquetas de distribución controlada retrasó la entrega del material; se requieren 3 semanas adicionales.',
+        estado: 'APROBADA',
+        solicitadoPorId: 'user-005',
+        solicitadoEn: '2026-02-18T09:00:00Z',
+      },
     },
   ],
   'qe-2026-003': [
@@ -120,6 +127,13 @@ export const qeAccionesCorrectivas: Record<string, AccionCorrectivaQE[]> = {
       estado: 'PENDIENTE',
       creadoEn: '2026-02-10T10:10:00Z',
       actualizadoEn: '2026-02-10T10:10:00Z',
+      solicitudAjustePlazo: {
+        fechaSolicitada: '2026-04-15',
+        justificacion: 'Rotación de personal de supervisión de EPP durante el ciclo 2 impide completar el calendario de auditorías sorpresa en el plazo original.',
+        estado: 'PENDIENTE',
+        solicitadoPorId: 'user-operario-001',
+        solicitadoEn: '2026-03-05T09:00:00Z',
+      },
     },
   ],
   'qe-2026-008': [
@@ -166,6 +180,13 @@ export const qeAccionesCorrectivas: Record<string, AccionCorrectivaQE[]> = {
       estado: 'EN_EJECUCION',
       creadoEn: '2026-06-15T10:15:00Z',
       actualizadoEn: '2026-06-20T08:00:00Z',
+      solicitudAjustePlazo: {
+        fechaSolicitada: '2026-07-31',
+        justificacion: 'El equipo de pesaje del turno noche solo pudo iniciar la capacitación esta semana por indisponibilidad del instructor; se requiere ampliar el plazo 3 semanas.',
+        estado: 'PENDIENTE',
+        solicitadoPorId: 'user-002',
+        solicitadoEn: '2026-06-28T09:00:00Z',
+      },
     },
   ],
   'qe-2026-013': [
@@ -651,7 +672,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     causaRaizFirmadaEn: '2026-04-01T10:00:00Z',
     resultadoCierre: 'Regularización completada ante SUNAT. ACs ejecutadas y evidenciadas.',
     cerradoPorId: 'user-004',
-    documentosVinculados: [],
+    documentosVinculados: ['doc-001'],
     solicitudesAC: 0,
     accionesCorrectivas: [],
     auditTrail: [
@@ -1031,7 +1052,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
         respuesta: 'Falta de alineación entre el área de Calidad y el área de Contratos durante el diseño del SGC.',
       },
     ],
-    documentosVinculados: ['doc-prc-lab-002'],
+    documentosVinculados: ['doc-002'],
     solicitudesAC: 0,
     accionesCorrectivas: [],
     auditTrail: [
@@ -1117,6 +1138,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     fechaCierre: '2026-06-25T10:00:00Z',
     plazoVerificacionDias: 60,
     fechaVerificacionProgramada: '2026-07-22T00:00:00Z',
+    auditorAsignadoId: 'user-auditor-001',
     mineralInvolucrado: 'Zinc',
     documentosVinculados: [],
     solicitudesAC: 0,
@@ -1777,6 +1799,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     fechaCierre: '2026-03-15T10:00:00Z',
     plazoVerificacionDias: 45,
     fechaVerificacionProgramada: '2026-07-28T00:00:00Z',
+    auditorAsignadoId: 'user-auditor-001',
     mineralInvolucrado: 'Plomo',
     documentosVinculados: [],
     solicitudesAC: 0,
@@ -2178,6 +2201,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     fechaCierre: '2026-07-04T10:00:00Z',
     plazoVerificacionDias: 8,
     fechaVerificacionProgramada: '2026-07-13T00:00:00Z',
+    auditorAsignadoId: 'user-auditor-001',
     documentosVinculados: [],
     solicitudesAC: 0,
     accionesCorrectivas: [],

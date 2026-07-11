@@ -61,6 +61,14 @@ export interface QEAuditTrailEntry {
   generadoPorIA: boolean
 }
 
+export interface SolicitudAjustePlazoAC {
+  fechaSolicitada: string
+  justificacion: string
+  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
+  solicitadoPorId: string
+  solicitadoEn: string
+}
+
 export interface AccionCorrectivaQE {
   id: string
   qeId: string
@@ -76,6 +84,7 @@ export interface AccionCorrectivaQE {
   descripcionEvidencia?: string
   evidenciaUrl?: string
   fechaCierre?: string
+  solicitudAjustePlazo?: SolicitudAjustePlazoAC
 }
 
 export interface QualityEvent {
@@ -123,6 +132,7 @@ export interface QualityEvent {
   verificadoPorId?: string
   resultadoVerificacion?: 'EFECTIVO' | 'NO_EFECTIVO'
   evidenciaVerificacion?: string
+  auditorAsignadoId?: string
   deletedAt?: string
 }
 

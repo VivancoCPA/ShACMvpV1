@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
@@ -350,13 +350,13 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     }
   })
 
-  it('JEFE_CONTROL_DOCUMENTARIO recibe la forma de JefeCalidadDashboardData (rol JEFE_CALIDAD)', async () => {
+  it('JEFE_CONTROL_DOCUMENTARIO recibe su propio dashboard (rol JEFE_CONTROL_DOC)', async () => {
     const { data } = await call(
       api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.docs@shac.pe')),
     )
-    expect(data.rol).toBe('JEFE_CALIDAD')
-    if (data.rol === 'JEFE_CALIDAD') {
-      expect(data.data.qeCriticosAbiertos).toEqual([])
+    expect(data.rol).toBe('JEFE_CONTROL_DOC')
+    if (data.rol === 'JEFE_CONTROL_DOC') {
+      expect(data.data).toEqual({})
     }
   })
 
@@ -544,18 +544,15 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     expect(tendenciaKpis['KPI-05'][0].valor).toBe(kpi(kpisDelPeriodo, 'KPI-05').valor)
   })
 
-  it('JEFE_CONTROL_DOCUMENTARIO recibe la misma tendenciaMensualVolumen/Kpis que JEFE_CALIDAD_SYST', async () => {
+  it('JEFE_CONTROL_DOCUMENTARIO ya no recibe la forma de JefeCalidadDashboardData', async () => {
     const jc = await call(
       api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
     )
     const jcd = await call(
       api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.docs@shac.pe')),
     )
-    if (jc.data.rol !== 'JEFE_CALIDAD' || jcd.data.rol !== 'JEFE_CALIDAD') {
-      throw new Error('esperaba rol JEFE_CALIDAD')
-    }
-    expect(jcd.data.data.tendenciaMensualVolumen).toEqual(jc.data.data.tendenciaMensualVolumen)
-    expect(jcd.data.data.tendenciaMensualKpis).toEqual(jc.data.data.tendenciaMensualKpis)
+    expect(jc.data.rol).toBe('JEFE_CALIDAD')
+    expect(jcd.data.rol).toBe('JEFE_CONTROL_DOC')
   })
 })
 
@@ -1166,5 +1163,469 @@ describe('dashboard.handlers — KPI-09 retorna una distribución por área, no 
     const kpi09 = kpi(results, 'KPI-09')
     expect(kpi09.distribucion).toEqual([])
     expect(kpi09.valor).toBe(0)
+  })
+})
+
+async function altaDireccionData() {
+  const { data } = await call(
+    api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('gerencia@shac.pe')),
+  )
+  if (data.rol !== 'ALTA_DIRECCION') throw new Error('esperaba rol ALTA_DIRECCION')
+  return data.data
+}
+
+describe('dashboard.handlers — ALTA_DIRECCION: resumenPorModulo.qualityEvents.abiertos/vencidos', () => {
+  it('abiertos cuenta REABIERTO y excluye CERRADO y VERIFICADO', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await altaDireccionData()
+    const reciente = new Date().toISOString()
+    const reabierto = makeQe({ id: 'test-ad-abiertos-reabierto', numero: 'QE-TEST-AD-01', estado: 'REABIERTO', severidad: 'BAJA', fechaHoraReporte: reciente })
+    const cerrado = makeQe({ id: 'test-ad-abiertos-cerrado', numero: 'QE-TEST-AD-04', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: reciente, fechaCierre: reciente })
+    const verificado = makeQe({ id: 'test-ad-abiertos-verificado', numero: 'QE-TEST-AD-02', estado: 'VERIFICADO', severidad: 'BAJA', fechaHoraReporte: reciente })
+    try {
+      qeStore.push(reabierto, cerrado, verificado)
+      const data = await altaDireccionData()
+      expect(data.resumenPorModulo.qualityEvents.abiertos).toBe(baseline.resumenPorModulo.qualityEvents.abiertos + 1)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('vencidos cuenta un QE cuyo tiempo en su estado actual excede el plazo por estado y severidad, y es subconjunto de abiertos', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await altaDireccionData()
+    // CRITICA en EN_INVESTIGACION: plazo máximo 3 días hábiles — 30 días calendario garantiza excederlo.
+    const hace30Dias = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    const vencido = makeQe({ id: 'test-ad-vencido', numero: 'QE-TEST-AD-03', estado: 'EN_INVESTIGACION', severidad: 'CRITICA', fechaHoraReporte: hace30Dias })
+    try {
+      qeStore.push(vencido)
+      const data = await altaDireccionData()
+      expect(data.resumenPorModulo.qualityEvents.vencidos).toBe(baseline.resumenPorModulo.qualityEvents.vencidos + 1)
+      expect(data.resumenPorModulo.qualityEvents.vencidos).toBeLessThanOrEqual(data.resumenPorModulo.qualityEvents.abiertos)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('un QE CERRADO antiguo nunca cuenta como vencido (ya no es un "abierto")', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await altaDireccionData()
+    const haceMeses = new Date(Date.now() - 180 * 86_400_000).toISOString()
+    const cerradoAntiguo = makeQe({
+      id: 'test-ad-cerrado-antiguo',
+      numero: 'QE-TEST-AD-05',
+      estado: 'CERRADO',
+      severidad: 'CRITICA',
+      fechaHoraReporte: haceMeses,
+      fechaCierre: haceMeses,
+    })
+    try {
+      qeStore.push(cerradoAntiguo)
+      const data = await altaDireccionData()
+      expect(data.resumenPorModulo.qualityEvents.vencidos).toBe(baseline.resumenPorModulo.qualityEvents.vencidos)
+      expect(data.resumenPorModulo.qualityEvents.abiertos).toBe(baseline.resumenPorModulo.qualityEvents.abiertos)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('ABIERTO y EN_EJECUCION nunca cuentan como vencidos: sin presupuesto propio en el PRD', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await altaDireccionData()
+    const hace60Dias = new Date(Date.now() - 60 * 86_400_000).toISOString()
+    const abiertoViejo = makeQe({ id: 'test-ad-abierto-viejo', numero: 'QE-TEST-AD-06', estado: 'ABIERTO', severidad: 'CRITICA', fechaHoraReporte: hace60Dias })
+    const enEjecucionViejo = makeQe({ id: 'test-ad-ejecucion-viejo', numero: 'QE-TEST-AD-07', estado: 'EN_EJECUCION', severidad: 'CRITICA', fechaHoraReporte: hace60Dias })
+    try {
+      qeStore.push(abiertoViejo, enEjecucionViejo)
+      const data = await altaDireccionData()
+      expect(data.resumenPorModulo.qualityEvents.vencidos).toBe(baseline.resumenPorModulo.qualityEvents.vencidos)
+      expect(data.resumenPorModulo.qualityEvents.abiertos).toBe(baseline.resumenPorModulo.qualityEvents.abiertos + 2)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('usa la fecha de entrada al estado actual (auditTrail), no fechaHoraReporte, para el conteo de días', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await altaDireccionData()
+    // Reportado hace mucho tiempo (excedería el plazo si se usara fechaHoraReporte), pero
+    // entró a EN_INVESTIGACION hace solo 1 día — no debe contar como vencido.
+    const haceMucho = new Date(Date.now() - 90 * 86_400_000).toISOString()
+    const ayer = new Date(Date.now() - 1 * 86_400_000).toISOString()
+    const qe = makeQe({
+      id: 'test-ad-fecha-entrada-estado',
+      numero: 'QE-TEST-AD-08',
+      estado: 'EN_INVESTIGACION',
+      severidad: 'CRITICA',
+      fechaHoraReporte: haceMucho,
+      auditTrail: [
+        {
+          id: 'audit-1',
+          entidadTipo: 'QualityEvent',
+          entidadId: 'test-ad-fecha-entrada-estado',
+          accion: 'ESTADO_CAMBIADO',
+          estadoAnterior: 'ABIERTO',
+          estadoNuevo: 'EN_INVESTIGACION',
+          realizadoPorId: 'user-test',
+          realizadoPorNombre: 'Test',
+          timestamp: ayer,
+          generadoPorIA: false,
+        },
+      ],
+    })
+    try {
+      qeStore.push(qe)
+      const data = await altaDireccionData()
+      expect(data.resumenPorModulo.qualityEvents.vencidos).toBe(baseline.resumenPorModulo.qualityEvents.vencidos)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+})
+
+describe('dashboard.handlers — ALTA_DIRECCION: comparativaMensual', () => {
+  it('cubre exactamente KPI-01/04/05 y reutiliza calcularKpi01/04/05 sobre los 2 últimos meses', async () => {
+    const data = await altaDireccionData()
+    expect(Object.keys(data.comparativaMensual).sort()).toEqual(['KPI-01', 'KPI-04', 'KPI-05'])
+
+    const mesActual = new Date().toISOString().slice(0, 7)
+    const [y, m] = mesActual.split('-').map(Number)
+    const mesAnterior = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7)
+    const kpisActual = await fetchKpis(mesActual)
+    const kpisAnterior = await fetchKpis(mesAnterior)
+
+    expect(data.comparativaMensual['KPI-01'].actual).toBe(kpi(kpisActual, 'KPI-01').valor)
+    expect(data.comparativaMensual['KPI-01'].anterior).toBe(kpi(kpisAnterior, 'KPI-01').valor)
+    expect(data.comparativaMensual['KPI-04'].actual).toBe(kpi(kpisActual, 'KPI-04').valor)
+    expect(data.comparativaMensual['KPI-04'].anterior).toBe(kpi(kpisAnterior, 'KPI-04').valor)
+    expect(data.comparativaMensual['KPI-05'].actual).toBe(kpi(kpisActual, 'KPI-05').valor)
+    expect(data.comparativaMensual['KPI-05'].anterior).toBe(kpi(kpisAnterior, 'KPI-05').valor)
+  })
+
+  it('variación >= 2 puntos se clasifica SUBE/BAJA', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2033-03-15T00:00:00Z'))
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    try {
+      // Mes anterior (2033-02): 1 de 2 cerrados en plazo => 50%.
+      const anteriorEnPlazo = makeQe({ id: 'test-tend-ant-1', numero: 'QE-TEND-1', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: '2033-02-01T00:00:00Z', fechaCierre: '2033-02-05T00:00:00Z' })
+      const anteriorFueraPlazo = makeQe({ id: 'test-tend-ant-2', numero: 'QE-TEND-2', estado: 'CERRADO', severidad: 'CRITICA', fechaHoraReporte: '2033-02-01T00:00:00Z', fechaCierre: '2033-02-20T00:00:00Z' })
+      // Mes actual (2033-03): 2 de 2 cerrados en plazo => 100%.
+      const actual1 = makeQe({ id: 'test-tend-act-1', numero: 'QE-TEND-3', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: '2033-03-01T00:00:00Z', fechaCierre: '2033-03-05T00:00:00Z' })
+      const actual2 = makeQe({ id: 'test-tend-act-2', numero: 'QE-TEND-4', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: '2033-03-01T00:00:00Z', fechaCierre: '2033-03-05T00:00:00Z' })
+      qeStore.push(anteriorEnPlazo, anteriorFueraPlazo, actual1, actual2)
+      const data = await altaDireccionData()
+      expect(data.comparativaMensual['KPI-01'].anterior).toBe(50)
+      expect(data.comparativaMensual['KPI-01'].actual).toBe(100)
+      expect(data.comparativaMensual['KPI-01'].tendencia).toBe('SUBE')
+    } finally {
+      qeStore.length = originalLength
+      vi.useRealTimers()
+    }
+  })
+
+  it('variación < 2 puntos se clasifica ESTABLE', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2033-05-15T00:00:00Z'))
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    try {
+      const anterior = makeQe({ id: 'test-tend-estable-ant', numero: 'QE-TEND-5', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: '2033-04-01T00:00:00Z', fechaCierre: '2033-04-05T00:00:00Z' })
+      const actual = makeQe({ id: 'test-tend-estable-act', numero: 'QE-TEND-6', estado: 'CERRADO', severidad: 'BAJA', fechaHoraReporte: '2033-05-01T00:00:00Z', fechaCierre: '2033-05-05T00:00:00Z' })
+      qeStore.push(anterior, actual)
+      const data = await altaDireccionData()
+      expect(data.comparativaMensual['KPI-01'].anterior).toBe(100)
+      expect(data.comparativaMensual['KPI-01'].actual).toBe(100)
+      expect(data.comparativaMensual['KPI-01'].tendencia).toBe('ESTABLE')
+    } finally {
+      qeStore.length = originalLength
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('dashboard.handlers — ALTA_DIRECCION: reaperturas', () => {
+  it('incluye solo QE con ciclo > 1, ordenados por fechaReapertura descendente', async () => {
+    const data = await altaDireccionData()
+    expect(data.reaperturas.every((r) => r.ciclo > 1)).toBe(true)
+    const fechas = data.reaperturas.map((r) => new Date(r.fechaReapertura).getTime())
+    expect(fechas).toEqual([...fechas].sort((a, b) => b - a))
+  })
+
+  it('usa la entrada de auditTrail REABIERTO más reciente cuando hay más de una', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const qe = makeQe({
+      id: 'test-ad-reap-multi',
+      numero: 'QE-TEST-AD-REAP',
+      estado: 'REABIERTO',
+      ciclo: 3,
+      fechaHoraReporte: '2031-01-01T00:00:00Z',
+      auditTrail: [
+        {
+          id: 'aud-reap-1',
+          entidadTipo: 'QualityEvent',
+          entidadId: 'test-ad-reap-multi',
+          accion: 'ESTADO_CAMBIADO',
+          estadoNuevo: 'REABIERTO',
+          timestamp: '2031-02-01T00:00:00Z',
+          realizadoPorId: 'user-test',
+          realizadoPorNombre: 'Usuario Test',
+          generadoPorIA: false,
+        },
+        {
+          id: 'aud-reap-2',
+          entidadTipo: 'QualityEvent',
+          entidadId: 'test-ad-reap-multi',
+          accion: 'ESTADO_CAMBIADO',
+          estadoNuevo: 'REABIERTO',
+          timestamp: '2031-05-01T00:00:00Z',
+          realizadoPorId: 'user-test',
+          realizadoPorNombre: 'Usuario Test',
+          generadoPorIA: false,
+        },
+      ],
+    })
+    try {
+      qeStore.push(qe)
+      const data = await altaDireccionData()
+      const entry = data.reaperturas.find((r) => r.id === 'test-ad-reap-multi')
+      expect(entry?.fechaReapertura).toBe('2031-05-01T00:00:00Z')
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('QE con ciclo 1 no aparece', async () => {
+    const data = await altaDireccionData()
+    expect(data.reaperturas.some((r) => r.ciclo === 1)).toBe(false)
+  })
+})
+
+describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', () => {
+  it('solo incluye ACs con solicitud PENDIENTE de QE severidad ALTA/CRITICA', async () => {
+    const data = await altaDireccionData()
+    expect(data.acsConSolicitudAjustePlazo.length).toBeGreaterThanOrEqual(2)
+    expect(data.acsConSolicitudAjustePlazo.every((ac) => ac.qeSeveridad === 'ALTA' || ac.qeSeveridad === 'CRITICA')).toBe(true)
+    expect(data.acsConSolicitudAjustePlazo.every((ac) => ac.solicitudAjustePlazo.estado === 'PENDIENTE')).toBe(true)
+  })
+
+  it('excluye AC con solicitud PENDIENTE de un QE severidad MEDIA/BAJA', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const qe = makeQe({
+      id: 'test-ad-ac-media',
+      numero: 'QE-TEST-AD-ACMEDIA',
+      severidad: 'MEDIA',
+      accionesCorrectivas: [
+        {
+          id: 'test-ac-media-pendiente',
+          qeId: 'test-ad-ac-media',
+          descripcion: 'AC de prueba',
+          responsableId: 'user-test',
+          responsableNombre: 'Usuario Test',
+          plazoFecha: '2031-01-05T00:00:00Z',
+          estado: 'PENDIENTE',
+          creadoEn: '2031-01-01T00:00:00Z',
+          actualizadoEn: '2031-01-01T00:00:00Z',
+          solicitudAjustePlazo: {
+            fechaSolicitada: '2031-02-01',
+            justificacion: 'Justificación de prueba',
+            estado: 'PENDIENTE',
+            solicitadoPorId: 'user-test',
+            solicitadoEn: '2031-01-10T00:00:00Z',
+          },
+        },
+      ],
+    })
+    try {
+      qeStore.push(qe)
+      const data = await altaDireccionData()
+      expect(data.acsConSolicitudAjustePlazo.map((ac) => ac.acId)).not.toContain('test-ac-media-pendiente')
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('excluye AC con solicitud APROBADA/RECHAZADA aunque el QE sea ALTA/CRITICA', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const qe = makeQe({
+      id: 'test-ad-ac-aprobada',
+      numero: 'QE-TEST-AD-ACAPROBADA',
+      severidad: 'ALTA',
+      accionesCorrectivas: [
+        {
+          id: 'test-ac-aprobada',
+          qeId: 'test-ad-ac-aprobada',
+          descripcion: 'AC de prueba',
+          responsableId: 'user-test',
+          responsableNombre: 'Usuario Test',
+          plazoFecha: '2031-01-05T00:00:00Z',
+          estado: 'EN_EJECUCION',
+          creadoEn: '2031-01-01T00:00:00Z',
+          actualizadoEn: '2031-01-01T00:00:00Z',
+          solicitudAjustePlazo: {
+            fechaSolicitada: '2031-02-01',
+            justificacion: 'Justificación de prueba',
+            estado: 'APROBADA',
+            solicitadoPorId: 'user-test',
+            solicitadoEn: '2031-01-10T00:00:00Z',
+          },
+        },
+      ],
+    })
+    try {
+      qeStore.push(qe)
+      const data = await altaDireccionData()
+      expect(data.acsConSolicitudAjustePlazo.map((ac) => ac.acId)).not.toContain('test-ac-aprobada')
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+})
+
+async function auditorData() {
+  const { data } = await call(api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('auditor@shac.pe')))
+  if (data.rol !== 'AUDITOR') throw new Error('esperaba rol AUDITOR')
+  return data.data
+}
+
+describe('dashboard.handlers — AUDITOR: hallazgosPorArea / hallazgosPorEstado / evidenciasHallazgos filtran por origen O3', () => {
+  it('un QE de origen distinto de O3 no afecta hallazgosPorArea, hallazgosPorEstado ni evidenciasHallazgos', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await auditorData()
+    const noO3 = makeQe({
+      id: 'test-aud-no-o3',
+      numero: 'QE-TEST-AUD-NOO3',
+      origen: 'O1_INCIDENTE_CAMPO',
+      estado: 'ABIERTO',
+      areaAfectada: 'Área Inexistente Test',
+      documentosVinculados: ['doc-001'],
+    })
+    try {
+      qeStore.push(noO3)
+      const data = await auditorData()
+      expect(data.hallazgosPorArea).toEqual(baseline.hallazgosPorArea)
+      expect(data.hallazgosPorEstado).toEqual(baseline.hallazgosPorEstado)
+      expect(data.evidenciasHallazgos).toEqual(baseline.evidenciasHallazgos)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('hallazgosPorEstado no tiene claves ausentes: un estado sin hallazgos O3 muestra 0', async () => {
+    const data = await auditorData()
+    expect(Object.keys(data.hallazgosPorEstado).sort()).toEqual(
+      [
+        'ABIERTO',
+        'ANALISIS_COMPLETADO',
+        'CERRADO',
+        'EN_EJECUCION',
+        'EN_INVESTIGACION',
+        'EN_VERIFICACION',
+        'PENDIENTE_CIERRE',
+        'REABIERTO',
+        'VERIFICADO',
+      ].sort(),
+    )
+    for (const total of Object.values(data.hallazgosPorEstado)) {
+      expect(typeof total).toBe('number')
+    }
+  })
+
+  it('evidenciasHallazgos usa documentosVinculados, no evidenciaUrl de las ACs', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const baseline = await auditorData()
+    const sinEvidenciaConACEvidenciada = makeQe({
+      id: 'test-aud-ac-evidencia',
+      numero: 'QE-TEST-AUD-ACEV',
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      documentosVinculados: [],
+      accionesCorrectivas: [
+        {
+          id: 'test-aud-ac-ev',
+          qeId: 'test-aud-ac-evidencia',
+          descripcion: 'AC de prueba',
+          responsableId: 'user-test',
+          responsableNombre: 'Usuario Test',
+          plazoFecha: '2031-01-05T00:00:00Z',
+          estado: 'CERRADA',
+          creadoEn: '2031-01-01T00:00:00Z',
+          actualizadoEn: '2031-01-01T00:00:00Z',
+          evidenciaUrl: 'https://example.com/evidencia.pdf',
+        },
+      ],
+    })
+    try {
+      qeStore.push(sinEvidenciaConACEvidenciada)
+      const data = await auditorData()
+      expect(data.evidenciasHallazgos.sinEvidencia).toBe(baseline.evidenciasHallazgos.sinEvidencia + 1)
+      expect(data.evidenciasHallazgos.conEvidencia).toBe(baseline.evidenciasHallazgos.conEvidencia)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+})
+
+describe('dashboard.handlers — AUDITOR: tasaCierreEnPlazoPorArea', () => {
+  it('no filtra por origen: un QE cerrado en el período de origen distinto de O3 sí se considera', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const reciente = new Date().toISOString()
+    const qe = makeQe({
+      id: 'test-aud-tasa-no-o3',
+      numero: 'QE-TEST-AUD-TASA',
+      origen: 'O2_NC_DETECTADA',
+      estado: 'CERRADO',
+      severidad: 'BAJA',
+      areaAfectada: 'Área Test Tasa Cierre',
+      fechaHoraReporte: reciente,
+      fechaCierre: reciente,
+    })
+    try {
+      qeStore.push(qe)
+      const data = await auditorData()
+      const entry = data.tasaCierreEnPlazoPorArea.find((e) => e.area === 'Área Test Tasa Cierre')
+      expect(entry).toBeDefined()
+      expect(entry?.tasaCierreEnPlazo).toBe(100)
+      expect(entry?.totalCerrados).toBe(1)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('un área sin ningún QE cerrado en el período actual no aparece (no se fuerza 0/0)', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const reciente = new Date().toISOString()
+    const qe = makeQe({
+      id: 'test-aud-tasa-sin-cerrados',
+      numero: 'QE-TEST-AUD-TASASC',
+      estado: 'ABIERTO',
+      areaAfectada: 'Área Test Sin Cerrados',
+      fechaHoraReporte: reciente,
+    })
+    try {
+      qeStore.push(qe)
+      const data = await auditorData()
+      expect(data.tasaCierreEnPlazoPorArea.some((e) => e.area === 'Área Test Sin Cerrados')).toBe(false)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  it('el arreglo está ordenado ascendentemente por tasaCierreEnPlazo', async () => {
+    const data = await auditorData()
+    const tasas = data.tasaCierreEnPlazoPorArea.map((e) => e.tasaCierreEnPlazo)
+    expect(tasas).toEqual([...tasas].sort((a, b) => a - b))
   })
 })

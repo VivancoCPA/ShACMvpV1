@@ -12,7 +12,7 @@ afterEach(() => {
   useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
 })
 
-function loginAs(rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'JEFE_CONTROL_DOCUMENTARIO' | 'AUDITOR_INTERNO') {
+function loginAs(rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'JEFE_CONTROL_DOCUMENTARIO' | 'AUDITOR_INTERNO' | 'ALTA_DIRECCION') {
   useAuthStore.setState({
     user: {
       id: 'user-1',
@@ -62,19 +62,24 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
   })
 
-  it('renders JefeCalidadDashboard for rol JEFE_CONTROL_DOCUMENTARIO', () => {
+  it('renders JefeControlDocumentarioDashboard for rol JEFE_CONTROL_DOCUMENTARIO', () => {
     loginAs('JEFE_CONTROL_DOCUMENTARIO')
     renderPage()
-    expect(screen.getByText(i18n.t('dashboard:jefeCalidad.title'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('dashboard:jefeControlDoc.title'))).toBeInTheDocument()
     expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
   })
 
-  it('renders ComingSoon for any other rol (e.g. AUDITOR_INTERNO)', () => {
+  it('renders AltaDireccionDashboard for rol ALTA_DIRECCION', () => {
+    loginAs('ALTA_DIRECCION')
+    renderPage()
+    expect(screen.getByText(i18n.t('dashboard:altaDireccion.title'))).toBeInTheDocument()
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
+  })
+
+  it('renders AuditorDashboard for rol AUDITOR_INTERNO', () => {
     loginAs('AUDITOR_INTERNO')
     renderPage()
-    expect(screen.getByText('Próximamente')).toBeInTheDocument()
-    expect(screen.queryByText(i18n.t('dashboard:operario.title'))).not.toBeInTheDocument()
-    expect(screen.queryByText(i18n.t('dashboard:supervisor.title'))).not.toBeInTheDocument()
-    expect(screen.queryByText(i18n.t('dashboard:jefeCalidad.title'))).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('dashboard:auditor.title'))).toBeInTheDocument()
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
   })
 })

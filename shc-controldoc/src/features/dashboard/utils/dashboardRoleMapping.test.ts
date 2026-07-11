@@ -14,8 +14,8 @@ describe('getDashboardDataTypeForRole', () => {
     expect(getDashboardDataTypeForRole('JEFE_CALIDAD_SYST')).toBe('JEFE_CALIDAD')
   })
 
-  it('maps JEFE_CONTROL_DOCUMENTARIO to JEFE_CALIDAD (reutiliza JefeCalidadDashboardData)', () => {
-    expect(getDashboardDataTypeForRole('JEFE_CONTROL_DOCUMENTARIO')).toBe('JEFE_CALIDAD')
+  it('maps JEFE_CONTROL_DOCUMENTARIO to its own JEFE_CONTROL_DOC dashboard', () => {
+    expect(getDashboardDataTypeForRole('JEFE_CONTROL_DOCUMENTARIO')).toBe('JEFE_CONTROL_DOC')
   })
 
   it('maps AUDITOR_INTERNO to AUDITOR', () => {

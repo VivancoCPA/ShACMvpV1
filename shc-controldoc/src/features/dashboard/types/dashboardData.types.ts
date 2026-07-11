@@ -6,6 +6,8 @@ import type {
   NCResumen,
   DocumentoResumen,
   AccionCorrectivaResumen,
+  QEReaperturaResumen,
+  ACSolicitudAjustePlazoResumen,
 } from './dashboardSummary.types'
 
 export interface OperarioDashboardData {
@@ -54,18 +56,26 @@ export interface AltaDireccionDashboardData {
     documentos: { total: number; publicados: number; vencidosRevision: number }
     noConformidades: { total: number; abiertas: number; cerradas: number }
     incidentes: { total: number; conLesionados: number }
-    qualityEvents: { total: number; criticosAbiertos: number }
+    qualityEvents: { total: number; criticosAbiertos: number; abiertos: number; vencidos: number }
   }
   alertasCriticas: QEResumen[]
   tendenciaTrimestral: { periodo: string; qeCerrados: number; ncCerradas: number }[]
+  comparativaMensual: Record<
+    'KPI-01' | 'KPI-04' | 'KPI-05',
+    { actual: number; anterior: number; tendencia: 'SUBE' | 'BAJA' | 'ESTABLE' }
+  >
+  reaperturas: QEReaperturaResumen[]
+  acsConSolicitudAjustePlazo: ACSolicitudAjustePlazoResumen[]
 }
 
 export interface AuditorDashboardData {
-  hallazgosAuditoriaAbiertos: QEResumen[]
-  ncPorOrigenAuditoria: NCResumen[]
-  kpisCumplimiento: KpiResult[]
-  documentosProximaRevision: DocumentoResumen[]
+  hallazgosPorArea: { area: string; total: number }[]
+  hallazgosPorEstado: Record<QEStatus, number>
+  evidenciasHallazgos: { conEvidencia: number; sinEvidencia: number }
+  tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
 }
+
+export type JefeControlDocDashboardData = Record<string, never>
 
 export type DashboardSummaryData =
   | { rol: 'OPERARIO'; data: OperarioDashboardData }
@@ -73,3 +83,4 @@ export type DashboardSummaryData =
   | { rol: 'JEFE_CALIDAD'; data: JefeCalidadDashboardData }
   | { rol: 'ALTA_DIRECCION'; data: AltaDireccionDashboardData }
   | { rol: 'AUDITOR'; data: AuditorDashboardData }
+  | { rol: 'JEFE_CONTROL_DOC'; data: JefeControlDocDashboardData }

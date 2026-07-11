@@ -760,6 +760,10 @@
           "fechaVerificacionRealizada": "Verification date"
         },
         "forzarVencimiento": "Force deadline (dev)",
+        "auditorAsignado": {
+          "label": "Assigned auditor",
+          "placeholder": "Select an auditor…"
+        },
         "toasts": {
           "forzadoAVerificacion": "Deadline forced: the QE moved to EN_VERIFICACION.",
           "verificado": "Verification recorded: the Quality Event has been VERIFIED.",
@@ -1400,6 +1404,27 @@
     "deletedBadge": "Deleted"
   },
   "dashboard": {
+    "accionesRequeridas": {
+      "title": "Requires your attention",
+      "empty": "You have no pending actions right now",
+      "verTodos": "View all ({{count}})",
+      "verMenos": "View less",
+      "dominio": {
+        "QE": "Quality Events",
+        "AC": "Corrective actions",
+        "DOCUMENTO": "Documents"
+      },
+      "tipo": {
+        "QE_CAUSA_RAIZ": "Define root cause",
+        "QE_CERRAR": "Close Quality Event",
+        "QE_FIRMAR_CIERRE": "Sign closure",
+        "QE_VERIFICAR": "Verify effectiveness",
+        "AC_EJECUTAR": "Execute corrective action",
+        "DOC_REVISAR": "Review document",
+        "DOC_APROBAR": "Approve document",
+        "DOC_REVISION_PERIODICA": "Periodic review"
+      }
+    },
     "semaforo": {
       "venceEn": "Due in {{dias}}d",
       "venceHoy": "Due today",
@@ -1499,6 +1524,78 @@
           "kpi05": "KPI-05 · Corrective action effectiveness rate"
         }
       }
+    },
+    "altaDireccion": {
+      "title": "Executive Dashboard",
+      "kpisEjecutivos": {
+        "title": "Executive indicators",
+        "qesAbiertos": "Open Quality Events",
+        "qesVencidos": "Overdue Quality Events"
+      },
+      "comparativaMensual": {
+        "title": "Comparison vs. previous month",
+        "mesAnterior": "Previous month: {{valor}}",
+        "tendencia": {
+          "SUBE": "Trending up",
+          "BAJA": "Trending down",
+          "ESTABLE": "Stable"
+        }
+      },
+      "qesCriticos": {
+        "title": "Active critical Quality Events",
+        "empty": "No active critical Quality Events"
+      },
+      "reaperturas": {
+        "title": "Reopening alerts",
+        "empty": "No reopened Quality Events",
+        "ciclo": "Cycle {{ciclo}}"
+      },
+      "acsExtensionPlazo": {
+        "title": "Corrective actions with a pending deadline extension request",
+        "empty": "No pending deadline extension requests",
+        "fechaSolicitada": "Requested new date: {{fecha}}"
+      }
+    },
+    "jefeControlDoc": {
+      "title": "Document Control Dashboard"
+    },
+    "auditor": {
+      "title": "Audit Dashboard",
+      "hallazgosPorArea": {
+        "title": "Findings by area",
+        "empty": "No audit findings recorded"
+      },
+      "hallazgosPorEstado": {
+        "title": "Findings by status"
+      },
+      "evidenciasHallazgos": {
+        "title": "Available evidence",
+        "conEvidencia": "With documented evidence",
+        "sinEvidencia": "Without documented evidence"
+      },
+      "tasaCierrePorArea": {
+        "title": "On-time closure rate by area",
+        "empty": "No Quality Events closed in the current period",
+        "porcentaje": "{{valor}}% on time",
+        "totalCerrados_one": "{{count}} closed",
+        "totalCerrados_other": "{{count}} closed"
+      }
+    },
+    "heatmapIncidentes": {
+      "title": "Incidents heatmap",
+      "localSelector": {
+        "label": "Location"
+      },
+      "rango": {
+        "label": "Map period",
+        "opciones": {
+          "3": "3 months",
+          "6": "6 months",
+          "12": "12 months"
+        }
+      },
+      "sinUbicacion_one": "{{count}} incident without a registered location in this period",
+      "sinUbicacion_other": "{{count}} incidents without a registered location in this period"
     }
   },
   "locations": {

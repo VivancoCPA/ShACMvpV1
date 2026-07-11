@@ -95,6 +95,23 @@ All fixtures with `estado === 'EN_VERIFICACION'` SHALL have `fechaVerificacionPr
 
 ---
 
+### Requirement: EN_VERIFICACION fixtures include auditorAsignadoId
+All fixtures with `estado === 'EN_VERIFICACION'` SHALL have `auditorAsignadoId` set to the id of a user fixture with `rol === 'AUDITOR_INTERNO'`, so that the `AUDITOR_INTERNO` role has at least one QE actionable in `dashboard-acciones-requeridas` and in `quality-event-verificacion`'s REG-EFEC-001 form during development. Fixtures that never reached `EN_VERIFICACION` (i.e. never `CERRADO` or beyond) SHALL leave `auditorAsignadoId` absent.
+
+#### Scenario: EN_VERIFICACION fixtures have auditorAsignadoId
+- **WHEN** `qualityEventFixtures` is filtered by `f => f.estado === 'EN_VERIFICACION'`
+- **THEN** every resulting fixture has a non-empty `auditorAsignadoId` matching an existing `AUDITOR_INTERNO` user fixture
+
+#### Scenario: At least one AUDITOR_INTERNO fixture user has an assigned QE
+- **WHEN** `userFixtures` is filtered to `rol === 'AUDITOR_INTERNO'` and cross-referenced against `qualityEventFixtures`
+- **THEN** at least one such user id appears as `auditorAsignadoId` on at least one `EN_VERIFICACION` fixture
+
+#### Scenario: Fixtures that never reached EN_VERIFICACION leave auditorAsignadoId unset
+- **WHEN** `qualityEventFixtures` is filtered by `f => ['ABIERTO', 'EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION', 'PENDIENTE_CIERRE'].includes(f.estado)`
+- **THEN** none of the resulting fixtures have `auditorAsignadoId` set
+
+---
+
 ### Requirement: AuditTrail and consistent date fields
 Each fixture SHALL include at least one `AuditTrailEntry` in `auditTrail`. `fechaReporte` SHALL be a valid ISO 8601 string on or after `fechaHoraEvento`. `creadoEn` and `actualizadoEn` SHALL be valid ISO 8601 strings.
 
@@ -140,3 +157,28 @@ Each of the 20 `qualityEventFixtures` SHALL have `auditTrail.length >= 4`, cover
 #### Scenario: Every fixture has at least 4 audit entries
 - **WHEN** each fixture in `qualityEventFixtures` is inspected
 - **THEN** `auditTrail.length >= 4` for all 20 fixtures
+
+---
+
+### Requirement: Closure and verification data anchored to the current KPI period
+A representative subset of `qualityEventFixtures` in `CERRADO` or `VERIFICADO` state SHALL carry `fechaCierre`, `ciclo`, `auditTrail` `ANALISIS_COMPLETADO` entries, and `resultadoVerificacion`/`fechaVerificacionRealizada` values anchored to the reference "current period" date 2026-07-01 (matching the reference date used elsewhere in this spec), so that the period-scoped dashboard KPI formulas (Tasa de cierre en plazo, Tiempo promedio de cierre, Tasa de reincidencia, Tasa de eficacia de ACs, Tiempo promedio de investigación) produce non-zero results from the static fixture set without any change to the calculation code.
+
+#### Scenario: At least one CERRADO/VERIFICADO fixture closes in-plazo within the current month
+- **WHEN** `qualityEventFixtures` is filtered to `estado ∈ {CERRADO, VERIFICADO}` with `fechaCierre` in 2026-07
+- **THEN** at least one result has business days from `fechaHoraReporte` to `fechaCierre` at or under its severity's plazo (BAJA=22, MEDIA=17, ALTA=14, CRITICA=10 días hábiles)
+
+#### Scenario: At least one CERRADO/VERIFICADO fixture closes out-of-plazo within the current month
+- **WHEN** `qualityEventFixtures` is filtered to `estado ∈ {CERRADO, VERIFICADO}` with `fechaCierre` in 2026-07
+- **THEN** at least one result has business days from `fechaHoraReporte` to `fechaCierre` over its severity's plazo
+
+#### Scenario: At least one CERRADO/VERIFICADO fixture closing in-period has ciclo > 1
+- **WHEN** `qualityEventFixtures` is filtered to `estado ∈ {CERRADO, VERIFICADO}` with `fechaCierre` in the 2026-Q3 quarter
+- **THEN** at least one result has `ciclo > 1`
+
+#### Scenario: At least one fixture has an ANALISIS_COMPLETADO audit entry timestamped in the current month
+- **WHEN** each fixture's `auditTrail` is scanned for entries with `accion === 'ESTADO_CAMBIADO' && estadoNuevo === 'ANALISIS_COMPLETADO'`
+- **THEN** at least one such entry across all fixtures has a `timestamp` in 2026-07, and that entry's `timestamp` is on or after the owning fixture's `fechaHoraReporte`
+
+#### Scenario: At least one verified AccionCorrectiva is EFECTIVO and at least one is NO_EFECTIVO within the current month
+- **WHEN** `qeAccionesCorrectivas` entries with `estado === 'CERRADA'` are joined to their owning fixture's `resultadoVerificacion` and `fechaVerificacionRealizada`
+- **THEN** among entries whose owning fixture's `fechaVerificacionRealizada` falls in 2026-07, at least one owning fixture has `resultadoVerificacion === 'EFECTIVO'` and at least one has `resultadoVerificacion === 'NO_EFECTIVO'`

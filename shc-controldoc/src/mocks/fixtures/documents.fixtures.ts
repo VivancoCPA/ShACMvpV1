@@ -1341,7 +1341,7 @@ export const documentFixtures: Documento[] = [
 
   // 17 — PRC / EN_REVISION_PERIODICA — pendiente para JEFE_CALIDAD y JEFE_CONTROL_DOCUMENTARIO
   {
-    id: 'doc-017',
+    id: 'doc-020',
     codigo: 'PRC-CD-002',
     titulo: 'Procedimiento de Gestión de Cambios en Instalaciones',
     tipo: 'PRC',
@@ -1356,10 +1356,10 @@ export const documentFixtures: Documento[] = [
     fechaEmision: '2024-03-01T08:00:00.000Z',
     fechaVigencia: '2025-03-01T08:00:00.000Z',
     fechaRevisionProxima: '2025-09-01T00:00:00.000Z',
-    archivoOriginalUrl: '/mock/originales/doc-017-rev/PRC-CD-002-v2.0.docx',
+    archivoOriginalUrl: '/mock/originales/doc-020-rev/PRC-CD-002-v2.0.docx',
     archivoOriginalNombre: 'PRC-CD-002-v2.0.docx',
     archivoOriginalBloqueado: true,
-    archivoDistribucionUrl: '/mock/distribuciones/doc-017-rev/PRC-CD-002-v2.0.pdf',
+    archivoDistribucionUrl: '/mock/distribuciones/doc-020-rev/PRC-CD-002-v2.0.pdf',
     qeVinculados: [],
     historialVersiones: [
       {
@@ -1377,9 +1377,9 @@ export const documentFixtures: Documento[] = [
     ],
     auditTrail: [
       {
-        id: 'audit-017-a',
+        id: 'audit-020-a',
         entidadTipo: 'Documento',
-        entidadId: 'doc-017',
+        entidadId: 'doc-020',
         accion: 'DOCUMENTO_CREADO',
         realizadoPorId: AUTOR_ID,
         realizadoPorNombre: 'Carlos Autor',
@@ -1387,9 +1387,9 @@ export const documentFixtures: Documento[] = [
         generadoPorIA: false,
       },
       {
-        id: 'audit-017-b',
+        id: 'audit-020-b',
         entidadTipo: 'Documento',
-        entidadId: 'doc-017',
+        entidadId: 'doc-020',
         accion: 'FIRMA_REGISTRADA',
         estadoAnterior: 'EN_APROBACION',
         estadoNuevo: 'PUBLICADO',
@@ -1399,9 +1399,9 @@ export const documentFixtures: Documento[] = [
         generadoPorIA: false,
       },
       {
-        id: 'audit-017-c',
+        id: 'audit-020-c',
         entidadTipo: 'Documento',
-        entidadId: 'doc-017',
+        entidadId: 'doc-020',
         accion: 'ESTADO_CAMBIADO',
         estadoAnterior: 'PUBLICADO',
         estadoNuevo: 'EN_REVISION_PERIODICA',
@@ -1417,7 +1417,7 @@ export const documentFixtures: Documento[] = [
 
   // 18 — INS / EN_APROBACION — 2.º documento pendiente para aprobador (Sofía Vargas)
   {
-    id: 'doc-018',
+    id: 'doc-019',
     codigo: 'INS-CD-002',
     titulo: 'Instrucción de Trabajo: Despacho de Mineral a Granel',
     tipo: 'INS',
@@ -1429,7 +1429,7 @@ export const documentFixtures: Documento[] = [
     autorId: AUTOR_ID,
     revisorId: REVISOR_ID,
     aprobadorId: APROBADOR_ID,
-    archivoOriginalUrl: '/mock/originales/doc-018-apr/INS-CD-002-v1.0.docx',
+    archivoOriginalUrl: '/mock/originales/doc-019-apr/INS-CD-002-v1.0.docx',
     archivoOriginalNombre: 'INS-CD-002-v1.0.docx',
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
@@ -1437,9 +1437,9 @@ export const documentFixtures: Documento[] = [
     historialVersiones: [],
     auditTrail: [
       {
-        id: 'audit-018-a',
+        id: 'audit-019-a',
         entidadTipo: 'Documento',
-        entidadId: 'doc-018',
+        entidadId: 'doc-019',
         accion: 'DOCUMENTO_CREADO',
         realizadoPorId: AUTOR_ID,
         realizadoPorNombre: 'Carlos Autor',
@@ -1447,9 +1447,9 @@ export const documentFixtures: Documento[] = [
         generadoPorIA: false,
       },
       {
-        id: 'audit-018-b',
+        id: 'audit-019-b',
         entidadTipo: 'Documento',
-        entidadId: 'doc-018',
+        entidadId: 'doc-019',
         accion: 'ESTADO_CAMBIADO',
         estadoAnterior: 'BORRADOR',
         estadoNuevo: 'EN_REVISION',
@@ -1459,9 +1459,9 @@ export const documentFixtures: Documento[] = [
         generadoPorIA: false,
       },
       {
-        id: 'audit-018-c',
+        id: 'audit-019-c',
         entidadTipo: 'Documento',
-        entidadId: 'doc-018',
+        entidadId: 'doc-019',
         accion: 'ESTADO_CAMBIADO',
         estadoAnterior: 'EN_REVISION',
         estadoNuevo: 'EN_APROBACION',

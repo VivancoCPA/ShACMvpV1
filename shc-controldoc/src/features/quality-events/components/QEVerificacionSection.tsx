@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuthStore } from '../../../stores/authStore'
+import { useUsers } from '../../nonconformities/hooks/useUsers'
 import { useForzarVencimientoVerificacion } from '../hooks/useForzarVencimientoVerificacion'
 import { useVerificacionEficacia } from '../hooks/useVerificacionEficacia'
 import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
@@ -18,8 +20,10 @@ interface QEVerificacionSectionProps {
 export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
   const user = useAuthStore((s) => s.user)
+  const { data: users = [] } = useUsers()
   const forzarVencimiento = useForzarVencimientoVerificacion()
   const verificacionEficacia = useVerificacionEficacia()
+  const [auditorAsignadoId, setAuditorAsignadoId] = useState('')
 
   const {
     register,
@@ -33,10 +37,14 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
 
   if (!VISIBLE_STATES.includes(qe.estado)) return null
 
-  const permissions = user ? getQualityEventPermissions(qe.estado, user.rol, false) : null
+  const permissions = user
+    ? getQualityEventPermissions(qe.estado, user.rol, user.id === qe.auditorAsignadoId)
+    : null
 
+  const auditores = users.filter((u) => u.rol === 'AUDITOR_INTERNO')
   const showForzarVencimiento =
     import.meta.env.DEV && (qe.estado === 'CERRADO' || qe.estado === 'EN_VERIFICACION')
+  const showAuditorSelect = showForzarVencimiento && qe.estado === 'CERRADO'
   const showForm = qe.estado === 'EN_VERIFICACION' && !!permissions?.puedeVerificar
   const showSummary = qe.estado === 'VERIFICADO'
 
@@ -47,7 +55,7 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
 
   const onForzarVencimiento = () => {
     forzarVencimiento.mutate(
-      { id: qe.id },
+      { id: qe.id, auditorAsignadoId: qe.estado === 'CERRADO' ? auditorAsignadoId : undefined },
       {
         onSuccess: (updated) => {
           if (updated.estado === 'EN_VERIFICACION') {
@@ -163,14 +171,36 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
       )}
 
       {showForzarVencimiento && (
-        <button
-          type="button"
-          onClick={onForzarVencimiento}
-          disabled={forzarVencimiento.isPending}
-          className="rounded-md border border-hairline bg-canvas px-4 py-2 text-xs font-medium text-muted hover:bg-surface-soft disabled:opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft dark:hover:bg-surface-dark-soft"
-        >
-          {t('detail.verificacion.forzarVencimiento')}
-        </button>
+        <div className="flex flex-wrap items-end gap-2.5">
+          {showAuditorSelect && (
+            <div>
+              <label htmlFor="qe-verificacion-auditorAsignado" className={labelClass}>
+                {t('detail.verificacion.auditorAsignado.label')}
+              </label>
+              <select
+                id="qe-verificacion-auditorAsignado"
+                className={inputClass}
+                value={auditorAsignadoId}
+                onChange={(e) => setAuditorAsignadoId(e.target.value)}
+              >
+                <option value="">{t('detail.verificacion.auditorAsignado.placeholder')}</option>
+                {auditores.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre} {u.apellido}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onForzarVencimiento}
+            disabled={forzarVencimiento.isPending || (showAuditorSelect && !auditorAsignadoId)}
+            className="rounded-md border border-hairline bg-canvas px-4 py-2 text-xs font-medium text-muted hover:bg-surface-soft disabled:opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft dark:hover:bg-surface-dark-soft"
+          >
+            {t('detail.verificacion.forzarVencimiento')}
+          </button>
+        </div>
       )}
     </section>
   )

@@ -8,7 +8,11 @@ import { horasTrabajadasFixtures } from '../fixtures/horasTrabajadas.fixtures'
 import { kpi04AnioAnteriorFixtures } from '../fixtures/kpi04AnioAnterior.fixtures'
 import { authFixtures } from '../fixtures/auth.fixtures'
 import type { MockUser } from '../fixtures/auth.fixtures'
-import { KPI_DEFINITIONS, PLAZO_MAXIMO_QE_DIAS_HABILES } from '../../features/dashboard/constants/kpi.constants'
+import {
+  KPI_DEFINITIONS,
+  PLAZO_MAXIMO_QE_DIAS_HABILES,
+  plazoMaximoQEPorEstado,
+} from '../../features/dashboard/constants/kpi.constants'
 import { getDashboardDataTypeForRole } from '../../features/dashboard/utils/dashboardRoleMapping'
 import { contarDiasHabiles } from '../../utils/businessDays'
 import type { KpiId, KpiResult } from '../../features/dashboard/types/kpi.types'
@@ -18,6 +22,7 @@ import type {
   JefeCalidadDashboardData,
   AltaDireccionDashboardData,
   AuditorDashboardData,
+  JefeControlDocDashboardData,
   DashboardSummaryData,
 } from '../../features/dashboard/types/dashboardData.types'
 import type {
@@ -26,6 +31,8 @@ import type {
   NCResumen,
   DocumentoResumen,
   AccionCorrectivaResumen,
+  QEReaperturaResumen,
+  ACSolicitudAjustePlazoResumen,
 } from '../../features/dashboard/types/dashboardSummary.types'
 import type { QualityEvent, QEStatus, QEType } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
@@ -255,10 +262,21 @@ function calcularKpi06(docs: Documento[]): number {
   return pct(vigentes.length, publicados.length)
 }
 
-function fechaAnalisisCompletado(qe: QualityEvent): string | undefined {
-  const entradas = qe.auditTrail.filter((e) => e.accion === 'ESTADO_CAMBIADO' && e.estadoNuevo === 'ANALISIS_COMPLETADO')
+function fechaEntradaEstado(qe: QualityEvent, estado: QEStatus): string | undefined {
+  const entradas = qe.auditTrail.filter((e) => e.accion === 'ESTADO_CAMBIADO' && e.estadoNuevo === estado)
   if (entradas.length === 0) return undefined
   return entradas.reduce((masReciente, e) => (e.timestamp > masReciente ? e.timestamp : masReciente), entradas[0].timestamp)
+}
+
+function fechaAnalisisCompletado(qe: QualityEvent): string | undefined {
+  return fechaEntradaEstado(qe, 'ANALISIS_COMPLETADO')
+}
+
+// Fecha en que el QE entró a su estado ACTUAL (última transición ESTADO_CAMBIADO cuyo
+// estadoNuevo coincide con qe.estado). Si nunca transicionó de ABIERTO, no hay tal entrada
+// y fechaHoraReporte es la fecha correcta de todos modos (es el mismo momento).
+function fechaEntradaEstadoActual(qe: QualityEvent): string {
+  return fechaEntradaEstado(qe, qe.estado) ?? qe.fechaHoraReporte
 }
 
 function calcularKpi07(qes: QualityEvent[], periodo: string): number {
@@ -562,19 +580,14 @@ const ALL_QE_STATUSES: QEStatus[] = [
   'REABIERTO',
 ]
 
-function buildJefeCalidadData(usuario: MockUser): JefeCalidadDashboardData {
+function buildJefeCalidadData(): JefeCalidadDashboardData {
   const qes = getQeStore()
   const ncs = getNonconformitiesStore()
   const incidentes = getIncidentsStore()
-  const esControlDocumentario = usuario.rol === 'JEFE_CONTROL_DOCUMENTARIO'
 
-  // Control Documentario comparte el tipo JefeCalidadDashboardData (ver design.md,
-  // decisión 4) pero no tiene alcance sobre QEs críticos fuera de su dominio.
-  const qeCriticosAbiertos = esControlDocumentario
-    ? []
-    : qes
-        .filter((qe) => qe.severidad === 'CRITICA' && qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
-        .map(toQEResumen)
+  const qeCriticosAbiertos = qes
+    .filter((qe) => qe.severidad === 'CRITICA' && qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
+    .map(toQEResumen)
 
   const ncPendientesVerificacion = ncs
     .filter((nc) => nc.estado === 'CERRADA' && !nc.resultadoVerificacion)
@@ -632,11 +645,73 @@ function buildTendenciaTrimestral(
   })
 }
 
+function clasificarTendencia(actual: number, anterior: number): 'SUBE' | 'BAJA' | 'ESTABLE' {
+  const diff = actual - anterior
+  if (Math.abs(diff) < 2) return 'ESTABLE'
+  return diff > 0 ? 'SUBE' : 'BAJA'
+}
+
+function buildComparativaMensual(
+  qes: QualityEvent[],
+  ncs: NoConformidad[],
+  incidentes: Incidente[],
+): AltaDireccionDashboardData['comparativaMensual'] {
+  const [mesAnterior, mesActual] = ultimosMeses(2)
+
+  function comparar(actual: number, anterior: number) {
+    return { actual, anterior, tendencia: clasificarTendencia(actual, anterior) }
+  }
+
+  return {
+    'KPI-01': comparar(calcularKpi01(qes, mesActual), calcularKpi01(qes, mesAnterior)),
+    'KPI-04': comparar(calcularKpi04(incidentes, mesActual), calcularKpi04(incidentes, mesAnterior)),
+    'KPI-05': comparar(calcularKpi05(qes, ncs, mesActual), calcularKpi05(qes, ncs, mesAnterior)),
+  }
+}
+
+function buildReaperturas(qes: QualityEvent[]): QEReaperturaResumen[] {
+  return qes
+    .filter((qe) => qe.ciclo > 1)
+    .map((qe) => {
+      const reaperturas = qe.auditTrail
+        .filter((e) => e.estadoNuevo === 'REABIERTO')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      const fechaReapertura = reaperturas[0]?.timestamp ?? qe.actualizadoEn
+      return { ...toQEResumen(qe), ciclo: qe.ciclo, fechaReapertura }
+    })
+    .sort((a, b) => new Date(b.fechaReapertura).getTime() - new Date(a.fechaReapertura).getTime())
+}
+
+function buildAcsConSolicitudAjustePlazo(qes: QualityEvent[]): ACSolicitudAjustePlazoResumen[] {
+  return qes
+    .filter((qe) => qe.severidad === 'ALTA' || qe.severidad === 'CRITICA')
+    .flatMap((qe) =>
+      qe.accionesCorrectivas
+        .filter((ac) => ac.solicitudAjustePlazo?.estado === 'PENDIENTE')
+        .map((ac) => ({
+          qeId: qe.id,
+          qeNumero: qe.numero,
+          qeSeveridad: qe.severidad,
+          acId: ac.id,
+          acDescripcion: ac.descripcion,
+          plazoFechaActual: ac.plazoFecha,
+          solicitudAjustePlazo: ac.solicitudAjustePlazo!,
+        })),
+    )
+}
+
 function buildAltaDireccionData(): AltaDireccionDashboardData {
   const qes = getQeStore()
   const docs = getDocumentsStore().filter((d) => !d.deletedAt)
   const ncs = getNonconformitiesStore().filter((nc) => !nc.deletedAt)
   const incidentes = getIncidentsStore().filter((inc) => !inc.deletedAt)
+
+  const qesAbiertos = qes.filter((qe) => qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
+  const qesVencidos = qesAbiertos.filter((qe) => {
+    const plazo = plazoMaximoQEPorEstado(qe.estado, qe.severidad)
+    if (plazo === undefined) return false
+    return contarDiasHabiles(new Date(fechaEntradaEstadoActual(qe)), new Date()) > plazo
+  })
 
   const resumenPorModulo = {
     documentos: {
@@ -660,6 +735,8 @@ function buildAltaDireccionData(): AltaDireccionDashboardData {
       criticosAbiertos: qes.filter(
         (qe) => qe.severidad === 'CRITICA' && qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO',
       ).length,
+      abiertos: qesAbiertos.length,
+      vencidos: qesVencidos.length,
     },
   }
 
@@ -672,32 +749,70 @@ function buildAltaDireccionData(): AltaDireccionDashboardData {
     resumenPorModulo,
     alertasCriticas,
     tendenciaTrimestral: buildTendenciaTrimestral(qes, ncs),
+    comparativaMensual: buildComparativaMensual(qes, ncs, incidentes),
+    reaperturas: buildReaperturas(qes),
+    acsConSolicitudAjustePlazo: buildAcsConSolicitudAjustePlazo(qes),
   }
+}
+
+function buildHallazgosPorArea(hallazgosO3: QualityEvent[]): AuditorDashboardData['hallazgosPorArea'] {
+  const conteos = new Map<string, number>()
+  for (const qe of hallazgosO3) {
+    conteos.set(qe.areaAfectada, (conteos.get(qe.areaAfectada) ?? 0) + 1)
+  }
+  return [...conteos.entries()].map(([area, total]) => ({ area, total })).sort((a, b) => b.total - a.total)
+}
+
+function buildHallazgosPorEstado(hallazgosO3: QualityEvent[]): Record<QEStatus, number> {
+  return hallazgosO3.reduce(
+    (acc, qe) => {
+      acc[qe.estado] += 1
+      return acc
+    },
+    ALL_QE_STATUSES.reduce((acc, estado) => ({ ...acc, [estado]: 0 }), {} as Record<QEStatus, number>),
+  )
+}
+
+function buildEvidenciasHallazgos(hallazgosO3: QualityEvent[]): AuditorDashboardData['evidenciasHallazgos'] {
+  const conEvidencia = hallazgosO3.filter((qe) => qe.documentosVinculados.length > 0).length
+  return { conEvidencia, sinEvidencia: hallazgosO3.length - conEvidencia }
+}
+
+function buildTasaCierreEnPlazoPorArea(qes: QualityEvent[]): AuditorDashboardData['tasaCierreEnPlazoPorArea'] {
+  const { start, end } = monthRange(currentPeriodo())
+  const cerrados = qeCerradosEnPeriodo(qes, start, end)
+
+  const porArea = new Map<string, QualityEvent[]>()
+  for (const qe of cerrados) {
+    const grupo = porArea.get(qe.areaAfectada) ?? []
+    grupo.push(qe)
+    porArea.set(qe.areaAfectada, grupo)
+  }
+
+  return [...porArea.entries()]
+    .map(([area, grupo]) => {
+      const enPlazo = grupo.filter((qe) => {
+        const dias = contarDiasHabiles(new Date(qe.fechaHoraReporte), new Date(qe.fechaCierre!))
+        return dias <= PLAZO_MAXIMO_QE_DIAS_HABILES[qe.severidad]
+      })
+      return { area, tasaCierreEnPlazo: pct(enPlazo.length, grupo.length), totalCerrados: grupo.length }
+    })
+    .sort((a, b) => a.tasaCierreEnPlazo - b.tasaCierreEnPlazo)
+}
+
+function buildJefeControlDocumentarioData(): JefeControlDocDashboardData {
+  return {}
 }
 
 function buildAuditorData(): AuditorDashboardData {
   const qes = getQeStore()
-  const ncs = getNonconformitiesStore()
-  const docs = getDocumentsStore().filter((d) => !d.deletedAt)
-
-  const hallazgosAuditoriaAbiertos = qes
-    .filter((qe) => qe.origen === 'O3_HALLAZGO_AUDITORIA' && qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
-    .map(toQEResumen)
-
-  const ncPorOrigenAuditoria = ncs
-    .filter((nc) => nc.origen === 'AUDITORIA_INTERNA' || nc.origen === 'AUDITORIA_EXTERNA')
-    .map(toNCResumen)
-
-  const en30Dias = Date.now() + 30 * 86_400_000
-  const documentosProximaRevision = docs
-    .filter((d) => !!d.fechaRevisionProxima && new Date(d.fechaRevisionProxima).getTime() <= en30Dias)
-    .map(toDocumentoResumen)
+  const hallazgosO3 = qes.filter((qe) => qe.origen === 'O3_HALLAZGO_AUDITORIA')
 
   return {
-    hallazgosAuditoriaAbiertos,
-    ncPorOrigenAuditoria,
-    kpisCumplimiento: calcularKpis(currentPeriodo()),
-    documentosProximaRevision,
+    hallazgosPorArea: buildHallazgosPorArea(hallazgosO3),
+    hallazgosPorEstado: buildHallazgosPorEstado(hallazgosO3),
+    evidenciasHallazgos: buildEvidenciasHallazgos(hallazgosO3),
+    tasaCierreEnPlazoPorArea: buildTasaCierreEnPlazoPorArea(qes),
   }
 }
 
@@ -711,11 +826,13 @@ function buildDashboardSummary(usuario: MockUser): DashboardSummaryData | undefi
     case 'SUPERVISOR':
       return { rol, data: buildSupervisorData(usuario) }
     case 'JEFE_CALIDAD':
-      return { rol, data: buildJefeCalidadData(usuario) }
+      return { rol, data: buildJefeCalidadData() }
     case 'ALTA_DIRECCION':
       return { rol, data: buildAltaDireccionData() }
     case 'AUDITOR':
       return { rol, data: buildAuditorData() }
+    case 'JEFE_CONTROL_DOC':
+      return { rol, data: buildJefeControlDocumentarioData() }
   }
 }
 

@@ -760,6 +760,10 @@
           "fechaVerificacionRealizada": "Fecha de verificación"
         },
         "forzarVencimiento": "Forzar vencimiento (dev)",
+        "auditorAsignado": {
+          "label": "Auditor asignado",
+          "placeholder": "Selecciona un auditor…"
+        },
         "toasts": {
           "forzadoAVerificacion": "Se forzó el vencimiento: el QE pasó a EN_VERIFICACION.",
           "verificado": "Verificación registrada: el Quality Event ha sido VERIFICADO.",
@@ -1400,6 +1404,27 @@
     "deletedBadge": "Eliminado"
   },
   "dashboard": {
+    "accionesRequeridas": {
+      "title": "Requiere tu atención",
+      "empty": "No tienes acciones pendientes por ahora",
+      "verTodos": "Ver todos ({{count}})",
+      "verMenos": "Ver menos",
+      "dominio": {
+        "QE": "Quality Events",
+        "AC": "Acciones correctivas",
+        "DOCUMENTO": "Documentos"
+      },
+      "tipo": {
+        "QE_CAUSA_RAIZ": "Definir causa raíz",
+        "QE_CERRAR": "Cerrar Quality Event",
+        "QE_FIRMAR_CIERRE": "Firmar cierre",
+        "QE_VERIFICAR": "Verificar eficacia",
+        "AC_EJECUTAR": "Ejecutar acción correctiva",
+        "DOC_REVISAR": "Revisar documento",
+        "DOC_APROBAR": "Aprobar documento",
+        "DOC_REVISION_PERIODICA": "Revisión periódica"
+      }
+    },
     "semaforo": {
       "venceEn": "Vence en {{dias}}d",
       "venceHoy": "Vence hoy",
@@ -1499,6 +1524,78 @@
           "kpi05": "KPI-05 · Tasa de eficacia de ACs"
         }
       }
+    },
+    "altaDireccion": {
+      "title": "Dashboard Ejecutivo",
+      "kpisEjecutivos": {
+        "title": "Indicadores ejecutivos",
+        "qesAbiertos": "Quality Events abiertos",
+        "qesVencidos": "Quality Events vencidos"
+      },
+      "comparativaMensual": {
+        "title": "Comparativa vs. mes anterior",
+        "mesAnterior": "Mes anterior: {{valor}}",
+        "tendencia": {
+          "SUBE": "En aumento",
+          "BAJA": "En descenso",
+          "ESTABLE": "Estable"
+        }
+      },
+      "qesCriticos": {
+        "title": "Quality Events críticos activos",
+        "empty": "No hay Quality Events críticos activos"
+      },
+      "reaperturas": {
+        "title": "Alertas de reaperturas",
+        "empty": "No hay Quality Events reabiertos",
+        "ciclo": "Ciclo {{ciclo}}"
+      },
+      "acsExtensionPlazo": {
+        "title": "Acciones correctivas con solicitud de extensión de plazo",
+        "empty": "No hay solicitudes de extensión de plazo pendientes",
+        "fechaSolicitada": "Nueva fecha solicitada: {{fecha}}"
+      }
+    },
+    "jefeControlDoc": {
+      "title": "Dashboard de Control Documentario"
+    },
+    "auditor": {
+      "title": "Dashboard de Auditoría",
+      "hallazgosPorArea": {
+        "title": "Hallazgos por área",
+        "empty": "No hay hallazgos de auditoría registrados"
+      },
+      "hallazgosPorEstado": {
+        "title": "Hallazgos por estado"
+      },
+      "evidenciasHallazgos": {
+        "title": "Evidencias disponibles",
+        "conEvidencia": "Con evidencia documental",
+        "sinEvidencia": "Sin evidencia documental"
+      },
+      "tasaCierrePorArea": {
+        "title": "Tasa de cierre en plazo por área",
+        "empty": "No hay Quality Events cerrados en el período actual",
+        "porcentaje": "{{valor}}% en plazo",
+        "totalCerrados_one": "{{count}} cerrado",
+        "totalCerrados_other": "{{count}} cerrados"
+      }
+    },
+    "heatmapIncidentes": {
+      "title": "Mapa de calor de Incidentes",
+      "localSelector": {
+        "label": "Local"
+      },
+      "rango": {
+        "label": "Período del mapa",
+        "opciones": {
+          "3": "3 meses",
+          "6": "6 meses",
+          "12": "12 meses"
+        }
+      },
+      "sinUbicacion_one": "{{count}} incidente sin ubicación registrada en el período",
+      "sinUbicacion_other": "{{count}} incidentes sin ubicación registrada en el período"
     }
   },
   "locations": {

@@ -656,7 +656,7 @@ export const qualityEventHandlers = [
     return HttpResponse.json({ success: true, data: updated })
   }),
 
-  http.patch('/api/quality-events/:id/forzar-vencimiento-verificacion', async ({ params }) => {
+  http.patch('/api/quality-events/:id/forzar-vencimiento-verificacion', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
     if (idx === -1) {
@@ -669,6 +669,7 @@ export const qualityEventHandlers = [
     const qe = qeStore[idx]
     const now = new Date().toISOString()
     const currentUser = getCurrentUser()
+    const body = (await request.json().catch(() => ({}))) as { auditorAsignadoId?: string }
 
     if (qe.estado === 'CERRADO') {
       const auditEntry: QEAuditTrailEntry = {
@@ -687,6 +688,7 @@ export const qualityEventHandlers = [
       const updated: QualityEvent = {
         ...qe,
         estado: 'EN_VERIFICACION',
+        auditorAsignadoId: body.auditorAsignadoId,
         auditTrail: [...qe.auditTrail, auditEntry],
         actualizadoEn: now,
       }

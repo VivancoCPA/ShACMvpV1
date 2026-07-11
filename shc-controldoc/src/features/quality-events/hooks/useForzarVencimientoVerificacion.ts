@@ -9,7 +9,8 @@ export function useForzarVencimientoVerificacion() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id }: { id: string }) => forzarVencimientoVerificacion(id),
+    mutationFn: ({ id, auditorAsignadoId }: { id: string; auditorAsignadoId?: string }) =>
+      forzarVencimientoVerificacion(id, auditorAsignadoId),
     onSuccess: (_qe, { id }) => {
       void queryClient.invalidateQueries({ queryKey: ['quality-events', 'list'] })
       void queryClient.invalidateQueries({ queryKey: QE_QUERY_KEYS.detail(id) })

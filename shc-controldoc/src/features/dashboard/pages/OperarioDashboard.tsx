@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useDashboardSummary } from '../hooks/useDashboardSummary'
+import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget'
 import { MisQEsWidget } from '../components/MisQEsWidget'
 import { MisACsWidget } from '../components/MisACsWidget'
 
@@ -35,6 +36,9 @@ export function OperarioDashboard() {
 
   return (
     <PageWrapper title={t('operario.title')} actions={actions}>
+      <div className="mb-8">
+        <AccionesRequeridasWidget />
+      </div>
       {isLoading || !data || data.rol !== 'OPERARIO' ? (
         <div className="space-y-8">
           <WidgetSkeleton />

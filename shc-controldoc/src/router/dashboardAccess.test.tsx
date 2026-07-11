@@ -46,29 +46,51 @@ function renderRouterAt(path: string) {
 }
 
 describe('router — acceso a /dashboard por rol', () => {
-  it.each([
-    ['auditor@shac.pe', 'AUDITOR_INTERNO'],
-    ['gerencia@shac.pe', 'ALTA_DIRECCION'],
-  ])('%s (%s) navega a /dashboard sin redirección y ve el placeholder', async (email) => {
-    await loginReal(email)
+  // Desde m5-s07-dashboard-auditorinterno: AUDITOR_INTERNO ya no ve el placeholder —
+  // DashboardPage renderiza AuditorDashboard (ver dashboard-auditor-view spec).
+  it('auditor@shac.pe (AUDITOR_INTERNO) navega a /dashboard sin redirección y ya no ve el placeholder', async () => {
+    await loginReal('auditor@shac.pe')
 
     renderRouterAt('/dashboard')
 
-    await waitFor(() => expect(screen.getByText('Próximamente')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('auditor.title')).toBeInTheDocument())
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/dashboard')
   })
 
-  // Desde m5-s05a-dashboard-jefecalidad: JEFE_CALIDAD_SYST y JEFE_CONTROL_DOCUMENTARIO ya
-  // no ven el placeholder — DashboardPage renderiza JefeCalidadDashboard (ver dashboard-jefecalidad-view spec).
-  it.each([
-    ['jefe.calidad@shac.pe', 'JEFE_CALIDAD_SYST'],
-    ['jefe.docs@shac.pe', 'JEFE_CONTROL_DOCUMENTARIO'],
-  ])('%s (%s) navega a /dashboard sin redirección y ya no ve el placeholder', async (email) => {
-    await loginReal(email)
+  // Desde m5-s06-dashboard-altadireccion: ALTA_DIRECCION ya no ve el placeholder — DashboardPage
+  // renderiza AltaDireccionDashboard sin redirigir ni romper (ver dashboard-altadireccion-view spec).
+  it('gerencia@shac.pe (ALTA_DIRECCION) navega a /dashboard sin redirección y ya no ve el placeholder', async () => {
+    await loginReal('gerencia@shac.pe')
+
+    renderRouterAt('/dashboard')
+
+    await waitFor(() => expect(screen.getByText('altaDireccion.title')).toBeInTheDocument())
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/dashboard')
+  })
+
+  // Desde m5-s05a-dashboard-jefecalidad: JEFE_CALIDAD_SYST ya no ve el placeholder —
+  // DashboardPage renderiza JefeCalidadDashboard (ver dashboard-jefecalidad-view spec).
+  it('jefe.calidad@shac.pe (JEFE_CALIDAD_SYST) navega a /dashboard sin redirección y ya no ve el placeholder', async () => {
+    await loginReal('jefe.calidad@shac.pe')
 
     renderRouterAt('/dashboard')
 
     await waitFor(() => expect(screen.getByText('jefeCalidad.title')).toBeInTheDocument())
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/dashboard')
+  })
+
+  // Desde m5-s10-panel-tuatencion: JEFE_CONTROL_DOCUMENTARIO deja de compartir el dashboard
+  // de Jefe de Calidad — DashboardPage renderiza JefeControlDocumentarioDashboard (ver
+  // dashboard-jefecontroldoc-view spec).
+  it('jefe.docs@shac.pe (JEFE_CONTROL_DOCUMENTARIO) navega a /dashboard sin redirección y ya no ve el placeholder', async () => {
+    await loginReal('jefe.docs@shac.pe')
+
+    renderRouterAt('/dashboard')
+
+    await waitFor(() => expect(screen.getByText('jefeControlDoc.title')).toBeInTheDocument())
     expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/dashboard')
   })
