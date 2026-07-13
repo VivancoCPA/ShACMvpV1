@@ -4,6 +4,8 @@ import clsx from 'clsx'
 import { useLocales } from '../../incidents/hooks/useLocales'
 import { useIncidentList } from '../../incidents/hooks/useIncidentList'
 import { IncidentMapCanvas } from '../../incidents/components/IncidentMapCanvas'
+import { useDashboardWidgetStateStore } from '../../../stores/dashboardWidgetStateStore'
+import type { HeatmapRango } from '../../../stores/dashboardWidgetStateStore'
 
 const RANGOS = [3, 6, 12] as const
 type Rango = (typeof RANGOS)[number]
@@ -12,6 +14,7 @@ export function HeatmapIncidentesWidget() {
   const { t } = useTranslation('dashboard')
   const { locales, isLoading: localesLoading } = useLocales()
   const { incidentes, isLoading: incidentesLoading } = useIncidentList()
+  const setHeatmapRangoExport = useDashboardWidgetStateStore((s) => s.setHeatmapRango)
 
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null)
   const [rango, setRango] = useState<Rango>(6)
@@ -34,6 +37,11 @@ export function HeatmapIncidentesWidget() {
 
   function handleLocalChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedLocalId(e.target.value)
+  }
+
+  function handleRangoChange(r: HeatmapRango) {
+    setRango(r)
+    setHeatmapRangoExport(r)
   }
 
   if (localesLoading || incidentesLoading) {
@@ -61,7 +69,7 @@ export function HeatmapIncidentesWidget() {
               type="button"
               aria-label={t(`heatmapIncidentes.rango.opciones.${r}`)}
               aria-pressed={rango === r}
-              onClick={() => setRango(r)}
+              onClick={() => handleRangoChange(r)}
               className={clsx(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                 rango === r

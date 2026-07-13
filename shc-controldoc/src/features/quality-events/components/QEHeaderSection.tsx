@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
 import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
-import { contarDiasHabiles } from '../utils/qualityEventHelpers'
+import { contarDiasHabiles, formatNormativaVinculada } from '../utils/qualityEventHelpers'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
 import { QEOriginBadge } from './QEOriginBadge'
@@ -117,8 +117,13 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
             </Link>
           </FieldRow>
         )}
-        {qe.origen === 'O3_HALLAZGO_AUDITORIA' && qe.hallazgoAuditoriaRef && (
-          <FieldRow label={t('detail.header.hallazgoAuditoria')}>{qe.hallazgoAuditoriaRef}</FieldRow>
+        {qe.origen === 'O3_HALLAZGO_AUDITORIA' && qe.hallazgoCodigo && (
+          <FieldRow label={t('detail.header.hallazgoAuditoria')}>{qe.hallazgoCodigo}</FieldRow>
+        )}
+        {qe.origen === 'O3_HALLAZGO_AUDITORIA' && qe.normativaVinculada && (
+          <FieldRow label={t('detail.header.normativaVinculada')}>
+            {formatNormativaVinculada(qe.normativaVinculada)}
+          </FieldRow>
         )}
         {qe.origen === 'O4_REPORTE_EXTERNO' && qe.reporteExternoRef && (
           <>

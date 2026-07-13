@@ -162,7 +162,7 @@ El handler SHALL registrar `GET /api/dashboard/kpis`, aceptando un query param o
 ---
 
 ### Requirement: GET /api/dashboard/summary retorna datos filtrados por rol
-El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario autenticado mediante el mismo mecanismo mock-auth usado por otros handlers (header `Authorization`), y determinando el tipo de respuesta con `getDashboardDataTypeForRole(usuario.rol)`. Cuando `usuario.rol === 'OPERARIO'`, SHALL filtrar `misIncidentesReportados`/`misQEReportados` a `reportadoPorId === usuario.id` y `documentosPendientesLectura` a `Documento.area === usuario.area`. Cuando `usuario.rol === 'SUPERVISOR'`, SHALL filtrar todos los datos agregados a QE/Incidentes/NC cuya área esté en `usuario.areasAsignadas`. Los roles `JEFE_CALIDAD_SYST`, `JEFE_CONTROL_DOCUMENTARIO`, `ALTA_DIRECCION` y `AUDITOR_INTERNO` SHALL recibir datos sin filtrar por área (alcance organizacional completo). Cuando `usuario.rol === 'JEFE_CONTROL_DOCUMENTARIO'`, la respuesta SHALL tener `rol: 'JEFE_CONTROL_DOC'` y `data: {}` (vía `buildJefeControlDocumentarioData()`) — ya no comparte la forma de `JefeCalidadDashboardData` ni pasa por `buildJefeCalidadData`. Sin token válido, SHALL retornar 401 con `success: false`.
+El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario autenticado mediante el mismo mecanismo mock-auth usado por otros handlers (header `Authorization`), y determinando el tipo de respuesta con `getDashboardDataTypeForRole(usuario.rol)`. Cuando `usuario.rol === 'OPERARIO'`, SHALL filtrar `misIncidentesReportados`/`misQEReportados` a `reportadoPorId === usuario.id` y `documentosPendientesLectura` a `Documento.area === usuario.area`. Cuando `usuario.rol === 'SUPERVISOR'`, SHALL filtrar todos los datos agregados a QE/Incidentes/NC cuya área esté en `usuario.areasAsignadas`, calculando además: `qeAbiertosPorTipo` (conteo por `QEType` de los QE del área con `estado` distinto de `CERRADO`/`VERIFICADO`), `qesEnVerificacionArea` (QE del área con `estado === 'EN_VERIFICACION'` y `fechaVerificacionProgramada` definido, proyectados a `QEResumen`), `accionesCorrectivasPendientesArea` (ACs del área con `estado` distinto de `CERRADA`, proyectadas a `AccionCorrectivaResumen`, sin exigir vencimiento), y `accionesCorrectivasVencidas` (ACs del área con `estado === 'EN_EJECUCION'` y `plazoFecha` anterior a la fecha actual del sistema — antes de este cambio el filtro aceptaba cualquier estado distinto de `CERRADA`). Los roles `JEFE_CALIDAD_SYST`, `JEFE_CONTROL_DOCUMENTARIO`, `ALTA_DIRECCION` y `AUDITOR_INTERNO` SHALL recibir datos sin filtrar por área (alcance organizacional completo). Cuando `usuario.rol === 'JEFE_CONTROL_DOCUMENTARIO'`, la respuesta SHALL tener `rol: 'JEFE_CONTROL_DOC'` y `data: {}` (vía `buildJefeControlDocumentarioData()`) — ya no comparte la forma de `JefeCalidadDashboardData` ni pasa por `buildJefeCalidadData`. Sin token válido, SHALL retornar 401 con `success: false`. La proyección `toQEResumen` usada para construir cada elemento de `misQEReportados` SHALL incluir `fechaVerificacionProgramada` cuando el `QualityEvent` de origen lo tenga definido.
 
 #### Scenario: OPERARIO recibe solo sus propios reportes
 - **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como un usuario `OPERARIO` con `id: 'user-op-1'`
@@ -171,6 +171,18 @@ El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario 
 #### Scenario: SUPERVISOR recibe datos limitados a areasAsignadas
 - **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `SUPERVISOR` con `areasAsignadas: ['Almacén Norte']`
 - **THEN** `data.incidentesRecientes` solo contiene incidentes cuya área (resuelta vía `Local`/`Zona`) o `qePorEstado` solo cuenta QE cuya `areaAfectada === 'Almacén Norte'`
+
+#### Scenario: SUPERVISOR con múltiples áreas ve datos combinados de todas
+- **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `SUPERVISOR` con `areasAsignadas: ['Almacén Norte', 'Almacén Sur']`
+- **THEN** `data.qeAbiertosPorTipo`, `data.qesEnVerificacionArea` y `data.accionesCorrectivasPendientesArea` incluyen elementos de ambas áreas, y ningún elemento de un área fuera de `areasAsignadas` aparece en la respuesta
+
+#### Scenario: accionesCorrectivasVencidas excluye ACs en estado PENDIENTE
+- **WHEN** un `SUPERVISOR` tiene en su área una AC con `estado: 'PENDIENTE'` y `plazoFecha` vencida, y otra con `estado: 'EN_EJECUCION'` también vencida
+- **THEN** `data.accionesCorrectivasVencidas` solo contiene la AC en `EN_EJECUCION`; la AC `PENDIENTE` vencida solo aparece en `data.accionesCorrectivasPendientesArea`
+
+#### Scenario: qeAbiertosPorTipo excluye QE cerrados o verificados
+- **WHEN** un `SUPERVISOR` tiene en su área un QE de tipo `CALIDAD` con `estado: 'VERIFICADO'`
+- **THEN** ese QE no incrementa el conteo de `data.qeAbiertosPorTipo.CALIDAD`
 
 #### Scenario: JEFE_CONTROL_DOCUMENTARIO recibe su propia forma de datos
 - **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `JEFE_CONTROL_DOCUMENTARIO`
@@ -187,6 +199,47 @@ El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario 
 #### Scenario: Sin token retorna 401
 - **WHEN** `GET /api/dashboard/summary` es solicitado sin header `Authorization`
 - **THEN** la respuesta status es 401 y `success: false`
+
+#### Scenario: misQEReportados incluye fechaVerificacionProgramada cuando el QE la tiene
+- **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `OPERARIO` y uno de sus QEs reportados tiene `estado: 'EN_VERIFICACION'` con `fechaVerificacionProgramada: '2026-07-10'`
+- **THEN** el elemento correspondiente en `data.misQEReportados` incluye `fechaVerificacionProgramada: '2026-07-10'`
+
+---
+
+### Requirement: buildAuditorData calcula hallazgos por área, por estado, evidencias disponibles y tasa de cierre en plazo por área
+`buildAuditorData()` SHALL calcular, sin duplicar lógica existente:
+- `hallazgosPorArea`: QE con `origen === 'O3_HALLAZGO_AUDITORIA'` agrupados por `areaAfectada`, mismo patrón de `Map<area, count>` → `.sort((a, b) => b.total - a.total)` que usa `calcularKpi09` para su distribución.
+- `hallazgosPorEstado`: mismo filtro de origen, reducido a `Record<QEStatus, number>` inicializado en `0` para los 9 estados (no un objeto disperso).
+- `evidenciasHallazgos`: mismo filtro de origen, `conEvidencia` cuenta QE con `documentosVinculados.length > 0`, `sinEvidencia` el resto.
+- `tasaCierreEnPlazoPorArea`: sobre **todos** los QE (sin filtro de origen), reutilizando `qeCerradosEnPeriodo(qes, start, end)` del período actual (`currentPeriodo()`/`monthRange()`) y `PLAZO_MAXIMO_QE_DIAS_HABILES[qe.severidad]` (misma tabla y función que `calcularKpi01`), agrupado por `areaAfectada` en vez de calculado globalmente. Áreas sin ningún QE en `qeCerradosEnPeriodo` para el período quedan excluidas del arreglo. Orden ascendente por `tasaCierreEnPlazo`.
+
+#### Scenario: hallazgosPorArea y hallazgosPorEstado excluyen orígenes distintos de O3
+- **WHEN** el store tiene QE con los 4 orígenes posibles
+- **THEN** `hallazgosPorArea` y `hallazgosPorEstado` solo cuentan los QE con `origen === 'O3_HALLAZGO_AUDITORIA'`
+
+#### Scenario: hallazgosPorEstado no tiene claves ausentes
+- **WHEN** ningún QE `origen O3` está en estado `ABIERTO`
+- **THEN** `hallazgosPorEstado.ABIERTO === 0`, no `undefined`
+
+#### Scenario: evidenciasHallazgos usa documentosVinculados, no evidenciaUrl de las ACs
+- **WHEN** un QE `origen O3` tiene `documentosVinculados: []` pero una de sus `accionesCorrectivas` tiene `evidenciaUrl` definido
+- **THEN** ese QE se cuenta en `sinEvidencia`
+
+#### Scenario: tasaCierreEnPlazoPorArea reutiliza qeCerradosEnPeriodo y PLAZO_MAXIMO_QE_DIAS_HABILES
+- **WHEN** se calcula `tasaCierreEnPlazoPorArea` para un área con QE cerrados en el período
+- **THEN** el subconjunto "en plazo" de esa área es idéntico al que produciría `calcularKpi01` filtrando manualmente ese mismo conjunto de QE por `areaAfectada` — misma fórmula, mismo agrupador aplicado después
+
+#### Scenario: tasaCierreEnPlazoPorArea no filtra por origen
+- **WHEN** el store tiene QE `origen O3` y de otros orígenes cerrados en el período, en distintas áreas
+- **THEN** todos se consideran en `tasaCierreEnPlazoPorArea`, sin distinción de `origen`
+
+#### Scenario: Áreas sin QE cerrados en el período quedan excluidas, no en 0/0
+- **WHEN** un área no tiene ningún QE en `qeCerradosEnPeriodo` para el período actual
+- **THEN** esa área no aparece en `tasaCierreEnPlazoPorArea`
+
+#### Scenario: Orden ascendente por tasa de cierre en plazo
+- **WHEN** `tasaCierreEnPlazoPorArea` tiene áreas con tasas `100`, `50` y `75`
+- **THEN** el arreglo resultante está ordenado `50`, `75`, `100`
 
 ---
 

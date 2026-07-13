@@ -319,14 +319,14 @@ The system SHALL lay out the form fields in a single column on viewports below 7
 ---
 
 ### Requirement: QualityEventForm edit mode at /quality-events/:id/editar
-The system SHALL render `QualityEventForm` at the route `/quality-events/:id/editar`, loading the target QE via `useQualityEvent(id)`. Access to this route SHALL be gated by `resolveQEEditAccess(qe, usuario).reporteInicial === true` — a user without RN-QE-010 access who navigates to this route directly (e.g. by typing the URL) SHALL be redirected to `/quality-events/:id`. In edit mode the form SHALL initialize via `useForm` with `defaultValues` populated from the loaded QE instead of empty defaults, and SHALL submit via `useEditarReporteInicial().mutate({ id, data })` instead of `useCreateQualityEvent`.
+The system SHALL render `QualityEventForm` at the route `/quality-events/:id/editar`, loading the target QE via `useQualityEvent(id)`. Access to this route SHALL be gated by `resolveQEEditAccess(qe, usuario).reporteInicial === true` — a user without RN-QE-014 access who navigates to this route directly (e.g. by typing the URL) SHALL be redirected to `/quality-events/:id`. In edit mode the form SHALL initialize via `useForm` with `defaultValues` populated from the loaded QE instead of empty defaults, and SHALL submit via `useEditarReporteInicial().mutate({ id, data })` instead of `useCreateQualityEvent`.
 
 #### Scenario: Authorized user loads the edit form pre-filled
 - **WHEN** a user with `resolveQEEditAccess(qe, usuario).reporteInicial === true` navigates to `/quality-events/qe-2026-010/editar`
 - **THEN** `QualityEventForm` renders with `descripcion`, `areaAfectada`, `turno`, `fechaHoraEvento`, and `mineralInvolucrado` pre-filled from the loaded QE
 
 #### Scenario: Unauthorized direct navigation redirects to the detail page
-- **WHEN** a user without RN-QE-010 access for that QE navigates directly to `/quality-events/qe-2026-010/editar`
+- **WHEN** a user without RN-QE-014 access for that QE navigates directly to `/quality-events/qe-2026-010/editar`
 - **THEN** the user is redirected to `/quality-events/qe-2026-010`
 
 #### Scenario: Edit submit calls useEditarReporteInicial instead of useCreateQualityEvent
@@ -352,7 +352,7 @@ In edit mode, `numero`, `origen`, `tipo`, `fechaHoraReporte` (labeled "Fecha de 
 
 ---
 
-### Requirement: QualityEventForm edit mode unlocks the RN-QE-010 field subset plus origin-specific fields
+### Requirement: QualityEventForm edit mode unlocks the RN-QE-014 field subset plus origin-specific fields
 In edit mode, the system SHALL render editable controls for `descripcion`, `areaAfectada`, `turno`, `fechaHoraEvento`, and `mineralInvolucrado`, plus the origin-specific field(s) matching the QE's existing `origen` (`incidenteId` for O1, `ncId` for O2, `hallazgoAuditoriaRef` for O3, `reporteExternoRef` for O4) — the same conditional-section components used in create mode, but never allowing `origen` itself to change. The `severidad` field SHALL remain absent from edit mode unless `resolveQEEditAccess(qe, usuario).severidad` is also `true` (the double-role case), in which case a `severidad` select SHALL additionally render.
 
 #### Scenario: descripcion, areaAfectada, turno, fechaHoraEvento, mineralInvolucrado are editable
@@ -369,7 +369,7 @@ In edit mode, the system SHALL render editable controls for `descripcion`, `area
 
 #### Scenario: severidad additionally renders for a double-role editor
 - **WHEN** `QualityEventForm` renders in edit mode for a user with `{ reporteInicial: true, severidad: true, mineral: true }`
-- **THEN** an editable `severidad` select renders alongside the RN-QE-010 field set
+- **THEN** an editable `severidad` select renders alongside the RN-QE-014 field set
 
 ---
 

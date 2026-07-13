@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { qualityEventEditReporteInicialSchema } from '../qualityEventEditReporteInicial.schema'
 
 describe('qualityEventEditReporteInicialSchema', () => {
-  it('accepts a valid payload with only RN-QE-010 fields', () => {
+  it('accepts a valid payload with only RN-QE-014 fields', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Descripción corregida del evento',
       areaAfectada: 'Almacén Norte',
@@ -64,5 +64,25 @@ describe('qualityEventEditReporteInicialSchema', () => {
 
   it('accepts an empty payload (all fields optional)', () => {
     expect(qualityEventEditReporteInicialSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('accepts a valid payload editing hallazgoCodigo and normativaVinculada for an O3 QE', () => {
+    const result = qualityEventEditReporteInicialSchema.safeParse({
+      descripcion: 'Descripción corregida del hallazgo',
+      areaAfectada: 'Operaciones Aduaneras',
+      turno: 'DIA',
+      fechaHoraEvento: '2026-05-01T08:00:00Z',
+      hallazgoCodigo: 'HAL-2026-001',
+      normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.2' },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects normativaVinculada with norma OTRA and no normaOtraDetalle', () => {
+    const result = qualityEventEditReporteInicialSchema.safeParse({
+      hallazgoCodigo: 'HAL-2026-001',
+      normativaVinculada: { norma: 'OTRA', clausula: '3.2' },
+    })
+    expect(result.success).toBe(false)
   })
 })

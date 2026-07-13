@@ -207,7 +207,7 @@ The system SHALL export a pure function `resolveRolSegundaFirma(primerFirmanteId
 
 ---
 
-### Requirement: ventanaReporteInicialAbierta helper (RN-QE-010 time window)
+### Requirement: ventanaReporteInicialAbierta helper (RN-QE-014 time window)
 The system SHALL export a pure function `ventanaReporteInicialAbierta(qe: QualityEvent, ahora: Date): boolean` from `src/features/quality-events/utils/qualityEventPermissions.ts`. The function SHALL return `true` if and only if `qe.estado === 'ABIERTO'` AND the elapsed time between `qe.fechaHoraReporte` and `ahora` is less than or equal to 2 hours. Both conditions SHALL be evaluated together — the function SHALL return `false` the moment `qe.estado` is no longer `'ABIERTO'`, even if fewer than 2 hours have elapsed.
 
 #### Scenario: Window open within 2 hours and estado ABIERTO
@@ -224,7 +224,7 @@ The system SHALL export a pure function `ventanaReporteInicialAbierta(qe: Qualit
 
 ---
 
-### Requirement: resolveQEEditAccess combines RN-QE-010/011/012
+### Requirement: resolveQEEditAccess combines RN-QE-014/015/016
 The system SHALL export a pure function `resolveQEEditAccess(qe: QualityEvent, usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>, ahora: Date = new Date()): QEEditAccess` from `src/features/quality-events/utils/qualityEventPermissions.ts`, where `QEEditAccess` is `{ reporteInicial: boolean; severidad: boolean; mineral: boolean }`.
 
 `reporteInicial` SHALL be `true` when `ventanaReporteInicialAbierta(qe, ahora)` is `true` AND (`usuario.id === qe.reportadoPorId` OR (`usuario.rol === 'SUPERVISOR'` AND `(usuario.areasAsignadas ?? []).includes(qe.areaAfectada)`)). A Supervisor's own `area` (their home department) is NOT used for this check — only `areasAsignadas`, the explicit list of areas they are assigned to supervise for QE purposes (see `User.areasAsignadas` in the user model).
@@ -267,7 +267,7 @@ The system SHALL export a pure function `resolveQEEditAccess(qe: QualityEvent, u
 
 ---
 
-### Requirement: puedeEditarQE helper (RN-QE-010/011/012 visibility)
+### Requirement: puedeEditarQE helper (RN-QE-014/015/016 visibility)
 The system SHALL export a pure function `puedeEditarQE(qe: QualityEvent, usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>, ahora: Date = new Date()): boolean` from `src/features/quality-events/utils/qualityEventPermissions.ts`. The function SHALL return `resolveQEEditAccess(qe, usuario, ahora).reporteInicial || resolveQEEditAccess(qe, usuario, ahora).severidad || resolveQEEditAccess(qe, usuario, ahora).mineral`. This is the sole function `QualityEventList` SHALL use to decide whether the Acciones column renders an "Editar" icon for a given row.
 
 #### Scenario: puedeEditarQE true when any access flag is true
@@ -275,7 +275,7 @@ The system SHALL export a pure function `puedeEditarQE(qe: QualityEvent, usuario
 - **THEN** the return value is `true`
 
 #### Scenario: puedeEditarQE false when all access flags are false
-- **WHEN** a developer calls `puedeEditarQE(qe, usuario, ahora)` for an `OPERARIO` who is not the creator, on a QE outside the RN-QE-010 window
+- **WHEN** a developer calls `puedeEditarQE(qe, usuario, ahora)` for an `OPERARIO` who is not the creator, on a QE outside the RN-QE-014 window
 - **THEN** the return value is `false`
 
 #### Scenario: puedeEditarQE defaults ahora to the current time

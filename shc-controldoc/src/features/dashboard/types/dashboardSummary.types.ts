@@ -74,5 +74,5 @@ export interface ACSolicitudAjustePlazoResumen {
   acId: string
   acDescripcion: string
   plazoFechaActual: string
-  solicitudAjustePlazo: SolicitudAjustePlazoAC
+  solicitudesAjustePlazo: SolicitudAjustePlazoAC[]
 }

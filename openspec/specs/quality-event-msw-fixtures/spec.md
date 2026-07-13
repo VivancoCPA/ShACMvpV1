@@ -182,3 +182,46 @@ A representative subset of `qualityEventFixtures` in `CERRADO` or `VERIFICADO` s
 #### Scenario: At least one verified AccionCorrectiva is EFECTIVO and at least one is NO_EFECTIVO within the current month
 - **WHEN** `qeAccionesCorrectivas` entries with `estado === 'CERRADA'` are joined to their owning fixture's `resultadoVerificacion` and `fechaVerificacionRealizada`
 - **THEN** among entries whose owning fixture's `fechaVerificacionRealizada` falls in 2026-07, at least one owning fixture has `resultadoVerificacion === 'EFECTIVO'` and at least one has `resultadoVerificacion === 'NO_EFECTIVO'`
+
+---
+
+### Requirement: Al menos 2 QE de origen O3 tienen documentosVinculados no vacío, al menos 2 no tienen ninguno
+De los QE fixture con `origen === 'O3_HALLAZGO_AUDITORIA'`, al menos 2 SHALL tener `documentosVinculados` con al menos 1 elemento (reutilizando IDs de documento ya existentes en `documents.fixtures.ts`, sin crear documentos nuevos), y al menos 2 SHALL mantener `documentosVinculados: []`, de modo que el widget de evidencias disponibles (`dashboard-auditor-view`) tenga un caso positivo y uno negativo verificables.
+
+#### Scenario: Al menos 2 hallazgos O3 con evidencia
+- **WHEN** se filtran los QE fixture por `origen === 'O3_HALLAZGO_AUDITORIA'` y `documentosVinculados.length > 0`
+- **THEN** el resultado tiene al menos 2 elementos
+
+#### Scenario: Al menos 2 hallazgos O3 sin evidencia
+- **WHEN** se filtran los QE fixture por `origen === 'O3_HALLAZGO_AUDITORIA'` y `documentosVinculados.length === 0`
+- **THEN** el resultado tiene al menos 2 elementos
+
+#### Scenario: Los IDs de documento referenciados existen en documents.fixtures.ts
+- **WHEN** un QE `origen O3` tiene `documentosVinculados` no vacío
+- **THEN** cada ID referenciado corresponde a un documento existente en `documents.fixtures.ts`, no un ID inventado
+
+---
+
+### Requirement: Fixtures migrate to the solicitudesAjustePlazo array shape
+Every seeded `AccionCorrectivaQE` in `qeAccionesCorrectivas` (`src/mocks/fixtures/quality-events.fixtures.ts`) SHALL define `solicitudesAjustePlazo: SolicitudAjustePlazoAC[]` (defaulting to `[]`). Any fixture that previously populated the removed singular `solicitudAjustePlazo` field SHALL have that object migrated to the first (and, at seed time, only) element of `solicitudesAjustePlazo`, gaining a generated `id` and `requiereAprobacionGerencia` computed from its owning QE's `severidad` and the stored `fechaSolicitada`.
+
+#### Scenario: All seeded ACs expose solicitudesAjustePlazo
+- **WHEN** `qeAccionesCorrectivas` is inspected
+- **THEN** every `AccionCorrectivaQE` has a `solicitudesAjustePlazo` array (possibly empty)
+
+#### Scenario: No fixture references the removed singular field
+- **WHEN** `quality-events.fixtures.ts` is inspected
+- **THEN** it contains no `solicitudAjustePlazo` (singular) property
+
+---
+
+### Requirement: At least one seeded PENDIENTE request requiring Gerencia approval
+The fixture set SHALL include at least one `AccionCorrectivaQE` (on a QE with `severidad` of `ALTA` or `CRITICA`) with a `solicitudesAjustePlazo` entry having `estado: 'PENDIENTE'` and `requiereAprobacionGerencia: true`, so `ACsExtensionPlazoWidget.tsx` and the Alta Dirección dashboard have non-empty data in development. The fixture set SHALL also include at least one `PENDIENTE` entry with `requiereAprobacionGerencia: false` (Jefe de Calidad-only), to exercise the `QEACSection` approve/reject panel for that role.
+
+#### Scenario: At least one Gerencia-pending fixture request exists
+- **WHEN** all `solicitudesAjustePlazo` entries across `qeAccionesCorrectivas` are filtered by `s => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia === true`
+- **THEN** the result has at least 1 element
+
+#### Scenario: At least one Jefe-de-Calidad-pending fixture request exists
+- **WHEN** all `solicitudesAjustePlazo` entries across `qeAccionesCorrectivas` are filtered by `s => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia === false`
+- **THEN** the result has at least 1 element

@@ -34,6 +34,14 @@ export interface ReporteExternoRef {
   fechaRecepcion: string
 }
 
+export type NormaISO = 'ISO_9001_2015' | 'ISO_45001_2018' | 'OTRA'
+
+export interface NormativaVinculada {
+  norma: NormaISO
+  clausula: string
+  normaOtraDetalle?: string
+}
+
 export interface CincoPorques {
   pregunta: string
   respuesta: string
@@ -62,11 +70,16 @@ export interface QEAuditTrailEntry {
 }
 
 export interface SolicitudAjustePlazoAC {
+  id: string
   fechaSolicitada: string
   justificacion: string
   estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
   solicitadoPorId: string
   solicitadoEn: string
+  requiereAprobacionGerencia: boolean
+  revisadoPorId?: string
+  revisadoEn?: string
+  comentarioRevision?: string
 }
 
 export interface AccionCorrectivaQE {
@@ -84,7 +97,7 @@ export interface AccionCorrectivaQE {
   descripcionEvidencia?: string
   evidenciaUrl?: string
   fechaCierre?: string
-  solicitudAjustePlazo?: SolicitudAjustePlazoAC
+  solicitudesAjustePlazo: SolicitudAjustePlazoAC[]
 }
 
 export interface QualityEvent {
@@ -111,7 +124,8 @@ export interface QualityEvent {
   mineralInvolucrado?: string
   ncId?: string
   incidenteId?: string
-  hallazgoAuditoriaRef?: string
+  hallazgoCodigo?: string
+  normativaVinculada?: NormativaVinculada
   reporteExternoRef?: ReporteExternoRef
   descripcionAmpliada?: string
   metodoAnalisis?: AnalisisCausaRaizMetodo

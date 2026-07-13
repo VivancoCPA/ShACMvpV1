@@ -122,7 +122,7 @@ describe('QEList — Acciones column edit icon', () => {
     expect(screen.queryByRole('button', { name: 'list.actions.editar' })).not.toBeInTheDocument()
   })
 
-  it('creator within the RN-QE-010 window sees Editar and it navigates to the full form', async () => {
+  it('creator within the RN-QE-014 window sees Editar and it navigates to the full form', async () => {
     useAuthStore.setState({
       user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
       isAuthenticated: true,
@@ -133,7 +133,7 @@ describe('QEList — Acciones column edit icon', () => {
     expect(await screen.findByTestId('edit-page')).toBeInTheDocument()
   })
 
-  it('JEFE_CALIDAD_SYST outside the RN-QE-010 window sees Editar and it opens the reduced modal', async () => {
+  it('JEFE_CALIDAD_SYST outside the RN-QE-014 window sees Editar and it opens the reduced modal', async () => {
     mockItems = [{ ...baseQE, fechaHoraReporte: '2020-01-01T00:00:00Z', reportadoPorId: 'user-other' }]
     useAuthStore.setState({
       user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },

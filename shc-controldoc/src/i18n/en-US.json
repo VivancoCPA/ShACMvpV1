@@ -490,7 +490,9 @@
       "editTitle": "Edit Quality Event",
       "noIncidents": "No incidents available to link.",
       "noNonconformities": "No non-conformities available to link.",
-      "hallazgoPlaceholder": "E.g. NC-ISO-9001-2015-§8.4.1 — Supplier evaluation",
+      "hallazgoCodigoPlaceholder": "E.g. HAL-2026-010",
+      "normaOtra": "Other regulation (free text)",
+      "usarTextoLibre": "Use \"{{texto}}\" as clause",
       "criticaBanner": "CRITICAL severity — Management will be notified on save (RN-QE-005)",
       "mineralOtro": "Other (free text)…",
       "errors": {
@@ -509,7 +511,10 @@
         "fechaHoraEvento": "Event Date & Time",
         "incidenteId": "Linked Incident",
         "ncId": "Linked Non-Conformity",
-        "hallazgoAuditoriaRef": "Audit Finding Reference",
+        "hallazgoCodigo": "Finding Code",
+        "normaVinculada": "Linked Regulation",
+        "clausula": "Breached Clause",
+        "normaOtraDetalle": "Regulation Detail",
         "nombreCliente": "Client Name",
         "fechaRecepcion": "Report Reception Date",
         "numero": "Number",
@@ -521,7 +526,8 @@
         "search": "Search…",
         "descripcion": "Describe the event in detail (min. 10 characters)…",
         "mineralInvolucrado": "Specify mineral…",
-        "nombreCliente": "Client or company name"
+        "nombreCliente": "Client or company name",
+        "normaOtraDetalle": "E.g. MINEM Audit, SUNAT…"
       },
       "turno": {
         "DIA": "Day",
@@ -566,6 +572,7 @@
         "verIncidente": "View Incident",
         "verNoConformidad": "View Non-Conformity",
         "hallazgoAuditoria": "Audit finding",
+        "normativaVinculada": "Linked regulation",
         "nombreCliente": "Client",
         "fechaRecepcion": "Reception date",
         "criticaBanner": "CRITICAL severity — requires priority Management attention (RN-QE-005)",
@@ -673,7 +680,57 @@
         "errors": {
           "evidenciaRequerida": "The evidence description is required."
         },
-        "autoTransitionToast": "All corrective actions were closed — the QE moved to Pending Closure."
+        "autoTransitionToast": "All corrective actions were closed — the QE moved to Pending Closure.",
+        "ajustePlazo": {
+          "actions": {
+            "solicitar": "Request deadline extension"
+          },
+          "modal": {
+            "title": "Request deadline extension",
+            "fields": {
+              "fechaSolicitada": "Proposed new date",
+              "justificacion": "Justification"
+            },
+            "placeholders": {
+              "justificacion": "Explain why the deadline needs to be extended (minimum 50 characters)…"
+            },
+            "badgeGerencia": "Requires Management approval",
+            "badgeJefeCalidad": "Requires Quality Manager approval",
+            "errors": {
+              "minimo": "The proposed deadline is below the minimum allowed for the QE's severity."
+            },
+            "actions": {
+              "submit": "Submit request"
+            }
+          },
+          "panel": {
+            "title": "Deadline extension request",
+            "solicitadoPor": "Requested by {{nombre}}",
+            "fechaSolicitada": "Proposed new date: {{fecha}}",
+            "actions": {
+              "aprobar": "Approve",
+              "rechazar": "Reject"
+            }
+          },
+          "rechazarModal": {
+            "title": "Reject deadline extension request",
+            "body": "Explain the reason for rejection. The responsible party will be notified.",
+            "fields": {
+              "comentarioRevision": "Comment"
+            },
+            "actions": {
+              "confirm": "Confirm rejection"
+            }
+          },
+          "toasts": {
+            "solicitudEnviada": "Deadline extension request submitted.",
+            "aprobadorNotificadoGerencia": "Management was notified.",
+            "aprobadorNotificadoJefeCalidad": "The Quality Manager was notified.",
+            "aprobado": "Deadline extension request approved.",
+            "rechazado": "Deadline extension request rejected.",
+            "responsableNotificado": "The corrective action's responsible party was notified."
+          }
+        }
       },
       "auditTrail": {
         "title": "Audit Trail",
@@ -689,7 +746,10 @@
           "AC_ESTADO_CAMBIADO": "Corrective action status changed",
           "QE_REPORTE_INICIAL_EDITADO": "Initial report edited",
           "QE_SEVERIDAD_EDITADA": "Severity edited",
-          "QE_MINERAL_EDITADO": "Mineral involved edited"
+          "QE_MINERAL_EDITADO": "Mineral involved edited",
+          "AC_AJUSTE_PLAZO_SOLICITADO": "Deadline extension requested",
+          "AC_AJUSTE_PLAZO_APROBADO": "Deadline extension approved",
+          "AC_AJUSTE_PLAZO_RECHAZADO": "Deadline extension rejected"
         }
       },
       "notFound": {
@@ -1561,8 +1621,8 @@
     },
     "auditor": {
       "title": "Audit Dashboard",
-      "hallazgosPorArea": {
-        "title": "Findings by area",
+      "hallazgosPorNorma": {
+        "title": "Findings by regulation",
         "empty": "No audit findings recorded"
       },
       "hallazgosPorEstado": {
@@ -1596,6 +1656,124 @@
       },
       "sinUbicacion_one": "{{count}} incident without a registered location in this period",
       "sinUbicacion_other": "{{count}} incidents without a registered location in this period"
+    },
+    "export": {
+      "button": "Export",
+      "modal": {
+        "title": "Export executive report",
+        "description": "Choose the file format to generate.",
+        "excel": "Excel (.xlsx)",
+        "pdf": "PDF (.pdf)",
+        "cancel": "Cancel"
+      },
+      "toast": {
+        "success": "Report exported successfully",
+        "error": "Could not generate the report. Please try again."
+      },
+      "emptyMessage": "No data in the selected period",
+      "meta": {
+        "rol": "Role",
+        "generadoEn": "Generated on",
+        "usuario": "User",
+        "periodo": "Period"
+      },
+      "periodo": {
+        "snapshot": "Current dashboard snapshot",
+        "heatmap": "Last {{meses}} months"
+      },
+      "rolLabel": {
+        "JEFE_CALIDAD_SYST": "Quality/HSE Manager",
+        "ALTA_DIRECCION": "Senior Management"
+      },
+      "pdf": {
+        "portadaTitulo": "SHAC Executive Report"
+      },
+      "sections": {
+        "accionesRequeridas": {
+          "headers": {
+            "codigo": "Code",
+            "tipo": "Type",
+            "dominio": "Domain",
+            "prioridad": "Priority",
+            "fechaLimite": "Due date"
+          }
+        },
+        "kpis": {
+          "headers": {
+            "kpi": "KPI",
+            "nombre": "Name",
+            "valor": "Value",
+            "meta": "Target",
+            "semaforo": "Status"
+          }
+        },
+        "qePorEstado": {
+          "headers": {
+            "estado": "Status",
+            "cantidad": "Count"
+          }
+        },
+        "acsPorVencer": {
+          "headers": {
+            "descripcion": "Description",
+            "origen": "Source",
+            "responsable": "Owner",
+            "plazo": "Due date",
+            "estado": "Status"
+          }
+        },
+        "tendencia": {
+          "headers": {
+            "periodo": "Period",
+            "abiertos": "Opened",
+            "cerrados": "Closed",
+            "kpi01": "KPI-01",
+            "kpi04": "KPI-04",
+            "kpi05": "KPI-05"
+          }
+        },
+        "heatmap": {
+          "headers": {
+            "local": "Location",
+            "incidentes": "Incidents"
+          }
+        },
+        "kpisEjecutivos": {
+          "headers": {
+            "indicador": "Indicator",
+            "valor": "Value"
+          }
+        },
+        "comparativaMensual": {
+          "headers": {
+            "kpi": "KPI",
+            "actual": "Current",
+            "anterior": "Previous month",
+            "tendencia": "Trend"
+          }
+        },
+        "qesCriticos": {
+          "headers": {
+            "numero": "Number",
+            "area": "Area",
+            "estado": "Status"
+          }
+        },
+        "reaperturas": {
+          "headers": {
+            "numero": "Number",
+            "fechaReapertura": "Reopened on",
+            "ciclo": "Cycle"
+          }
+        },
+        "acsExtensionPlazo": {
+          "headers": {
+            "qe": "Quality Event",
+            "descripcion": "CA description",
+            "plazoActual": "Current due date"
+          }
+        }
+      }
     }
   },
   "locations": {
@@ -1698,6 +1876,32 @@
       "errors": {
         "limiteLocalesActivos": "Cannot create the location: 5 active locations already exist",
         "localNoEncontrado": "Location not found"
+      }
+    }
+  },
+  "users": {
+    "profile": {
+      "title": "My profile",
+      "back": "Back",
+      "readOnlySection": {
+        "title": "Account information",
+        "email": "Email",
+        "rol": "Role",
+        "area": "Area",
+        "areasAsignadas": "Assigned areas",
+        "createdAt": "Account created",
+        "lastLogin": "Last login"
+      }
+    },
+    "changePassword": {
+      "title": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Save password",
+      "success": "Password updated successfully",
+      "errors": {
+        "incorrectCurrentPassword": "The current password is incorrect"
       }
     }
   }

@@ -1,6 +1,9 @@
 import type { Documento } from '../../types/documents.types'
 
-const AUTOR_ID = '00000000-0000-4000-8000-000000000001'
+// Aligned with auth fixture: Carlos Autor (SUPERVISOR) — has real login credentials
+// (auth.fixtures.ts) so the AUTOR docRole bypass in DocumentEditGuard/permissions.ts
+// can actually be exercised end-to-end.
+const AUTOR_ID = 'user-autor-001'
 // Aligned with auth fixture: Carmen Torres (SUPERVISOR) — revisor workflow role
 const REVISOR_ID = 'user-supervisor-001'
 // Aligned with auth fixture: Sofía Vargas (JEFE_CONTROL_DOCUMENTARIO) — aprobador workflow role

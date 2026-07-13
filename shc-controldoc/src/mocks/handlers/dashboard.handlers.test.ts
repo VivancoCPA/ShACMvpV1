@@ -272,6 +272,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           estado: 'PENDIENTE',
           creadoEn: '2026-05-01T00:00:00Z',
           actualizadoEn: '2026-05-01T00:00:00Z',
+          solicitudesAjustePlazo: [],
         },
         {
           id: 'test-ac-en-ejecucion-vencida',
@@ -283,6 +284,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
           actualizadoEn: '2026-05-01T00:00:00Z',
+          solicitudesAjustePlazo: [],
         },
         {
           id: 'test-ac-en-ejecucion-vigente',
@@ -294,6 +296,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
           actualizadoEn: '2026-05-01T00:00:00Z',
+          solicitudesAjustePlazo: [],
         },
       ],
     }
@@ -443,6 +446,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
           actualizadoEn: '2026-05-01T00:00:00Z',
+          solicitudesAjustePlazo: [],
         },
         {
           id: 'test-ac-qe-proxima',
@@ -454,6 +458,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
           actualizadoEn: '2026-05-01T00:00:00Z',
+          solicitudesAjustePlazo: [],
         },
       ],
     }
@@ -676,6 +681,7 @@ function acQeCerrada(id: string, overrides: Partial<AccionCorrectivaQE> = {}): A
     estado: 'CERRADA',
     creadoEn: '2031-01-01T00:00:00Z',
     actualizadoEn: '2031-01-05T00:00:00Z',
+    solicitudesAjustePlazo: [],
     ...overrides,
   }
 }
@@ -1413,7 +1419,9 @@ describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', ()
     const data = await altaDireccionData()
     expect(data.acsConSolicitudAjustePlazo.length).toBeGreaterThanOrEqual(2)
     expect(data.acsConSolicitudAjustePlazo.every((ac) => ac.qeSeveridad === 'ALTA' || ac.qeSeveridad === 'CRITICA')).toBe(true)
-    expect(data.acsConSolicitudAjustePlazo.every((ac) => ac.solicitudAjustePlazo.estado === 'PENDIENTE')).toBe(true)
+    expect(
+      data.acsConSolicitudAjustePlazo.every((ac) => ac.solicitudesAjustePlazo.some((s) => s.estado === 'PENDIENTE')),
+    ).toBe(true)
   })
 
   it('excluye AC con solicitud PENDIENTE de un QE severidad MEDIA/BAJA', async () => {
@@ -1434,13 +1442,17 @@ describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', ()
           estado: 'PENDIENTE',
           creadoEn: '2031-01-01T00:00:00Z',
           actualizadoEn: '2031-01-01T00:00:00Z',
-          solicitudAjustePlazo: {
-            fechaSolicitada: '2031-02-01',
-            justificacion: 'Justificación de prueba',
-            estado: 'PENDIENTE',
-            solicitadoPorId: 'user-test',
-            solicitadoEn: '2031-01-10T00:00:00Z',
-          },
+          solicitudesAjustePlazo: [
+            {
+              id: 'sol-test-ac-media',
+              fechaSolicitada: '2031-02-01',
+              justificacion: 'Justificación de prueba',
+              estado: 'PENDIENTE',
+              solicitadoPorId: 'user-test',
+              solicitadoEn: '2031-01-10T00:00:00Z',
+              requiereAprobacionGerencia: false,
+            },
+          ],
         },
       ],
     })
@@ -1471,13 +1483,17 @@ describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', ()
           estado: 'EN_EJECUCION',
           creadoEn: '2031-01-01T00:00:00Z',
           actualizadoEn: '2031-01-01T00:00:00Z',
-          solicitudAjustePlazo: {
-            fechaSolicitada: '2031-02-01',
-            justificacion: 'Justificación de prueba',
-            estado: 'APROBADA',
-            solicitadoPorId: 'user-test',
-            solicitadoEn: '2031-01-10T00:00:00Z',
-          },
+          solicitudesAjustePlazo: [
+            {
+              id: 'sol-test-ac-aprobada',
+              fechaSolicitada: '2031-02-01',
+              justificacion: 'Justificación de prueba',
+              estado: 'APROBADA',
+              solicitadoPorId: 'user-test',
+              solicitadoEn: '2031-01-10T00:00:00Z',
+              requiereAprobacionGerencia: true,
+            },
+          ],
         },
       ],
     })
@@ -1497,8 +1513,8 @@ async function auditorData() {
   return data.data
 }
 
-describe('dashboard.handlers — AUDITOR: hallazgosPorArea / hallazgosPorEstado / evidenciasHallazgos filtran por origen O3', () => {
-  it('un QE de origen distinto de O3 no afecta hallazgosPorArea, hallazgosPorEstado ni evidenciasHallazgos', async () => {
+describe('dashboard.handlers — AUDITOR: hallazgosPorNorma / hallazgosPorEstado / evidenciasHallazgos filtran por origen O3', () => {
+  it('un QE de origen distinto de O3 no afecta hallazgosPorNorma, hallazgosPorEstado ni evidenciasHallazgos', async () => {
     const qeStore = getQeStore()
     const originalLength = qeStore.length
     const baseline = await auditorData()
@@ -1513,7 +1529,7 @@ describe('dashboard.handlers — AUDITOR: hallazgosPorArea / hallazgosPorEstado 
     try {
       qeStore.push(noO3)
       const data = await auditorData()
-      expect(data.hallazgosPorArea).toEqual(baseline.hallazgosPorArea)
+      expect(data.hallazgosPorNorma).toEqual(baseline.hallazgosPorNorma)
       expect(data.hallazgosPorEstado).toEqual(baseline.hallazgosPorEstado)
       expect(data.evidenciasHallazgos).toEqual(baseline.evidenciasHallazgos)
     } finally {
@@ -1562,6 +1578,7 @@ describe('dashboard.handlers — AUDITOR: hallazgosPorArea / hallazgosPorEstado 
           creadoEn: '2031-01-01T00:00:00Z',
           actualizadoEn: '2031-01-01T00:00:00Z',
           evidenciaUrl: 'https://example.com/evidencia.pdf',
+          solicitudesAjustePlazo: [],
         },
       ],
     })

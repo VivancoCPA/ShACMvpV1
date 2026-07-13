@@ -8,6 +8,7 @@ import { QEsCriticosWidget } from '../components/QEsCriticosWidget'
 import { ReaperturasWidget } from '../components/ReaperturasWidget'
 import { ACsExtensionPlazoWidget } from '../components/ACsExtensionPlazoWidget'
 import { HeatmapIncidentesWidget } from '../components/HeatmapIncidentesWidget'
+import { ExportButton } from '../components/ExportButton'
 
 function WidgetSkeleton() {
   return (
@@ -24,7 +25,7 @@ export function AltaDireccionDashboard() {
   const { data, isLoading } = useDashboardSummary()
 
   return (
-    <PageWrapper title={t('altaDireccion.title')}>
+    <PageWrapper title={t('altaDireccion.title')} actions={<ExportButton />}>
       <div className="mb-8">
         <AccionesRequeridasWidget />
       </div>

@@ -14,7 +14,7 @@ import { QEList } from './QEList'
 // Regression test for M4-S08: resolveQEEditAccess() passed in isolation, but the Editar
 // icon never appeared for a SUPERVISOR whose areasAsignadas matched the QE area, because
 // the real create flow (POST /api/quality-events) never set fechaHoraReporte/reportadoPorId,
-// which silently broke the RN-QE-010 2h-window check (NaN date) downstream. Tests that hand
+// which silently broke the RN-QE-014 2h-window check (NaN date) downstream. Tests that hand
 // -build the user/QE objects never exercise that gap, so this drives the real handlers.
 
 vi.mock('react-i18next', () => ({
@@ -55,7 +55,7 @@ function renderList(searchParams: string) {
   )
 }
 
-describe('QEList — full login-to-icon flow (RN-QE-010)', () => {
+describe('QEList — full login-to-icon flow (RN-QE-014)', () => {
   it('supervisor sees Editar for a freshly created QE whose area is in their areasAsignadas', async () => {
     await loginReal('jefe.calidad@shac.pe')
 

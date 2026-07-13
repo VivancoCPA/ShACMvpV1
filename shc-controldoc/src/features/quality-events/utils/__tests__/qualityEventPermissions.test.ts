@@ -154,7 +154,7 @@ describe('resolveRolSegundaFirma (RN-QE-004 escalation)', () => {
   })
 })
 
-describe('ventanaReporteInicialAbierta (RN-QE-010 time window)', () => {
+describe('ventanaReporteInicialAbierta (RN-QE-014 time window)', () => {
   it('is true within 2 hours and estado ABIERTO', () => {
     const result = ventanaReporteInicialAbierta(
       { ...baseQE, estado: 'ABIERTO', fechaHoraReporte: '2026-05-01T08:00:00Z' },
@@ -180,7 +180,7 @@ describe('ventanaReporteInicialAbierta (RN-QE-010 time window)', () => {
   })
 })
 
-describe('resolveQEEditAccess (RN-QE-010/011/012)', () => {
+describe('resolveQEEditAccess (RN-QE-014/015/016)', () => {
   it('creator within window gets reporteInicial true, others false', () => {
     const result = resolveQEEditAccess(
       { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', tipo: 'SST', fechaHoraReporte: '2026-05-01T08:00:00Z' },
@@ -269,7 +269,7 @@ describe('resolveQEEditAccess (RN-QE-010/011/012)', () => {
   })
 })
 
-describe('puedeEditarQE (RN-QE-010/011/012 visibility)', () => {
+describe('puedeEditarQE (RN-QE-014/015/016 visibility)', () => {
   it('is true when any access flag is true', () => {
     const result = puedeEditarQE(
       { ...baseQE, estado: 'EN_INVESTIGACION', tipo: 'SST' },
@@ -333,6 +333,7 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
     plazoFecha: '2025-12-31',
     creadoEn: '2025-06-01T00:00:00Z',
     actualizadoEn: '2025-06-01T00:00:00Z',
+    solicitudesAjustePlazo: [],
   }
 
   it('invalid when AC has estado PENDIENTE without evidencia', () => {

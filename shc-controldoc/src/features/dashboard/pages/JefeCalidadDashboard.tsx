@@ -7,6 +7,7 @@ import { QEPorEstadoWidget } from '../components/QEPorEstadoWidget'
 import { ACsPorVencerWidget } from '../components/ACsPorVencerWidget'
 import { TendenciaMensualWidget } from '../components/TendenciaMensualWidget'
 import { HeatmapIncidentesWidget } from '../components/HeatmapIncidentesWidget'
+import { ExportButton } from '../components/ExportButton'
 
 function WidgetSkeleton() {
   return (
@@ -23,7 +24,7 @@ export function JefeCalidadDashboard() {
   const { data, isLoading } = useDashboardSummary()
 
   return (
-    <PageWrapper title={t('jefeCalidad.title')}>
+    <PageWrapper title={t('jefeCalidad.title')} actions={<ExportButton />}>
       <div className="mb-8">
         <AccionesRequeridasWidget />
       </div>

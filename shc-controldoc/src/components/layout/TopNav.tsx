@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useMatches } from 'react-router-dom'
+import { useMatches, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Menu, Sun, Moon, Monitor, ChevronDown } from 'lucide-react'
 import { useUIStore } from '../../stores/uiStore'
@@ -22,6 +22,7 @@ export function TopNav() {
   const { mutate: logout } = useLogout()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
   const matches = useMatches()
   const breadcrumbs = matches
@@ -113,7 +114,10 @@ export function TopNav() {
               <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-hairline bg-canvas shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
                 <button
                   className="w-full px-4 py-2.5 text-left text-sm text-ink hover:bg-hairline dark:text-on-dark dark:hover:bg-surface-dark-soft"
-                  onClick={() => setDropdownOpen(false)}
+                  onClick={() => {
+                    setDropdownOpen(false)
+                    navigate('/perfil')
+                  }}
                 >
                   {t('myProfile')}
                 </button>

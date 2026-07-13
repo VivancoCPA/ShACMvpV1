@@ -122,7 +122,10 @@ export function TendenciaMensualWidget({
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-lg border border-hairline p-4 dark:border-hairline/20">
+        <div
+          data-export-chart="tendencia-volumen"
+          className="rounded-lg border border-hairline p-4 dark:border-hairline/20"
+        >
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
             {t('jefeCalidad.tendencia.volumen.title')}
           </h3>
@@ -153,7 +156,10 @@ export function TendenciaMensualWidget({
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-lg border border-hairline p-4 dark:border-hairline/20">
+        <div
+          data-export-chart="tendencia-kpis"
+          className="rounded-lg border border-hairline p-4 dark:border-hairline/20"
+        >
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
             {t('jefeCalidad.tendencia.kpis.title')}
           </h3>

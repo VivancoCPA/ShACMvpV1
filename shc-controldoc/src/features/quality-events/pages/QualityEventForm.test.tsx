@@ -71,7 +71,8 @@ const baseQE: QualityEvent = {
   fechaHoraEvento: '2026-06-01T08:00:00Z',
   fechaHoraReporte: new Date().toISOString(),
   reportadoPorId: 'user-creator',
-  hallazgoAuditoriaRef: 'HAL-2026-001',
+  hallazgoCodigo: 'HAL-2026-001',
+  normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
   mineralInvolucrado: 'Cobre',
   documentosVinculados: [],
   requiereEvaluacionRiesgos: false,
@@ -106,7 +107,7 @@ describe('QualityEventForm — edit mode', () => {
 
   afterEach(() => cleanup())
 
-  it('pre-fills the RN-QE-010 field set for an authorized creator', () => {
+  it('pre-fills the RN-QE-014 field set for an authorized creator', () => {
     useAuthStore.setState({
       user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
       isAuthenticated: true,
@@ -116,7 +117,9 @@ describe('QualityEventForm — edit mode', () => {
 
     expect(screen.getByDisplayValue('Descripción original del evento reportado')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('Almacén Norte')
-    expect(screen.getByRole('textbox', { name: /form.fields.hallazgoAuditoriaRef/i })).toHaveValue('HAL-2026-001')
+    expect(screen.getByRole('textbox', { name: /form.fields.hallazgoCodigo/i })).toHaveValue('HAL-2026-001')
+    expect(screen.getByRole('combobox', { name: /form.fields.normaVinculada/i })).toHaveValue('ISO_9001_2015')
+    expect(screen.getByRole('combobox', { name: 'form.fields.clausula' })).toHaveValue('8.4.1')
   })
 
   it('renders protected fields as read-only text with no editable control', () => {
@@ -153,7 +156,7 @@ describe('QualityEventForm — edit mode', () => {
     expect(container.querySelector('#severidad')).toBeInTheDocument()
   })
 
-  it('redirects to the detail page for a user without RN-QE-010 access', () => {
+  it('redirects to the detail page for a user without RN-QE-014 access', () => {
     useAuthStore.setState({
       user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Dos', email: 'a@shac.internal', rol: 'OPERARIO', area: 'Otra Área' },
       isAuthenticated: true,
@@ -432,5 +435,70 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     expect(
       screen.getByText('Esta área difiere de la registrada en el Incidente INC-2026-003: SyST.'),
     ).toBeInTheDocument()
+  })
+
+  describe('O3: normativaVinculada validation (m8-normativa-vinculada fixes)', () => {
+    async function fillO3BaseFields() {
+      await userEvent.selectOptions(
+        screen.getByRole('combobox', { name: /form\.fields\.origen\b/i }),
+        'O3_HALLAZGO_AUDITORIA',
+      )
+      await userEvent.selectOptions(
+        screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
+        'Almacén Norte',
+      )
+      await userEvent.type(screen.getByLabelText(/form\.fields\.hallazgoCodigo/i), 'HAL-2026-020')
+      await fillRequiredFields()
+    }
+
+    it('Fix 1: shows the descriptive message when normativaVinculada is left untouched', async () => {
+      renderCreateRoute()
+      await fillO3BaseFields()
+
+      await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+      expect(
+        await screen.findByText(
+          'Se requiere la normativa vinculada (norma y cláusula incumplida) para hallazgos de auditoría',
+        ),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/expected object, received undefined/i)).not.toBeInTheDocument()
+      expect(createMutate).not.toHaveBeenCalled()
+    })
+
+    it('Fix 2a: shows the refine message (not the raw Zod min-length error) when norma=OTRA and normaOtraDetalle is empty', async () => {
+      renderCreateRoute()
+      await fillO3BaseFields()
+
+      await userEvent.selectOptions(screen.getByLabelText(/form\.fields\.normaVinculada/i), 'OTRA')
+      await userEvent.type(screen.getByLabelText(/form\.fields\.clausula/i), '3.2')
+
+      await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+      expect(
+        await screen.findByText('Se requiere el detalle de la normativa cuando norma es OTRA'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Too small/i)).not.toBeInTheDocument()
+      expect(createMutate).not.toHaveBeenCalled()
+    })
+
+    it('saves correctly when norma=OTRA with normaOtraDetalle and clausula filled', async () => {
+      renderCreateRoute()
+      await fillO3BaseFields()
+
+      await userEvent.selectOptions(screen.getByLabelText(/form\.fields\.normaVinculada/i), 'OTRA')
+      await userEvent.type(screen.getByLabelText(/form\.fields\.clausula/i), '3.2')
+      await userEvent.type(screen.getByLabelText(/form\.fields\.normaOtraDetalle/i), 'Auditoría Operacional')
+
+      await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+      expect(createMutate).toHaveBeenCalledTimes(1)
+      const [payload] = createMutate.mock.calls[0] as [{ normativaVinculada: unknown }]
+      expect(payload.normativaVinculada).toEqual({
+        norma: 'OTRA',
+        clausula: '3.2',
+        normaOtraDetalle: 'Auditoría Operacional',
+      })
+    })
   })
 })

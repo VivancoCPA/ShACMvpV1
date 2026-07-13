@@ -49,7 +49,7 @@ const NAV_ITEMS: NavItem[] = [
     key: 'qualityEvents',
     path: '/quality-events',
     icon: ClipboardList,
-    roles: ['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
+    roles: ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
   },
   {
     key: 'dashboard',

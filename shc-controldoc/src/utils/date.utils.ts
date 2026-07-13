@@ -12,3 +12,10 @@ export function formatShortDate(isoDate: string, locale = 'es-PE'): string {
 
   return `${day} ${month} ${year}`
 }
+
+export function formatDateTime(isoDate: string, locale = 'es-PE'): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(isoDate))
+}

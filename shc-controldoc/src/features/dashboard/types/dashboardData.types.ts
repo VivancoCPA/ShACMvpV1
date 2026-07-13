@@ -1,5 +1,5 @@
 import type { KpiResult } from './kpi.types'
-import type { QEStatus, QEType } from '../../quality-events/types/qualityEvent.types'
+import type { QEStatus, QEType, NormaISO } from '../../quality-events/types/qualityEvent.types'
 import type {
   QEResumen,
   IncidenteResumen,
@@ -69,7 +69,7 @@ export interface AltaDireccionDashboardData {
 }
 
 export interface AuditorDashboardData {
-  hallazgosPorArea: { area: string; total: number }[]
+  hallazgosPorNorma: { norma: NormaISO; total: number }[]
   hallazgosPorEstado: Record<QEStatus, number>
   evidenciasHallazgos: { conEvidencia: number; sinEvidencia: number }
   tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]

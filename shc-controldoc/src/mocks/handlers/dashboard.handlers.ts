@@ -34,7 +34,7 @@ import type {
   QEReaperturaResumen,
   ACSolicitudAjustePlazoResumen,
 } from '../../features/dashboard/types/dashboardSummary.types'
-import type { QualityEvent, QEStatus, QEType } from '../../features/quality-events/types/qualityEvent.types'
+import type { QualityEvent, QEStatus, QEType, NormaISO } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
 import type { NoConformidad } from '../../features/nonconformities/types/nonconformity.types'
 import type { Documento } from '../../types/documents.types'
@@ -687,7 +687,7 @@ function buildAcsConSolicitudAjustePlazo(qes: QualityEvent[]): ACSolicitudAjuste
     .filter((qe) => qe.severidad === 'ALTA' || qe.severidad === 'CRITICA')
     .flatMap((qe) =>
       qe.accionesCorrectivas
-        .filter((ac) => ac.solicitudAjustePlazo?.estado === 'PENDIENTE')
+        .filter((ac) => ac.solicitudesAjustePlazo.some((s) => s.estado === 'PENDIENTE'))
         .map((ac) => ({
           qeId: qe.id,
           qeNumero: qe.numero,
@@ -695,7 +695,7 @@ function buildAcsConSolicitudAjustePlazo(qes: QualityEvent[]): ACSolicitudAjuste
           acId: ac.id,
           acDescripcion: ac.descripcion,
           plazoFechaActual: ac.plazoFecha,
-          solicitudAjustePlazo: ac.solicitudAjustePlazo!,
+          solicitudesAjustePlazo: ac.solicitudesAjustePlazo,
         })),
     )
 }
@@ -755,12 +755,13 @@ function buildAltaDireccionData(): AltaDireccionDashboardData {
   }
 }
 
-function buildHallazgosPorArea(hallazgosO3: QualityEvent[]): AuditorDashboardData['hallazgosPorArea'] {
-  const conteos = new Map<string, number>()
+function buildHallazgosPorNorma(hallazgosO3: QualityEvent[]): AuditorDashboardData['hallazgosPorNorma'] {
+  const conteos = new Map<NormaISO, number>()
   for (const qe of hallazgosO3) {
-    conteos.set(qe.areaAfectada, (conteos.get(qe.areaAfectada) ?? 0) + 1)
+    const norma = qe.normativaVinculada?.norma ?? 'OTRA'
+    conteos.set(norma, (conteos.get(norma) ?? 0) + 1)
   }
-  return [...conteos.entries()].map(([area, total]) => ({ area, total })).sort((a, b) => b.total - a.total)
+  return [...conteos.entries()].map(([norma, total]) => ({ norma, total })).sort((a, b) => b.total - a.total)
 }
 
 function buildHallazgosPorEstado(hallazgosO3: QualityEvent[]): Record<QEStatus, number> {
@@ -809,7 +810,7 @@ function buildAuditorData(): AuditorDashboardData {
   const hallazgosO3 = qes.filter((qe) => qe.origen === 'O3_HALLAZGO_AUDITORIA')
 
   return {
-    hallazgosPorArea: buildHallazgosPorArea(hallazgosO3),
+    hallazgosPorNorma: buildHallazgosPorNorma(hallazgosO3),
     hallazgosPorEstado: buildHallazgosPorEstado(hallazgosO3),
     evidenciasHallazgos: buildEvidenciasHallazgos(hallazgosO3),
     tasaCierreEnPlazoPorArea: buildTasaCierreEnPlazoPorArea(qes),

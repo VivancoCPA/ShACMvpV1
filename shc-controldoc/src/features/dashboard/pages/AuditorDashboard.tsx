@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useDashboardSummary } from '../hooks/useDashboardSummary'
 import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget'
-import { HallazgosPorAreaWidget } from '../components/HallazgosPorAreaWidget'
+import { HallazgosPorNormaWidget } from '../components/HallazgosPorNormaWidget'
 import { HallazgosPorEstadoWidget } from '../components/HallazgosPorEstadoWidget'
 import { EvidenciasHallazgosWidget } from '../components/EvidenciasHallazgosWidget'
 import { TasaCierrePorAreaWidget } from '../components/TasaCierrePorAreaWidget'
@@ -35,7 +35,7 @@ export function AuditorDashboard() {
         </div>
       ) : (
         <div className="space-y-8">
-          <HallazgosPorAreaWidget hallazgosPorArea={data.data.hallazgosPorArea} />
+          <HallazgosPorNormaWidget hallazgosPorNorma={data.data.hallazgosPorNorma} />
           <HallazgosPorEstadoWidget hallazgosPorEstado={data.data.hallazgosPorEstado} />
           <EvidenciasHallazgosWidget evidenciasHallazgos={data.data.evidenciasHallazgos} />
           <TasaCierrePorAreaWidget tasaCierreEnPlazoPorArea={data.data.tasaCierreEnPlazoPorArea} />

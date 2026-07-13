@@ -19,7 +19,7 @@ export function getPasswordStrength(password: string): 0 | 1 | 2 | 3 | 4 {
   return Math.min(score, 4) as 0 | 1 | 2 | 3 | 4
 }
 
-const passwordField = z
+export const passwordField = z
   .string()
   .min(PASSWORD_RULES.minLength, 'auth:validation.passwordMinLength')
   .regex(PASSWORD_RULES.requireUppercase, 'auth:validation.passwordUppercase')

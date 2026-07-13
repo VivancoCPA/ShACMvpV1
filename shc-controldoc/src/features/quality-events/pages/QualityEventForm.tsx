@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AlertTriangle } from 'lucide-react'
 import { SearchableSelect } from '../../../components/shared/SearchableSelect'
+import { NormativaVinculadaCombobox } from '../components/NormativaVinculadaCombobox'
 import { qualityEventCreateSchema } from '../schemas/qualityEventCreate.schema'
 import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.schema'
 import { qualityEventEditReporteInicialSchema } from '../schemas/qualityEventEditReporteInicial.schema'
@@ -28,7 +29,7 @@ import {
   QE_MINERALES,
   AREAS_SHAC,
 } from '../../../constants/shared.constants'
-import type { QEOrigin, QEType, QESeverity, QualityEvent } from '../types/qualityEvent.types'
+import type { QEOrigin, QEType, QESeverity, QualityEvent, NormativaVinculada } from '../types/qualityEvent.types'
 import type { QEEditAccess } from '../types/qualityEventPermissions.types'
 
 const QE_ORIGINS = Object.keys(QE_ORIGIN_LABELS) as QEOrigin[]
@@ -48,7 +49,8 @@ type QEFormValues = {
   mineralInvolucrado: string
   incidenteId: string
   ncId: string
-  hallazgoAuditoriaRef: string
+  hallazgoCodigo: string
+  normativaVinculada: NormativaVinculada | undefined
   reporteExternoRef: {
     nombreCliente: string
     fechaRecepcion: string
@@ -127,7 +129,8 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           mineralInvolucrado: qe.mineralInvolucrado ?? '',
           incidenteId: qe.incidenteId ?? '',
           ncId: qe.ncId ?? '',
-          hallazgoAuditoriaRef: qe.hallazgoAuditoriaRef ?? '',
+          hallazgoCodigo: qe.hallazgoCodigo ?? '',
+          normativaVinculada: qe.normativaVinculada,
           reporteExternoRef: qe.reporteExternoRef ?? { nombreCliente: '', fechaRecepcion: '' },
         }
       : {
@@ -141,7 +144,8 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           mineralInvolucrado: '',
           incidenteId: initialOrigen === 'O1_INCIDENTE_CAMPO' ? initialIncidenteId : '',
           ncId: initialOrigen === 'O2_NC_DETECTADA' ? initialNcId : '',
-          hallazgoAuditoriaRef: '',
+          hallazgoCodigo: '',
+          normativaVinculada: undefined,
           reporteExternoRef: { nombreCliente: '', fechaRecepcion: '' },
         },
   })
@@ -194,7 +198,8 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const clearOriginFields = () => {
     setValue('incidenteId', '')
     setValue('ncId', '')
-    setValue('hallazgoAuditoriaRef', '')
+    setValue('hallazgoCodigo', '')
+    setValue('normativaVinculada', undefined)
     setValue('reporteExternoRef', { nombreCliente: '', fechaRecepcion: '' })
   }
 
@@ -260,7 +265,10 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
     }
     if (qe.origen === 'O1_INCIDENTE_CAMPO') candidate.incidenteId = data.incidenteId
     if (qe.origen === 'O2_NC_DETECTADA') candidate.ncId = data.ncId
-    if (qe.origen === 'O3_HALLAZGO_AUDITORIA') candidate.hallazgoAuditoriaRef = data.hallazgoAuditoriaRef
+    if (qe.origen === 'O3_HALLAZGO_AUDITORIA') {
+      candidate.hallazgoCodigo = data.hallazgoCodigo
+      candidate.normativaVinculada = data.normativaVinculada
+    }
     if (qe.origen === 'O4_REPORTE_EXTERNO') candidate.reporteExternoRef = data.reporteExternoRef
 
     const parsed = qualityEventEditReporteInicialSchema.safeParse(candidate)
@@ -473,21 +481,41 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
         )}
 
         {origenValue === 'O3_HALLAZGO_AUDITORIA' && (
-          <div className="md:col-span-2">
-            <label className={labelClass} htmlFor="hallazgoAuditoriaRef">
-              {t('form.fields.hallazgoAuditoriaRef')} <span className="text-error">*</span>
-            </label>
-            <input
-              id="hallazgoAuditoriaRef"
-              type="text"
-              maxLength={200}
-              className={inputClass}
-              placeholder={t('form.hallazgoPlaceholder')}
-              {...register('hallazgoAuditoriaRef')}
-            />
-            {errors.hallazgoAuditoriaRef && (
-              <p className={errorClass}>{errors.hallazgoAuditoriaRef.message as string}</p>
-            )}
+          <div className="md:col-span-2 grid grid-cols-1 gap-y-4">
+            <div>
+              <label className={labelClass} htmlFor="hallazgoCodigo">
+                {t('form.fields.hallazgoCodigo')} <span className="text-error">*</span>
+              </label>
+              <input
+                id="hallazgoCodigo"
+                type="text"
+                maxLength={200}
+                className={inputClass}
+                placeholder={t('form.hallazgoCodigoPlaceholder')}
+                {...register('hallazgoCodigo')}
+              />
+              {errors.hallazgoCodigo && (
+                <p className={errorClass}>{errors.hallazgoCodigo.message as string}</p>
+              )}
+            </div>
+            <div>
+              <Controller
+                name="normativaVinculada"
+                control={control}
+                render={({ field }) => (
+                  <NormativaVinculadaCombobox
+                    ariaLabel={t('form.fields.clausula')}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.normativaVinculada && (
+                <p className={errorClass}>
+                  {errors.normativaVinculada.message ?? errors.normativaVinculada.normaOtraDetalle?.message}
+                </p>
+              )}
+            </div>
           </div>
         )}
 

@@ -30,6 +30,7 @@ import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
 import { ComingSoon } from './ComingSoonPages'
 import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
+import { ProfilePage } from '../features/users/pages/ProfilePage'
 
 function DefaultRouteRedirect() {
   const user = useAuthStore((state) => state.user)
@@ -53,6 +54,8 @@ export const router = createBrowserRouter([
           { index: true, element: <DefaultRouteRedirect /> },
           // Dev-only preview route — not linked in Sidebar, no RBAC restriction beyond auth.
           { path: '/dev/semaforo-preview', element: <SemaforoPreviewPage /> },
+          // Account self-service — not linked in Sidebar, only reachable via TopNav dropdown or direct URL. No RBAC restriction beyond auth.
+          { path: '/perfil', element: <ProfilePage />, handle: { breadcrumb: 'myProfile' } },
           {
             element: (
               <RoleGuard

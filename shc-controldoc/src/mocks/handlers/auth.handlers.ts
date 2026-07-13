@@ -25,6 +25,13 @@ function readRefreshUserId(request: Request): string | undefined {
   return match?.[1]
 }
 
+function readAccessUserId(request: Request): string | undefined {
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
+  const match = token ? /^mock-access-token-(?:refreshed-)?(.+)-\d{13}$/.exec(token) : null
+  return match?.[1]
+}
+
 export const authHandlers = [
   http.post('/api/auth/login', async ({ request }) => {
     await delay(LATENCY)
@@ -35,6 +42,7 @@ export const authHandlers = [
     if (!user) {
       return err('Credenciales inválidas', 401)
     }
+    user.lastLogin = new Date().toISOString()
     const { password: _pw, ...userWithoutPassword } = user
     return ok({
       accessToken: `mock-access-token-${user.id}-${Date.now()}`,
@@ -75,6 +83,21 @@ export const authHandlers = [
     if (body.token !== MOCK_RESET_TOKEN) {
       return err('Token inválido o expirado', 400)
     }
+    return ok(null)
+  }),
+
+  http.post('/api/auth/change-password', async ({ request }) => {
+    await delay(LATENCY)
+    const userId = readAccessUserId(request)
+    const user = userId ? authFixtures.find((u) => u.id === userId) : undefined
+    if (!user) {
+      return err('Sesión expirada', 401)
+    }
+    const body = (await request.json()) as { currentPassword?: string; newPassword?: string }
+    if (body.currentPassword !== user.password) {
+      return err('Contraseña actual incorrecta', 401)
+    }
+    user.password = body.newPassword ?? user.password
     return ok(null)
   }),
 ]

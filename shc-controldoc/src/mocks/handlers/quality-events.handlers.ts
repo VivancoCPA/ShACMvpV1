@@ -2,9 +2,12 @@ import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
 import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
 import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
+import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
+import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
+import { contarDiasHabiles } from '../../utils/businessDays'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
-import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
+import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC } from '../../features/quality-events/types/qualityEvent.types'
 
 const LATENCY = 400
 
@@ -37,7 +40,8 @@ const REPORTE_INICIAL_EDITABLE_FIELDS = [
   'mineralInvolucrado',
   'incidenteId',
   'ncId',
-  'hallazgoAuditoriaRef',
+  'hallazgoCodigo',
+  'normativaVinculada',
   'reporteExternoRef',
 ]
 
@@ -54,7 +58,7 @@ export function getQeStore(): QualityEvent[] {
 const ORIGIN_REQUIRED_FIELD: Record<string, string> = {
   O1_INCIDENTE_CAMPO: 'incidenteId',
   O2_NC_DETECTADA: 'ncId',
-  O3_HALLAZGO_AUDITORIA: 'hallazgoAuditoriaRef',
+  O3_HALLAZGO_AUDITORIA: 'hallazgoCodigo',
   O4_REPORTE_EXTERNO: 'reporteExternoRef',
 }
 
@@ -336,6 +340,7 @@ export const qualityEventHandlers = [
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,
+      solicitudesAjustePlazo: [],
     }
 
     const currentUser = getCurrentUser()
@@ -490,6 +495,235 @@ export const qualityEventHandlers = [
     }
     qeStore[idx] = updated
     return HttpResponse.json({ success: true, data: updatedAC })
+  }),
+
+  http.post('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const acIdx = qe.accionesCorrectivas.findIndex(a => a.id === params.acId)
+    if (acIdx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Acción correctiva no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const ac = qe.accionesCorrectivas[acIdx]
+    const body = await request.json() as { fechaSolicitada: string; justificacion: string }
+    const usuario = getCurrentUserForEditAccess()
+
+    if (usuario.id !== ac.responsableId) {
+      return HttpResponse.json(
+        { success: false, message: 'Solo el responsable de la AC puede solicitar un ajuste de plazo' },
+        { status: 422 }
+      )
+    }
+    if (ac.estado === 'CERRADA') {
+      return HttpResponse.json(
+        { success: false, message: 'No se puede solicitar un ajuste de plazo para una AC cerrada' },
+        { status: 422 }
+      )
+    }
+    if (ac.solicitudesAjustePlazo.some(s => s.estado === 'PENDIENTE')) {
+      return HttpResponse.json(
+        { success: false, message: 'Ya existe una solicitud de ajuste de plazo pendiente para esta AC' },
+        { status: 422 }
+      )
+    }
+
+    const totalPlazoDiasHabiles = contarDiasHabiles(new Date(ac.creadoEn), new Date(body.fechaSolicitada))
+    if (totalPlazoDiasHabiles < PLAZO_MINIMO_DIAS_HABILES[qe.severidad]) {
+      return HttpResponse.json(
+        { success: false, message: 'El plazo solicitado está por debajo del mínimo permitido para la severidad del QE' },
+        { status: 422 }
+      )
+    }
+
+    const incrementoDiasHabiles = contarDiasHabiles(new Date(ac.plazoFecha), new Date(body.fechaSolicitada))
+    const requiereAprobacionGerencia = calcularRequiereAprobacionGerencia(qe.severidad, incrementoDiasHabiles)
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const nuevaSolicitud: SolicitudAjustePlazoAC = {
+      id: `sol-${ac.id}-${ac.solicitudesAjustePlazo.length + 1}`,
+      fechaSolicitada: body.fechaSolicitada,
+      justificacion: body.justificacion,
+      estado: 'PENDIENTE',
+      solicitadoPorId: currentUser.id,
+      solicitadoEn: now,
+      requiereAprobacionGerencia,
+    }
+
+    const updatedAC: AccionCorrectivaQE = {
+      ...ac,
+      solicitudesAjustePlazo: [...ac.solicitudesAjustePlazo, nuevaSolicitud],
+      actualizadoEn: now,
+    }
+
+    const accionesCorrectivas = [...qe.accionesCorrectivas]
+    accionesCorrectivas[acIdx] = updatedAC
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'AC_AJUSTE_PLAZO_SOLICITADO',
+      valorNuevo: body.fechaSolicitada,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      accionesCorrectivas,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated }, { status: 201 })
+  }),
+
+  http.patch('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo/:solicitudId', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const acIdx = qe.accionesCorrectivas.findIndex(a => a.id === params.acId)
+    if (acIdx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Acción correctiva no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const ac = qe.accionesCorrectivas[acIdx]
+    const solIdx = ac.solicitudesAjustePlazo.findIndex(s => s.id === params.solicitudId)
+    if (solIdx === -1 || ac.solicitudesAjustePlazo[solIdx].estado !== 'PENDIENTE') {
+      return HttpResponse.json(
+        { success: false, message: 'Solicitud de ajuste de plazo no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const solicitud = ac.solicitudesAjustePlazo[solIdx]
+    const body = await request.json() as { accion: 'APROBAR' | 'RECHAZAR'; comentarioRevision?: string }
+
+    if (body.accion === 'RECHAZAR' && (!body.comentarioRevision || body.comentarioRevision.trim() === '')) {
+      return HttpResponse.json(
+        { success: false, message: 'El comentario de revisión es obligatorio para rechazar la solicitud' },
+        { status: 422 }
+      )
+    }
+
+    const usuario = getCurrentUserForEditAccess()
+    const rolEsperado = solicitud.requiereAprobacionGerencia ? 'ALTA_DIRECCION' : 'JEFE_CALIDAD_SYST'
+    if (usuario.rol !== rolEsperado) {
+      return HttpResponse.json(
+        { success: false, message: 'No tiene el rol autorizado para revisar esta solicitud' },
+        { status: 422 }
+      )
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const solicitudesAjustePlazo = [...ac.solicitudesAjustePlazo]
+
+    if (body.accion === 'APROBAR') {
+      const plazoAnterior = ac.plazoFecha
+      solicitudesAjustePlazo[solIdx] = {
+        ...solicitud,
+        estado: 'APROBADA',
+        revisadoPorId: currentUser.id,
+        revisadoEn: now,
+      }
+
+      const updatedAC: AccionCorrectivaQE = {
+        ...ac,
+        plazoFecha: solicitud.fechaSolicitada,
+        solicitudesAjustePlazo,
+        actualizadoEn: now,
+      }
+
+      const accionesCorrectivas = [...qe.accionesCorrectivas]
+      accionesCorrectivas[acIdx] = updatedAC
+
+      const auditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'AC_AJUSTE_PLAZO_APROBADO',
+        valorAnterior: plazoAnterior,
+        valorNuevo: solicitud.fechaSolicitada,
+        realizadoPorId: currentUser.id,
+        realizadoPorNombre: currentUser.nombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+
+      const updated: QualityEvent = {
+        ...qe,
+        accionesCorrectivas,
+        auditTrail: [...qe.auditTrail, auditEntry],
+        actualizadoEn: now,
+      }
+      qeStore[idx] = updated
+      return HttpResponse.json({ success: true, data: updated })
+    }
+
+    solicitudesAjustePlazo[solIdx] = {
+      ...solicitud,
+      estado: 'RECHAZADA',
+      revisadoPorId: currentUser.id,
+      revisadoEn: now,
+      comentarioRevision: body.comentarioRevision,
+    }
+
+    const updatedAC: AccionCorrectivaQE = {
+      ...ac,
+      solicitudesAjustePlazo,
+      actualizadoEn: now,
+    }
+
+    const accionesCorrectivas = [...qe.accionesCorrectivas]
+    accionesCorrectivas[acIdx] = updatedAC
+
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'AC_AJUSTE_PLAZO_RECHAZADO',
+      campoModificado: 'comentarioRevision',
+      valorNuevo: body.comentarioRevision,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      accionesCorrectivas,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    qeStore[idx] = updated
+    return HttpResponse.json({ success: true, data: updated })
   }),
 
   http.patch('/api/quality-events/:id/cerrar', async ({ params, request }) => {
@@ -875,7 +1109,7 @@ export const qualityEventHandlers = [
     const hasProtectedField = PROTECTED_REPORTE_INICIAL_FIELDS.some((field) => field in body)
     if (hasProtectedField) {
       return HttpResponse.json(
-        { success: false, message: 'RN-QE-010: no se pueden editar campos protegidos del reporte inicial' },
+        { success: false, message: 'RN-QE-014: no se pueden editar campos protegidos del reporte inicial' },
         { status: 422 }
       )
     }
@@ -885,7 +1119,7 @@ export const qualityEventHandlers = [
     const access = resolveQEEditAccess(qe, usuario, new Date())
     if (!access.reporteInicial) {
       return HttpResponse.json(
-        { success: false, message: 'RN-QE-010: fuera de la ventana de corrección o sin permiso para editar' },
+        { success: false, message: 'RN-QE-014: fuera de la ventana de corrección o sin permiso para editar' },
         { status: 422 }
       )
     }
@@ -943,7 +1177,7 @@ export const qualityEventHandlers = [
     const usuario = getCurrentUserForEditAccess()
     if (usuario.rol !== 'JEFE_CALIDAD_SYST' || ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL.includes(qe.estado)) {
       return HttpResponse.json(
-        { success: false, message: 'RN-QE-011: sin permiso para editar la severidad' },
+        { success: false, message: 'RN-QE-015: sin permiso para editar la severidad' },
         { status: 422 }
       )
     }
@@ -1003,7 +1237,7 @@ export const qualityEventHandlers = [
       !tipoValido
     ) {
       return HttpResponse.json(
-        { success: false, message: 'RN-QE-012: sin permiso para editar el mineral involucrado' },
+        { success: false, message: 'RN-QE-016: sin permiso para editar el mineral involucrado' },
         { status: 422 }
       )
     }

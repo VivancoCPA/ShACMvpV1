@@ -26,3 +26,10 @@ export async function forgotPassword(data: ForgotPasswordInput): Promise<void> {
 export async function resetPassword(data: { token: string; password: string }): Promise<void> {
   await api.post('/api/auth/reset-password', data)
 }
+
+export async function changePassword(data: {
+  currentPassword: string
+  newPassword: string
+}): Promise<void> {
+  await api.post('/api/auth/change-password', data)
+}

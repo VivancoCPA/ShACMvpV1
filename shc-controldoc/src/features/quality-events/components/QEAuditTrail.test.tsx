@@ -31,7 +31,7 @@ function makeEntry(overrides: Partial<QEAuditTrailEntry>): QEAuditTrailEntry {
   }
 }
 
-describe('QEAuditTrail — RN-QE-010/011/012 edit entries', () => {
+describe('QEAuditTrail — RN-QE-014/015/016 edit entries', () => {
   it('shows the field diff for QE_REPORTE_INICIAL_EDITADO', () => {
     mockEntries = [
       makeEntry({

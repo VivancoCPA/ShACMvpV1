@@ -92,6 +92,7 @@ export function QualityEventDetail() {
         <QEACSection
           qeId={qe.id}
           qeEstado={qe.estado}
+          qeSeveridad={qe.severidad}
           accionesCorrectivas={qe.accionesCorrectivas}
           solicitudesAC={qe.solicitudesAC}
           readOnly={isDeleted}

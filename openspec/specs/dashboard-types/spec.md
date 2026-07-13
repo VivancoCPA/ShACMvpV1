@@ -57,7 +57,7 @@ El sistema SHALL exportar `KPI_DEFINITIONS: Record<KpiId, KpiDefinition>` desde 
 ---
 
 ### Requirement: Tipos de resumen (proyecciones ligeras) para widgets de dashboard
-El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types.ts` los tipos `QEResumen`, `IncidenteResumen`, `NCResumen`, `DocumentoResumen` y `AccionCorrectivaResumen`, cada uno como una proyección de un subconjunto de campos de su entidad completa (nunca la entidad completa), suficiente para renderizar una fila de widget: identificador, número/código, estado, severidad (cuando aplique), fecha relevante y área. `AccionCorrectivaResumen` SHALL incluir `origenTipo: 'QE' | 'NC' | 'INCIDENTE'` y `origenId: string` para permitir navegar al detalle correcto sin importar de qué dominio proviene la acción correctiva.
+El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types.ts` los tipos `QEResumen`, `IncidenteResumen`, `NCResumen`, `DocumentoResumen` y `AccionCorrectivaResumen`, cada uno como una proyección de un subconjunto de campos de su entidad completa (nunca la entidad completa), suficiente para renderizar una fila de widget: identificador, número/código, estado, severidad (cuando aplique), fecha relevante y área. `AccionCorrectivaResumen` SHALL incluir `origenTipo: 'QE' | 'NC' | 'INCIDENTE'` y `origenId: string` para permitir navegar al detalle correcto sin importar de qué dominio proviene la acción correctiva. `QEResumen` SHALL incluir además el campo opcional `fechaVerificacionProgramada?: string`, proyectado del campo homónimo de la entidad completa `QualityEvent`, para permitir que los widgets de dashboard determinen si un QE tiene un plazo de verificación real (RN-QE-008) antes de aplicar un tratamiento visual de semáforo.
 
 #### Scenario: QEResumen no expone campos internos de análisis de causa raíz
 - **WHEN** se construye un `QEResumen`
@@ -67,15 +67,23 @@ El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types
 - **WHEN** se construye un `AccionCorrectivaResumen` a partir de una acción correctiva de un `Incidente`
 - **THEN** `origenTipo === 'INCIDENTE'` y `origenId` es el `id` del incidente padre
 
+#### Scenario: QEResumen proyecta fechaVerificacionProgramada cuando existe
+- **WHEN** se construye un `QEResumen` a partir de un `QualityEvent` con `fechaVerificacionProgramada: '2026-07-10'`
+- **THEN** el `QEResumen` resultante incluye `fechaVerificacionProgramada: '2026-07-10'`
+
+#### Scenario: QEResumen omite fechaVerificacionProgramada cuando la entidad no la tiene
+- **WHEN** se construye un `QEResumen` a partir de un `QualityEvent` sin `fechaVerificacionProgramada` definido
+- **THEN** el `QEResumen` resultante tiene `fechaVerificacionProgramada: undefined`, no un valor inventado
+
 ---
 
 ### Requirement: Tipos de dashboard específicos por rol
 El sistema SHALL definir en `src/features/dashboard/types/dashboardData.types.ts` seis interfaces distintas — `OperarioDashboardData`, `SupervisorDashboardData`, `JefeCalidadDashboardData`, `AltaDireccionDashboardData`, `AuditorDashboardData`, `JefeControlDocDashboardData` — cada una reflejando los widgets propios de ese rol, sin un tipo genérico de "widget" compartido entre ellas:
 - `OperarioDashboardData`: `misIncidentesReportados: IncidenteResumen[]`, `misQEReportados: QEResumen[]`, `accionesCorrectivasAsignadas: AccionCorrectivaResumen[]`, `documentosPendientesLectura: DocumentoResumen[]`.
-- `SupervisorDashboardData`: `kpisArea: KpiResult[]`, `qePorEstado: Record<QEStatus, number>`, `accionesCorrectivasVencidas: AccionCorrectivaResumen[]`, `incidentesRecientes: IncidenteResumen[]`, `semaforoPlazos: { verde: number; amarillo: number; rojo: number }`.
+- `SupervisorDashboardData`: `kpisArea: KpiResult[]`, `qePorEstado: Record<QEStatus, number>`, `qeAbiertosPorTipo: Record<QEType, number>`, `qesEnVerificacionArea: QEResumen[]`, `accionesCorrectivasPendientesArea: AccionCorrectivaResumen[]`, `accionesCorrectivasVencidas: AccionCorrectivaResumen[]`, `incidentesRecientes: IncidenteResumen[]`, `semaforoPlazos: { verde: number; amarillo: number; rojo: number }`.
 - `JefeCalidadDashboardData`: `kpis: KpiResult[]`, `qeCriticosAbiertos: QEResumen[]`, `ncPendientesVerificacion: NCResumen[]`, `distribucionQEPorTipo: Record<QEType, number>`, `tendenciaMensualCierres: { periodo: string; cerrados: number }[]`.
 - `AltaDireccionDashboardData`: `kpisEstrategicos: KpiResult[]`, `resumenPorModulo: { documentos: { total: number; publicados: number; vencidosRevision: number }; noConformidades: { total: number; abiertas: number; cerradas: number }; incidentes: { total: number; conLesionados: number }; qualityEvents: { total: number; criticosAbiertos: number } }`, `alertasCriticas: QEResumen[]`, `tendenciaTrimestral: { periodo: string; qeCerrados: number; ncCerradas: number }[]`.
-- `AuditorDashboardData`: `hallazgosAuditoriaAbiertos: QEResumen[]`, `ncPorOrigenAuditoria: NCResumen[]`, `kpisCumplimiento: KpiResult[]`, `documentosProximaRevision: DocumentoResumen[]`.
+- `AuditorDashboardData`: `hallazgosPorArea: { area: string; total: number }[]` (QE `origen O3_HALLAZGO_AUDITORIA` agrupados por `areaAfectada`, orden descendente por `total`), `hallazgosPorEstado: Record<QEStatus, number>` (mismo filtro de origen, las 9 claves de `QEStatus` siempre presentes), `evidenciasHallazgos: { conEvidencia: number; sinEvidencia: number }` (mismo filtro de origen, según `documentosVinculados.length > 0`), `tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]` (todos los QE, no solo origen O3; orden ascendente por `tasaCierreEnPlazo`).
 - `JefeControlDocDashboardData`: `Record<string, never>` — sin campos propios en v1; el contenido de `JefeControlDocumentarioDashboard` es exclusivamente `AccionesRequeridasWidget`, que no depende de `useDashboardSummary()`. Este tipo existe para preservar el patrón "una interfaz por rol, unión discriminada por `rol`" y queda listo para ganar campos en un spec futuro sin romper la forma de la unión.
 
 #### Scenario: Cada tipo de rol expone solo sus propios widgets
@@ -86,9 +94,33 @@ El sistema SHALL definir en `src/features/dashboard/types/dashboardData.types.ts
 - **WHEN** se construye un `SupervisorDashboardData`
 - **THEN** `kpisArea` contiene únicamente los `KpiResult` relevantes al alcance de un Supervisor (no los 9 KPIs completos que sí ve `JefeCalidadDashboardData.kpis`)
 
+#### Scenario: qeAbiertosPorTipo cubre los 4 valores de QEType siempre
+- **WHEN** se construye un `SupervisorDashboardData` para un área sin ningún QE de tipo `SST`
+- **THEN** `qeAbiertosPorTipo.SST === 0`, la clave existe con valor `0` en vez de estar ausente
+
+#### Scenario: qesEnVerificacionArea solo incluye QE con plazo real de verificación
+- **WHEN** se construye `qesEnVerificacionArea` a partir de los QEs del área
+- **THEN** el arreglo solo contiene QE con `estado === 'EN_VERIFICACION'` y `fechaVerificacionProgramada` definido; ningún QE en otro estado aparece en este campo
+
+#### Scenario: accionesCorrectivasPendientesArea incluye PENDIENTE y EN_EJECUCION, no solo vencidas
+- **WHEN** se construye `accionesCorrectivasPendientesArea` a partir de las ACs del área
+- **THEN** el arreglo incluye ACs con `estado === 'PENDIENTE'` o `estado === 'EN_EJECUCION'` sin importar si `plazoFecha` ya venció, a diferencia de `accionesCorrectivasVencidas` que sí exige vencimiento
+
+#### Scenario: accionesCorrectivasVencidas ahora exige estado EN_EJECUCION
+- **WHEN** se construye `accionesCorrectivasVencidas` a partir de una AC del área con `estado: 'PENDIENTE'` y `plazoFecha` en el pasado
+- **THEN** esa AC NO aparece en `accionesCorrectivasVencidas` (solo `estado === 'EN_EJECUCION'` con `plazoFecha` vencida califica)
+
 #### Scenario: JefeControlDocDashboardData no tiene campos requeridos
 - **WHEN** un desarrollador construye un `JefeControlDocDashboardData`
 - **THEN** `{}` es un valor válido — el tipo no exige ninguna propiedad
+
+#### Scenario: AuditorDashboardData.hallazgosPorEstado y evidenciasHallazgos filtran por origen O3
+- **WHEN** se construye `AuditorDashboardData` sobre un store con QE de los 4 orígenes
+- **THEN** `hallazgosPorArea`, `hallazgosPorEstado` y `evidenciasHallazgos` solo consideran QE con `origen === 'O3_HALLAZGO_AUDITORIA'`
+
+#### Scenario: AuditorDashboardData.tasaCierreEnPlazoPorArea no filtra por origen
+- **WHEN** se construye `AuditorDashboardData.tasaCierreEnPlazoPorArea`
+- **THEN** el cálculo considera QE de cualquier `origen`, no solo `O3_HALLAZGO_AUDITORIA`
 
 ---
 

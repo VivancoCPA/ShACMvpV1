@@ -161,6 +161,8 @@ interface QualityEvent {
 | RN-QE-007 | QE reabierto conserva historial completo. `ciclo` se incrementa en 1.                          |
 | RN-QE-008 | Verificación no completada en 10 días hábiles → reapertura automática y escalada a Gerencia.   |
 
+**Nota técnica (M4-S10 — normativa vinculada, spec activa):** RN-QE-010 (registro obligatorio de la cláusula de norma incumplida para QE de `origen === 'O3_HALLAZGO_AUDITORIA'`) está restaurada como bloqueo real de creación en `qualityEventCreateSchema`, no solo advertencia. `QualityEvent.hallazgoAuditoriaRef` (texto libre) fue reemplazado por `hallazgoCodigo?: string` + `normativaVinculada?: NormativaVinculada`, donde `NormativaVinculada = { norma: NormaISO; clausula: string; normaOtraDetalle?: string }` y `NormaISO = 'ISO_9001_2015' | 'ISO_45001_2018' | 'OTRA'`. El catálogo curado de cláusulas vive en `src/constants/clausulasISO.constants.ts` (`CLAUSULAS_ISO`); la selección en formulario usa `NormativaVinculadaCombobox` (`features/quality-events/components/`), con fallback de texto libre cuando `norma === 'OTRA'` o no hay match en el catálogo. Ambos campos son editables dentro de la ventana de corrección RN-QE-014 como campos específicos del origen O3.
+
 ---
 
 ## Módulo M1 — Control Documentario (activo)
@@ -390,7 +392,7 @@ interface User {
   email: string;
   rol: UserRole;
   area?: string; // Departamento/área propia del usuario (home area)
-  areasAsignadas?: string[]; // Solo relevante para rol === 'SUPERVISOR'. Subconjunto de AREAS_SHAC: áreas que este Supervisor gestiona para efectos de permisos (p.ej. RN-QE-010). Un Supervisor puede tener más de un área asignada. Vacío o ausente para otros roles.
+  areasAsignadas?: string[]; // Solo relevante para rol === 'SUPERVISOR'. Subconjunto de AREAS_SHAC: áreas que este Supervisor gestiona para efectos de permisos (p.ej. RN-QE-014). Un Supervisor puede tener más de un área asignada. Vacío o ausente para otros roles.
   avatarUrl?: string;
 }
 

@@ -62,6 +62,16 @@ export const userFixtures: User[] = [
     rol: 'AUDITOR_INTERNO',
     area: 'Auditoría',
   },
+  {
+    // Matches documents.fixtures.ts AUTOR_ID and the auth.fixtures.ts login for
+    // autor@shac.pe — lets a real session appear as the AUTOR of documents.
+    id: 'user-autor-001',
+    nombre: 'Carlos',
+    apellido: 'Autor',
+    email: 'autor@shac.pe',
+    rol: 'SUPERVISOR',
+    area: 'Calidad',
+  },
 ]
 
 export const USER_NOMBRE_MAP: Record<string, string> = {
@@ -70,9 +80,7 @@ export const USER_NOMBRE_MAP: Record<string, string> = {
   'user-003': 'María Castro',
   'user-004': 'Ana Torres',
   'user-005': 'Luis Paredes',
-  'user-006': 'Pedro Quispe',
-  'user-007': 'Jorge Ramos',
   'user-008': 'Roberto Silva',
-  'user-009': 'Rosa Villanueva',
   'user-auditor-001': 'Miguel Flores',
+  'user-autor-001': 'Carlos Autor',
 }

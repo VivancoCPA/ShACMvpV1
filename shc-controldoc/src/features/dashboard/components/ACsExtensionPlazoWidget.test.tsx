@@ -16,13 +16,37 @@ const acConSolicitud: ACSolicitudAjustePlazoResumen = {
   acId: 'ac-qe-005-2',
   acDescripcion: 'Auditoría sorpresa de uso de EPP',
   plazoFechaActual: '2026-03-15',
-  solicitudAjustePlazo: {
-    fechaSolicitada: '2026-04-15',
-    justificacion: 'Rotación de personal.',
-    estado: 'PENDIENTE',
-    solicitadoPorId: 'user-operario-001',
-    solicitadoEn: '2026-03-05T09:00:00Z',
-  },
+  solicitudesAjustePlazo: [
+    {
+      id: 'sol-1',
+      fechaSolicitada: '2026-04-15',
+      justificacion: 'Rotación de personal.',
+      estado: 'PENDIENTE',
+      solicitadoPorId: 'user-operario-001',
+      solicitadoEn: '2026-03-05T09:00:00Z',
+      requiereAprobacionGerencia: true,
+    },
+  ],
+}
+
+const acConSolicitudJefeCalidad: ACSolicitudAjustePlazoResumen = {
+  qeId: 'qe-2026-013',
+  qeNumero: 'QE-2026-013',
+  qeSeveridad: 'ALTA',
+  acId: 'ac-qe-013-2',
+  acDescripcion: 'Auditoría de duplicidad de registros',
+  plazoFechaActual: '2026-03-01',
+  solicitudesAjustePlazo: [
+    {
+      id: 'sol-2',
+      fechaSolicitada: '2026-03-10',
+      justificacion: 'Solicitud que solo requiere aprobación de Jefe de Calidad.',
+      estado: 'PENDIENTE',
+      solicitadoPorId: 'user-005',
+      solicitadoEn: '2026-02-20T09:00:00Z',
+      requiereAprobacionGerencia: false,
+    },
+  ],
 }
 
 function renderWidget(acs: ACSolicitudAjustePlazoResumen[]) {
@@ -52,6 +76,12 @@ describe('ACsExtensionPlazoWidget', () => {
   it('shows an empty-state message when there are no pending requests', () => {
     renderWidget([])
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('dashboard:altaDireccion.acsExtensionPlazo.empty'))).toBeInTheDocument()
+  })
+
+  it('hides an AC whose only pending request only needs Jefe de Calidad approval', () => {
+    renderWidget([acConSolicitudJefeCalidad])
+    expect(screen.queryByText('QE-2026-013')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.t('dashboard:altaDireccion.acsExtensionPlazo.empty'))).toBeInTheDocument()
   })
 })

@@ -16,6 +16,7 @@ import type { VerificacionEficaciaInput } from '../schemas/verificacionEficacia.
 import type { QualityEventEditReporteInicialInput } from '../schemas/qualityEventEditReporteInicial.schema'
 import type { QualityEventEditSeveridadInput } from '../schemas/qualityEventEditSeveridad.schema'
 import type { QualityEventEditMineralInput } from '../schemas/qualityEventEditMineral.schema'
+import type { SolicitarAjustePlazoACInput } from '../schemas/solicitarAjustePlazoAC.schema'
 
 export type EditarSeveridadResponse = QualityEvent & { requiereNotificacionUrgente: boolean }
 
@@ -103,6 +104,31 @@ export async function cerrarQEAccion(
   const response = await api.patch<AccionCorrectivaQE>(
     `/api/quality-events/${qeId}/acciones-correctivas/${acId}/status`,
     { estado: 'CERRADA', ...data },
+  )
+  return response.data
+}
+
+export async function solicitarAjustePlazoAC(
+  qeId: string,
+  acId: string,
+  data: SolicitarAjustePlazoACInput,
+): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(
+    `/api/quality-events/${qeId}/acciones-correctivas/${acId}/solicitud-plazo`,
+    data,
+  )
+  return response.data
+}
+
+export async function revisarAjustePlazoAC(
+  qeId: string,
+  acId: string,
+  solicitudId: string,
+  data: { accion: 'APROBAR' | 'RECHAZAR'; comentarioRevision?: string },
+): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(
+    `/api/quality-events/${qeId}/acciones-correctivas/${acId}/solicitud-plazo/${solicitudId}`,
+    data,
   )
   return response.data
 }

@@ -12,7 +12,18 @@ export const qualityEventEditReporteInicialSchema = z
     mineralInvolucrado: z.string().optional(),
     incidenteId: z.string().min(1).optional(),
     ncId: z.string().min(1).optional(),
-    hallazgoAuditoriaRef: z.string().min(1).optional(),
+    hallazgoCodigo: z.string().min(1).optional(),
+    normativaVinculada: z
+      .object({
+        norma: z.enum(['ISO_9001_2015', 'ISO_45001_2018', 'OTRA']),
+        clausula: z.string().min(1, 'Se requiere la cláusula incumplida'),
+        normaOtraDetalle: z.string().min(1).optional(),
+      })
+      .refine((v) => v.norma !== 'OTRA' || !!v.normaOtraDetalle, {
+        message: 'Se requiere el detalle de la normativa cuando norma es OTRA',
+        path: ['normaOtraDetalle'],
+      })
+      .optional(),
     reporteExternoRef: z
       .object({
         nombreCliente: z.string().min(1),

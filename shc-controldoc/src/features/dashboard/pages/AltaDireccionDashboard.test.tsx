@@ -111,13 +111,17 @@ describe('AltaDireccionDashboard', () => {
             acId: 'ac-qe-005-2',
             acDescripcion: 'Auditoría sorpresa de uso de EPP',
             plazoFechaActual: '2026-03-15',
-            solicitudAjustePlazo: {
-              fechaSolicitada: '2026-04-15',
-              justificacion: 'Rotación de personal.',
-              estado: 'PENDIENTE',
-              solicitadoPorId: 'user-operario-001',
-              solicitadoEn: '2026-03-05T09:00:00Z',
-            },
+            solicitudesAjustePlazo: [
+              {
+                id: 'sol-ac-qe-005-2-1',
+                fechaSolicitada: '2026-04-15',
+                justificacion: 'Rotación de personal.',
+                estado: 'PENDIENTE',
+                solicitadoPorId: 'user-operario-001',
+                solicitadoEn: '2026-03-05T09:00:00Z',
+                requiereAprobacionGerencia: true,
+              },
+            ],
           },
         ],
       },
@@ -152,7 +156,7 @@ describe('AltaDireccionDashboard', () => {
     mockData = {
       rol: 'AUDITOR',
       data: {
-        hallazgosPorArea: [],
+        hallazgosPorNorma: [],
         hallazgosPorEstado: {
           ABIERTO: 0,
           EN_INVESTIGACION: 0,

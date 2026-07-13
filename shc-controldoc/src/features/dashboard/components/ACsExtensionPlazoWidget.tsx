@@ -10,19 +10,28 @@ export function ACsExtensionPlazoWidget({ acs }: ACsExtensionPlazoWidgetProps) {
   const { t, i18n } = useTranslation('dashboard')
   const navigate = useNavigate()
 
+  const gerenciaPendientes = acs
+    .map((ac) => ({
+      ac,
+      solicitud: ac.solicitudesAjustePlazo.find((s) => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia),
+    }))
+    .filter((entry): entry is { ac: ACSolicitudAjustePlazoResumen; solicitud: NonNullable<typeof entry.solicitud> } =>
+      !!entry.solicitud,
+    )
+
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">
         {t('altaDireccion.acsExtensionPlazo.title')}
       </h2>
       <div className="overflow-x-auto rounded-lg border border-hairline dark:border-hairline/20">
-        {acs.length === 0 ? (
+        {gerenciaPendientes.length === 0 ? (
           <p className="px-4 py-12 text-center text-sm text-muted dark:text-on-dark-soft">
             {t('altaDireccion.acsExtensionPlazo.empty')}
           </p>
         ) : (
           <div className="space-y-2 p-3">
-            {acs.map((ac) => (
+            {gerenciaPendientes.map(({ ac, solicitud }) => (
               <button
                 key={ac.acId}
                 type="button"
@@ -36,7 +45,7 @@ export function ACsExtensionPlazoWidget({ acs }: ACsExtensionPlazoWidgetProps) {
                 <p className="shrink-0 text-xs text-muted dark:text-on-dark-soft">
                   {t('altaDireccion.acsExtensionPlazo.fechaSolicitada', {
                     fecha: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(
-                      new Date(ac.solicitudAjustePlazo.fechaSolicitada),
+                      new Date(solicitud.fechaSolicitada),
                     ),
                   })}
                 </p>

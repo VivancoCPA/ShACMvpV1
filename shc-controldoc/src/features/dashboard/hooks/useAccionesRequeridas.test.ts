@@ -168,6 +168,7 @@ describe('extraerAccionesAC — acciones correctivas de los 3 orígenes', () => 
     estado: 'PENDIENTE',
     creadoEn: '2026-01-01T00:00:00Z',
     actualizadoEn: '2026-01-01T00:00:00Z',
+    solicitudesAjustePlazo: [],
   }
   const acNC: AccionCorrectiva = {
     id: 'ac-nc-1',

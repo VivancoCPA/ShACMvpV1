@@ -45,7 +45,7 @@ describe('PATCH /api/quality-events/:id/editar-reporte-inicial', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
 
-  it('rejects a request outside the RN-QE-010 window', async () => {
+  it('rejects a request outside the RN-QE-014 window', async () => {
     loginAs({ id: 'user-006', nombre: 'Pedro', apellido: 'Quispe', email: 'p@shac.internal', rol: 'OPERARIO', area: 'Almacén Sur' })
     const { result } = renderHook(() => useEditarReporteInicial(), { wrapper: createWrapper() })
     // qe-2026-006 is ABIERTO but fechaHoraReporte is far in the past

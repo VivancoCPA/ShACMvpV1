@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QEACSection } from './QEACSection'
 import { useAuthStore } from '../../../stores/authStore'
@@ -38,6 +38,14 @@ vi.mock('../../nonconformities/hooks/useUsers', () => ({
   useUsers: () => ({ data: [] }),
 }))
 
+vi.mock('../hooks/useSolicitarAjustePlazoAC', () => ({
+  useSolicitarAjustePlazoAC: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+vi.mock('../hooks/useRevisarAjustePlazoAC', () => ({
+  useRevisarAjustePlazoAC: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
 const enEjecucionAC: AccionCorrectivaQE = {
   id: 'ac-1',
   qeId: 'qe-2026-001',
@@ -49,6 +57,7 @@ const enEjecucionAC: AccionCorrectivaQE = {
   estado: 'EN_EJECUCION',
   creadoEn: '2026-01-01T00:00:00Z',
   actualizadoEn: '2026-01-01T00:00:00Z',
+  solicitudesAjustePlazo: [],
 }
 
 describe('QEACSection — cierre con evidencia', () => {
@@ -71,7 +80,7 @@ describe('QEACSection — cierre con evidencia', () => {
     render(
       <QEACSection
         qeId="qe-2026-001"
-        qeEstado="EN_EJECUCION"
+        qeEstado="EN_EJECUCION" qeSeveridad="MEDIA"
         accionesCorrectivas={[enEjecucionAC]}
         solicitudesAC={0}
       />,
@@ -92,7 +101,7 @@ describe('QEACSection — cierre con evidencia', () => {
     render(
       <QEACSection
         qeId="qe-2026-001"
-        qeEstado="EN_EJECUCION"
+        qeEstado="EN_EJECUCION" qeSeveridad="MEDIA"
         accionesCorrectivas={[enEjecucionAC]}
         solicitudesAC={0}
       />,
@@ -136,12 +145,12 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
     })
 
     const { rerender } = render(
-      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" accionesCorrectivas={[]} solicitudesAC={0} />,
+      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />,
     )
     expect(toastInfo).not.toHaveBeenCalled()
 
     rerender(
-      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" accionesCorrectivas={[]} solicitudesAC={0} />,
+      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />,
     )
 
     expect(toastInfo).toHaveBeenCalledTimes(1)
@@ -161,11 +170,11 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
     })
 
     const { rerender } = render(
-      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" accionesCorrectivas={[]} solicitudesAC={0} />,
+      <QEACSection qeId="qe-2026-001" qeEstado="EN_EJECUCION" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />,
     )
 
     rerender(
-      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" accionesCorrectivas={[]} solicitudesAC={0} />,
+      <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />,
     )
 
     expect(toastInfo).not.toHaveBeenCalled()
@@ -190,7 +199,7 @@ describe('QEACSection — banner de solicitudes de AC', () => {
       accessToken: 'token',
     })
 
-    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={2} />)
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={2} />)
 
     expect(screen.getByText(/detail\.acSection\.solicitudesACBanner/)).toBeInTheDocument()
   })
@@ -208,7 +217,7 @@ describe('QEACSection — banner de solicitudes de AC', () => {
       accessToken: 'token',
     })
 
-    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={0} />)
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />)
 
     expect(screen.queryByText(/detail\.acSection\.solicitudesACBanner/)).not.toBeInTheDocument()
   })
@@ -226,7 +235,7 @@ describe('QEACSection — banner de solicitudes de AC', () => {
       accessToken: 'token',
     })
 
-    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" accionesCorrectivas={[]} solicitudesAC={2} />)
+    render(<QEACSection qeId="qe-2026-001" qeEstado="EN_INVESTIGACION" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={2} />)
 
     expect(screen.queryByText(/detail\.acSection\.solicitudesACBanner/)).not.toBeInTheDocument()
   })

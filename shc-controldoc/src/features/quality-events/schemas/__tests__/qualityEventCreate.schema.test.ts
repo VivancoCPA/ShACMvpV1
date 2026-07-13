@@ -84,7 +84,7 @@ describe('qualityEventCreateSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('O3: rejects when hallazgoAuditoriaRef is absent', () => {
+  it('O3: rejects when hallazgoCodigo and normativaVinculada are absent', () => {
     const result = qualityEventCreateSchema.safeParse({
       origen: 'O3_HALLAZGO_AUDITORIA',
       ...basePayload,
@@ -94,6 +94,85 @@ describe('qualityEventCreateSchema', () => {
       turno: 'NOCHE',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('O3: rejects when normativaVinculada is absent', () => {
+    const result = qualityEventCreateSchema.safeParse({
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      ...basePayload,
+      tipo: 'CALIDAD',
+      severidad: 'BAJA',
+      areaAfectada: 'Operaciones',
+      turno: 'NOCHE',
+      hallazgoCodigo: 'HAL-2026-010',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('normativaVinculada'))).toBe(true)
+    }
+  })
+
+  it('O3: rejects when hallazgoCodigo is absent', () => {
+    const result = qualityEventCreateSchema.safeParse({
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      ...basePayload,
+      tipo: 'CALIDAD',
+      severidad: 'BAJA',
+      areaAfectada: 'Operaciones',
+      turno: 'NOCHE',
+      normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('hallazgoCodigo'))).toBe(true)
+    }
+  })
+
+  it('O3: rejects normativaVinculada with norma OTRA and no normaOtraDetalle', () => {
+    const result = qualityEventCreateSchema.safeParse({
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      ...basePayload,
+      tipo: 'OPERACIONAL',
+      severidad: 'MEDIA',
+      areaAfectada: 'Zona de Pesaje',
+      turno: 'DIA',
+      hallazgoCodigo: 'HAL-2026-011',
+      normativaVinculada: { norma: 'OTRA', clausula: '3.2' },
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.join('.') === 'normativaVinculada.normaOtraDetalle')).toBe(true)
+    }
+  })
+
+  it('O3: accepts a valid ISO normativaVinculada', () => {
+    const result = qualityEventCreateSchema.safeParse({
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      ...basePayload,
+      fechaHoraEvento: '2025-06-01T08:00',
+      tipo: 'CALIDAD',
+      severidad: 'BAJA',
+      areaAfectada: 'Operaciones',
+      turno: 'NOCHE',
+      hallazgoCodigo: 'HAL-2026-010',
+      normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('O3: accepts a valid OTRA normativaVinculada with normaOtraDetalle', () => {
+    const result = qualityEventCreateSchema.safeParse({
+      origen: 'O3_HALLAZGO_AUDITORIA',
+      ...basePayload,
+      fechaHoraEvento: '2025-06-01T08:00',
+      tipo: 'OPERACIONAL',
+      severidad: 'MEDIA',
+      areaAfectada: 'Zona de Pesaje',
+      turno: 'DIA',
+      hallazgoCodigo: 'HAL-2026-011',
+      normativaVinculada: { norma: 'OTRA', clausula: '3.2', normaOtraDetalle: 'Auditoría Operacional' },
+    })
+    expect(result.success).toBe(true)
   })
 
   it('O4: rejects when reporteExternoRef is absent', () => {

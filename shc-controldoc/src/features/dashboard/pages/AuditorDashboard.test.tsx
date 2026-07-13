@@ -38,7 +38,7 @@ describe('AuditorDashboard', () => {
     mockIsLoading = true
     const { container } = renderDashboard()
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
-    expect(screen.queryByText(i18n.t('dashboard:auditor.hallazgosPorArea.title'))).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('dashboard:auditor.hallazgosPorNorma.title'))).not.toBeInTheDocument()
   })
 
   it('renders a loading skeleton when data.rol is not AUDITOR', () => {
@@ -46,7 +46,7 @@ describe('AuditorDashboard', () => {
     mockData = { rol: 'OPERARIO', data: { misIncidentesReportados: [], misQEReportados: [], accionesCorrectivasAsignadas: [], documentosPendientesLectura: [] } }
     const { container } = renderDashboard()
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
-    expect(screen.queryByText(i18n.t('dashboard:auditor.hallazgosPorArea.title'))).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('dashboard:auditor.hallazgosPorNorma.title'))).not.toBeInTheDocument()
   })
 
   it('renders the 4 widgets, in order, once useDashboardSummary resolves with rol AUDITOR', () => {
@@ -54,7 +54,7 @@ describe('AuditorDashboard', () => {
     mockData = {
       rol: 'AUDITOR',
       data: {
-        hallazgosPorArea: [{ area: 'Zona de Pesaje', total: 2 }],
+        hallazgosPorNorma: [{ norma: 'ISO_9001_2015', total: 2 }],
         hallazgosPorEstado: {
           ABIERTO: 0,
           EN_INVESTIGACION: 1,
@@ -74,7 +74,7 @@ describe('AuditorDashboard', () => {
     const titles = screen.getAllByRole('heading', { level: 2 }).map((el) => el.textContent)
     expect(titles).toEqual([
       i18n.t('dashboard:accionesRequeridas.title'),
-      i18n.t('dashboard:auditor.hallazgosPorArea.title'),
+      i18n.t('dashboard:auditor.hallazgosPorNorma.title'),
       i18n.t('dashboard:auditor.hallazgosPorEstado.title'),
       i18n.t('dashboard:auditor.evidenciasHallazgos.title'),
       i18n.t('dashboard:auditor.tasaCierrePorArea.title'),

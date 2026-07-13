@@ -12,6 +12,9 @@ import {
   FileEdit,
   AlertOctagon,
   Gem,
+  CalendarClock,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQEAuditTrail } from '../hooks/useQEAuditTrail'
@@ -29,6 +32,9 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   QE_REPORTE_INICIAL_EDITADO: FileEdit,
   QE_SEVERIDAD_EDITADA: AlertOctagon,
   QE_MINERAL_EDITADO: Gem,
+  AC_AJUSTE_PLAZO_SOLICITADO: CalendarClock,
+  AC_AJUSTE_PLAZO_APROBADO: ThumbsUp,
+  AC_AJUSTE_PLAZO_RECHAZADO: ThumbsDown,
 }
 
 interface QEAuditTrailProps {
@@ -59,6 +65,15 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
   }
   if (entry.accion === 'QE_SEVERIDAD_EDITADA' || entry.accion === 'QE_MINERAL_EDITADO') {
     return `${label}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'AC_AJUSTE_PLAZO_SOLICITADO') {
+    return `${label} (${entry.realizadoPorNombre}): ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'AC_AJUSTE_PLAZO_APROBADO') {
+    return `${label}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'AC_AJUSTE_PLAZO_RECHAZADO') {
+    return `${label}: ${entry.valorNuevo ?? '—'}`
   }
   return label
 }

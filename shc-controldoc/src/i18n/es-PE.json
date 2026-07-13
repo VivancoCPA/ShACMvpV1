@@ -490,7 +490,9 @@
       "editTitle": "Editar Quality Event",
       "noIncidents": "No hay incidentes disponibles para vincular.",
       "noNonconformities": "No hay no conformidades disponibles para vincular.",
-      "hallazgoPlaceholder": "Ej. NC-ISO-9001-2015-§8.4.1 — Evaluación de proveedores",
+      "hallazgoCodigoPlaceholder": "Ej. HAL-2026-010",
+      "normaOtra": "Otra normativa (texto libre)",
+      "usarTextoLibre": "Usar \"{{texto}}\" como cláusula",
       "criticaBanner": "Severidad CRÍTICA — se notificará a Gerencia al guardar (RN-QE-005)",
       "mineralOtro": "Otro (texto libre)…",
       "errors": {
@@ -509,7 +511,10 @@
         "fechaHoraEvento": "Fecha y hora del evento",
         "incidenteId": "Incidente vinculado",
         "ncId": "No conformidad vinculada",
-        "hallazgoAuditoriaRef": "Referencia de hallazgo de auditoría",
+        "hallazgoCodigo": "Código del hallazgo",
+        "normaVinculada": "Norma vinculada",
+        "clausula": "Cláusula incumplida",
+        "normaOtraDetalle": "Detalle de la normativa",
         "nombreCliente": "Nombre del cliente",
         "fechaRecepcion": "Fecha de recepción del reporte",
         "numero": "Número",
@@ -521,7 +526,8 @@
         "search": "Buscar…",
         "descripcion": "Describe el evento con detalle (mín. 10 caracteres)…",
         "mineralInvolucrado": "Especificar mineral…",
-        "nombreCliente": "Nombre del cliente o empresa"
+        "nombreCliente": "Nombre del cliente o empresa",
+        "normaOtraDetalle": "Ej. Auditoría MINEM, SUNAT…"
       },
       "turno": {
         "DIA": "Día",
@@ -566,6 +572,7 @@
         "verIncidente": "Ver Incidente",
         "verNoConformidad": "Ver No Conformidad",
         "hallazgoAuditoria": "Hallazgo de auditoría",
+        "normativaVinculada": "Normativa vinculada",
         "nombreCliente": "Cliente",
         "fechaRecepcion": "Fecha de recepción",
         "criticaBanner": "Severidad CRÍTICA — requiere atención prioritaria de Gerencia (RN-QE-005)",
@@ -673,7 +680,57 @@
         "errors": {
           "evidenciaRequerida": "La descripción de la evidencia es obligatoria."
         },
-        "autoTransitionToast": "Todas las acciones correctivas fueron cerradas — el QE pasó a Pendiente de Cierre."
+        "autoTransitionToast": "Todas las acciones correctivas fueron cerradas — el QE pasó a Pendiente de Cierre.",
+        "ajustePlazo": {
+          "actions": {
+            "solicitar": "Solicitar ajuste de plazo"
+          },
+          "modal": {
+            "title": "Solicitar ajuste de plazo",
+            "fields": {
+              "fechaSolicitada": "Nueva fecha propuesta",
+              "justificacion": "Justificación"
+            },
+            "placeholders": {
+              "justificacion": "Explica por qué se necesita ampliar el plazo (mínimo 50 caracteres)…"
+            },
+            "badgeGerencia": "Requiere aprobación de Gerencia",
+            "badgeJefeCalidad": "Requiere aprobación de Jefe de Calidad",
+            "errors": {
+              "minimo": "El plazo propuesto está por debajo del mínimo permitido para la severidad del QE."
+            },
+            "actions": {
+              "submit": "Enviar solicitud"
+            }
+          },
+          "panel": {
+            "title": "Solicitud de ajuste de plazo",
+            "solicitadoPor": "Solicitado por {{nombre}}",
+            "fechaSolicitada": "Nueva fecha propuesta: {{fecha}}",
+            "actions": {
+              "aprobar": "Aprobar",
+              "rechazar": "Rechazar"
+            }
+          },
+          "rechazarModal": {
+            "title": "Rechazar solicitud de ajuste de plazo",
+            "body": "Explica el motivo del rechazo. El responsable será notificado.",
+            "fields": {
+              "comentarioRevision": "Comentario"
+            },
+            "actions": {
+              "confirm": "Confirmar rechazo"
+            }
+          },
+          "toasts": {
+            "solicitudEnviada": "Solicitud de ajuste de plazo enviada.",
+            "aprobadorNotificadoGerencia": "Se notificó a Gerencia.",
+            "aprobadorNotificadoJefeCalidad": "Se notificó al Jefe de Calidad.",
+            "aprobado": "Solicitud de ajuste de plazo aprobada.",
+            "rechazado": "Solicitud de ajuste de plazo rechazada.",
+            "responsableNotificado": "Se notificó al responsable de la acción correctiva."
+          }
+        }
       },
       "auditTrail": {
         "title": "Historial de Auditoría",
@@ -689,7 +746,10 @@
           "AC_ESTADO_CAMBIADO": "Estado de acción correctiva cambiado",
           "QE_REPORTE_INICIAL_EDITADO": "Reporte inicial editado",
           "QE_SEVERIDAD_EDITADA": "Severidad editada",
-          "QE_MINERAL_EDITADO": "Mineral involucrado editado"
+          "QE_MINERAL_EDITADO": "Mineral involucrado editado",
+          "AC_AJUSTE_PLAZO_SOLICITADO": "Ajuste de plazo solicitado",
+          "AC_AJUSTE_PLAZO_APROBADO": "Ajuste de plazo aprobado",
+          "AC_AJUSTE_PLAZO_RECHAZADO": "Ajuste de plazo rechazado"
         }
       },
       "notFound": {
@@ -1561,8 +1621,8 @@
     },
     "auditor": {
       "title": "Dashboard de Auditoría",
-      "hallazgosPorArea": {
-        "title": "Hallazgos por área",
+      "hallazgosPorNorma": {
+        "title": "Hallazgos por norma",
         "empty": "No hay hallazgos de auditoría registrados"
       },
       "hallazgosPorEstado": {
@@ -1596,6 +1656,124 @@
       },
       "sinUbicacion_one": "{{count}} incidente sin ubicación registrada en el período",
       "sinUbicacion_other": "{{count}} incidentes sin ubicación registrada en el período"
+    },
+    "export": {
+      "button": "Exportar",
+      "modal": {
+        "title": "Exportar informe ejecutivo",
+        "description": "Elige el formato del archivo a generar.",
+        "excel": "Excel (.xlsx)",
+        "pdf": "PDF (.pdf)",
+        "cancel": "Cancelar"
+      },
+      "toast": {
+        "success": "Informe exportado correctamente",
+        "error": "No se pudo generar el informe. Intenta nuevamente."
+      },
+      "emptyMessage": "Sin datos en el período seleccionado",
+      "meta": {
+        "rol": "Rol",
+        "generadoEn": "Generado el",
+        "usuario": "Usuario",
+        "periodo": "Período"
+      },
+      "periodo": {
+        "snapshot": "Snapshot actual del dashboard",
+        "heatmap": "Últimos {{meses}} meses"
+      },
+      "rolLabel": {
+        "JEFE_CALIDAD_SYST": "Jefatura de Calidad/SyST",
+        "ALTA_DIRECCION": "Alta Dirección"
+      },
+      "pdf": {
+        "portadaTitulo": "Informe Ejecutivo SHAC"
+      },
+      "sections": {
+        "accionesRequeridas": {
+          "headers": {
+            "codigo": "Código",
+            "tipo": "Tipo",
+            "dominio": "Dominio",
+            "prioridad": "Prioridad",
+            "fechaLimite": "Fecha límite"
+          }
+        },
+        "kpis": {
+          "headers": {
+            "kpi": "KPI",
+            "nombre": "Nombre",
+            "valor": "Valor",
+            "meta": "Meta",
+            "semaforo": "Semáforo"
+          }
+        },
+        "qePorEstado": {
+          "headers": {
+            "estado": "Estado",
+            "cantidad": "Cantidad"
+          }
+        },
+        "acsPorVencer": {
+          "headers": {
+            "descripcion": "Descripción",
+            "origen": "Origen",
+            "responsable": "Responsable",
+            "plazo": "Plazo",
+            "estado": "Estado"
+          }
+        },
+        "tendencia": {
+          "headers": {
+            "periodo": "Período",
+            "abiertos": "Abiertos",
+            "cerrados": "Cerrados",
+            "kpi01": "KPI-01",
+            "kpi04": "KPI-04",
+            "kpi05": "KPI-05"
+          }
+        },
+        "heatmap": {
+          "headers": {
+            "local": "Local",
+            "incidentes": "Incidentes"
+          }
+        },
+        "kpisEjecutivos": {
+          "headers": {
+            "indicador": "Indicador",
+            "valor": "Valor"
+          }
+        },
+        "comparativaMensual": {
+          "headers": {
+            "kpi": "KPI",
+            "actual": "Actual",
+            "anterior": "Mes anterior",
+            "tendencia": "Tendencia"
+          }
+        },
+        "qesCriticos": {
+          "headers": {
+            "numero": "Número",
+            "area": "Área",
+            "estado": "Estado"
+          }
+        },
+        "reaperturas": {
+          "headers": {
+            "numero": "Número",
+            "fechaReapertura": "Fecha de reapertura",
+            "ciclo": "Ciclo"
+          }
+        },
+        "acsExtensionPlazo": {
+          "headers": {
+            "qe": "Quality Event",
+            "descripcion": "Descripción AC",
+            "plazoActual": "Plazo actual"
+          }
+        }
+      }
     }
   },
   "locations": {
@@ -1698,6 +1876,32 @@
       "errors": {
         "limiteLocalesActivos": "No se puede crear el local: ya existen 5 locales activos",
         "localNoEncontrado": "Local no encontrado"
+      }
+    }
+  },
+  "users": {
+    "profile": {
+      "title": "Mi perfil",
+      "back": "Volver",
+      "readOnlySection": {
+        "title": "Información de cuenta",
+        "email": "Correo electrónico",
+        "rol": "Rol",
+        "area": "Área",
+        "areasAsignadas": "Áreas asignadas",
+        "createdAt": "Cuenta creada",
+        "lastLogin": "Último acceso"
+      }
+    },
+    "changePassword": {
+      "title": "Cambiar contraseña",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "submit": "Guardar contraseña",
+      "success": "Contraseña actualizada correctamente",
+      "errors": {
+        "incorrectCurrentPassword": "La contraseña actual es incorrecta"
       }
     }
   }
