@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
-import { authFixtures, MOCK_RESET_TOKEN } from '../fixtures/auth.fixtures'
+import { authFixtures, getUsersStore, MOCK_RESET_TOKEN } from '../fixtures/auth.fixtures'
 
 const LATENCY = 400
 // MSW's Service Worker can't set a real httpOnly cookie from a synthetic
@@ -36,11 +36,14 @@ export const authHandlers = [
   http.post('/api/auth/login', async ({ request }) => {
     await delay(LATENCY)
     const body = (await request.json()) as { email?: string; password?: string }
-    const user = authFixtures.find(
+    const user = getUsersStore().find(
       (u) => u.email === body.email && u.password === body.password,
     )
     if (!user) {
       return err('Credenciales inválidas', 401)
+    }
+    if (!user.activo) {
+      return err('Usuario deshabilitado, contacte al administrador', 403)
     }
     user.lastLogin = new Date().toISOString()
     const { password: _pw, ...userWithoutPassword } = user

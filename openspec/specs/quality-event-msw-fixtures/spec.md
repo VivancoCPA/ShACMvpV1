@@ -64,6 +64,23 @@ The `fechaHoraEvento` field across all fixtures SHALL be spread across the 6-mon
 
 ---
 
+### Requirement: fechaHoraReporte y fechaCierre distribuidos en los 12 meses de tendencia mensual
+Además de la distribución de `fechaHoraEvento` en los últimos 6 meses (ver requisito existente), las fixtures SHALL colectivamente cubrir con al menos una entrada por mes los 12 meses hacia atrás desde la fecha de referencia del sistema tanto para `fechaHoraReporte` como para `fechaCierre`, de forma que el widget de tendencia mensual (`dashboard-trend-widget`) no muestre `0` estructural en `tendenciaMensualVolumen.abiertos` para ningún mes del rango de 12 meses. Los ajustes de fecha SHALL preservar las restricciones narrativas ya existentes de cada fixture (`causaRaizFirmadaEn` < `fechaCierre` < `fechaVerificacionProgramada`/`fechaVerificacionRealizada`/fecha actual del sistema) y SHALL priorizar mover fechas de registros existentes antes que agregar fixtures nuevos, para no alterar las proporciones mínimas ya exigidas por los demás requisitos de esta spec (cobertura de enums, `ciclo > 1`, `VERIFICADO`, seeded ACs).
+
+#### Scenario: Cada uno de los 12 meses tiene al menos un fechaHoraReporte
+- **WHEN** se agrupan los 12 meses hacia atrás desde la fecha de referencia del sistema
+- **THEN** cada mes tiene al menos una fixture con `fechaHoraReporte` dentro de ese mes
+
+#### Scenario: La mayoría de los 12 meses tiene al menos un fechaCierre
+- **WHEN** se agrupan los 12 meses hacia atrás desde la fecha de referencia del sistema
+- **THEN** al menos 10 de los 12 meses tienen al menos una fixture con `fechaCierre` dentro de ese mes (los meses sin cierre, si los hay, quedan documentados como gap aceptado en `design.md`, no forzados artificialmente)
+
+#### Scenario: Los ajustes de fecha no rompen restricciones narrativas existentes
+- **WHEN** se inspecciona cualquier fixture cuyo `fechaCierre` fue movido para esta spec
+- **THEN** `fechaCierre` sigue siendo posterior a `causaRaizFirmadaEn` y anterior a `fechaVerificacionProgramada`/`fechaVerificacionRealizada` (cuando existan) y a la fecha actual del sistema
+
+---
+
 ### Requirement: At least 5 fixtures with ciclo > 1
 At least 5 fixtures SHALL have `ciclo >= 2` to exercise the Reincidencia badge. Their `ciclo` values SHALL include at least one instance of `ciclo === 3` to verify that the badge label reads "Reincidencia ×3".
 
@@ -202,6 +219,31 @@ De los QE fixture con `origen === 'O3_HALLAZGO_AUDITORIA'`, al menos 2 SHALL ten
 
 ---
 
+### Requirement: O3 fixtures carry hallazgoCodigo and normativaVinculada, not hallazgoAuditoriaRef
+Every fixture `QualityEvent` with `origen === 'O3_HALLAZGO_AUDITORIA'` SHALL define `hallazgoCodigo` and `normativaVinculada` and SHALL NOT define `hallazgoAuditoriaRef`. Fixtures previously carrying `hallazgoAuditoriaRef: 'HAL-XXXX-NNN · <Norma> · §<Cláusula>'` SHALL be migrated field-by-field: the `HAL-XXXX-NNN` segment becomes `hallazgoCodigo`; the `<Norma>` segment maps to `normativaVinculada.norma` (`'ISO 9001:2015'` → `'ISO_9001_2015'`, `'ISO 45001:2018'` → `'ISO_45001_2018'`, any non-ISO label → `'OTRA'` with that label preserved verbatim in `normativaVinculada.normaOtraDetalle`); the `§<Cláusula>` segment becomes `normativaVinculada.clausula` (without the `§` prefix). Any `auditTrail` entry in the same fixture with `campoModificado: 'hallazgoAuditoriaRef'` SHALL be updated to `campoModificado: 'normativaVinculada'` with `valorNuevo` reflecting the migrated value.
+
+#### Scenario: QE-2026-003 migrates ISO 9001:2015 clause 8.4.1
+- **WHEN** fixtures are loaded and the QE with `numero: 'QE-2026-003'` is read
+- **THEN** it has `hallazgoCodigo: 'HAL-2026-001'`, `normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' }`, and no `hallazgoAuditoriaRef` property
+
+#### Scenario: QE-2026-011 migrates ISO 45001:2018 clause 8.2
+- **WHEN** fixtures are loaded and the QE with `numero: 'QE-2026-011'` is read
+- **THEN** it has `hallazgoCodigo: 'HAL-2026-003'`, `normativaVinculada: { norma: 'ISO_45001_2018', clausula: '8.2' }`, and no `hallazgoAuditoriaRef` property
+
+#### Scenario: QE-2026-015 migrates a non-ISO reference to norma OTRA
+- **WHEN** fixtures are loaded and the QE with `numero: 'QE-2026-015'` (previously `hallazgoAuditoriaRef: 'HAL-2026-004 · Auditoría Operacional · §3.2'`) is read
+- **THEN** it has `hallazgoCodigo: 'HAL-2026-004'` and `normativaVinculada: { norma: 'OTRA', normaOtraDetalle: 'Auditoría Operacional', clausula: '3.2' }`
+
+#### Scenario: No fixture QE retains hallazgoAuditoriaRef
+- **WHEN** all fixtures are loaded and filtered to `origen === 'O3_HALLAZGO_AUDITORIA'`
+- **THEN** none of them has a `hallazgoAuditoriaRef` property, migrated or otherwise
+
+#### Scenario: Migrated audit trail entries reference normativaVinculada, not hallazgoAuditoriaRef
+- **WHEN** the fixture QE with `numero: 'QE-2026-011'` or `numero: 'QE-2026-019'` is read
+- **THEN** any `auditTrail` entry that previously had `campoModificado: 'hallazgoAuditoriaRef'` now has `campoModificado: 'normativaVinculada'`
+
+---
+
 ### Requirement: Fixtures migrate to the solicitudesAjustePlazo array shape
 Every seeded `AccionCorrectivaQE` in `qeAccionesCorrectivas` (`src/mocks/fixtures/quality-events.fixtures.ts`) SHALL define `solicitudesAjustePlazo: SolicitudAjustePlazoAC[]` (defaulting to `[]`). Any fixture that previously populated the removed singular `solicitudAjustePlazo` field SHALL have that object migrated to the first (and, at seed time, only) element of `solicitudesAjustePlazo`, gaining a generated `id` and `requiereAprobacionGerencia` computed from its owning QE's `severidad` and the stored `fechaSolicitada`.
 
@@ -224,4 +266,19 @@ The fixture set SHALL include at least one `AccionCorrectivaQE` (on a QE with `s
 
 #### Scenario: At least one Jefe-de-Calidad-pending fixture request exists
 - **WHEN** all `solicitudesAjustePlazo` entries across `qeAccionesCorrectivas` are filtered by `s => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia === false`
+- **THEN** the result has at least 1 element
+
+---
+
+### Requirement: At least 2 fixtures seed a pending solicitudAjustePlazo on an ALTA/CRITICA QE's AC
+`qeAccionesCorrectivas` SHALL include at least 2 `AccionCorrectivaQE` entries with `solicitudAjustePlazo.estado === 'PENDIENTE'`, each belonging to a QE fixture with `severidad === 'ALTA'` or `severidad === 'CRITICA'`. At least 1 additional `AccionCorrectivaQE` entry SHALL have `solicitudAjustePlazo.estado` set to `'APROBADA'` or `'RECHAZADA'`, to verify that the Alta Dirección widget filters by `PENDIENTE` and does not simply show every AC that has ever had a request.
+
+> Nota de staleness (m5-s06-dashboard-altadireccion): este requisito describe el campo singular `solicitudAjustePlazo`, pero el campo real (evolucionado por `m4-gap-extensio-plazos`, archivado 2026-07-12) es el arreglo plural `solicitudesAjustePlazo: SolicitudAjustePlazoAC[]` — ver los requisitos "Fixtures migrate to the solicitudesAjustePlazo array shape" y "At least one seeded PENDIENTE request requiring Gerencia approval" más arriba en este mismo archivo, que ya cubren la misma intención (2+ fixtures PENDIENTE en QEs ALTA/CRITICA) con la forma correcta. Este requisito se sincronizó tal como está escrito en la delta, sin corregir la terminología, por decisión explícita del usuario. Pendiente de reconciliación en un cambio de limpieza futuro.
+
+#### Scenario: At least 2 PENDIENTE requests on ALTA/CRITICA QEs
+- **WHEN** `qeAccionesCorrectivas` is flattened and filtered by `ac => ac.solicitudAjustePlazo?.estado === 'PENDIENTE'`
+- **THEN** the result has at least 2 elements, and each one's owning QE fixture has `severidad === 'ALTA'` or `severidad === 'CRITICA'`
+
+#### Scenario: At least 1 non-pending request exists as a negative fixture
+- **WHEN** `qeAccionesCorrectivas` is flattened and filtered by `ac => ac.solicitudAjustePlazo?.estado === 'APROBADA' || ac.solicitudAjustePlazo?.estado === 'RECHAZADA'`
 - **THEN** the result has at least 1 element

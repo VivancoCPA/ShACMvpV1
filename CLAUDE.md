@@ -417,6 +417,14 @@ La matriz RACI oficial de M1 (SHAC-M1-Matriz-Responsabilidades-v1.0.docx) define
 - Sin rol requerido → redirect `/no-autorizado`.
 - Sin autenticación → redirect `/login`.
 
+### Recuperación de contraseña — estado actual (stub)
+
+`ForgotPasswordPage` / `ResetPasswordPage` existen desde la spec de Layout, pero son un stub sobre datos mock (`useResetPassword`, handlers MSW): no hay backend de envío de email real, por lo que **no completan el circuito de recuperación end-to-end**.
+
+El mecanismo funcional actual para desbloquear a un usuario que perdió su contraseña es el **reset de contraseña por administrador** en `/usuarios` (M6-S07, acción disponible solo para `ADMINISTRADOR_SISTEMA`): genera una contraseña temporal y la muestra en pantalla para compartir manualmente. El botón de esa acción y su modal de confirmación (`UserList.tsx`) incluyen texto visible aclarando este motivo.
+
+Esto debe revisarse/reemplazarse cuando exista backend .NET real con envío de email — en ese punto `ForgotPasswordPage`/`ResetPasswordPage` pasarían a ser el flujo primario.
+
 ---
 
 ## Internacionalización (i18n)

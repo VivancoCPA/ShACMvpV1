@@ -1,13 +1,58 @@
 schema: spec-driven
 
 # Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Read by the OpenSpec flow (propose/sync/apply) for spec-generation rules.
+# Distinct from CLAUDE.md, which Claude Code reads automatically for
+# implementation tasks (stack, architecture, code-level decisions).
+context: |
+  # Contexto para generación de specs — SHAC / OpenSpec
+
+  Estas reglas rigen cómo se escriben specs, proposals y tasks en este
+  proyecto (flujo OpenSpec: propose/sync/apply). Para contexto de
+  implementación (stack, arquitectura, decisiones de código), ver
+  CLAUDE.md en la raíz del repo — ese es el archivo que Claude Code lee
+  automáticamente para tareas de código.
+
+  ## Reglas de numeración de IDs (RN-*, CA-*)
+
+  - Antes de asignar un nuevo ID de regla de negocio (RN-XXX-NNN) o
+    criterio de aceptación (CA-XXX-NNN) en una spec nueva, verificar que
+    no exista ya un ID con ese mismo número en otro documento (PRD base,
+    addenda, specs archivadas). Los choques de numeración ya ocurrieron
+    al menos una vez (RN-QE-010 dual-definida entre PRD y ADD-04,
+    resuelto 2026-07-12 renumerando a RN-QE-013).
+  - Si se detecta una colisión, no resolverla unilateralmente — reportarla
+    explícitamente para decisión humana antes de escribir la spec.
+
+  ## Verificar contra código real antes de proponer
+
+  - Nunca asumir que una funcionalidad no existe basándose solo en el PRD
+    o en handoffs anteriores. Leer el código real de la carpeta/feature
+    relevante antes de escribir una propuesta — varias specs (M5-S08,
+    M5-S09) redujeron alcance significativamente al descubrir lógica ya
+    implementada que el PRD por sí solo no reflejaba.
+
+  ## Patrón de fixtures desincronizados
+
+  - Cualquier campo que asigne un usuario (responsable, aprobador,
+    revisor, auditor asignado) debe considerar si ese `user-00X` tiene
+    contraparte real en `auth.fixtures.ts` — de lo contrario, ese flujo
+    no se puede probar end-to-end logueado como esa persona. Ver gap
+    cerrado 2026-07-13.
+
+  ## Diagnóstico antes de fix
+
+  - Ante cualquier bug reportado durante verificación en navegador, el
+    siguiente paso siempre es diagnóstico con causa raíz confirmada
+    (archivo + línea), nunca un fix directo sin esa confirmación.
+
+  ## Store cross-dominio en MSW
+
+  - Si un handler de un dominio necesita validar contra datos de otro
+    dominio, usar el store mutable exportado del otro dominio (ej.
+    `getIncidentsStore()`), nunca el fixture estático importado
+    directamente — violaciones de este patrón ya causaron bugs reales en
+    M4-S08 y M6-S02.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
@@ -16,5 +61,3 @@ schema: spec-driven
 #     proposal:
 #       - Keep proposals under 500 words
 #       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours

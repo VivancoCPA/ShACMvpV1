@@ -128,9 +128,9 @@ The system SHALL render an `<select>` for `origen` as the first form field, popu
 - **WHEN** a user selects O1, fills `incidenteId`, then switches to O2
 - **THEN** `incidenteId` is cleared from the form state before the O2 section mounts
 
-#### Scenario: Changing origin from O3 to O4 clears hallazgoAuditoriaRef
-- **WHEN** a user selects O3, fills `hallazgoAuditoriaRef`, then switches to O4
-- **THEN** `hallazgoAuditoriaRef` is cleared from the form state
+#### Scenario: Changing origin from O3 to O4 clears hallazgoCodigo and normativaVinculada
+- **WHEN** a user selects O3, fills `hallazgoCodigo` and `normativaVinculada`, then switches to O4
+- **THEN** both `hallazgoCodigo` and `normativaVinculada` are cleared from the form state
 
 ---
 
@@ -216,16 +216,20 @@ The system SHALL render a `SearchableSelect` component (from `src/components/sha
 
 ---
 
-### Requirement: O3 conditional section — hallazgoAuditoriaRef text input
-The system SHALL render a text `<input>` for `hallazgoAuditoriaRef` when `origen === 'O3_HALLAZGO_AUDITORIA'`. The input SHALL have maxLength 200 and placeholder from `t('qualityEvents:form.hallazgoPlaceholder')` (Spanish: "Ej. NC-ISO-9001-2015-§8.4.1 — Evaluación de proveedores"). A validation error SHALL display below the field when empty on submit with origin O3.
+### Requirement: O3 conditional section — hallazgoCodigo and normativaVinculada
+The system SHALL render two fields when `origen === 'O3_HALLAZGO_AUDITORIA'`: a text `<input>` registered as `hallazgoCodigo` (maxLength 200, placeholder from `t('qualityEvents:form.hallazgoCodigoPlaceholder')`, Spanish: "Ej. HAL-2026-010"), and a `NormativaVinculadaCombobox` (from `quality-event-normativa-catalog`) registered as `normativaVinculada` via `Controller`. Both fields SHALL be required (RN-QE-010) — a validation error SHALL display below each field when empty on submit with origin O3.
 
 #### Scenario: O3 section renders only when origen is O3_HALLAZGO_AUDITORIA
 - **WHEN** the user selects `O3_HALLAZGO_AUDITORIA` in the origen select
-- **THEN** the `hallazgoAuditoriaRef` input becomes visible and no other origin-specific fields are visible
+- **THEN** the `hallazgoCodigo` input and the `NormativaVinculadaCombobox` become visible and no other origin-specific fields are visible
 
-#### Scenario: O3 submit without hallazgoAuditoriaRef shows validation error
-- **WHEN** origin is O3, `hallazgoAuditoriaRef` is empty, and the user submits the form
-- **THEN** a Zod validation error appears below the `hallazgoAuditoriaRef` field
+#### Scenario: O3 submit without hallazgoCodigo shows validation error
+- **WHEN** origin is O3, `hallazgoCodigo` is empty, and the user submits the form
+- **THEN** a Zod validation error appears below the `hallazgoCodigo` field
+
+#### Scenario: O3 submit without normativaVinculada shows validation error
+- **WHEN** origin is O3, `normativaVinculada` is unset, and the user submits the form
+- **THEN** a Zod validation error appears below the `NormativaVinculadaCombobox`
 
 ---
 
@@ -353,7 +357,7 @@ In edit mode, `numero`, `origen`, `tipo`, `fechaHoraReporte` (labeled "Fecha de 
 ---
 
 ### Requirement: QualityEventForm edit mode unlocks the RN-QE-014 field subset plus origin-specific fields
-In edit mode, the system SHALL render editable controls for `descripcion`, `areaAfectada`, `turno`, `fechaHoraEvento`, and `mineralInvolucrado`, plus the origin-specific field(s) matching the QE's existing `origen` (`incidenteId` for O1, `ncId` for O2, `hallazgoAuditoriaRef` for O3, `reporteExternoRef` for O4) — the same conditional-section components used in create mode, but never allowing `origen` itself to change. The `severidad` field SHALL remain absent from edit mode unless `resolveQEEditAccess(qe, usuario).severidad` is also `true` (the double-role case), in which case a `severidad` select SHALL additionally render.
+In edit mode, the system SHALL render editable controls for `descripcion`, `areaAfectada`, `turno`, `fechaHoraEvento`, and `mineralInvolucrado`, plus the origin-specific field(s) matching the QE's existing `origen` (`incidenteId` for O1, `ncId` for O2, `hallazgoCodigo` and `normativaVinculada` for O3, `reporteExternoRef` for O4) — the same conditional-section components used in create mode, but never allowing `origen` itself to change. The `severidad` field SHALL remain absent from edit mode unless `resolveQEEditAccess(qe, usuario).severidad` is also `true` (the double-role case), in which case a `severidad` select SHALL additionally render.
 
 #### Scenario: descripcion, areaAfectada, turno, fechaHoraEvento, mineralInvolucrado are editable
 - **WHEN** `QualityEventForm` renders in edit mode for a user with only `reporteInicial: true`

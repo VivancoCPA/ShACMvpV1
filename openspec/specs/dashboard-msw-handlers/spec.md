@@ -206,6 +206,27 @@ El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario 
 
 ---
 
+### Requirement: GET /api/dashboard/summary calcula tendencia mensual de 12 meses para JEFE_CALIDAD
+Cuando `usuario.rol` resuelve a `'JEFE_CALIDAD'` (`JEFE_CALIDAD_SYST`), `buildJefeCalidadData` SHALL calcular `tendenciaMensualVolumen` iterando los últimos 12 meses (`ultimosMeses(12)`), contando por mes los QE cuyo `fechaHoraReporte` cae en ese mes (`abiertos`, sin filtrar por `estado`) y los QE cuyo `fechaCierre` cae en ese mes (`cerrados`, sin filtrar por `estado` — mismo criterio exacto que ya usaba `buildTendenciaMensualCierres`, distinto del filtro `CERRADO`/`VERIFICADO` que sí exige KPI-01/02). SHALL además calcular `tendenciaMensualKpis` invocando `calcularKpi01`, `calcularKpi04` y `calcularKpi05` una vez por cada uno de los mismos 12 meses, sin recalcular semáforo por punto. Este cálculo SHALL tener alcance organizacional completo (sin filtro por `usuario.id` ni `usuario.area`), igual que el resto de `JefeCalidadDashboardData`. `JEFE_CONTROL_DOCUMENTARIO` resuelve a `'JEFE_CONTROL_DOC'` (`buildJefeControlDocumentarioData`, `data: {}`) y por lo tanto NO recibe `tendenciaMensualVolumen` ni `tendenciaMensualKpis` — ver requisito "GET /api/dashboard/summary retorna datos filtrados por rol".
+
+#### Scenario: tendenciaMensualVolumen cuenta QE por fechaHoraReporte y fechaCierre
+- **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `JEFE_CALIDAD_SYST`
+- **THEN** `data.tendenciaMensualVolumen` tiene 12 entradas y la entrada de un mes con QEs reportados en ese mes tiene `abiertos > 0`
+
+#### Scenario: tendenciaMensualKpis reutiliza las funciones de cálculo existentes por mes
+- **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `JEFE_CALIDAD_SYST`
+- **THEN** `data.tendenciaMensualKpis['KPI-01'][i].valor` es igual al resultado de invocar la misma fórmula de KPI-01 con `periodo = data.tendenciaMensualKpis['KPI-01'][i].periodo`
+
+#### Scenario: Alcance organizacional, sin filtro por usuario
+- **WHEN** dos usuarios distintos con rol `JEFE_CALIDAD_SYST` solicitan `GET /api/dashboard/summary`
+- **THEN** ambos reciben el mismo `tendenciaMensualVolumen` y `tendenciaMensualKpis`
+
+#### Scenario: JEFE_CONTROL_DOCUMENTARIO no recibe tendencia mensual
+- **WHEN** `GET /api/dashboard/summary` es solicitado autenticado como `JEFE_CONTROL_DOCUMENTARIO`
+- **THEN** la respuesta tiene `rol: 'JEFE_CONTROL_DOC'` y `data: {}` — no incluye `tendenciaMensualVolumen` ni `tendenciaMensualKpis`
+
+---
+
 ### Requirement: buildAuditorData calcula hallazgos por área, por estado, evidencias disponibles y tasa de cierre en plazo por área
 `buildAuditorData()` SHALL calcular, sin duplicar lógica existente:
 - `hallazgosPorArea`: QE con `origen === 'O3_HALLAZGO_AUDITORIA'` agrupados por `areaAfectada`, mismo patrón de `Map<area, count>` → `.sort((a, b) => b.total - a.total)` que usa `calcularKpi09` para su distribución.
@@ -240,6 +261,32 @@ El handler SHALL registrar `GET /api/dashboard/summary`, resolviendo el usuario 
 #### Scenario: Orden ascendente por tasa de cierre en plazo
 - **WHEN** `tasaCierreEnPlazoPorArea` tiene áreas con tasas `100`, `50` y `75`
 - **THEN** el arreglo resultante está ordenado `50`, `75`, `100`
+
+---
+
+### Requirement: buildAltaDireccionData calcula QEs abiertos/vencidos, comparativa mensual, reaperturas y ACs con solicitud de ajuste de plazo pendiente
+`buildAltaDireccionData()` SHALL calcular, sin duplicar lógica existente:
+- `resumenPorModulo.qualityEvents.abiertos`: conteo de QE con `estado !== 'VERIFICADO'`.
+- `resumenPorModulo.qualityEvents.vencidos`: subconjunto de los anteriores donde `contarDiasHabiles(new Date(qe.fechaHoraReporte), new Date()) > PLAZO_MAXIMO_QE_DIAS_HABILES[qe.severidad]`, reutilizando la misma función y tabla de `kpi.constants.ts` que usa `calcularKpi01`.
+- `comparativaMensual`: para cada uno de KPI-01/04/05, invoca `calcularKpi01`/`calcularKpi04`/`calcularKpi05` sobre los 2 períodos de `ultimosMeses(2)` y clasifica la tendencia con un umbral de 2 puntos (`Math.abs(actual - anterior) < 2` → `'ESTABLE'`).
+- `reaperturas`: QE con `ciclo > 1`, proyectados a `QEReaperturaResumen` con `fechaReapertura` derivada de la entrada de `auditTrail` más reciente con `estadoNuevo === 'REABIERTO'` (fallback `actualizadoEn`), ordenados descendentemente por `fechaReapertura`.
+- `acsConSolicitudAjustePlazo`: ACs de QEs con `severidad === 'ALTA' || severidad === 'CRITICA'` cuyo `solicitudAjustePlazo?.estado === 'PENDIENTE'`, proyectadas a `ACSolicitudAjustePlazoResumen`.
+
+#### Scenario: vencidos es subconjunto de abiertos
+- **WHEN** se calcula `resumenPorModulo.qualityEvents` para el store en vivo
+- **THEN** todo QE contado en `vencidos` también está contado en `abiertos`
+
+#### Scenario: comparativaMensual reutiliza calcularKpi01/04/05
+- **WHEN** se calcula `comparativaMensual`
+- **THEN** los valores `actual`/`anterior` de cada KPI son idénticos a invocar directamente `calcularKpi01`/`calcularKpi04`/`calcularKpi05` con los mismos 2 períodos de `ultimosMeses(2)`
+
+#### Scenario: reaperturas ordenadas por fecha de reapertura descendente
+- **WHEN** el store tiene al menos 2 QE con `ciclo > 1` y distintas `fechaReapertura`
+- **THEN** `reaperturas[0].fechaReapertura >= reaperturas[1].fechaReapertura`
+
+#### Scenario: acsConSolicitudAjustePlazo excluye severidad MEDIA/BAJA y estados no pendientes
+- **WHEN** el store tiene ACs con `solicitudAjustePlazo.estado` en `'PENDIENTE'`, `'APROBADA'` y `'RECHAZADA'`, y QE de severidad `MEDIA`, `ALTA` y `CRITICA`
+- **THEN** `acsConSolicitudAjustePlazo` solo incluye ACs con `solicitudAjustePlazo.estado === 'PENDIENTE'` cuyo QE padre es `ALTA` o `CRITICA`
 
 ---
 

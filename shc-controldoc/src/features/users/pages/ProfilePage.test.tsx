@@ -17,6 +17,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     rol: 'OPERARIO',
     area: 'Operaciones',
     createdAt: '2024-11-04T09:15:00.000Z',
+    activo: true,
     ...overrides,
   }
 }

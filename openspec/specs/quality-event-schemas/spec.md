@@ -66,7 +66,7 @@ The system SHALL export a `qualityEventCreateSchema` Zod discriminated union sch
 **Origin-specific required fields:**
 - `O1_INCIDENTE_CAMPO`: `incidenteId: z.string().min(1, 'Se requiere el incidente vinculado')`
 - `O2_NC_DETECTADA`: `ncId: z.string().min(1, 'Se requiere la no conformidad vinculada')`
-- `O3_HALLAZGO_AUDITORIA`: `hallazgoAuditoriaRef: z.string().min(1, 'Se requiere referencia al hallazgo de auditoría')`
+- `O3_HALLAZGO_AUDITORIA`: `hallazgoCodigo: z.string().min(1, 'Se requiere el código del hallazgo')` and `normativaVinculada: z.object({ norma: z.enum(['ISO_9001_2015', 'ISO_45001_2018', 'OTRA']), clausula: z.string().min(1, 'Se requiere la cláusula incumplida'), normaOtraDetalle: z.string().min(1).optional() }).refine((v) => v.norma !== 'OTRA' || !!v.normaOtraDetalle, { message: 'Se requiere el detalle de la normativa cuando norma es OTRA', path: ['normaOtraDetalle'] })` — both required (RN-QE-010: registro obligatorio de la cláusula de norma incumplida para hallazgos de auditoría).
 - `O4_REPORTE_EXTERNO`: `reporteExternoRef: z.object({ nombreCliente: z.string().min(1), fechaRecepcion: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })`
 
 The schema SHALL also export `QualityEventCreateInput` as `z.infer<typeof qualityEventCreateSchema>`.
@@ -83,9 +83,25 @@ The schema SHALL also export `QualityEventCreateInput` as `z.infer<typeof qualit
 - **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O2_NC_DETECTADA', tipo: 'CALIDAD', severidad: 'MEDIA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Control', turno: 'TARDE', fechaHoraEvento: '2025-06-01T14:00:00Z' })`
 - **THEN** `success` is `false` and the error path includes `ncId`
 
-#### Scenario: qualityEventCreateSchema O3 branch rejects when hallazgoAuditoriaRef is absent
-- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'CALIDAD', severidad: 'BAJA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Operaciones', turno: 'NOCHE', fechaHoraEvento: '2025-06-01T22:00:00Z' })`
-- **THEN** `success` is `false` and the error path includes `hallazgoAuditoriaRef`
+#### Scenario: qualityEventCreateSchema O3 branch rejects when normativaVinculada is absent
+- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'CALIDAD', severidad: 'BAJA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Operaciones', turno: 'NOCHE', fechaHoraEvento: '2025-06-01T22:00:00Z', hallazgoCodigo: 'HAL-2026-010' })`
+- **THEN** `success` is `false` and the error path includes `normativaVinculada`
+
+#### Scenario: qualityEventCreateSchema O3 branch rejects when hallazgoCodigo is absent
+- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'CALIDAD', severidad: 'BAJA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Operaciones', turno: 'NOCHE', fechaHoraEvento: '2025-06-01T22:00:00Z', normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' } })`
+- **THEN** `success` is `false` and the error path includes `hallazgoCodigo`
+
+#### Scenario: qualityEventCreateSchema O3 branch rejects normativaVinculada with norma OTRA and no normaOtraDetalle
+- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'OPERACIONAL', severidad: 'MEDIA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Zona de Pesaje', turno: 'DIA', fechaHoraEvento: '2025-06-01T08:00:00Z', hallazgoCodigo: 'HAL-2026-011', normativaVinculada: { norma: 'OTRA', clausula: '3.2' } })`
+- **THEN** `success` is `false` and the error path includes `normativaVinculada.normaOtraDetalle`
+
+#### Scenario: qualityEventCreateSchema O3 branch accepts a valid ISO normativaVinculada
+- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'CALIDAD', severidad: 'BAJA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Operaciones', turno: 'NOCHE', fechaHoraEvento: '2025-06-01T22:00:00Z', hallazgoCodigo: 'HAL-2026-010', normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' } })`
+- **THEN** `success` is `true`
+
+#### Scenario: qualityEventCreateSchema O3 branch accepts a valid OTRA normativaVinculada with normaOtraDetalle
+- **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O3_HALLAZGO_AUDITORIA', tipo: 'OPERACIONAL', severidad: 'MEDIA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Zona de Pesaje', turno: 'DIA', fechaHoraEvento: '2025-06-01T08:00:00Z', hallazgoCodigo: 'HAL-2026-011', normativaVinculada: { norma: 'OTRA', clausula: '3.2', normaOtraDetalle: 'Auditoría Operacional' } })`
+- **THEN** `success` is `true`
 
 #### Scenario: qualityEventCreateSchema O4 branch rejects when reporteExternoRef is absent
 - **WHEN** a developer calls `qualityEventCreateSchema.safeParse({ origen: 'O4_REPORTE_EXTERNO', tipo: 'ADUANERO', severidad: 'CRITICA', descripcion: 'Descripción del evento de calidad', areaAfectada: 'Importación', turno: 'DIA', fechaHoraEvento: '2025-06-01T08:00:00Z' })`
@@ -173,10 +189,14 @@ The schema SHALL also export `VerificacionEficaciaInput` as `z.infer<typeof veri
 ---
 
 ### Requirement: qualityEventEditReporteInicialSchema Zod schema
-The system SHALL export a `qualityEventEditReporteInicialSchema` Zod object schema (built with `.strict()`, no passthrough) from `src/features/quality-events/schemas/qualityEventEditReporteInicial.schema.ts`, covering exactly the fields editable under RN-QE-014: `descripcion` (string, min 10 / max 2000, matching `qualityEventCreateSchema`'s constraint), `areaAfectada` (string, min 1), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO datetime string, must not be a future date), `mineralInvolucrado` (string, optional), and the origin-specific fields (`incidenteId`, `ncId`, `hallazgoAuditoriaRef`, `reporteExternoRef`), all optional at the schema level (presence is enforced by which origin the QE already has, not re-validated here). The schema SHALL export `QualityEventEditReporteInicialInput` as `z.infer<typeof qualityEventEditReporteInicialSchema>`. Because the schema is `.strict()`, `safeParse` SHALL reject any payload containing `numero`, `origen`, `tipo`, `fechaHoraReporte`, `reportadoPorId`, or `severidad`.
+The system SHALL export a `qualityEventEditReporteInicialSchema` Zod object schema (built with `.strict()`, no passthrough) from `src/features/quality-events/schemas/qualityEventEditReporteInicial.schema.ts`, covering exactly the fields editable under RN-QE-014: `descripcion` (string, min 10 / max 2000, matching `qualityEventCreateSchema`'s constraint), `areaAfectada` (string, min 1), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO datetime string, must not be a future date), `mineralInvolucrado` (string, optional), and the origin-specific fields (`incidenteId`, `ncId`, `hallazgoCodigo`, `normativaVinculada`, `reporteExternoRef`), all optional at the schema level (presence is enforced by which origin the QE already has, not re-validated here). The schema SHALL export `QualityEventEditReporteInicialInput` as `z.infer<typeof qualityEventEditReporteInicialSchema>`. Because the schema is `.strict()`, `safeParse` SHALL reject any payload containing `numero`, `origen`, `tipo`, `fechaHoraReporte`, `reportadoPorId`, or `severidad`.
 
 #### Scenario: Valid payload with only RN-QE-014 fields parses successfully
 - **WHEN** a developer calls `qualityEventEditReporteInicialSchema.safeParse({ descripcion: 'Descripción corregida del evento', areaAfectada: 'Almacén Norte', turno: 'TARDE', fechaHoraEvento: '2026-05-01T08:00:00Z' })`
+- **THEN** `success` is `true`
+
+#### Scenario: Valid payload editing hallazgoCodigo and normativaVinculada for an O3 QE parses successfully
+- **WHEN** a developer calls `qualityEventEditReporteInicialSchema.safeParse({ descripcion: 'Descripción corregida del hallazgo', areaAfectada: 'Operaciones Aduaneras', turno: 'DIA', fechaHoraEvento: '2026-05-01T08:00:00Z', hallazgoCodigo: 'HAL-2026-001', normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.2' } })`
 - **THEN** `success` is `true`
 
 #### Scenario: Payload containing numero is rejected

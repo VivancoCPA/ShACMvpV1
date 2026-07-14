@@ -27,10 +27,10 @@ import { LocalDetailPage } from '../features/locations/pages/LocalDetailPage'
 import { LocalNewPage } from '../features/locations/pages/LocalNewPage'
 import { LocalEditPage } from '../features/locations/pages/LocalEditPage'
 import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
-import { ComingSoon } from './ComingSoonPages'
 import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 import { ProfilePage } from '../features/users/pages/ProfilePage'
+import { UsersListPage } from '../features/users/pages/UsersListPage'
 
 function DefaultRouteRedirect() {
   const user = useAuthStore((state) => state.user)
@@ -287,11 +287,11 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RoleGuard requiredRoles={['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION']} />,
+            element: <RoleGuard requiredRoles={['ADMINISTRADOR_SISTEMA']} />,
             children: [
               {
                 path: '/usuarios',
-                element: <ComingSoon label="Usuarios y Roles" />,
+                element: <UsersListPage />,
                 handle: { breadcrumb: 'users' },
               },
             ],

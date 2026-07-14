@@ -416,7 +416,8 @@
       "invalidCredentials": "Invalid credentials. Check your email and password.",
       "tokenExpired": "The link has expired or is invalid.",
       "networkError": "Connection error. Please try again.",
-      "invalidLink": "The link is not valid. Request a new one."
+      "invalidLink": "The link is not valid. Request a new one.",
+      "userDisabled": "User disabled, contact your administrator"
     },
     "roles": {
       "OPERARIO": "Operator",
@@ -1902,6 +1903,108 @@
       "success": "Password updated successfully",
       "errors": {
         "incorrectCurrentPassword": "The current password is incorrect"
+      }
+    },
+    "form": {
+      "titles": {
+        "crear": "New user",
+        "editar": "Edit user"
+      },
+      "fields": {
+        "nombre": "First name",
+        "apellido": "Last name",
+        "email": "Email",
+        "rol": "Role",
+        "area": "Area",
+        "areasAsignadas": "Assigned areas",
+        "seleccionar": "Select..."
+      },
+      "avatar": {
+        "subir": "Upload photo"
+      },
+      "validation": {
+        "nombreRequired": "First name is required.",
+        "apellidoRequired": "Last name is required.",
+        "emailInvalid": "Enter a valid email address.",
+        "areaRequired": "Area is required for the Supervisor role.",
+        "areasAsignadasRequired": "Select at least one assigned area for the Supervisor role.",
+        "avatarFormatoInvalido": "Format not allowed. Only JPG or PNG images are accepted.",
+        "avatarTamanoInvalido": "The image must not exceed 2 MB."
+      },
+      "actions": {
+        "cancelar": "Cancel",
+        "guardar": "Save"
+      },
+      "toasts": {
+        "crearError": "An error occurred while creating the user",
+        "actualizado": "User updated successfully",
+        "actualizarError": "An error occurred while updating the user"
+      }
+    },
+    "temporaryPassword": {
+      "titulo": "Temporary password generated",
+      "mensaje": "Share this temporary password with {{nombre}} securely.",
+      "copiar": "Copy",
+      "copiado": "Copied",
+      "cerrar": "Close"
+    },
+    "list": {
+      "title": "Users and Roles",
+      "actions": {
+        "nuevo": "New user",
+        "editar": "Edit",
+        "darDeBaja": "Disable",
+        "reactivar": "Reactivate",
+        "resetearPassword": "Reset password",
+        "resetearPasswordAyuda": "Email recovery (\"Forgot my password\") is not yet available in this environment — use this to unlock the user."
+      },
+      "columns": {
+        "nombre": "Name",
+        "email": "Email",
+        "rol": "Role",
+        "area": "Area",
+        "estado": "Status",
+        "lastLogin": "Last login",
+        "acciones": "Actions"
+      },
+      "estado": {
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "nunca": "Never"
+      },
+      "filters": {
+        "rol": "Role",
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive"
+      },
+      "empty": "No users registered.",
+      "emptyWithFilters": "No users match the applied filters.",
+      "confirmarBaja": {
+        "titulo": "Disable user",
+        "mensaje": "Confirm disabling {{nombre}}? The user won't be able to log in until reactivated.",
+        "cancelar": "Cancel",
+        "confirmar": "Disable"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivate user",
+        "mensaje": "Confirm reactivating {{nombre}}?",
+        "cancelar": "Cancel",
+        "confirmar": "Reactivate"
+      },
+      "confirmarReset": {
+        "titulo": "Reset password",
+        "mensaje": "Confirm resetting {{nombre}}'s password? The previous password will stop working immediately.",
+        "ayuda": "Email recovery (\"Forgot my password\") is not yet available in this environment — use this to unlock the user.",
+        "cancelar": "Cancel",
+        "confirmar": "Reset"
+      },
+      "toasts": {
+        "bajaExitosa": "User disabled successfully",
+        "reactivarExitosa": "User reactivated successfully",
+        "bajaError": "Error disabling the user",
+        "reactivarError": "Error reactivating the user"
       }
     }
   }

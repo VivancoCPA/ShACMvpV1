@@ -85,15 +85,25 @@ The system SHALL define a `ReporteExternoRef` interface with two required string
 ---
 
 ### Requirement: AccionCorrectivaQE stub interface
-The system SHALL define an `AccionCorrectivaQE` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following fields: `id` (string), `qeId` (string), `descripcion` (string), `responsableId` (string), `fechaLimite` (ISO 8601 date string), `estado` (`'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA'`), `evidencia` (string or undefined), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The file SHALL include a comment `// TODO(M4-S0X): migrar ACSection de ncId/qeId stub a qeId real` directly above the interface definition.
+The system SHALL define an `AccionCorrectivaQE` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following fields: `id` (string), `qeId` (string), `titulo` (string or undefined), `descripcion` (string), `responsableId` (string), `responsableNombre` (string), `plazoFecha` (ISO 8601 date string), `prioridad` (`'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'` or undefined), `estado` (`'PENDIENTE' | 'EN_EJECUCION' | 'CERRADA'`), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string), `descripcionEvidencia` (string or undefined), `evidenciaUrl` (string or undefined), `fechaCierre` (ISO 8601 string or undefined), `solicitudAjustePlazo` (`SolicitudAjustePlazoAC` or undefined).
+
+The system SHALL define a `SolicitudAjustePlazoAC` interface with the fields `fechaSolicitada` (ISO 8601 date string, the newly requested deadline), `justificacion` (string), `estado` (`'PENDIENTE' | 'APROBADA' | 'RECHAZADA'`), `solicitadoPorId` (string), `solicitadoEn` (ISO 8601 string). This is a read-only projection of a plazo-extension request: the interface does NOT include an approver field, a threshold-validation field, or any mutation endpoint — the approval workflow (written justification + 50% threshold validation, per QE-AC-007) remains an unimplemented M4 gap.
 
 #### Scenario: AccionCorrectivaQE requires all mandatory fields
-- **WHEN** a developer constructs an `AccionCorrectivaQE` without `fechaLimite`
+- **WHEN** a developer constructs an `AccionCorrectivaQE` without `plazoFecha`
 - **THEN** TypeScript emits a compile error for the missing required field
 
-#### Scenario: AccionCorrectivaQE accepts absence of evidencia
-- **WHEN** a developer constructs an `AccionCorrectivaQE` with `evidencia` omitted
+#### Scenario: AccionCorrectivaQE accepts absence of evidencia fields
+- **WHEN** a developer constructs an `AccionCorrectivaQE` with `descripcionEvidencia`, `evidenciaUrl` and `fechaCierre` omitted
 - **THEN** TypeScript accepts the object without error
+
+#### Scenario: solicitudAjustePlazo is optional and absent by default
+- **WHEN** a developer constructs an `AccionCorrectivaQE` without `solicitudAjustePlazo`
+- **THEN** TypeScript accepts the object without error, and no plazo-extension request is implied
+
+#### Scenario: solicitudAjustePlazo with estado PENDIENTE marks it as awaiting approval
+- **WHEN** an `AccionCorrectivaQE` has `solicitudAjustePlazo.estado === 'PENDIENTE'`
+- **THEN** the type does not expose any field to record who approved/rejected it or a threshold-validation result — only the request itself
 
 ---
 
@@ -107,7 +117,9 @@ The system SHALL define a `QEAuditTrailEntry` interface in `src/features/quality
 ---
 
 ### Requirement: QualityEvent interface
-The system SHALL define a `QualityEvent` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following required fields: `id` (string), `numero` (string, format `QE-YYYY-NNN`), `origen` (QEOrigin), `tipo` (QEType), `severidad` (QESeverity), `estado` (QEStatus), `ciclo` (number), `descripcion` (string), `areaAfectada` (string), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO 8601 string), `fechaHoraReporte` (ISO 8601 string), `reportadoPorId` (string), `documentosVinculados` (string[]), `requiereEvaluacionRiesgos` (boolean), `accionesCorrectivas` (AccionCorrectivaQE[]), `auditTrail` (QEAuditTrailEntry[]), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `mineralInvolucrado` (string), `ncId` (string), `incidenteId` (string), `hallazgoAuditoriaRef` (string), `reporteExternoRef` (ReporteExternoRef), `descripcionAmpliada` (string), `metodoAnalisis` (AnalisisCausaRaizMetodo), `cincoPorques` (CincoPorques[]), `ishikawa` (Ishikawa[]), `causaRaizDefinitiva` (string), `causaRaizAprobadaPorId` (string), `causaRaizFirmadaEn` (string), `evaluacionRiesgosRef` (string), `resultadoCierre` (string), `cerradoPorId` (string), `cierreFirmaSupervisorId` (string), `cierreFirmaSupervisorRol` (`'SUPERVISOR' | 'ALTA_DIRECCION'`), `fechaCierre` (ISO 8601 string), `plazoVerificacionDias` (number), `fechaVerificacionProgramada` (string), `fechaVerificacionRealizada` (string), `verificadoPorId` (string), `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `evidenciaVerificacion` (string), `auditorAsignadoId` (string).
+The system SHALL define a `QualityEvent` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following required fields: `id` (string), `numero` (string, format `QE-YYYY-NNN`), `origen` (QEOrigin), `tipo` (QEType), `severidad` (QESeverity), `estado` (QEStatus), `ciclo` (number), `descripcion` (string), `areaAfectada` (string), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO 8601 string), `fechaHoraReporte` (ISO 8601 string), `reportadoPorId` (string), `documentosVinculados` (string[]), `requiereEvaluacionRiesgos` (boolean), `accionesCorrectivas` (AccionCorrectivaQE[]), `auditTrail` (QEAuditTrailEntry[]), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `mineralInvolucrado` (string), `ncId` (string), `incidenteId` (string), `hallazgoCodigo` (string), `normativaVinculada` (`NormativaVinculada`, from `quality-event-normativa-catalog`), `reporteExternoRef` (ReporteExternoRef), `descripcionAmpliada` (string), `metodoAnalisis` (AnalisisCausaRaizMetodo), `cincoPorques` (CincoPorques[]), `ishikawa` (Ishikawa[]), `causaRaizDefinitiva` (string), `causaRaizAprobadaPorId` (string), `causaRaizFirmadaEn` (string), `evaluacionRiesgosRef` (string), `resultadoCierre` (string), `cerradoPorId` (string), `cierreFirmaSupervisorId` (string), `cierreFirmaSupervisorRol` (`'SUPERVISOR' | 'ALTA_DIRECCION'`), `fechaCierre` (ISO 8601 string), `plazoVerificacionDias` (number), `fechaVerificacionProgramada` (string), `fechaVerificacionRealizada` (string), `verificadoPorId` (string), `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `evidenciaVerificacion` (string), `auditorAsignadoId` (string). The interface SHALL NOT include a `hallazgoAuditoriaRef` field — it is replaced by `hallazgoCodigo` and `normativaVinculada`.
+
+`hallazgoCodigo` and `normativaVinculada` are only meaningful for `origen === 'O3_HALLAZGO_AUDITORIA'`; they SHALL be absent for QEs of any other origin. Obligatoriedad condicional para origen O3 (RN-QE-010) SHALL be enforced at the Zod schema level (`quality-event-schemas`), not by the TypeScript type itself — both fields remain optional at the interface level so existing non-O3 QEs (and QEs under construction before origin is selected) type-check without them.
 
 `auditorAsignadoId` identifies the `AUDITOR_INTERNO` user responsible for the REG-EFEC-001 effectiveness verification once the QE reaches `EN_VERIFICACION`. It SHALL be absent for QEs that have not yet been assigned an auditor (including all QEs before `CERRADO`), and is set exclusively via the `PATCH /api/quality-events/:id/forzar-vencimiento-verificacion` flow described in `quality-event-verificacion`.
 
@@ -142,6 +154,14 @@ The system SHALL define a `QualityEvent` interface in `src/features/quality-even
 #### Scenario: auditorAsignadoId is readable as string | undefined
 - **WHEN** a developer reads `qe.auditorAsignadoId` on a QualityEvent
 - **THEN** TypeScript infers the type as `string | undefined`
+
+#### Scenario: QualityEvent accepts hallazgoCodigo and normativaVinculada for origin O3
+- **WHEN** a developer constructs a `QualityEvent` with `origen: 'O3_HALLAZGO_AUDITORIA'`, `hallazgoCodigo: 'HAL-2026-001'`, `normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' }`
+- **THEN** TypeScript accepts the object without error
+
+#### Scenario: QualityEvent no longer has a hallazgoAuditoriaRef field
+- **WHEN** a developer attempts to read or assign `qe.hallazgoAuditoriaRef`
+- **THEN** TypeScript emits a compile error, as the property does not exist on `QualityEvent`
 
 ---
 

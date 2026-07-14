@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
-import { userFixtures, USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
+import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
 import type {
   NoConformidad,
   NCStatus,
@@ -461,10 +461,4 @@ export const nonconformityHandlers = [
       return ok(closedAC)
     },
   ),
-
-  // GET /api/users — list of users for responsable picker
-  http.get('/api/users', async () => {
-    await delay(LATENCY)
-    return ok(userFixtures)
-  }),
 ]

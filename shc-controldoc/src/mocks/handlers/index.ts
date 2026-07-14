@@ -6,6 +6,7 @@ import { incidentHandlers } from './incidents.handlers'
 import { localesHandlers } from './locales.handlers'
 import { qualityEventHandlers } from './quality-events.handlers'
 import { dashboardHandlers } from './dashboard.handlers'
+import { userHandlers } from './users.handlers'
 
 export const handlers: RequestHandler[] = [
   ...authHandlers,
@@ -15,4 +16,5 @@ export const handlers: RequestHandler[] = [
   ...incidentHandlers,
   ...qualityEventHandlers,
   ...dashboardHandlers,
+  ...userHandlers,
 ]

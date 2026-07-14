@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the dashboard view rendered for the `AUDITOR_INTERNO` role: `AuditorDashboard` and its 4 widgets, composing `useDashboardSummary()` data into non-interactive area/estado breakdowns of hallazgos de auditoría (`origen === 'O3_HALLAZGO_AUDITORIA'`) plus an organization-wide closure-rate widget.
+Define the dashboard view rendered for the `AUDITOR_INTERNO` role: `AuditorDashboard` and its 4 widgets, composing `useDashboardSummary()` data into non-interactive norma/estado breakdowns of hallazgos de auditoría (`origen === 'O3_HALLAZGO_AUDITORIA'`) plus an organization-wide closure-rate widget.
 
 ---
 
@@ -22,7 +22,7 @@ Define the dashboard view rendered for the `AUDITOR_INTERNO` role: `AuditorDashb
 ---
 
 ### Requirement: AuditorDashboard compone los 4 widgets de auditoría
-El componente `AuditorDashboard` (`src/features/dashboard/pages/AuditorDashboard.tsx`) SHALL consumir `useDashboardSummary()`, mostrar un estado de carga con `WidgetSkeleton` mientras `isLoading` es verdadero o `data.rol !== 'AUDITOR'`, y en el caso exitoso renderizar en un contenedor `space-y-8` dentro de `PageWrapper`, en este orden: `HallazgosPorAreaWidget`, `HallazgosPorEstadoWidget`, `EvidenciasHallazgosWidget`, `TasaCierrePorAreaWidget`.
+El componente `AuditorDashboard` (`src/features/dashboard/pages/AuditorDashboard.tsx`) SHALL consumir `useDashboardSummary()`, mostrar un estado de carga con `WidgetSkeleton` mientras `isLoading` es verdadero o `data.rol !== 'AUDITOR'`, y en el caso exitoso renderizar en un contenedor `space-y-8` dentro de `PageWrapper`, en este orden: `HallazgosPorNormaWidget`, `HallazgosPorEstadoWidget`, `EvidenciasHallazgosWidget`, `TasaCierrePorAreaWidget`.
 
 #### Scenario: Carga muestra skeletons
 - **WHEN** `useDashboardSummary()` está en `isLoading`
@@ -30,24 +30,28 @@ El componente `AuditorDashboard` (`src/features/dashboard/pages/AuditorDashboard
 
 #### Scenario: Datos cargados renderizan los 4 widgets en orden
 - **WHEN** `useDashboardSummary()` resuelve con `{ rol: 'AUDITOR', data }`
-- **THEN** se renderizan, en orden, `HallazgosPorAreaWidget`, `HallazgosPorEstadoWidget`, `EvidenciasHallazgosWidget` y `TasaCierrePorAreaWidget`
+- **THEN** se renderizan, en orden, `HallazgosPorNormaWidget`, `HallazgosPorEstadoWidget`, `EvidenciasHallazgosWidget` y `TasaCierrePorAreaWidget`
 
 ---
 
-### Requirement: HallazgosPorAreaWidget muestra el conteo de hallazgos O3 por área, sin navegación
-`HallazgosPorAreaWidget` SHALL renderizar `hallazgosPorArea: { area: string; total: number }[]` (ya ordenado descendentemente por `total`) como una lista de filas no interactivas (área + conteo), sin enlace a `/quality-events` — `QEListParams` no soporta un filtro por `areaAfectada`, y agregarlo está fuera de alcance de este spec.
+### Requirement: HallazgosPorNormaWidget muestra el conteo de hallazgos O3 por norma, sin navegación
+`HallazgosPorNormaWidget` (`src/features/dashboard/components/HallazgosPorNormaWidget.tsx`) SHALL renderizar `hallazgosPorNorma: { norma: NormaISO; total: number }[]` (ya ordenado descendentemente por `total`, calculado en `buildHallazgosPorNorma()`) como una lista de filas no interactivas (norma + conteo), sin enlace a `/quality-events` — mismo patrón de no-navegación que el widget anterior. Cada fila SHALL mostrar la etiqueta legible de la norma (`'ISO 9001:2015'`, `'ISO 45001:2018'`, o `'Otra normativa'` para `norma === 'OTRA'`), no el código enum crudo. Todos los QE con `normativaVinculada.norma === 'OTRA'` SHALL agruparse bajo una única fila `'Otra normativa'`, sin desglosar por `normativaVinculada.normaOtraDetalle`.
 
 #### Scenario: Filas ordenadas de mayor a menor conteo
-- **WHEN** `hallazgosPorArea` contiene `[{ area: 'Almacén Norte', total: 1 }, { area: 'Zona de Pesaje', total: 3 }]` en ese orden de llegada
-- **THEN** el widget respeta el orden recibido (la ordenación ya la hizo el backend) mostrando "Zona de Pesaje" antes que "Almacén Norte" solo si así viene ordenado el arreglo
+- **WHEN** `hallazgosPorNorma` contiene `[{ norma: 'ISO_45001_2018', total: 1 }, { norma: 'ISO_9001_2015', total: 3 }]` en ese orden de llegada
+- **THEN** el widget respeta el orden recibido (la ordenación ya la hizo el backend) mostrando "ISO 9001:2015" antes que "ISO 45001:2018" solo si así viene ordenado el arreglo
 
 #### Scenario: Widget vacío cuando no hay hallazgos O3
-- **WHEN** `hallazgosPorArea` es un arreglo vacío
-- **THEN** `HallazgosPorAreaWidget` muestra un estado vacío, no un error
+- **WHEN** `hallazgosPorNorma` es un arreglo vacío
+- **THEN** `HallazgosPorNormaWidget` muestra un estado vacío, no un error
 
 #### Scenario: Ninguna fila es un elemento clicable
-- **WHEN** se renderiza `HallazgosPorAreaWidget` con datos
+- **WHEN** se renderiza `HallazgosPorNormaWidget` con datos
 - **THEN** ninguna fila es un `<button>` ni tiene `onClick` — son contenedores estáticos
+
+#### Scenario: norma OTRA se muestra con etiqueta legible y agrupada
+- **WHEN** existen dos hallazgos O3 con `normativaVinculada.norma === 'OTRA'`, uno con `normaOtraDetalle: 'SUNAT'` y otro con `normaOtraDetalle: 'MINEM'`
+- **THEN** ambos se cuentan en una sola fila con la etiqueta `'Otra normativa'` y `total: 2`, sin filas separadas por `normaOtraDetalle`
 
 ---
 

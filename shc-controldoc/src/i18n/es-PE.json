@@ -416,7 +416,8 @@
       "invalidCredentials": "Credenciales inválidas. Verifica tu correo y contraseña.",
       "tokenExpired": "El enlace ha expirado o no es válido.",
       "networkError": "Error de conexión. Inténtalo de nuevo.",
-      "invalidLink": "El enlace no es válido. Solicita uno nuevo."
+      "invalidLink": "El enlace no es válido. Solicita uno nuevo.",
+      "userDisabled": "Usuario deshabilitado, contacte al administrador"
     },
     "roles": {
       "OPERARIO": "Operario",
@@ -1902,6 +1903,108 @@
       "success": "Contraseña actualizada correctamente",
       "errors": {
         "incorrectCurrentPassword": "La contraseña actual es incorrecta"
+      }
+    },
+    "form": {
+      "titles": {
+        "crear": "Nuevo usuario",
+        "editar": "Editar usuario"
+      },
+      "fields": {
+        "nombre": "Nombre",
+        "apellido": "Apellido",
+        "email": "Correo electrónico",
+        "rol": "Rol",
+        "area": "Área",
+        "areasAsignadas": "Áreas asignadas",
+        "seleccionar": "Seleccionar..."
+      },
+      "avatar": {
+        "subir": "Subir foto"
+      },
+      "validation": {
+        "nombreRequired": "El nombre es obligatorio.",
+        "apellidoRequired": "El apellido es obligatorio.",
+        "emailInvalid": "Ingresa un correo electrónico válido.",
+        "areaRequired": "El área es obligatoria para el rol Supervisor.",
+        "areasAsignadasRequired": "Selecciona al menos un área asignada para el rol Supervisor.",
+        "avatarFormatoInvalido": "Formato no permitido. Solo se aceptan imágenes JPG o PNG.",
+        "avatarTamanoInvalido": "La imagen no debe superar 2 MB."
+      },
+      "actions": {
+        "cancelar": "Cancelar",
+        "guardar": "Guardar"
+      },
+      "toasts": {
+        "crearError": "Ocurrió un error al crear el usuario",
+        "actualizado": "Usuario actualizado correctamente",
+        "actualizarError": "Ocurrió un error al actualizar el usuario"
+      }
+    },
+    "temporaryPassword": {
+      "titulo": "Contraseña temporal generada",
+      "mensaje": "Comparte esta contraseña temporal con {{nombre}} de forma segura.",
+      "copiar": "Copiar",
+      "copiado": "Copiado",
+      "cerrar": "Cerrar"
+    },
+    "list": {
+      "title": "Usuarios y Roles",
+      "actions": {
+        "nuevo": "Nuevo usuario",
+        "editar": "Editar",
+        "darDeBaja": "Dar de baja",
+        "reactivar": "Reactivar",
+        "resetearPassword": "Resetear contraseña",
+        "resetearPasswordAyuda": "La recuperación por email (\"Olvidé mi contraseña\") aún no está disponible en este entorno — usa esto para desbloquear al usuario."
+      },
+      "columns": {
+        "nombre": "Nombre",
+        "email": "Correo",
+        "rol": "Rol",
+        "area": "Área",
+        "estado": "Estado",
+        "lastLogin": "Último acceso",
+        "acciones": "Acciones"
+      },
+      "estado": {
+        "activo": "Activo",
+        "inactivo": "Inactivo",
+        "nunca": "Nunca"
+      },
+      "filters": {
+        "rol": "Rol",
+        "estado": "Estado",
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos"
+      },
+      "empty": "No hay usuarios registrados.",
+      "emptyWithFilters": "No hay usuarios que coincidan con los filtros aplicados.",
+      "confirmarBaja": {
+        "titulo": "Dar de baja usuario",
+        "mensaje": "¿Confirmas dar de baja a {{nombre}}? El usuario no podrá iniciar sesión hasta ser reactivado.",
+        "cancelar": "Cancelar",
+        "confirmar": "Dar de baja"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivar usuario",
+        "mensaje": "¿Confirmas reactivar a {{nombre}}?",
+        "cancelar": "Cancelar",
+        "confirmar": "Reactivar"
+      },
+      "confirmarReset": {
+        "titulo": "Resetear contraseña",
+        "mensaje": "¿Confirmas resetear la contraseña de {{nombre}}? La contraseña anterior dejará de funcionar de inmediato.",
+        "ayuda": "La recuperación por email (\"Olvidé mi contraseña\") aún no está disponible en este entorno — usa esto para desbloquear al usuario.",
+        "cancelar": "Cancelar",
+        "confirmar": "Resetear"
+      },
+      "toasts": {
+        "bajaExitosa": "Usuario dado de baja correctamente",
+        "reactivarExitosa": "Usuario reactivado correctamente",
+        "bajaError": "Error al dar de baja al usuario",
+        "reactivarError": "Error al reactivar al usuario"
       }
     }
   }

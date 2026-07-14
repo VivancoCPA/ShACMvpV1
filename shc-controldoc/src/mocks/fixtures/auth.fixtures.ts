@@ -12,6 +12,7 @@ export interface MockUser {
   avatarUrl: undefined
   createdAt: string
   lastLogin?: string
+  activo: boolean
 }
 
 export const MOCK_RESET_TOKEN = 'mock-reset-token'
@@ -26,6 +27,7 @@ export const authFixtures: MockUser[] = [
     rol: 'OPERARIO',
     area: 'Operaciones',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2024-11-04T09:15:00.000Z',
   },
   {
@@ -38,6 +40,7 @@ export const authFixtures: MockUser[] = [
     area: 'Operaciones',
     areasAsignadas: ['Galpón B', 'Galpón C'],
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2024-08-12T14:30:00.000Z',
   },
   {
@@ -50,6 +53,7 @@ export const authFixtures: MockUser[] = [
     area: 'Almacén Norte',
     areasAsignadas: ['Almacén Norte', 'Almacén Sur'],
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2025-01-20T11:00:00.000Z',
   },
   {
@@ -61,6 +65,7 @@ export const authFixtures: MockUser[] = [
     rol: 'JEFE_CALIDAD_SYST',
     area: 'Calidad y SyST',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2023-06-15T08:45:00.000Z',
   },
   {
@@ -72,6 +77,7 @@ export const authFixtures: MockUser[] = [
     rol: 'JEFE_CONTROL_DOCUMENTARIO',
     area: 'Control Documentario',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2024-03-02T10:20:00.000Z',
   },
   {
@@ -83,6 +89,7 @@ export const authFixtures: MockUser[] = [
     rol: 'AUDITOR_INTERNO',
     area: 'Auditoría',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2024-09-28T16:00:00.000Z',
   },
   {
@@ -97,6 +104,7 @@ export const authFixtures: MockUser[] = [
     rol: 'SUPERVISOR',
     area: 'Calidad',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2025-02-10T13:10:00.000Z',
   },
   {
@@ -112,6 +120,7 @@ export const authFixtures: MockUser[] = [
     rol: 'AUDITOR_INTERNO',
     area: 'Auditoría',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2023-11-22T09:00:00.000Z',
   },
   {
@@ -124,6 +133,7 @@ export const authFixtures: MockUser[] = [
     rol: 'JEFE_CALIDAD_SYST',
     area: 'Calidad',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2024-05-30T15:40:00.000Z',
   },
   {
@@ -135,6 +145,7 @@ export const authFixtures: MockUser[] = [
     rol: 'ALTA_DIRECCION',
     area: 'Gerencia General',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2022-10-01T12:00:00.000Z',
   },
   {
@@ -145,6 +156,14 @@ export const authFixtures: MockUser[] = [
     password: 'Shac2025!',
     rol: 'ADMINISTRADOR_SISTEMA',
     avatarUrl: undefined,
+    activo: true,
     createdAt: '2022-01-15T08:00:00.000Z',
   },
 ]
+
+// Store mutable compartido entre auth.handlers.ts (login) y users.handlers.ts
+// (CRUD de administración) — misma referencia de array, nunca una copia, para
+// que una baja hecha desde /usuarios bloquee el login sin recargar el mock.
+export function getUsersStore(): MockUser[] {
+  return authFixtures
+}

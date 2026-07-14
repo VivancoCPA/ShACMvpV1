@@ -57,7 +57,7 @@ El sistema SHALL exportar `KPI_DEFINITIONS: Record<KpiId, KpiDefinition>` desde 
 ---
 
 ### Requirement: Tipos de resumen (proyecciones ligeras) para widgets de dashboard
-El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types.ts` los tipos `QEResumen`, `IncidenteResumen`, `NCResumen`, `DocumentoResumen` y `AccionCorrectivaResumen`, cada uno como una proyección de un subconjunto de campos de su entidad completa (nunca la entidad completa), suficiente para renderizar una fila de widget: identificador, número/código, estado, severidad (cuando aplique), fecha relevante y área. `AccionCorrectivaResumen` SHALL incluir `origenTipo: 'QE' | 'NC' | 'INCIDENTE'` y `origenId: string` para permitir navegar al detalle correcto sin importar de qué dominio proviene la acción correctiva. `QEResumen` SHALL incluir además el campo opcional `fechaVerificacionProgramada?: string`, proyectado del campo homónimo de la entidad completa `QualityEvent`, para permitir que los widgets de dashboard determinen si un QE tiene un plazo de verificación real (RN-QE-008) antes de aplicar un tratamiento visual de semáforo.
+El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types.ts` los tipos `QEResumen`, `IncidenteResumen`, `NCResumen`, `DocumentoResumen`, `AccionCorrectivaResumen`, `QEReaperturaResumen` y `ACSolicitudAjustePlazoResumen`, cada uno como una proyección de un subconjunto de campos de su entidad completa (nunca la entidad completa), suficiente para renderizar una fila de widget: identificador, número/código, estado, severidad (cuando aplique), fecha relevante y área. `AccionCorrectivaResumen` SHALL incluir `origenTipo: 'QE' | 'NC' | 'INCIDENTE'` y `origenId: string` para permitir navegar al detalle correcto sin importar de qué dominio proviene la acción correctiva. `QEResumen` SHALL incluir además el campo opcional `fechaVerificacionProgramada?: string`, proyectado del campo homónimo de la entidad completa `QualityEvent`, para permitir que los widgets de dashboard determinen si un QE tiene un plazo de verificación real (RN-QE-008) antes de aplicar un tratamiento visual de semáforo. `QEReaperturaResumen` SHALL extender `QEResumen` agregando `ciclo: number` y `fechaReapertura: string` (ISO 8601). `ACSolicitudAjustePlazoResumen` SHALL tener los campos `qeId: string`, `qeNumero: string`, `qeSeveridad: QESeverity`, `acId: string`, `acDescripcion: string`, `plazoFechaActual: string`, `solicitudAjustePlazo: SolicitudAjustePlazoAC` (tipo definido en `quality-event-types`, re-exportado o importado desde `qualityEvent.types.ts`).
 
 #### Scenario: QEResumen no expone campos internos de análisis de causa raíz
 - **WHEN** se construye un `QEResumen`
@@ -75,14 +75,26 @@ El sistema SHALL definir en `src/features/dashboard/types/dashboardSummary.types
 - **WHEN** se construye un `QEResumen` a partir de un `QualityEvent` sin `fechaVerificacionProgramada` definido
 - **THEN** el `QEResumen` resultante tiene `fechaVerificacionProgramada: undefined`, no un valor inventado
 
+#### Scenario: QEReaperturaResumen extiende QEResumen sin duplicar campos
+- **WHEN** se construye un `QEReaperturaResumen`
+- **THEN** incluye todos los campos de `QEResumen` más `ciclo` y `fechaReapertura`, sin redefinir ninguno de los campos heredados
+
+#### Scenario: ACSolicitudAjustePlazoResumen no expone la AccionCorrectivaQE completa
+- **WHEN** se construye un `ACSolicitudAjustePlazoResumen`
+- **THEN** el tipo no incluye `descripcionEvidencia`, `evidenciaUrl` ni otros campos de cierre de la AC completa — solo lo necesario para listar y enlazar al QE padre
+
 ---
 
 ### Requirement: Tipos de dashboard específicos por rol
 El sistema SHALL definir en `src/features/dashboard/types/dashboardData.types.ts` seis interfaces distintas — `OperarioDashboardData`, `SupervisorDashboardData`, `JefeCalidadDashboardData`, `AltaDireccionDashboardData`, `AuditorDashboardData`, `JefeControlDocDashboardData` — cada una reflejando los widgets propios de ese rol, sin un tipo genérico de "widget" compartido entre ellas:
 - `OperarioDashboardData`: `misIncidentesReportados: IncidenteResumen[]`, `misQEReportados: QEResumen[]`, `accionesCorrectivasAsignadas: AccionCorrectivaResumen[]`, `documentosPendientesLectura: DocumentoResumen[]`.
 - `SupervisorDashboardData`: `kpisArea: KpiResult[]`, `qePorEstado: Record<QEStatus, number>`, `qeAbiertosPorTipo: Record<QEType, number>`, `qesEnVerificacionArea: QEResumen[]`, `accionesCorrectivasPendientesArea: AccionCorrectivaResumen[]`, `accionesCorrectivasVencidas: AccionCorrectivaResumen[]`, `incidentesRecientes: IncidenteResumen[]`, `semaforoPlazos: { verde: number; amarillo: number; rojo: number }`.
-- `JefeCalidadDashboardData`: `kpis: KpiResult[]`, `qeCriticosAbiertos: QEResumen[]`, `ncPendientesVerificacion: NCResumen[]`, `distribucionQEPorTipo: Record<QEType, number>`, `tendenciaMensualCierres: { periodo: string; cerrados: number }[]`.
-- `AltaDireccionDashboardData`: `kpisEstrategicos: KpiResult[]`, `resumenPorModulo: { documentos: { total: number; publicados: number; vencidosRevision: number }; noConformidades: { total: number; abiertas: number; cerradas: number }; incidentes: { total: number; conLesionados: number }; qualityEvents: { total: number; criticosAbiertos: number } }`, `alertasCriticas: QEResumen[]`, `tendenciaTrimestral: { periodo: string; qeCerrados: number; ncCerradas: number }[]`.
+- `JefeCalidadDashboardData`: `kpis: KpiResult[]`, `qeCriticosAbiertos: QEResumen[]`, `ncPendientesVerificacion: NCResumen[]`, `distribucionQEPorTipo: Record<QEType, number>`, `qePorEstado: Record<QEStatus, number>`, `accionesCorrectivasPorVencer: AccionCorrectivaResumen[]`, `tendenciaMensualVolumen: { periodo: string; abiertos: number; cerrados: number }[]`, `tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', { periodo: string; valor: number }[]>`.
+
+`tendenciaMensualVolumen[i].cerrados` SHALL contar QE cuyo `fechaCierre` cae en ese mes, sin filtrar por `estado` (mismo criterio que ya usaba el campo eliminado `tendenciaMensualCierres` — no exige `CERRADO`/`VERIFICADO` como sí lo hace el cálculo de KPI-01/02).
+
+`JefeCalidadDashboardData.tendenciaMensualVolumen` y `tendenciaMensualKpis` SHALL tener exactamente 12 entradas cada uno (una por mes), ordenadas de más antiguo a más reciente, cubriendo los 12 meses hacia atrás desde el mes actual del sistema. `tendenciaMensualKpis` SHALL tener exactamente las 3 claves `'KPI-01'`, `'KPI-04'` y `'KPI-05'` — ningún otro `KpiId`. El campo `tendenciaMensualCierres` (existente desde M5-S01, sin consumidor real) queda eliminado del tipo, reemplazado por el campo `cerrados` dentro de cada entrada de `tendenciaMensualVolumen`.
+- `AltaDireccionDashboardData`: `kpisEstrategicos: KpiResult[]`, `resumenPorModulo: { documentos: { total: number; publicados: number; vencidosRevision: number }; noConformidades: { total: number; abiertas: number; cerradas: number }; incidentes: { total: number; conLesionados: number }; qualityEvents: { total: number; criticosAbiertos: number; abiertos: number; vencidos: number } }`, `alertasCriticas: QEResumen[]`, `tendenciaTrimestral: { periodo: string; qeCerrados: number; ncCerradas: number }[]`, `comparativaMensual: Record<'KPI-01' | 'KPI-04' | 'KPI-05', { actual: number; anterior: number; tendencia: 'SUBE' | 'BAJA' | 'ESTABLE' }>`, `reaperturas: QEReaperturaResumen[]`, `acsConSolicitudAjustePlazo: ACSolicitudAjustePlazoResumen[]`.
 - `AuditorDashboardData`: `hallazgosPorArea: { area: string; total: number }[]` (QE `origen O3_HALLAZGO_AUDITORIA` agrupados por `areaAfectada`, orden descendente por `total`), `hallazgosPorEstado: Record<QEStatus, number>` (mismo filtro de origen, las 9 claves de `QEStatus` siempre presentes), `evidenciasHallazgos: { conEvidencia: number; sinEvidencia: number }` (mismo filtro de origen, según `documentosVinculados.length > 0`), `tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]` (todos los QE, no solo origen O3; orden ascendente por `tasaCierreEnPlazo`).
 - `JefeControlDocDashboardData`: `Record<string, never>` — sin campos propios en v1; el contenido de `JefeControlDocumentarioDashboard` es exclusivamente `AccionesRequeridasWidget`, que no depende de `useDashboardSummary()`. Este tipo existe para preservar el patrón "una interfaz por rol, unión discriminada por `rol`" y queda listo para ganar campos en un spec futuro sin romper la forma de la unión.
 
@@ -93,6 +105,14 @@ El sistema SHALL definir en `src/features/dashboard/types/dashboardData.types.ts
 #### Scenario: SupervisorDashboardData no expone KPIs organizacionales completos
 - **WHEN** se construye un `SupervisorDashboardData`
 - **THEN** `kpisArea` contiene únicamente los `KpiResult` relevantes al alcance de un Supervisor (no los 9 KPIs completos que sí ve `JefeCalidadDashboardData.kpis`)
+
+#### Scenario: AltaDireccionDashboardData.resumenPorModulo.qualityEvents distingue abiertos de vencidos
+- **WHEN** se construye `AltaDireccionDashboardData.resumenPorModulo.qualityEvents`
+- **THEN** `abiertos` cuenta todo QE con `estado !== 'VERIFICADO'` (incluye `REABIERTO`) y `vencidos` es un subconjunto de `abiertos` cuyo plazo por severidad ya venció contra la fecha actual
+
+#### Scenario: AltaDireccionDashboardData.comparativaMensual cubre exactamente KPI-01/04/05
+- **WHEN** se inspecciona `Object.keys(altaDireccionData.comparativaMensual)`
+- **THEN** el resultado es exactamente `['KPI-01', 'KPI-04', 'KPI-05']`
 
 #### Scenario: qeAbiertosPorTipo cubre los 4 valores de QEType siempre
 - **WHEN** se construye un `SupervisorDashboardData` para un área sin ningún QE de tipo `SST`
@@ -121,6 +141,18 @@ El sistema SHALL definir en `src/features/dashboard/types/dashboardData.types.ts
 #### Scenario: AuditorDashboardData.tasaCierreEnPlazoPorArea no filtra por origen
 - **WHEN** se construye `AuditorDashboardData.tasaCierreEnPlazoPorArea`
 - **THEN** el cálculo considera QE de cualquier `origen`, no solo `O3_HALLAZGO_AUDITORIA`
+
+#### Scenario: tendenciaMensualVolumen tiene 12 entradas ordenadas cronológicamente
+- **WHEN** se construye un `JefeCalidadDashboardData`
+- **THEN** `tendenciaMensualVolumen.length === 12` y `tendenciaMensualVolumen[0].periodo` es anterior a `tendenciaMensualVolumen[11].periodo`
+
+#### Scenario: tendenciaMensualKpis solo tiene 3 claves
+- **WHEN** se inspecciona `Object.keys(jefeCalidadData.tendenciaMensualKpis)`
+- **THEN** el resultado es exactamente `['KPI-01', 'KPI-04', 'KPI-05']`
+
+#### Scenario: tendenciaMensualCierres ya no existe en el tipo
+- **WHEN** se inspecciona la interfaz `JefeCalidadDashboardData`
+- **THEN** no tiene ningún campo llamado `tendenciaMensualCierres`
 
 ---
 

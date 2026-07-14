@@ -24,7 +24,15 @@ vi.mock('../../features/documents/hooks/useDocumentosPendientesCount', () => ({
 function renderSidebarAs(rol: UserRole) {
   useUIStore.setState({ sidebarOpen: true })
   useAuthStore.setState({
-    user: { id: 'u-1', nombre: 'Test', apellido: 'User', email: 't@shac.pe', rol },
+    user: {
+      id: 'u-1',
+      nombre: 'Test',
+      apellido: 'User',
+      email: 't@shac.pe',
+      rol,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      activo: true,
+    },
     accessToken: 'mock-token',
     isAuthenticated: true,
   })
@@ -56,5 +64,31 @@ describe('Sidebar — visibilidad del ítem Dashboard', () => {
   it('NO muestra el ítem Dashboard para ADMINISTRADOR_SISTEMA', () => {
     renderSidebarAs('ADMINISTRADOR_SISTEMA')
     expect(screen.queryByText('dashboard')).not.toBeInTheDocument()
+  })
+})
+
+// M6-S07: el ítem "Usuarios" cambia de ['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'] a
+// ['ADMINISTRADOR_SISTEMA'] exclusivamente, alineado con el RoleGuard de /usuarios.
+describe('Sidebar — visibilidad del ítem Usuarios (M6-S07)', () => {
+  afterEach(() => {
+    cleanup()
+    useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
+  })
+
+  it('muestra el ítem Usuarios para ADMINISTRADOR_SISTEMA', () => {
+    renderSidebarAs('ADMINISTRADOR_SISTEMA')
+    expect(screen.getByText('users')).toBeInTheDocument()
+  })
+
+  it.each<UserRole>([
+    'OPERARIO',
+    'SUPERVISOR',
+    'JEFE_CALIDAD_SYST',
+    'JEFE_CONTROL_DOCUMENTARIO',
+    'AUDITOR_INTERNO',
+    'ALTA_DIRECCION',
+  ])('NO muestra el ítem Usuarios para %s', (rol) => {
+    renderSidebarAs(rol)
+    expect(screen.queryByText('users')).not.toBeInTheDocument()
   })
 })

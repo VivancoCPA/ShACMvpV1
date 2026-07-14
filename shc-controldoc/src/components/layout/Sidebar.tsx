@@ -61,7 +61,7 @@ const NAV_ITEMS: NavItem[] = [
     key: 'users',
     path: '/usuarios',
     icon: Users,
-    roles: ['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'],
+    roles: ['ADMINISTRADOR_SISTEMA'],
   },
   {
     key: 'locations',
