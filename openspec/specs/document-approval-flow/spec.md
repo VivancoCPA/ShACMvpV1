@@ -5,7 +5,7 @@ Role-based document action panel and approval modals for M1 Control Documentario
 ## Requirements
 
 ### Requirement: DocumentActionPanel role-based action rendering
-The `DocumentActionPanel` component SHALL display only actions permitted for the current user's role and the document's estado, as resolved by `getDocumentPermissions()`. The panel SHALL be sticky (sticky top) in the right column. When no actions are available, it SHALL render the i18n message `documents:detail.noActionsAvailable`. Every mutating action SHALL open a confirmation modal before executing — no direct mutations on click.
+The `DocumentActionPanel` component SHALL display only actions permitted for the current user's role and the document's estado, as resolved by `getDocumentPermissions()`. The panel SHALL render as an inline, non-sticky button row in the page header, next to the document title — the same placement pattern used for the "Editar" action in `IncidentDetailPage`. When no actions are available, it SHALL render the i18n message `documents:detail.noActionsAvailable`. Every mutating action SHALL open a confirmation modal before executing — no direct mutations on click.
 
 #### Scenario: No actions shown for OBSOLETO documents
 - **WHEN** `documento.estado === 'OBSOLETO'`
@@ -18,6 +18,10 @@ The `DocumentActionPanel` component SHALL display only actions permitted for the
 #### Scenario: Actions gated by confirmation modal
 - **WHEN** the user clicks any mutating action button
 - **THEN** a modal opens asking for confirmation before the mutation is sent
+
+#### Scenario: Actions render inline in the header, not in a sticky sidebar
+- **WHEN** the document detail page renders with at least one available action
+- **THEN** the action buttons appear inline next to the document title in the header, and no sticky right-column panel is present in the layout
 
 ### Requirement: BORRADOR state actions
 In state `BORRADOR`, the panel SHALL show:

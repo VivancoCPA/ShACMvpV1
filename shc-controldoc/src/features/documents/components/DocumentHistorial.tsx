@@ -5,6 +5,13 @@ interface DocumentHistorialProps {
   documento: Documento
 }
 
+interface HistorialItem {
+  key: string
+  version: string
+  fecha: string
+  descripcion: string
+}
+
 function formatDate(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
 }
@@ -12,24 +19,32 @@ function formatDate(iso: string, locale: string): string {
 export function DocumentHistorial({ documento }: DocumentHistorialProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
-  const sorted = [...documento.historialVersiones].sort(
-    (a, b) => new Date(b.fechaPublicacion).getTime() - new Date(a.fechaPublicacion).getTime(),
-  )
 
-  if (sorted.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted dark:text-on-dark-soft">
-        {t('historial.noHistory')}
-      </p>
-    )
+  const items: HistorialItem[] = documento.historialVersiones.map((entry) => ({
+    key: entry.version,
+    version: entry.version,
+    fecha: entry.fechaPublicacion,
+    descripcion: entry.descripcionCambios,
+  }))
+
+  const creadoEntry = documento.auditTrail.find((entry) => entry.accion === 'DOCUMENTO_CREADO')
+  if (creadoEntry) {
+    items.push({
+      key: 'creado-en-borrador',
+      version: documento.version,
+      fecha: creadoEntry.timestamp,
+      descripcion: t('historial.createdInBorrador'),
+    })
   }
+
+  const sorted = items.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
   return (
     <ol className="relative border-l-2 border-hairline dark:border-hairline/20">
       {sorted.map((entry) => {
         const isCurrent = entry.version === documento.version
         return (
-          <li key={entry.version} className="mb-6 pl-5">
+          <li key={entry.key} className="mb-6 pl-5">
             <div className="absolute -left-[9px] mt-1.5 h-4 w-4 rounded-full border-2 border-hairline bg-canvas dark:border-hairline/20 dark:bg-surface-dark" />
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-[9999px] bg-surface-soft px-2.5 py-0.5 text-xs font-semibold text-body dark:bg-surface-dark-soft dark:text-on-dark">
@@ -41,10 +56,10 @@ export function DocumentHistorial({ documento }: DocumentHistorialProps) {
                 </span>
               )}
               <span className="text-xs text-muted dark:text-on-dark-soft">
-                {formatDate(entry.fechaPublicacion, locale)}
+                {formatDate(entry.fecha, locale)}
               </span>
             </div>
-            <p className="mt-1.5 text-sm text-body dark:text-on-dark">{entry.descripcionCambios}</p>
+            <p className="mt-1.5 text-sm text-body dark:text-on-dark">{entry.descripcion}</p>
           </li>
         )
       })}

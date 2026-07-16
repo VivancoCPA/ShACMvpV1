@@ -12,6 +12,7 @@ import {
   createNuevaVersion,
   getArchivoUrl,
   getArchivoOriginalUrl,
+  getArchivoDistribucionBlob,
   exportarPdfControlado,
   confirmarRevisionPeriodica,
   restaurarDocumento,
@@ -198,13 +199,20 @@ export function useRestaurarDocumento(documentoId: string) {
 
 export function useGetArchivoOriginalUrl() {
   const { t } = useTranslation('documents')
+  const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: (documentoId: string) => getArchivoOriginalUrl(documentoId),
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, '_blank', 'noopener,noreferrer')
-      }
+    onSuccess: ({ blob, fileName }, documentoId) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
     },
     onError: (error) => {
       const is403 = isAxiosError(error) && error.response?.status === 403
@@ -214,6 +222,40 @@ export function useGetArchivoOriginalUrl() {
 
   return {
     abrirArchivoOriginal: async (documentoId: string): Promise<void> => {
+      try {
+        await mutation.mutateAsync(documentoId)
+      } catch {
+        // handled by onError
+      }
+    },
+    isLoading: mutation.isPending,
+  }
+}
+
+export function useGetArchivoDistribucionUrl() {
+  const { t } = useTranslation('documents')
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: (documentoId: string) => getArchivoDistribucionBlob(documentoId),
+    onSuccess: ({ blob, fileName }, documentoId) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
+    },
+    onError: () => {
+      toast.error(t('archivo.errorAbrir'))
+    },
+  })
+
+  return {
+    descargarArchivoDistribucion: async (documentoId: string): Promise<void> => {
       try {
         await mutation.mutateAsync(documentoId)
       } catch {

@@ -61,6 +61,8 @@ The system SHALL render a `QEHeaderSection` component at `src/features/quality-e
 - A metadata grid with `areaAfectada`, `mineralInvolucrado` (only when present), `turno`, `fechaHoraEvento`, `fechaHoraReporte` (both formatted via `Intl.DateTimeFormat`), the reporting user's display name, and a "Reincidencia ×N" badge when `ciclo > 1` (N = `ciclo`).
 - When `qe.fechaCierre` is set: `fechaCierre`, `resultadoCierre`, `plazoVerificacionDias`, and a countdown to `fechaVerificacionProgramada` (days remaining, formatted via a `DeadlineBadge`-style indicator, or "Vencido" when the deadline has passed and `fechaVerificacionRealizada` is absent).
 
+The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via `resolveUserDisplayName` (from `src/mocks/fixtures/userIdentity.fixtures.ts`), and SHALL resolve correctly for any real, non-legacy `authFixtures` account, not only ids that happened to also exist in the removed `src/mocks/fixtures/users.fixtures.ts` catalog.
+
 #### Scenario: Header shows all badges and metadata
 - **WHEN** `QEHeaderSection` renders a `QualityEvent` with `numero: 'QE-2026-005'`
 - **THEN** the number, status badge, type badge, origin badge, and severity badge are all visible, followed by the metadata grid
@@ -88,6 +90,10 @@ The system SHALL render a `QEHeaderSection` component at `src/features/quality-e
 #### Scenario: Header shows Vencido when the deadline has passed
 - **WHEN** `QEHeaderSection` renders a `QualityEvent` with `fechaVerificacionProgramada` in the past and `fechaVerificacionRealizada` absent
 - **THEN** the countdown displays "Vencido" instead of a day count
+
+#### Scenario: Reportado por resolves for a real, non-legacy account
+- **WHEN** `QEHeaderSection` renders a `QualityEvent` with `reportadoPorId: 'user-supervisor-002'`, an id present in `authFixtures` but absent from the removed `users.fixtures.ts` catalog
+- **THEN** the metadata grid shows the resolved display name, not a blank value and not the raw id
 
 ---
 

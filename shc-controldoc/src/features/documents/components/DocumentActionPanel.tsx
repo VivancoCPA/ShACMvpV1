@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileText, FileDown, Loader2, Info, RotateCcw } from 'lucide-react'
 
 import { useAuthStore } from '../../../stores/authStore'
+import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
 import { useDocumentsByCode } from '../hooks/useDocuments'
 import { canAccessDocument } from '../permissions'
@@ -67,12 +68,8 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
       .at(-1)?.realizadoPorNombre ?? '—'
 
     return (
-      <div className="sticky top-6 rounded-lg border border-hairline bg-surface-card p-5 dark:border-hairline/20 dark:bg-surface-dark-elevated">
-        <h3 className="mb-4 text-sm font-semibold text-body dark:text-on-dark">
-          {t('detail.title')}
-        </h3>
-
-        <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 dark:border-warning/30">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 dark:border-warning/30">
           <p className="text-sm text-warning">
             ⚠ {t('deleted.banner.mensaje', {
               fecha: formatDate(documento.deletedAt, locale),
@@ -83,37 +80,35 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
 
         {canRestore && (
           showRestoreConfirm ? (
-            <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
               <p className="text-sm text-body dark:text-on-dark">
                 {t('deleted.restore.confirm.title')}
               </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRestoreConfirm(false)}
-                  disabled={restaurar.isPending}
-                  className="flex-1 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-soft disabled:opacity-50 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
-                >
-                  {t('deleted.restore.confirm.cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => restaurar.mutate()}
-                  disabled={restaurar.isPending}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal/90 disabled:opacity-50"
-                >
-                  {restaurar.isPending
-                    ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                    : <RotateCcw size={14} aria-hidden="true" />}
-                  {t('deleted.restore.confirm.confirm')}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowRestoreConfirm(false)}
+                disabled={restaurar.isPending}
+                className="rounded-md border border-hairline bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-soft disabled:opacity-50 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
+              >
+                {t('deleted.restore.confirm.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => restaurar.mutate()}
+                disabled={restaurar.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal/90 disabled:opacity-50"
+              >
+                {restaurar.isPending
+                  ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                  : <RotateCcw size={14} aria-hidden="true" />}
+                {t('deleted.restore.confirm.confirm')}
+              </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setShowRestoreConfirm(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-teal/40 bg-teal/10 px-4 py-2.5 text-sm font-medium text-teal hover:bg-teal/20 dark:border-teal/30"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-teal/40 bg-teal/10 px-4 py-2.5 text-sm font-medium text-teal hover:bg-teal/20 dark:border-teal/30"
             >
               <RotateCcw size={14} aria-hidden="true" />
               {t('deleted.banner.restaurar')}
@@ -170,18 +165,14 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
   }
 
   return (
-    <div className="sticky top-6 rounded-lg border border-hairline bg-surface-card p-5 dark:border-hairline/20 dark:bg-surface-dark-elevated">
-      <h3 className="mb-4 text-sm font-semibold text-body dark:text-on-dark">
-        {t('detail.title')}
-      </h3>
-
+    <div className="flex flex-wrap items-center gap-2">
       {!hasAnyAction && (
         <p className="text-sm text-muted dark:text-on-dark-soft">
           {t('detail.noActionsAvailable')}
         </p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {canVerArchivo && (
           <button
             type="button"
@@ -211,7 +202,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
         )}
 
         {(canVerArchivo || canExportarPdf) && (canSendToReview || canApproveReview || canRejectReview || canCancelReview || canSign || canRejectAprobacion || canStartPeriodic || canCreateVersion || canStartNewVersion || canDelete) && (
-          <hr className="my-1 border-hairline dark:border-hairline/20" />
+          <div className="h-6 w-px bg-hairline dark:bg-hairline/20" aria-hidden="true" />
         )}
 
         {canSendToReview && (
@@ -274,7 +265,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
               type="button"
               onClick={() => setModal('nueva-version')}
               disabled={!!otraVersionEnProceso}
-              className="w-full rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+              className="rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
             >
               {t('detail.actions.createNewVersion')}
             </button>
@@ -287,7 +278,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
               type="button"
               onClick={() => setModal('nueva-version')}
               disabled={!!otraVersionEnProceso}
-              className="w-full rounded-md bg-coral px-4 py-2.5 text-sm font-medium text-white hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-md bg-coral px-4 py-2.5 text-sm font-medium text-white hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t('detail.actions.startNewVersion')}
             </button>
@@ -402,7 +393,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    {t('detail.tabs.detail') === 'Detalle' ? 'Área' : 'Area'}
+                    {locale === 'es-PE' ? 'Área' : 'Area'}
                   </dt>
                   <dd className="mt-0.5">{documento.area}</dd>
                 </div>
@@ -417,7 +408,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
                     <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                       {locale === 'es-PE' ? 'Aprobado por' : 'Approved by'}
                     </dt>
-                    <dd className="mt-0.5 font-mono text-xs text-gray-600">{documento.aprobadorId}</dd>
+                    <dd className="mt-0.5 text-xs text-gray-600">{resolveUserDisplayName(documento.aprobadorId)}</dd>
                   </div>
                 )}
               </dl>

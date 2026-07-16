@@ -21,7 +21,7 @@ import { getNonconformities } from '../../nonconformities/api/nonconformities.ap
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useAuthStore } from '../../../stores/authStore'
 import { resolveQEEditAccess } from '../utils/qualityEventPermissions'
-import { USER_NOMBRE_MAP } from '../../../mocks/fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import {
   QE_ORIGIN_LABELS,
   QE_TYPE_LABELS,
@@ -370,7 +370,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
             </div>
             <div className="sm:col-span-2">
               <p className={labelClass}>{t('form.fields.reportadoPor')}</p>
-              <p className={readOnlyValueClass}>{USER_NOMBRE_MAP[qe.reportadoPorId] ?? qe.reportadoPorId}</p>
+              <p className={readOnlyValueClass}>{resolveUserDisplayName(qe.reportadoPorId)}</p>
             </div>
           </div>
         )}

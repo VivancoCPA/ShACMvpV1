@@ -1,7 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
-import { userFixtures } from '../fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
   Incidente,
@@ -356,8 +356,7 @@ export const incidentHandlers = [
     const now = new Date().toISOString()
     const acId = `ac-inc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const responsableId = body.responsableId as string
-    const user = userFixtures.find((u) => u.id === responsableId)
-    const responsableNombre = user ? `${user.nombre} ${user.apellido}` : responsableId
+    const responsableNombre = resolveUserDisplayName(responsableId)
 
     const newAC: AccionCorrectivaIncidente = {
       id: acId,

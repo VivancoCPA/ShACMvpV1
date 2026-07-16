@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
-import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import type {
   NoConformidad,
   NCStatus,
@@ -353,7 +353,7 @@ export const nonconformityHandlers = [
       titulo: body.titulo as string,
       descripcion: body.descripcion as string,
       responsableId,
-      responsableNombre: USER_NOMBRE_MAP[responsableId] ?? 'Usuario',
+      responsableNombre: resolveUserDisplayName(responsableId),
       plazoFecha: body.plazoFecha as string,
       prioridad: body.prioridad as AccionCorrectiva['prioridad'],
       estado: 'PENDIENTE',

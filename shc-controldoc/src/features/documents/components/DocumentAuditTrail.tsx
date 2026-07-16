@@ -1,8 +1,28 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Documento } from '../../../types/documents.types'
+import {
+  ArrowRightLeft,
+  Pencil,
+  ShieldCheck,
+  FilePlus,
+  Download,
+  Eye,
+  FileText,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
 
 const PAGE_SIZE = 20
+
+const ACCION_ICONS: Record<string, LucideIcon> = {
+  ESTADO_CAMBIADO: ArrowRightLeft,
+  CAMPO_EDITADO: Pencil,
+  FIRMA_REGISTRADA: ShieldCheck,
+  DOCUMENTO_CREADO: FilePlus,
+  DESCARGA: Download,
+  DESCARGA_ARCHIVO_ORIGINAL: Download,
+  VISUALIZACION: Eye,
+}
 
 interface DocumentAuditTrailProps {
   documento: Documento
@@ -14,6 +34,23 @@ function formatTimestamp(iso: string, locale: string): string {
     dateStyle: 'short',
     timeStyle: 'medium',
   }).format(new Date(iso))
+}
+
+function AuditTrailIcon({ accion }: { accion: string }) {
+  const Icon = ACCION_ICONS[accion] ?? FileText
+  return <Icon size={14} className="shrink-0 text-muted dark:text-on-dark-soft" aria-hidden="true" />
+}
+
+function describeEntry(entry: AuditTrailEntry, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const label = t(`auditTrail.actions.${entry.accion}`, { defaultValue: entry.accion })
+
+  if (entry.accion === 'ESTADO_CAMBIADO' && (entry.estadoAnterior || entry.estadoNuevo)) {
+    return `${label}: ${entry.estadoAnterior ?? '—'} → ${entry.estadoNuevo ?? '—'}`
+  }
+  if (entry.campoModificado) {
+    return `${label} (${entry.campoModificado}): ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
+  }
+  return label
 }
 
 export function DocumentAuditTrail({ documento }: DocumentAuditTrailProps) {
@@ -38,43 +75,26 @@ export function DocumentAuditTrail({ documento }: DocumentAuditTrailProps) {
 
   return (
     <div>
-      <ol className="space-y-3">
+      <ul className="divide-y divide-hairline dark:divide-hairline/20">
         {visible.map((entry) => (
-          <li
-            key={entry.id}
-            className="rounded-lg border border-hairline bg-canvas p-3.5 dark:border-hairline/20 dark:bg-surface-dark"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted dark:text-on-dark-soft">
+          <li key={entry.id} className="flex items-start gap-2.5 py-2.5">
+            <AuditTrailIcon accion={entry.accion} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-medium text-body dark:text-on-dark">
+                  {describeEntry(entry, t)}
+                </span>
+                <time className="shrink-0 text-xs text-muted dark:text-on-dark-soft">
                   {formatTimestamp(entry.timestamp, locale)}
-                </span>
-                <span className="font-medium text-sm text-body dark:text-on-dark">
-                  {entry.realizadoPorNombre}
-                </span>
+                </time>
               </div>
-              <span className="rounded-[9999px] bg-surface-soft px-2 py-0.5 text-xs font-medium text-muted dark:bg-surface-dark-soft dark:text-on-dark-soft">
-                {t(`auditTrail.actions.${entry.accion}`, { defaultValue: entry.accion })}
-              </span>
+              <p className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">
+                {entry.realizadoPorNombre}
+              </p>
             </div>
-            {(entry.estadoAnterior || entry.estadoNuevo) && (
-              <p className="mt-1.5 text-xs text-muted dark:text-on-dark-soft">
-                {entry.estadoAnterior && <span>{entry.estadoAnterior}</span>}
-                {entry.estadoAnterior && entry.estadoNuevo && <span> → </span>}
-                {entry.estadoNuevo && <span className="font-medium text-body dark:text-on-dark">{entry.estadoNuevo}</span>}
-              </p>
-            )}
-            {entry.campoModificado && (
-              <p className="mt-1.5 text-xs text-muted dark:text-on-dark-soft">
-                <span className="font-medium">{entry.campoModificado}:</span>{' '}
-                {entry.valorAnterior && <span className="line-through">{entry.valorAnterior}</span>}
-                {entry.valorAnterior && entry.valorNuevo && ' → '}
-                {entry.valorNuevo && <span>{entry.valorNuevo}</span>}
-              </p>
-            )}
           </li>
         ))}
-      </ol>
+      </ul>
 
       {hasMore && (
         <button

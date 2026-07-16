@@ -1,7 +1,7 @@
 import type { QEStatus, QualityEvent } from '../types/qualityEvent.types'
 import type { QEPermissions, QEEditAccess } from '../types/qualityEventPermissions.types'
 import type { UserRole, User } from '../../../types/auth.types'
-import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
 
 const ANTES_DE_CERRADO: QEStatus[] = [
   'ABIERTO',
@@ -128,7 +128,7 @@ export function resolveRolSegundaFirma(
   primerFirmanteId: string,
   areaAfectada: string,
 ): 'SUPERVISOR' | 'ALTA_DIRECCION' {
-  const firmante = userFixtures.find((u) => u.id === primerFirmanteId)
+  const firmante = getUsersStore().find((u) => u.id === primerFirmanteId)
   if (firmante?.rol === 'SUPERVISOR' && firmante.area === areaAfectada) {
     return 'ALTA_DIRECCION'
   }

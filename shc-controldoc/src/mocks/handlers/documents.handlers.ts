@@ -1,10 +1,22 @@
 import { http, HttpResponse, delay } from 'msw'
+import { jsPDF } from 'jspdf'
 import { documentFixtures } from '../fixtures/documents.fixtures'
 import { authFixtures } from '../fixtures/auth.fixtures'
 import { DOC_STATUS_TRANSITIONS } from '../../features/documents/constants'
+import { buildMinimalDocxBytes } from '../utils/minimalDocx'
 import type { Documento, DocStatus, DocType } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
+
+function buildMinimalDistribucionPdfBytes(doc: Documento): Uint8Array {
+  const pdf = new jsPDF()
+  pdf.setFontSize(16)
+  pdf.text(`${doc.codigo} — ${doc.titulo}`, 20, 30)
+  pdf.setFontSize(11)
+  pdf.text(`Versión ${doc.version} · Estado: ${doc.estado}`, 20, 40)
+  pdf.text('PDF de distribución (documento mock — sin backend real)', 20, 50)
+  return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
+}
 
 const MOCK_PIN = '123456'
 
@@ -908,12 +920,14 @@ export const documentHandlers = [
     return ok({ success: true })
   }),
 
-  // GET /api/documents/:id/archivo-original — access original editable file (RN-DOC-013, RN-DOC-016)
+  // GET /api/documents/:id/archivo-original — download original editable file as Blob (RN-DOC-013, RN-DOC-016)
   http.get('/api/documents/:id/archivo-original', async ({ params, request }) => {
     await delay(LATENCY)
 
-    const doc = store.find((d) => d.id === params.id)
-    if (!doc) return err('Documento no encontrado', 404)
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
 
     const requestUser = getUserFromRequest(request)
     const userRole = requestUser?.rol ?? 'OPERARIO'
@@ -929,10 +943,33 @@ export const documentHandlers = [
       return err('Acceso denegado al archivo original (RN-DOC-013, RN-DOC-016)', 403)
     }
 
-    return ok({
-      url: doc.archivoOriginalUrl,
-      nombre: doc.archivoOriginalNombre,
-      bloqueado: doc.archivoOriginalBloqueado,
+    if (!doc.archivoOriginalUrl) {
+      return err('Documento sin archivo original', 404)
+    }
+
+    const fileName = doc.archivoOriginalNombre ?? `${doc.codigo}-original.docx`
+    const now = new Date().toISOString()
+
+    store[idx] = {
+      ...doc,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'DESCARGA_ARCHIVO_ORIGINAL', {
+          timestamp: now,
+          campoModificado: 'archivo',
+          valorNuevo: fileName,
+        }),
+      ],
+    }
+
+    const bytes = buildMinimalDocxBytes(`${doc.codigo} — ${doc.titulo} (archivo original, documento mock)`)
+    return new HttpResponse(bytes.buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      },
     })
   }),
 
@@ -975,6 +1012,45 @@ export const documentHandlers = [
     }
 
     return ok({ archivoOriginalUrl: mockUrl, archivoOriginalNombre: mockNombre })
+  }),
+
+  // GET /api/documents/:id/archivo-distribucion — download distribution PDF as Blob (RN-DOC-018)
+  http.get('/api/documents/:id/archivo-distribucion', async ({ params }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+
+    if (!doc.archivoDistribucionUrl) {
+      return err('Documento sin PDF de distribución', 404)
+    }
+
+    const fileName = `${doc.codigo}-${doc.version}-distribucion.pdf`
+    const now = new Date().toISOString()
+
+    store[idx] = {
+      ...doc,
+      actualizadoEn: now,
+      auditTrail: [
+        ...doc.auditTrail,
+        makeAuditEntry(doc.id, 'DESCARGA', {
+          timestamp: now,
+          campoModificado: 'archivo',
+          valorNuevo: fileName,
+        }),
+      ],
+    }
+
+    const bytes = buildMinimalDistribucionPdfBytes(doc)
+    return new HttpResponse(bytes.buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      },
+    })
   }),
 
   // POST /api/documents/:id/publicar — freeze original + generate distribution PDF (ADD-02)

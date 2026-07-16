@@ -145,10 +145,11 @@
       "title": "Document Detail",
       "noActionsAvailable": "No actions available for this document.",
       "backToList": "Back to list",
-      "tabs": {
-        "detail": "Detail",
-        "historial": "History",
-        "auditTrail": "Audit Trail"
+      "sections": {
+        "descripcion": "Description and detail",
+        "historial": "Status history",
+        "auditTrail": "Audit Trail",
+        "versiones": "Versions"
       },
       "banners": {
         "obsoleto": "This document is OBSOLETE and must not be used.",
@@ -199,13 +200,14 @@
     "historial": {
       "currentVersion": "Current version",
       "viewFile": "View file",
-      "noHistory": "No version history available."
+      "createdInBorrador": "Created in Draft"
     },
     "auditTrail": {
       "showMore": "Show more",
       "noEntries": "No audit trail entries.",
       "actions": {
         "DESCARGA": "PDF download",
+        "DESCARGA_ARCHIVO_ORIGINAL": "Original file download",
         "VISUALIZACION": "File view",
         "ESTADO_CAMBIADO": "Status changed",
         "CAMPO_EDITADO": "Field edited",
@@ -308,7 +310,7 @@
       "cancel": "Cancel"
     },
     "versiones": {
-      "tab": "Versions",
+      "vigente": "Current version",
       "versionActual": "current version",
       "versionAnterior": "previous version",
       "verDocumento": "View document",

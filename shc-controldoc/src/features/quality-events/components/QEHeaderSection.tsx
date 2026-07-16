@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
-import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { contarDiasHabiles, formatNormativaVinculada } from '../utils/qualityEventHelpers'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
@@ -27,7 +27,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
 
-  const reportedBy = userFixtures.find((u) => u.id === qe.reportadoPorId)
+  const reportedByName = resolveUserDisplayName(qe.reportadoPorId)
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
   const dateOnlyFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short' })
 
@@ -100,7 +100,7 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
           {formatDateTime(qe.fechaHoraReporte)}
         </FieldRow>
         <FieldRow label={t('detail.header.reportadoPor')}>
-          {reportedBy ? `${reportedBy.nombre} ${reportedBy.apellido}` : qe.reportadoPorId}
+          {reportedByName}
         </FieldRow>
 
         {qe.origen === 'O1_INCIDENTE_CAMPO' && qe.incidenteId && (

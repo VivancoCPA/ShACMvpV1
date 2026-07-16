@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
-import { USER_NOMBRE_MAP } from '../fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
@@ -334,7 +334,7 @@ export const qualityEventHandlers = [
       titulo: body.titulo as string | undefined,
       descripcion: body.descripcion as string,
       responsableId,
-      responsableNombre: USER_NOMBRE_MAP[responsableId] ?? 'Usuario',
+      responsableNombre: resolveUserDisplayName(responsableId),
       plazoFecha: body.plazoFecha as string,
       prioridad: body.prioridad as AccionCorrectivaQE['prioridad'],
       estado: 'PENDIENTE',

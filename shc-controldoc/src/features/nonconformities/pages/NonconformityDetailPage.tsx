@@ -11,7 +11,8 @@ import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { AnularNCModal } from '../components/AnularNCModal'
 import { ACSection } from '../components/ACSection'
 import type { AuditTrailEntry } from '../types/nonconformity.types'
-import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
+import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 
 function SkeletonRow() {
   return (
@@ -226,13 +227,15 @@ export function NonconformityDetailPage() {
                 <DeadlineBadge fechaCierre={nc.fechaCierre} estado={nc.estado} />
               </FieldRow>
             )}
-            {nc.detectadoPorId && (() => {
-              const u = userFixtures.find((x) => x.id === nc.detectadoPorId)
-              return u ? (
+            {(() => {
+              const detectadoPorId = nc.detectadoPorId
+              if (!detectadoPorId) return null
+              const u = getUsersStore().find((x) => x.id === detectadoPorId)
+              return (
                 <FieldRow label={t('detail.fields.detectadoPor')}>
-                  {u.nombre} {u.apellido} ({u.rol})
+                  {u ? `${u.nombre} ${u.apellido} (${u.rol})` : resolveUserDisplayName(detectadoPorId)}
                 </FieldRow>
-              ) : null
+              )
             })()}
             {nc.turno && (
               <FieldRow label={t('detail.fields.turno')}>

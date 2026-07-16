@@ -169,13 +169,20 @@ export async function restaurarDocumento(id: string): Promise<Documento> {
   return response.data
 }
 
-export interface ArchivoOriginalResponse {
-  url: string | null
-  nombre: string | null
-  bloqueado: boolean
+export async function getArchivoOriginalUrl(id: string): Promise<{ blob: Blob; fileName: string }> {
+  const response = await api.get(`/api/documents/${id}/archivo-original`, { responseType: 'blob' })
+  const blob = response.data as Blob
+  const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? ''
+  const match = /filename="([^"]+)"/.exec(disposition)
+  const fileName = match?.[1] ?? `documento-${id}-original`
+  return { blob, fileName }
 }
 
-export async function getArchivoOriginalUrl(id: string): Promise<ArchivoOriginalResponse> {
-  const response = await api.get<ArchivoOriginalResponse>(`/api/documents/${id}/archivo-original`)
-  return response.data
+export async function getArchivoDistribucionBlob(id: string): Promise<{ blob: Blob; fileName: string }> {
+  const response = await api.get(`/api/documents/${id}/archivo-distribucion`, { responseType: 'blob' })
+  const blob = response.data as Blob
+  const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? ''
+  const match = /filename="([^"]+)"/.exec(disposition)
+  const fileName = match?.[1] ?? `documento-${id}-distribucion.pdf`
+  return { blob, fileName }
 }

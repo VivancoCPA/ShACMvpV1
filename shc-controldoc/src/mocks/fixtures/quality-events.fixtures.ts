@@ -6,7 +6,7 @@
   QEOrigin,
   QESeverity,
 } from '../../features/quality-events/types/qualityEvent.types'
-import { USER_NOMBRE_MAP } from './users.fixtures'
+import { resolveUserDisplayName } from './userIdentity.fixtures'
 
 // Modelo B: las ACs pertenecen al QE (qeId primario). Este mapa se usa solo
 // para sembrar accionesCorrectivas en los fixtures que corresponden — no es
@@ -362,7 +362,7 @@ function addDaysISO(iso: string, days: number): string {
 }
 
 function nombrePor(id: string): string {
-  return USER_NOMBRE_MAP[id] ?? id
+  return resolveUserDisplayName(id)
 }
 
 function buildTendenciaSeedQE(): QualityEvent[] {

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { X, Sparkles } from 'lucide-react'
-import { userFixtures } from '../../../mocks/fixtures/users.fixtures'
+import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { useAuthStore } from '../../../stores/authStore'
 import { useUpdateQualityEvent } from '../hooks/useUpdateQualityEvent'
 import type {
@@ -204,8 +204,8 @@ export function QEInvestigationSection({ qe }: QEInvestigationSectionProps) {
     )
   }
 
-  const aprobador = qe.causaRaizAprobadaPorId
-    ? userFixtures.find((u) => u.id === qe.causaRaizAprobadaPorId)
+  const aprobadorNombre = qe.causaRaizAprobadaPorId
+    ? resolveUserDisplayName(qe.causaRaizAprobadaPorId)
     : undefined
 
   const inputClass =
@@ -339,7 +339,7 @@ export function QEInvestigationSection({ qe }: QEInvestigationSectionProps) {
             </p>
             <p className="mt-2 text-xs text-success">
               {t('detail.investigation.aprobadoPor', {
-                nombre: aprobador ? `${aprobador.nombre} ${aprobador.apellido}` : qe.causaRaizAprobadaPorId,
+                nombre: aprobadorNombre,
                 fecha: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(
                   new Date(qe.causaRaizFirmadaEn),
                 ),

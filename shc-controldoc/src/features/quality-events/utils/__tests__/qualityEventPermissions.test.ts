@@ -11,8 +11,8 @@ import {
 } from '../qualityEventPermissions'
 import type { QualityEvent } from '../../types/qualityEvent.types'
 
-vi.mock('../../../../mocks/fixtures/users.fixtures', () => ({
-  userFixtures: [
+vi.mock('../../../../mocks/fixtures/auth.fixtures', () => ({
+  getUsersStore: () => [
     { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones', areasAsignadas: ['Almacén Norte'] },
     { id: 'user-005', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
     { id: 'user-999', nombre: 'Dual', apellido: 'Hat', email: 'dual@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
