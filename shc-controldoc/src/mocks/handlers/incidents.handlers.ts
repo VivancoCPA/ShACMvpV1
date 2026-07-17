@@ -24,6 +24,10 @@ export function getIncidentsStore(): Incidente[] {
   return incidents
 }
 
+function resetStore() {
+  incidents = [...incidentFixtures]
+}
+
 const VALID_TRANSITIONS: Record<IncidentStatus, IncidentStatus[]> = {
   ABIERTO: ['EN_INVESTIGACION', 'ANULADO'],
   EN_INVESTIGACION: ['ANALISIS_COMPLETADO'],
@@ -470,4 +474,6 @@ export const incidentHandlers = [
     return ok(updatedAC)
   }),
 ]
+
+export { resetStore }
 

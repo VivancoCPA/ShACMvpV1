@@ -55,6 +55,10 @@ export function getQeStore(): QualityEvent[] {
   return qeStore
 }
 
+function resetStore() {
+  qeStore = [...qualityEventFixtures]
+}
+
 const ORIGIN_REQUIRED_FIELD: Record<string, string> = {
   O1_INCIDENTE_CAMPO: 'incidenteId',
   O2_NC_DETECTADA: 'ncId',
@@ -1270,3 +1274,5 @@ export const qualityEventHandlers = [
     return HttpResponse.json({ success: true, data: updated })
   }),
 ]
+
+export { resetStore }

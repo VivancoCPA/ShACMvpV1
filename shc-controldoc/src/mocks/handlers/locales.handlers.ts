@@ -14,6 +14,11 @@ const MAX_PLANO_BYTES = 2 * 1024 * 1024
 let locales: Local[] = localFixtures.map((l) => ({ ...l }))
 let zonas: Zona[] = zonaFixtures.map((z) => ({ ...z }))
 
+function resetStore() {
+  locales = localFixtures.map((l) => ({ ...l }))
+  zonas = zonaFixtures.map((z) => ({ ...z }))
+}
+
 function ok<T>(data: T, status = 200) {
   return HttpResponse.json({ success: true, data }, { status })
 }
@@ -308,3 +313,5 @@ export const localesHandlers = [
     return ok(updated)
   }),
 ]
+
+export { resetStore }

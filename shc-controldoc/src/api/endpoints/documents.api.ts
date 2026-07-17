@@ -186,3 +186,17 @@ export async function getArchivoDistribucionBlob(id: string): Promise<{ blob: Bl
   const fileName = match?.[1] ?? `documento-${id}-distribucion.pdf`
   return { blob, fileName }
 }
+
+export async function replaceArchivoOriginal(
+  id: string,
+  file: File,
+): Promise<{ archivoOriginalUrl: string; archivoOriginalNombre: string }> {
+  const formData = new FormData()
+  formData.append('archivoOriginal', file)
+  const response = await api.post<{ archivoOriginalUrl: string; archivoOriginalNombre: string }>(
+    `/api/documents/${id}/archivo-original`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return response.data
+}

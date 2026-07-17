@@ -279,7 +279,15 @@
         "descargar": "Download original file",
         "reemplazar": "Replace original file",
         "congelado": "Frozen",
-        "bloqueadoMsg": "The original file is frozen. Create a new version to edit it."
+        "accesoDenegadoMsg": "You don't have permission to view this document's original file.",
+        "reemplazoExitoso": "Original file replaced successfully.",
+        "modal": {
+          "title": "Replace original file",
+          "archivoActual": "Current file: {{nombre}}",
+          "hint": "Uploading a new file will replace the current one.",
+          "confirmar": "Replace",
+          "cancelar": "Cancel"
+        }
       },
       "distribucion": {
         "ver": "View distribution PDF",

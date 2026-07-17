@@ -21,6 +21,10 @@ export function getNonconformitiesStore(): NoConformidad[] {
   return nonconformities
 }
 
+function resetStore() {
+  nonconformities = [...nonconformityFixtures]
+}
+
 const DOMINIO_PREFIX: Record<NCDominio, string> = {
   CALIDAD: 'CAL',
   SST: 'SST',
@@ -462,3 +466,5 @@ export const nonconformityHandlers = [
     },
   ),
 ]
+
+export { resetStore }

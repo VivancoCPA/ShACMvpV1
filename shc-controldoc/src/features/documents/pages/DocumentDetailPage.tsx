@@ -9,6 +9,7 @@ import { DocumentActionPanel } from '../components/DocumentActionPanel'
 import { DocumentHistorial } from '../components/DocumentHistorial'
 import { DocumentAuditTrail } from '../components/DocumentAuditTrail'
 import { DocumentVersionesTab } from '../components/DocumentVersionesTab'
+import { DocumentReplaceArchivoOriginalModal } from '../components/DocumentReplaceArchivoOriginalModal'
 import { getDocumentPermissions } from '../permissions'
 import { useAuthStore } from '../../../stores/authStore'
 import type { DocRole } from '../../../types/documents.types'
@@ -53,6 +54,7 @@ export function DocumentDetailPage() {
   const [descripcionOpen, setDescripcionOpen] = useState(true)
   const [historialOpen, setHistorialOpen] = useState(true)
   const [auditTrailOpen, setAuditTrailOpen] = useState(true)
+  const [showReplaceOriginalModal, setShowReplaceOriginalModal] = useState(false)
 
   const { documento, isLoading, isError } = useDocumentDetail(id)
   const { abrirArchivoOriginal, isLoading: isLoadingOriginal } = useGetArchivoOriginalUrl()
@@ -191,7 +193,7 @@ export function DocumentDetailPage() {
                             {perms.canReplaceArchivoOriginal && (
                               <button
                                 type="button"
-                                onClick={() => navigate(`/documents/${documento.id}/edit`)}
+                                onClick={() => setShowReplaceOriginalModal(true)}
                                 className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
                               >
                                 <Upload size={12} aria-hidden="true" />
@@ -289,6 +291,14 @@ export function DocumentDetailPage() {
                 </div>
               )}
             </div>
+
+            {showReplaceOriginalModal && (
+              <DocumentReplaceArchivoOriginalModal
+                documentId={documento.id}
+                archivoOriginalNombre={documento.archivoOriginalNombre}
+                onClose={() => setShowReplaceOriginalModal(false)}
+              />
+            )}
           </div>
         )
       })()}

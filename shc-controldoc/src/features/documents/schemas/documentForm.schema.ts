@@ -41,6 +41,14 @@ export const documentFormSchema = z
         message: 'Debes seleccionar al menos un rol autorizado para documentos RESTRINGIDO.',
       })
     }
+
+    if (data.revisorId && data.aprobadorId && data.revisorId === data.aprobadorId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['aprobadorId'],
+        message: 'El Revisor y el Aprobador no pueden ser la misma persona.',
+      })
+    }
   })
 
 export type DocumentFormInput = z.infer<typeof documentFormSchema>

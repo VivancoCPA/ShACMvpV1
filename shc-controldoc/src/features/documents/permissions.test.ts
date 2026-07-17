@@ -27,15 +27,15 @@ describe('getDocumentPermissions — BORRADOR', () => {
     )
   })
 
-  it('REVISOR: canRead, canViewArchivoOriginal, canReplaceArchivoOriginal', () => {
+  it('REVISOR: canRead, canViewArchivoOriginal (no canReplaceArchivoOriginal — RN-DOC-013/018)', () => {
     expect(getDocumentPermissions('BORRADOR', 'REVISOR')).toEqual(
-      deny({ canRead: true, canViewArchivoOriginal: true, canReplaceArchivoOriginal: true }),
+      deny({ canRead: true, canViewArchivoOriginal: true }),
     )
   })
 
-  it('APROBADOR: canRead, canViewArchivoOriginal, canReplaceArchivoOriginal', () => {
+  it('APROBADOR: canRead, canViewArchivoOriginal (no canReplaceArchivoOriginal — RN-DOC-013/018)', () => {
     expect(getDocumentPermissions('BORRADOR', 'APROBADOR')).toEqual(
-      deny({ canRead: true, canViewArchivoOriginal: true, canReplaceArchivoOriginal: true }),
+      deny({ canRead: true, canViewArchivoOriginal: true }),
     )
   })
 
@@ -57,15 +57,15 @@ describe('getDocumentPermissions — EN_REVISION', () => {
     )
   })
 
-  it('REVISOR: canRead, canComment, canApprove, canReject, canViewArchivoOriginal, canReplaceArchivoOriginal', () => {
+  it('REVISOR: canRead, canComment, canApprove, canReject, canViewArchivoOriginal (no canReplaceArchivoOriginal — RN-DOC-013/018)', () => {
     expect(getDocumentPermissions('EN_REVISION', 'REVISOR')).toEqual(
-      deny({ canRead: true, canComment: true, canApprove: true, canReject: true, canViewArchivoOriginal: true, canReplaceArchivoOriginal: true }),
+      deny({ canRead: true, canComment: true, canApprove: true, canReject: true, canViewArchivoOriginal: true }),
     )
   })
 
-  it('APROBADOR: canRead, canViewArchivoOriginal, canReplaceArchivoOriginal', () => {
+  it('APROBADOR: canRead, canViewArchivoOriginal (no canReplaceArchivoOriginal — RN-DOC-013/018)', () => {
     expect(getDocumentPermissions('EN_REVISION', 'APROBADOR')).toEqual(
-      deny({ canRead: true, canViewArchivoOriginal: true, canReplaceArchivoOriginal: true }),
+      deny({ canRead: true, canViewArchivoOriginal: true }),
     )
   })
 
@@ -257,11 +257,12 @@ describe('getDocumentPermissions — EN_REVISION_PERIODICA', () => {
 })
 
 describe('getDocumentPermissions — archivo permissions (ADD-02)', () => {
-  it('canViewArchivoOriginal is true for non-OPERARIO roles in BORRADOR', () => {
-    expect(getDocumentPermissions('BORRADOR', 'AUTOR').canViewArchivoOriginal).toBe(true)
-    expect(getDocumentPermissions('BORRADOR', 'REVISOR').canViewArchivoOriginal).toBe(true)
-    expect(getDocumentPermissions('BORRADOR', 'APROBADOR').canViewArchivoOriginal).toBe(true)
-    expect(getDocumentPermissions('BORRADOR', 'JEFE_CALIDAD').canViewArchivoOriginal).toBe(true)
+  it('canViewArchivoOriginal is true for every docRole except OPERARIO in BORRADOR/EN_REVISION (RN-DOC-013, widened in practice to REVISOR/APROBADOR)', () => {
+    for (const estado of ['BORRADOR', 'EN_REVISION'] as const) {
+      for (const rol of ['AUTOR', 'REVISOR', 'APROBADOR', 'JEFE_CALIDAD'] as const) {
+        expect(getDocumentPermissions(estado, rol).canViewArchivoOriginal, `${rol} in ${estado}`).toBe(true)
+      }
+    }
   })
 
   it('canViewArchivoOriginal is false for OPERARIO in any state', () => {
@@ -275,6 +276,20 @@ describe('getDocumentPermissions — archivo permissions (ADD-02)', () => {
       for (const rol of ['AUTOR', 'REVISOR', 'APROBADOR', 'JEFE_CALIDAD'] as const) {
         expect(getDocumentPermissions(estado, rol).canViewArchivoOriginal, `${rol} in ${estado}`).toBe(false)
       }
+    }
+  })
+
+  it('canReplaceArchivoOriginal is true only for AUTOR/JEFE_CALIDAD in BORRADOR/EN_REVISION (RN-DOC-018 — narrower than canViewArchivoOriginal)', () => {
+    for (const estado of ['BORRADOR', 'EN_REVISION'] as const) {
+      expect(getDocumentPermissions(estado, 'AUTOR').canReplaceArchivoOriginal, `AUTOR in ${estado}`).toBe(true)
+      expect(getDocumentPermissions(estado, 'JEFE_CALIDAD').canReplaceArchivoOriginal, `JEFE_CALIDAD in ${estado}`).toBe(true)
+    }
+  })
+
+  it('canReplaceArchivoOriginal is false for REVISOR/APROBADOR even though they can view (RN-DOC-018)', () => {
+    for (const estado of ['BORRADOR', 'EN_REVISION'] as const) {
+      expect(getDocumentPermissions(estado, 'REVISOR').canReplaceArchivoOriginal, `REVISOR in ${estado}`).toBe(false)
+      expect(getDocumentPermissions(estado, 'APROBADOR').canReplaceArchivoOriginal, `APROBADOR in ${estado}`).toBe(false)
     }
   })
 

@@ -55,10 +55,12 @@ function LocaleDateInput({
   id,
   field,
   className,
+  disabled = false,
 }: {
   id: string
   field: DateFieldRef
   className: string
+  disabled?: boolean
 }) {
   const [display, setDisplay] = useState(isoToDisplay(field.value ?? ''))
   const dateRef = useRef<HTMLInputElement>(null)
@@ -81,6 +83,7 @@ function LocaleDateInput({
         placeholder="dd/mm/yyyy"
         className={`${className} !pr-10`}
         value={display}
+        disabled={disabled}
         onChange={(e) => setDisplay(e.target.value)}
         onBlur={() => {
           const iso = displayToISO(display)
@@ -101,6 +104,7 @@ function LocaleDateInput({
         aria-hidden="true"
         className="sr-only"
         value={field.value ?? ''}
+        disabled={disabled}
         onChange={(e) => {
           const iso = e.target.value
           if (iso) {
@@ -113,7 +117,8 @@ function LocaleDateInput({
         type="button"
         aria-label="Abrir calendario"
         onClick={openPicker}
-        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+        disabled={disabled}
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 dark:text-on-dark-soft dark:hover:text-on-dark"
       >
         <Calendar size={16} />
       </button>
@@ -274,7 +279,7 @@ export function DocumentForm({
                 id="rolesAutorizados"
                 multiple
                 size={6}
-                className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
+                className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
                 value={field.value ?? []}
                 onChange={(e) => {
                   const selected = Array.from(e.target.selectedOptions).map(

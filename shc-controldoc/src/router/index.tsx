@@ -28,6 +28,7 @@ import { LocalNewPage } from '../features/locations/pages/LocalNewPage'
 import { LocalEditPage } from '../features/locations/pages/LocalEditPage'
 import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
 import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
+import { DevResetMocksPage } from '../pages/dev/DevResetMocksPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 import { ProfilePage } from '../features/users/pages/ProfilePage'
 import { UsersListPage } from '../features/users/pages/UsersListPage'
@@ -54,6 +55,8 @@ export const router = createBrowserRouter([
           { index: true, element: <DefaultRouteRedirect /> },
           // Dev-only preview route — not linked in Sidebar, no RBAC restriction beyond auth.
           { path: '/dev/semaforo-preview', element: <SemaforoPreviewPage /> },
+          // Dev-only mock reset tool — not linked in Sidebar, no RBAC restriction beyond auth.
+          { path: '/dev/reset-mocks', element: <DevResetMocksPage /> },
           // Account self-service — not linked in Sidebar, only reachable via TopNav dropdown or direct URL. No RBAC restriction beyond auth.
           { path: '/perfil', element: <ProfilePage />, handle: { breadcrumb: 'myProfile' } },
           {

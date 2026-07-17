@@ -135,11 +135,14 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
   const isAprobador = documento.aprobadorId === user.id
   const canSendToReview = documento.estado === 'BORRADOR' && (isAutor || isJefeCalidad)
   const canDelete = documento.estado === 'BORRADOR' && (isAutor || isJefeCalidad)
-  const canApproveReview = documento.estado === 'EN_REVISION' && (isRevisor || isJefeCalidad)
-  const canRejectReview = documento.estado === 'EN_REVISION' && (isRevisor || isJefeCalidad)
+  // RN: aprobar/rechazar están reservados al revisorId/aprobadorId específico
+  // asignado al documento — JEFE_CALIDAD tiene editar/comentar en EN_REVISION,
+  // pero no firma ni aprueba/rechaza por otro (ver permissions.ts).
+  const canApproveReview = documento.estado === 'EN_REVISION' && isRevisor
+  const canRejectReview = documento.estado === 'EN_REVISION' && isRevisor
   const canCancelReview = documento.estado === 'EN_REVISION' && isJefeCalidad
-  const canSign = documento.estado === 'EN_APROBACION' && (isAprobador || isJefeCalidad)
-  const canRejectAprobacion = documento.estado === 'EN_APROBACION' && (isAprobador || isJefeCalidad)
+  const canSign = documento.estado === 'EN_APROBACION' && isAprobador
+  const canRejectAprobacion = documento.estado === 'EN_APROBACION' && isAprobador
   const canStartPeriodic = documento.estado === 'PUBLICADO' && isJefeCalidad
   const canCreateVersion = documento.estado === 'PUBLICADO' && (isAutor || isJefeCalidad)
   const canStartNewVersion = documento.estado === 'EN_REVISION_PERIODICA' && (isAutor || isJefeCalidad)

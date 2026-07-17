@@ -279,7 +279,15 @@
         "descargar": "Descargar archivo original",
         "reemplazar": "Reemplazar archivo original",
         "congelado": "Congelado",
-        "bloqueadoMsg": "El archivo original está congelado. Crea una nueva versión para editarlo."
+        "accesoDenegadoMsg": "No tienes permiso para ver el archivo original de este documento.",
+        "reemplazoExitoso": "Archivo original reemplazado exitosamente.",
+        "modal": {
+          "title": "Reemplazar archivo original",
+          "archivoActual": "Archivo actual: {{nombre}}",
+          "hint": "Subir un archivo nuevo reemplazará el archivo actual.",
+          "confirmar": "Reemplazar",
+          "cancelar": "Cancelar"
+        }
       },
       "distribucion": {
         "ver": "Ver PDF de distribución",

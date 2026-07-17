@@ -7,6 +7,8 @@ import { DocumentForm } from '../components/DocumentForm'
 import { useDocumentForm } from '../hooks/useDocumentForm'
 import { useAuthStore } from '../../../stores/authStore'
 import { mockUsers } from '../../../mocks/fixtures/documents.fixtures'
+import { getDocumentPermissions } from '../permissions'
+import type { DocRole } from '../../../types/documents.types'
 
 export function DocumentFormPage() {
   const { id } = useParams<{ id: string }>()
@@ -36,8 +38,26 @@ export function DocumentFormPage() {
     )
   }
 
-  // Edit mode: block non-BORRADOR documents
-  if (mode === 'edit' && documento && documento.estado !== 'BORRADOR') {
+  // DocumentEditGuard already restricted access to this route to the document's real
+  // autorId or a global JEFE_CONTROL_DOCUMENTARIO/JEFE_CALIDAD_SYST, so docRole here only
+  // ever resolves to AUTOR or JEFE_CALIDAD — never REVISOR/APROBADOR/OPERARIO.
+  const isJefeCalidadGlobal =
+    userRole === 'JEFE_CALIDAD_SYST' || userRole === 'JEFE_CONTROL_DOCUMENTARIO'
+  const isAuthor = !!documento && documento.autorId === userId
+  const docRole: DocRole = isAuthor ? 'AUTOR' : isJefeCalidadGlobal ? 'JEFE_CALIDAD' : 'OPERARIO'
+  const perms = documento
+    ? getDocumentPermissions(documento.estado, docRole, {
+        archivoOriginalBloqueado: documento.archivoOriginalBloqueado,
+      })
+    : null
+
+  // Full document editing (all fields) requires canEdit — AUTOR only in BORRADOR,
+  // JEFE_CALIDAD in BORRADOR or EN_REVISION.
+  const canEditFull = mode === 'create' || (perms?.canEdit ?? false)
+
+  // Edit mode is BORRADOR-only. Replacing just the archivo original in EN_REVISION
+  // (RN-DOC-018) goes through the dedicated modal on DocumentDetailPage instead.
+  if (mode === 'edit' && documento && !canEditFull) {
     return (
       <PageWrapper title={title}>
         <div className="rounded-lg border border-error/30 bg-error/5 p-6 dark:border-error/20 dark:bg-error/10">
@@ -59,10 +79,10 @@ export function DocumentFormPage() {
     )
   }
 
-  const descriptionLocked = mode === 'edit' && !!documento && documento.estado !== 'BORRADOR'
-  const isAutorOrJefe =
-    !(['OPERARIO', 'SUPERVISOR'] as typeof userRole[]).includes(userRole) &&
-    (!documento?.estado || (['BORRADOR', 'EN_REVISION'] as typeof documento.estado[]).includes(documento.estado))
+  const descriptionLocked = mode === 'edit' && !canEditFull
+  const isAutorOrJefe = mode === 'create'
+    ? !(['OPERARIO', 'SUPERVISOR'] as typeof userRole[]).includes(userRole)
+    : (perms?.canViewArchivoOriginal ?? false)
 
   return (
     <PageWrapper title={title}>

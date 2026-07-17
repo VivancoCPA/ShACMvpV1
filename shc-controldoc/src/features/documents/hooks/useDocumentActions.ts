@@ -13,6 +13,7 @@ import {
   getArchivoUrl,
   getArchivoOriginalUrl,
   getArchivoDistribucionBlob,
+  replaceArchivoOriginal,
   exportarPdfControlado,
   confirmarRevisionPeriodica,
   restaurarDocumento,
@@ -215,8 +216,11 @@ export function useGetArchivoOriginalUrl() {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
     },
     onError: (error) => {
+      // Download access denial (RN-DOC-013/016: not assigned to this document, or wrong estado)
+      // is a distinct case from the file being frozen (RN-DOC-014/015, which only blocks
+      // replacement, not download) — don't conflate the two under the same message.
       const is403 = isAxiosError(error) && error.response?.status === 403
-      toast.error(is403 ? t('archivo.original.bloqueadoMsg') : t('archivo.errorAbrir'))
+      toast.error(is403 ? t('archivo.original.accesoDenegadoMsg') : t('archivo.errorAbrir'))
     },
   })
 
@@ -264,6 +268,24 @@ export function useGetArchivoDistribucionUrl() {
     },
     isLoading: mutation.isPending,
   }
+}
+
+export function useReplaceArchivoOriginal(documentId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('documents')
+
+  return useMutation({
+    mutationFn: (file: File) => replaceArchivoOriginal(documentId, file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
+      toast.success(t('archivo.original.reemplazoExitoso'))
+    },
+    onError: (error) => {
+      const is403 = isAxiosError(error) && error.response?.status === 403
+      toast.error(is403 ? t('archivo.original.accesoDenegadoMsg') : t('archivo.errorAbrir'))
+    },
+  })
 }
 
 export function useConfirmarRevisionPeriodica(documentoId: string) {

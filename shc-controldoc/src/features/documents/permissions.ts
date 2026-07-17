@@ -138,12 +138,19 @@ export function getDocumentPermissions(
 
   const base = getBasePermissions(estado, rol, isAssignedAuthor)
 
-  // RN-DOC-013/016: archivo original visible only in BORRADOR/EN_REVISION for non-OPERARIO roles
+  // RN-DOC-013/016: archivo original visible only in BORRADOR/EN_REVISION, to any docRole
+  // with a stake in the document (AUTOR, REVISOR, APROBADOR, JEFE_CALIDAD) — OPERARIO never
+  // sees it. Note docRole reflects the user's relationship to THIS document, not their global
+  // UserRole: a SUPERVISOR assigned as REVISOR of a document is docRole 'REVISOR' here.
   const canViewArchivoOriginal =
     rol !== 'OPERARIO' && (estado === 'BORRADOR' || estado === 'EN_REVISION')
 
-  // RN-DOC-015: replacement blocked when file is frozen
-  const canReplaceArchivoOriginal = canViewArchivoOriginal && !archivoOriginalBloqueado
+  // RN-DOC-018: only Autor/Jefe de Calidad may replace the editable source (narrower than
+  // view access above), and only while not frozen (RN-DOC-015).
+  const canReplaceArchivoOriginal =
+    (rol === 'AUTOR' || rol === 'JEFE_CALIDAD') &&
+    (estado === 'BORRADOR' || estado === 'EN_REVISION') &&
+    !archivoOriginalBloqueado
 
   // Distribution PDF visible to anyone who can read a PUBLICADO or EN_REVISION_PERIODICA document
   const canViewArchivoDistribucion =

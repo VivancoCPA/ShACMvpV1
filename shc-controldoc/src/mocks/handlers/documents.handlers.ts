@@ -47,6 +47,21 @@ function getUserFromRequest(request: Request) {
   return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
 }
 
+// Document-relative role, mirrors features/documents/permissions.ts + DocumentDetailPage's
+// derivation: access to the original file depends on the caller's assignment on THIS document
+// (or being Jefe Calidad), never on their raw global UserRole (RN-DOC-013/016).
+function getDocRoleForUser(
+  doc: Documento,
+  user: { id: string; rol: UserRole } | null,
+): 'AUTOR' | 'REVISOR' | 'APROBADOR' | 'JEFE_CALIDAD' | 'OPERARIO' {
+  if (!user) return 'OPERARIO'
+  if (doc.autorId === user.id) return 'AUTOR'
+  if (doc.revisorId === user.id) return 'REVISOR'
+  if (doc.aprobadorId === user.id) return 'APROBADOR'
+  if (user.rol === 'JEFE_CALIDAD_SYST' || user.rol === 'JEFE_CONTROL_DOCUMENTARIO') return 'JEFE_CALIDAD'
+  return 'OPERARIO'
+}
+
 function filterPendientes(docs: Documento[], userId: string, userRole: UserRole): Documento[] {
   const ids = new Set<string>()
 
@@ -214,16 +229,16 @@ export const documentHandlers = [
     const requestUser = getUserFromRequest(request)
     const userRole = requestUser?.rol ?? 'OPERARIO'
     const isEditableState = doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION'
-    const isRestrictedRole = userRole === 'OPERARIO' || userRole === 'SUPERVISOR'
+    const docRole = getDocRoleForUser(doc, requestUser)
 
     // CA-34: JEFE_CONTROL_DOCUMENTARIO and ALTA_DIRECCION can access original of OBSOLETO docs
     const isHistoricalAccess =
       doc.estado === 'OBSOLETO' &&
       (userRole === 'JEFE_CONTROL_DOCUMENTARIO' || userRole === 'ALTA_DIRECCION')
 
-    // RN-DOC-016: OPERARIO/SUPERVISOR nunca ven campos del archivo original
+    // RN-DOC-016: solo quien está asignado al documento (autor/revisor/aprobador/Jefe Calidad) lo ve
     // RN-DOC-013: archivoOriginalUrl solo accesible en BORRADOR/EN_REVISION (+ CA-34 excepción)
-    const exposeOriginal = (!isRestrictedRole && isEditableState) || isHistoricalAccess
+    const exposeOriginal = (docRole !== 'OPERARIO' && isEditableState) || isHistoricalAccess
     return ok({
       ...doc,
       archivoOriginalUrl: exposeOriginal ? doc.archivoOriginalUrl : null,
@@ -931,7 +946,7 @@ export const documentHandlers = [
 
     const requestUser = getUserFromRequest(request)
     const userRole = requestUser?.rol ?? 'OPERARIO'
-    const isRestrictedRole = userRole === 'OPERARIO' || userRole === 'SUPERVISOR'
+    const docRole = getDocRoleForUser(doc, requestUser)
     const isEditableState = doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION'
 
     // CA-34: JEFE_CONTROL_DOCUMENTARIO and ALTA_DIRECCION can access original of OBSOLETO docs
@@ -939,7 +954,7 @@ export const documentHandlers = [
       doc.estado === 'OBSOLETO' &&
       (userRole === 'JEFE_CONTROL_DOCUMENTARIO' || userRole === 'ALTA_DIRECCION')
 
-    if (isRestrictedRole || (!isEditableState && !isHistoricalAccess)) {
+    if (!((docRole !== 'OPERARIO' && isEditableState) || isHistoricalAccess)) {
       return err('Acceso denegado al archivo original (RN-DOC-013, RN-DOC-016)', 403)
     }
 
