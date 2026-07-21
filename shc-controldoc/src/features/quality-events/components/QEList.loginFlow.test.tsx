@@ -12,7 +12,7 @@ import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.sche
 import { QEList } from './QEList'
 
 // Regression test for M4-S08: resolveQEEditAccess() passed in isolation, but the Editar
-// icon never appeared for a SUPERVISOR whose areasAsignadas matched the QE area, because
+// icon never appeared for a SUPERVISOR whose areaIds matched the QE area, because
 // the real create flow (POST /api/quality-events) never set fechaHoraReporte/reportadoPorId,
 // which silently broke the RN-QE-014 2h-window check (NaN date) downstream. Tests that hand
 // -build the user/QE objects never exercise that gap, so this drives the real handlers.
@@ -56,7 +56,7 @@ function renderList(searchParams: string) {
 }
 
 describe('QEList — full login-to-icon flow (RN-QE-014)', () => {
-  it('supervisor sees Editar for a freshly created QE whose area is in their areasAsignadas', async () => {
+  it('supervisor sees Editar for a freshly created QE whose area is in their areaIds', async () => {
     await loginReal('jefe.calidad@shac.pe')
 
     const created = await createQualityEvent({
@@ -64,7 +64,7 @@ describe('QEList — full login-to-icon flow (RN-QE-014)', () => {
       tipo: 'CALIDAD',
       severidad: 'MEDIA',
       descripcion: 'QE creado para validar el flujo completo login -> icono editar',
-      areaAfectada: 'Galpón B',
+      areaId: 'area-010',
       turno: 'DIA',
       // Distinctive far-future date lets the test isolate this QE via fechaDesde without
       // depending on how many fixture QEs exist or which page they land on.
@@ -87,7 +87,7 @@ describe('QEList — full login-to-icon flow (RN-QE-014)', () => {
     expect(screen.getByRole('button', { name: 'list.actions.editar' })).toBeInTheDocument()
   })
 
-  it('supervisor.almacen (area not in areasAsignadas) still never sees Editar for the same QE', async () => {
+  it('supervisor.almacen (area not in areaIds) still never sees Editar for the same QE', async () => {
     await loginReal('jefe.calidad@shac.pe')
 
     const created = await createQualityEvent({
@@ -95,7 +95,7 @@ describe('QEList — full login-to-icon flow (RN-QE-014)', () => {
       tipo: 'CALIDAD',
       severidad: 'MEDIA',
       descripcion: 'QE creado para validar que otro supervisor sin el área asignada no ve el icono',
-      areaAfectada: 'Galpón B',
+      areaId: 'area-010',
       turno: 'DIA',
       fechaHoraEvento: '2099-01-02T08:00:00.000Z',
       ncId: 'NC-2026-002',

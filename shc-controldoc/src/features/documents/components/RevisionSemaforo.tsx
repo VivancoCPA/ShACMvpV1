@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
+import { DOC_REVISION_ALERT_DAYS } from '../../../config/businessRules.config'
 
 interface RevisionSemaforoProps {
   fechaRevisionProxima: string | undefined
@@ -16,7 +17,7 @@ export function RevisionSemaforo({ fechaRevisionProxima }: RevisionSemaforoProps
 
   const diasRestantes = differenceInCalendarDays(parseISO(fechaRevisionProxima), new Date())
 
-  if (diasRestantes > 30) {
+  if (diasRestantes > DOC_REVISION_ALERT_DAYS) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-success dark:bg-success" />

@@ -16,7 +16,7 @@ export interface QEResumen {
   severidad: QESeverity
   tipo: QEType
   origen: QEOrigin
-  areaAfectada: string
+  areaId: string
   fechaHoraReporte: string
   fechaVerificacionProgramada?: string
 }
@@ -37,7 +37,7 @@ export interface NCResumen {
   estado: NCStatus
   severidad: NCSeveridad
   tipo: NCTipo
-  areaAfectada: string
+  areaId: string
   fechaDeteccion: string
 }
 
@@ -47,7 +47,7 @@ export interface DocumentoResumen {
   titulo: string
   tipo: DocType
   estado: DocStatus
-  area: string
+  areaId: string
   fechaRevisionProxima?: string
 }
 

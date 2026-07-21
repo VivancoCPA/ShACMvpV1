@@ -46,7 +46,7 @@ function makeUser(overrides: Partial<User> = {}): User {
 }
 
 describe('useLogin', () => {
-  it('navega a /admin/locales tras login exitoso de ADMINISTRADOR_SISTEMA', async () => {
+  it('navega a /usuarios tras login exitoso de ADMINISTRADOR_SISTEMA', async () => {
     mockLoginResponse = { user: makeUser({ rol: 'ADMINISTRADOR_SISTEMA' }), accessToken: 'token' }
     const { result } = renderHook(() => useLogin(), { wrapper })
 
@@ -54,10 +54,10 @@ describe('useLogin', () => {
       result.current.mutate({ email: 'admin@shac.pe', password: 'Shac2025!' })
     })
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/admin/locales'))
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/usuarios', { replace: true }))
   })
 
-  it('navega a /documentos tras login exitoso de un rol operativo', async () => {
+  it('navega a /dashboard tras login exitoso de un rol operativo', async () => {
     mockLoginResponse = { user: makeUser({ rol: 'JEFE_CALIDAD_SYST' }), accessToken: 'token' }
     const { result } = renderHook(() => useLogin(), { wrapper })
 
@@ -65,6 +65,50 @@ describe('useLogin', () => {
       result.current.mutate({ email: 'jefe.calidad@shac.pe', password: 'Shac2025!' })
     })
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/documentos'))
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }),
+    )
+  })
+
+  it('navega al deep link original (`from`) en vez del default por rol cuando se provee', async () => {
+    mockLoginResponse = { user: makeUser({ rol: 'JEFE_CALIDAD_SYST' }), accessToken: 'token' }
+    const from = { pathname: '/documentos/DOC-2025-014', search: '', hash: '', state: null, key: 'x' }
+    const { result } = renderHook(() => useLogin(from), { wrapper })
+
+    act(() => {
+      result.current.mutate({ email: 'jefe.calidad@shac.pe', password: 'Shac2025!' })
+    })
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/documentos/DOC-2025-014', { replace: true }),
+    )
+  })
+
+  it('ignora un `from` sin permiso RBAC para el rol autenticado y navega al default del rol', async () => {
+    // JEFE_CALIDAD_SYST no tiene acceso a /usuarios (solo ADMINISTRADOR_SISTEMA).
+    mockLoginResponse = { user: makeUser({ rol: 'JEFE_CALIDAD_SYST' }), accessToken: 'token' }
+    const from = { pathname: '/usuarios', search: '', hash: '', state: null, key: 'x' }
+    const { result } = renderHook(() => useLogin(from), { wrapper })
+
+    act(() => {
+      result.current.mutate({ email: 'jefe.calidad@shac.pe', password: 'Shac2025!' })
+    })
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }),
+    )
+  })
+
+  it('ignora un `from` sin permiso RBAC para ADMINISTRADOR_SISTEMA y navega a /usuarios', async () => {
+    // ADMINISTRADOR_SISTEMA no tiene acceso a /documentos (módulo operativo).
+    mockLoginResponse = { user: makeUser({ rol: 'ADMINISTRADOR_SISTEMA' }), accessToken: 'token' }
+    const from = { pathname: '/documentos', search: '', hash: '', state: null, key: 'x' }
+    const { result } = renderHook(() => useLogin(from), { wrapper })
+
+    act(() => {
+      result.current.mutate({ email: 'admin@shac.pe', password: 'Shac2025!' })
+    })
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/usuarios', { replace: true }))
   })
 })

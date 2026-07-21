@@ -8,6 +8,7 @@ export interface ChangeDocumentStatusPayload {
   nuevoEstado: DocStatus
   comentario?: string
   firma: string
+  notificarAutor?: boolean
 }
 
 export interface DocumentListResponse {
@@ -19,7 +20,7 @@ export async function getDocuments(filters: DocFilters = {}): Promise<DocumentLi
   const params: Record<string, unknown> = {}
   if (filters.estado) params.estado = filters.estado
   if (filters.tipo) params.tipo = filters.tipo
-  if (filters.area) params.area = filters.area
+  if (filters.areaId) params.areaId = filters.areaId
   if (filters.autorId !== undefined) params.autorId = filters.autorId
   if (filters.search) params.search = filters.search
   if (filters.codigo !== undefined) params.codigo = filters.codigo

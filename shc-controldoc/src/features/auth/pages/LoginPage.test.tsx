@@ -36,20 +36,21 @@ function renderAt(role: UserRole) {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/documentos" element={<div>documentos-page</div>} />
-        <Route path="/admin/locales" element={<div>admin-locales-page</div>} />
+        <Route path="/dashboard" element={<div>dashboard-page</div>} />
+        <Route path="/usuarios" element={<div>usuarios-page</div>} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
 describe('LoginPage — redirect de sesión ya activa', () => {
-  it('ADMINISTRADOR_SISTEMA con sesión activa es redirigido a /admin/locales', () => {
+  it('ADMINISTRADOR_SISTEMA con sesión activa es redirigido a /usuarios', () => {
     renderAt('ADMINISTRADOR_SISTEMA')
-    expect(screen.getByText('admin-locales-page')).toBeInTheDocument()
+    expect(screen.getByText('usuarios-page')).toBeInTheDocument()
   })
 
-  it('un rol operativo con sesión activa sigue siendo redirigido a /documentos', () => {
+  it('un rol operativo con sesión activa sigue siendo redirigido a /dashboard', () => {
     renderAt('JEFE_CALIDAD_SYST')
-    expect(screen.getByText('documentos-page')).toBeInTheDocument()
+    expect(screen.getByText('dashboard-page')).toBeInTheDocument()
   })
 })

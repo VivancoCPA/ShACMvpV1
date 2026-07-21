@@ -109,7 +109,7 @@ export interface QualityEvent {
   estado: QEStatus
   ciclo: number
   descripcion: string
-  areaAfectada: string
+  areaId: string
   turno: 'DIA' | 'TARDE' | 'NOCHE'
   fechaHoraEvento: string
   fechaHoraReporte: string
@@ -173,7 +173,7 @@ export interface QEStatusTransitionInput {
 
 export type QualityEventUpdateInput = Partial<Pick<QualityEvent,
   | 'descripcion'
-  | 'areaAfectada'
+  | 'areaId'
   | 'turno'
   | 'mineralInvolucrado'
   | 'descripcionAmpliada'

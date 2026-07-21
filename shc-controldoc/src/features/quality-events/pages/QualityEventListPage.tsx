@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { ErrorBoundary } from '../../../components/shared/ErrorBoundary'
-import { QEListFilters } from '../components/QEListFilters'
 import { QEList } from '../components/QEList'
 import { useAuthStore } from '../../../stores/authStore'
 import type { UserRole } from '../../../types/auth.types'
@@ -28,7 +27,6 @@ export function QualityEventListPage() {
 
   return (
     <PageWrapper title={t('list.title')} actions={actions}>
-      <QEListFilters />
       <ErrorBoundary>
         <QEList />
       </ErrorBoundary>

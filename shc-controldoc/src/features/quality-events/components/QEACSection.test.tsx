@@ -156,7 +156,7 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
     expect(toastInfo).toHaveBeenCalledTimes(1)
   })
 
-  it('suppresses the toast for roles other than JEFE_CALIDAD_SYST/SUPERVISOR', () => {
+  it('shows the toast regardless of the acting user role — real recipients are notified via a persisted notification instead', () => {
     useAuthStore.setState({
       user: {
         id: 'user-002',
@@ -177,7 +177,7 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
       <QEACSection qeId="qe-2026-001" qeEstado="PENDIENTE_CIERRE" qeSeveridad="MEDIA" accionesCorrectivas={[]} solicitudesAC={0} />,
     )
 
-    expect(toastInfo).not.toHaveBeenCalled()
+    expect(toastInfo).toHaveBeenCalledTimes(1)
   })
 })
 

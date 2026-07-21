@@ -39,7 +39,11 @@ const FILTER_PARAMS = [
   'showDeleted',
 ]
 
-export function QEListFilters() {
+interface QEListFiltersProps {
+  trailingContent?: React.ReactNode
+}
+
+export function QEListFilters({ trailingContent }: QEListFiltersProps = {}) {
   const { t } = useTranslation('qualityEvents')
   const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
@@ -223,6 +227,8 @@ export function QEListFilters() {
           {t('list.filters.limpiar')}
         </button>
       )}
+
+      {trailingContent && <div className="ml-auto self-center">{trailingContent}</div>}
     </FilterBar>
   )
 }

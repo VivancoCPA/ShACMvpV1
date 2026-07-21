@@ -9,7 +9,7 @@ const persistedLang = usePreferencesStore.getState().language ?? 'es-PE'
 export const i18nReady = i18n.use(initReactI18next).init({
   lng: persistedLang,
   fallbackLng: 'es-PE',
-  ns: ['common', 'auth', 'nav', 'documents', 'qualityEvents', 'incidents', 'nonconformities', 'dashboard', 'locations', 'users'],
+  ns: ['common', 'auth', 'nav', 'documents', 'qualityEvents', 'incidents', 'nonconformities', 'dashboard', 'locations', 'users', 'notifications', 'areas'],
   defaultNS: 'common',
   resources: {
     'es-PE': esPE,

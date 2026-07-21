@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { X, Loader2 } from 'lucide-react'
-import { AREAS_SHAC } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import { UserAvatar } from '../../../components/ui/UserAvatar'
 import { createUserSchema } from '../schemas/createUser.schema'
 import type { CreateUserInput } from '../schemas/createUser.schema'
@@ -44,6 +44,8 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
   const createUser = useCreateUser()
   const updateUser = useUpdateUser()
   const isPending = createUser.isPending || updateUser.isPending
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
 
   const resolver = zodResolver(
     isEdit ? updateUserSchema : createUserSchema,
@@ -61,8 +63,8 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
       apellido: user?.apellido ?? '',
       email: user?.email ?? '',
       rol: user?.rol ?? 'OPERARIO',
-      area: user?.area ?? '',
-      areasAsignadas: user?.areasAsignadas ?? [],
+      areaId: user?.areaId ?? '',
+      areaIds: user?.areaIds ?? [],
     },
   })
 
@@ -95,8 +97,8 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
             apellido: data.apellido,
             email: data.email,
             rol: data.rol,
-            ...(data.area ? { area: data.area } : {}),
-            ...(data.areasAsignadas ? { areasAsignadas: data.areasAsignadas } : {}),
+            ...(data.areaId ? { areaId: data.areaId } : {}),
+            ...(data.areaIds ? { areaIds: data.areaIds } : {}),
             ...(avatarBase64 !== user.avatarUrl ? { avatarBase64 } : {}),
           },
         },
@@ -117,8 +119,8 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
         apellido: data.apellido ?? '',
         email: data.email,
         rol: data.rol,
-        ...(data.area ? { area: data.area } : {}),
-        ...(data.areasAsignadas ? { areasAsignadas: data.areasAsignadas } : {}),
+        ...(data.areaId ? { areaId: data.areaId } : {}),
+        ...(data.areaIds ? { areaIds: data.areaIds } : {}),
         ...(avatarBase64 ? { avatarBase64 } : {}),
       },
       {
@@ -239,33 +241,33 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
           </div>
 
           <div>
-            <label htmlFor="area" className={labelBase}>
+            <label htmlFor="areaId" className={labelBase}>
               {t('form.fields.area')}
             </label>
-            <select id="area" className={inputBase} {...register('area')}>
+            <select id="areaId" className={inputBase} {...register('areaId')}>
               <option value="">{t('form.fields.seleccionar')}</option>
-              {AREAS_SHAC.map((a) => (
-                <option key={a} value={a}>
-                  {a}
+              {areasActivas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nombre}
                 </option>
               ))}
             </select>
-            {errors.area && <p className="mt-1 text-xs text-error">{t(errors.area.message ?? '')}</p>}
+            {errors.areaId && <p className="mt-1 text-xs text-error">{t(errors.areaId.message ?? '')}</p>}
           </div>
 
           {showAreasAsignadas && (
             <div>
               <span className={labelBase}>{t('form.fields.areasAsignadas')}</span>
               <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-hairline p-2 dark:border-hairline/20">
-                {AREAS_SHAC.map((a) => (
-                  <label key={a} className="flex items-center gap-2 text-sm text-ink dark:text-on-dark">
-                    <input type="checkbox" value={a} {...register('areasAsignadas')} />
-                    {a}
+                {areasActivas.map((a) => (
+                  <label key={a.id} className="flex items-center gap-2 text-sm text-ink dark:text-on-dark">
+                    <input type="checkbox" value={a.id} {...register('areaIds')} />
+                    {a.nombre}
                   </label>
                 ))}
               </div>
-              {errors.areasAsignadas && (
-                <p className="mt-1 text-xs text-error">{t(errors.areasAsignadas.message ?? '')}</p>
+              {errors.areaIds && (
+                <p className="mt-1 text-xs text-error">{t(errors.areaIds.message ?? '')}</p>
               )}
             </div>
           )}

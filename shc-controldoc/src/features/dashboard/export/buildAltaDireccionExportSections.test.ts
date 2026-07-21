@@ -79,7 +79,7 @@ describe('buildAltaDireccionExportSections', () => {
           severidad: 'CRITICA',
           tipo: 'CALIDAD',
           origen: 'O1_INCIDENTE_CAMPO',
-          areaAfectada: 'Patio',
+          areaId: 'Patio',
           fechaHoraReporte: '2026-07-01T00:00:00Z',
         },
       ],

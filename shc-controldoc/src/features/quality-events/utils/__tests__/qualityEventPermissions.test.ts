@@ -8,14 +8,15 @@ import {
   ventanaReporteInicialAbierta,
   resolveQEEditAccess,
   puedeEditarQE,
+  puedeExportarPDF,
 } from '../qualityEventPermissions'
 import type { QualityEvent } from '../../types/qualityEvent.types'
+import type { UserRole } from '../../../../types/auth.types'
 
 vi.mock('../../../../mocks/fixtures/auth.fixtures', () => ({
   getUsersStore: () => [
-    { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones', areasAsignadas: ['Almacén Norte'] },
+    { id: 'user-003', nombre: 'María', apellido: 'Castro', email: 'maria@shac.internal', rol: 'SUPERVISOR', areaId: 'area-016', areaIds: ['area-001'] },
     { id: 'user-005', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
-    { id: 'user-999', nombre: 'Dual', apellido: 'Hat', email: 'dual@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones' },
   ],
 }))
 
@@ -28,7 +29,7 @@ const baseQE: QualityEvent = {
   estado: 'EN_EJECUCION',
   ciclo: 1,
   descripcion: 'Descripción del evento',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'area-001',
   turno: 'DIA',
   fechaHoraEvento: '2025-06-01T08:00:00Z',
   fechaHoraReporte: '2025-06-01T09:00:00Z',
@@ -138,19 +139,15 @@ describe('getQualityEventPermissions', () => {
 
 describe('resolveRolSegundaFirma (RN-QE-004 escalation)', () => {
   it('returns SUPERVISOR for the normal JEFE_CALIDAD_SYST first signer', () => {
-    expect(resolveRolSegundaFirma('user-005', 'Calidad')).toBe('SUPERVISOR')
-  })
-
-  it('returns ALTA_DIRECCION when the first signer doubles as the area supervisor', () => {
-    expect(resolveRolSegundaFirma('user-999', 'Operaciones')).toBe('ALTA_DIRECCION')
+    expect(resolveRolSegundaFirma('user-005', 'area-007')).toBe('SUPERVISOR')
   })
 
   it('returns SUPERVISOR when the first signer is SUPERVISOR of a different area', () => {
-    expect(resolveRolSegundaFirma('user-003', 'Almacén Norte')).toBe('SUPERVISOR')
+    expect(resolveRolSegundaFirma('user-003', 'area-001')).toBe('SUPERVISOR')
   })
 
   it('falls back to SUPERVISOR when the user cannot be found', () => {
-    expect(resolveRolSegundaFirma('user-desconocido', 'Calidad')).toBe('SUPERVISOR')
+    expect(resolveRolSegundaFirma('user-desconocido', 'area-007')).toBe('SUPERVISOR')
   })
 })
 
@@ -190,28 +187,28 @@ describe('resolveQEEditAccess (RN-QE-014/015/016)', () => {
     expect(result).toEqual({ reporteInicial: true, severidad: false, mineral: false })
   })
 
-  it('Supervisor with the affected area in areasAsignadas (not creator) within window gets reporteInicial true', () => {
+  it('Supervisor with the affected area in areaIds (not creator) within window gets reporteInicial true', () => {
     const result = resolveQEEditAccess(
-      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
-      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: ['Almacén Norte', 'Almacén Sur'] },
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaId: 'area-001', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areaIds: ['area-001', 'area-002'] },
       new Date('2026-05-01T09:00:00Z'),
     )
     expect(result.reporteInicial).toBe(true)
   })
 
-  it('Supervisor whose areasAsignadas does not include the affected area gets reporteInicial false', () => {
+  it('Supervisor whose areaIds does not include the affected area gets reporteInicial false', () => {
     const result = resolveQEEditAccess(
-      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
-      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: ['Almacén Sur'] },
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaId: 'area-001', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areaIds: ['area-002'] },
       new Date('2026-05-01T09:00:00Z'),
     )
     expect(result.reporteInicial).toBe(false)
   })
 
-  it('Supervisor with no areasAsignadas at all gets reporteInicial false', () => {
+  it('Supervisor with no areaIds at all gets reporteInicial false', () => {
     const result = resolveQEEditAccess(
-      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2026-05-01T08:00:00Z' },
-      { id: 'user-2', rol: 'SUPERVISOR', areasAsignadas: undefined },
+      { ...baseQE, estado: 'ABIERTO', reportadoPorId: 'user-1', areaId: 'area-001', fechaHoraReporte: '2026-05-01T08:00:00Z' },
+      { id: 'user-2', rol: 'SUPERVISOR', areaIds: undefined },
       new Date('2026-05-01T09:00:00Z'),
     )
     expect(result.reporteInicial).toBe(false)
@@ -397,4 +394,20 @@ describe('validateTransitionToCerrado (RN-QE-004)', () => {
     expect(result.valid).toBe(true)
     expect(result.reason).toBeUndefined()
   })
+})
+
+describe('puedeExportarPDF', () => {
+  it.each<UserRole>(['JEFE_CALIDAD_SYST', 'SUPERVISOR', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])(
+    'returns true for %s',
+    (rol) => {
+      expect(puedeExportarPDF(rol)).toBe(true)
+    },
+  )
+
+  it.each<UserRole>(['OPERARIO', 'JEFE_CONTROL_DOCUMENTARIO', 'ADMINISTRADOR_SISTEMA'])(
+    'returns false for %s',
+    (rol) => {
+      expect(puedeExportarPDF(rol)).toBe(false)
+    },
+  )
 })

@@ -157,6 +157,11 @@ export async function editarMineral(
   return response.data
 }
 
+export async function exportQualityEventPdf(id: string): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${id}/export-pdf`)
+  return response.data
+}
+
 export async function getQEAuditTrail(qeId: string): Promise<QEAuditTrailEntry[]> {
   const response = await api.get<QEAuditTrailEntry[]>(`/api/quality-events/${qeId}/audit-trail`)
   return response.data

@@ -29,7 +29,7 @@ function buildQE(overrides: Partial<QualityEvent>): QualityEvent {
     estado: 'ANALISIS_COMPLETADO',
     ciclo: 1,
     descripcion: 'Descripción del evento',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'Almacén Norte',
     turno: 'DIA',
     fechaHoraEvento: '2026-01-01T00:00:00Z',
     fechaHoraReporte: '2026-01-01T00:00:00Z',

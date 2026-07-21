@@ -61,7 +61,7 @@ export interface Documento {
   tipo: DocType
   version: string
   estado: DocStatus
-  area: string
+  areaId: string
   confidencialidad: DocConfidencialidad
   rolesAutorizados?: UserRole[]
   autorId: string
@@ -92,7 +92,7 @@ export interface Documento {
 export interface DocFilters {
   estado?: DocStatus
   tipo?: DocType
-  area?: string
+  areaId?: string
   autorId?: string
   search?: string
   codigo?: string

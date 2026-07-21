@@ -22,7 +22,7 @@ export function useDocumentList(): UseDocumentListResult {
     search: searchParams.get('search') ?? '',
     estado: (!includeDeleted && !pendientes ? searchParams.get('estado') : null) ?? '',
     tipo: searchParams.get('tipo') ?? '',
-    area: searchParams.get('area') ?? '',
+    areaId: searchParams.get('areaId') ?? '',
     page,
     pageSize: 10,
     includeDeleted,

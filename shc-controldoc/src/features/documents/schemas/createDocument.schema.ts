@@ -13,7 +13,7 @@ export const createDocumentSchema = z
   .object({
     titulo: z.string().min(5).max(200),
     tipo: z.enum(['POL', 'PRC', 'INS', 'REG', 'INF', 'MAT', 'PLAN']),
-    area: z.string().min(1),
+    areaId: z.string().min(1),
     confidencialidad: z.enum(['PUBLICO', 'INTERNO', 'CONFIDENCIAL', 'RESTRINGIDO']).default('INTERNO'),
     rolesAutorizados: z.array(userRoleEnum).optional(),
     revisorId: z.string().uuid().optional(),

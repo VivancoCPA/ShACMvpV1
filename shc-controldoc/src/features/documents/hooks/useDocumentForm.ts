@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
@@ -6,11 +6,13 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
+import { addMonths } from 'date-fns'
 import { documentFormSchema, type DocumentFormInput } from '../schemas/documentForm.schema'
 import { useDocument } from './useDocuments'
 import { QUERY_KEYS } from '../constants'
 import api from '../../../lib/axios'
 import type { Documento } from '../../../types/documents.types'
+import { DOC_PERIODICIDAD_POR_TIPO } from '../../../config/businessRules.config'
 
 interface UseDocumentFormOptions {
   mode: 'create' | 'edit'
@@ -20,7 +22,7 @@ interface UseDocumentFormOptions {
 const CREATE_DEFAULTS: DocumentFormInput = {
   titulo: '',
   tipo: 'PRC',
-  area: '',
+  areaId: '',
   version: 'v1.0',
   confidencialidad: 'INTERNO',
   rolesAutorizados: [],
@@ -39,7 +41,7 @@ function docToFormValues(doc: Documento): DocumentFormInput {
   return {
     titulo: doc.titulo,
     tipo: doc.tipo,
-    area: doc.area,
+    areaId: doc.areaId,
     version: doc.version,
     confidencialidad: doc.confidencialidad,
     rolesAutorizados: doc.rolesAutorizados ?? [],
@@ -57,10 +59,9 @@ function docToFormValues(doc: Documento): DocumentFormInput {
   }
 }
 
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+function addMonthsIso(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return addMonths(new Date(Date.UTC(y, m - 1, d)), months).toISOString().slice(0, 10)
 }
 
 export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
@@ -76,33 +77,28 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
   const form = useForm<DocumentFormInput>({
     resolver: zodResolver(documentFormSchema),
     defaultValues: CREATE_DEFAULTS,
+    values: mode === 'edit' && documento ? docToFormValues(documento) : undefined,
   })
 
-  const { watch, setValue, reset, getValues, formState } = form
-  const { isDirty } = formState
+  const { watch, setValue, formState } = form
   const fechaVigencia = watch('fechaVigencia')
+  const tipo = watch('tipo')
   const confidencialidad = watch('confidencialidad')
-  const fechaRevisionAutoFilled = useRef(false)
+  const fechaRevisionProximaTouched = formState.touchedFields.fechaRevisionProxima
 
-  // Pre-populate edit mode on initial load; skip if user has already started editing
+  // Sugiere fechaRevisionProxima según la periodicidad del tipo (RN-DOC-020) mientras
+  // el usuario no haya tocado el campo. Solo en creación: en edición no debe
+  // sobreescribir una fecha ya guardada al cargar el documento.
   useEffect(() => {
-    if (mode === 'edit' && documento && !isDirty) {
-      reset(docToFormValues(documento))
-    }
-  }, [mode, documento, reset, isDirty])
+    if (mode !== 'create' || fechaRevisionProximaTouched) return
 
-  // Auto-fill fechaRevisionProxima when fechaVigencia changes
-  useEffect(() => {
-    if (fechaVigencia) {
-      if (!getValues('fechaRevisionProxima')) {
-        setValue('fechaRevisionProxima', addDays(fechaVigencia, 365))
-        fechaRevisionAutoFilled.current = true
-      }
-    } else if (fechaRevisionAutoFilled.current) {
+    const meses = DOC_PERIODICIDAD_POR_TIPO[tipo]
+    if (fechaVigencia && meses) {
+      setValue('fechaRevisionProxima', addMonthsIso(fechaVigencia, meses))
+    } else {
       setValue('fechaRevisionProxima', '')
-      fechaRevisionAutoFilled.current = false
     }
-  }, [fechaVigencia, setValue, getValues])
+  }, [mode, fechaVigencia, tipo, fechaRevisionProximaTouched, setValue])
 
   // Clear rolesAutorizados when confidencialidad changes away from RESTRINGIDO
   useEffect(() => {
@@ -114,11 +110,6 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
   async function onSubmit(data: DocumentFormInput) {
     setIsSubmitting(true)
     try {
-      // Auto-fill fechaRevisionProxima if still empty
-      if (data.fechaVigencia && !data.fechaRevisionProxima) {
-        data.fechaRevisionProxima = addDays(data.fechaVigencia, 365)
-      }
-
       const payload = {
         ...data,
         revisorId: data.revisorId || undefined,

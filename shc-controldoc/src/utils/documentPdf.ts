@@ -57,7 +57,7 @@ function buildPdfHtml(documento: Documento, user: User): string {
     <p>Versión ${documento.version} · Estado: ${documento.estado}</p>
   </div>
   <dl class="meta">
-    <dt>Área</dt><dd>${documento.area}</dd>
+    <dt>Área</dt><dd>${documento.areaId}</dd>
     <dt>Tipo</dt><dd>${documento.tipo}</dd>
     <dt>Fecha de emisión</dt><dd>${documento.fechaEmision ?? '—'}</dd>
     <dt>Fecha de vigencia</dt><dd>${documento.fechaVigencia ?? '—'}</dd>

@@ -7,6 +7,16 @@ import i18n from '../../../i18n'
 import { ProfilePage } from './ProfilePage'
 import { useAuthStore } from '../../../stores/authStore'
 import type { User } from '../../../types/auth.types'
+import { vi } from 'vitest'
+
+const AREAS_MOCK = [
+  { id: 'area-016', nombre: 'Operaciones', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-010', nombre: 'Galpón B', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-011', nombre: 'Galpón C', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+]
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: AREAS_MOCK }),
+}))
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -15,7 +25,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     apellido: 'User',
     email: 'test@shac.pe',
     rol: 'OPERARIO',
-    area: 'Operaciones',
+    areaId: 'area-016',
     createdAt: '2024-11-04T09:15:00.000Z',
     activo: true,
     ...overrides,
@@ -55,7 +65,7 @@ describe('ProfilePage — sección de solo lectura', () => {
 
   it('un SUPERVISOR ve areasAsignadas como lista de tags', () => {
     useAuthStore.setState({
-      user: makeUser({ rol: 'SUPERVISOR', areasAsignadas: ['Galpón B', 'Galpón C'] }),
+      user: makeUser({ rol: 'SUPERVISOR', areaIds: ['area-010', 'area-011'] }),
       isAuthenticated: true,
       accessToken: 'token',
     })

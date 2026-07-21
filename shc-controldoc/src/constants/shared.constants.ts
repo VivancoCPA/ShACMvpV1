@@ -80,25 +80,3 @@ export const QE_MINERALES = [
   'Concentrado de zinc',
   'Concentrado de plomo',
 ] as const
-
-export const AREAS_SHAC: readonly string[] = [
-  'Almacén Norte',
-  'Almacén Sur',
-  'Área de Carga',
-  'Área de Contenedores',
-  'Archivo Documentario',
-  'Auditoría',
-  'Calidad',
-  'Control de Calidad',
-  'Control Documentario',
-  'Galpón B',
-  'Galpón C',
-  'Gerencia',
-  'Laboratorio de Calidad',
-  'Laboratorio de Muestras',
-  'Logística',
-  'Operaciones',
-  'Operaciones Aduaneras',
-  'RR.HH.',
-  'SyST',
-]

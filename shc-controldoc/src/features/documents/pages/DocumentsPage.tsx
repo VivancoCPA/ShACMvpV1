@@ -36,7 +36,7 @@ export function DocumentsPage() {
       searchParams.has('search') ||
       searchParams.has('estado') ||
       searchParams.has('tipo') ||
-      searchParams.has('area') ||
+      searchParams.has('areaId') ||
       searchParams.has('pendientes') ||
       searchParams.has('includeDeleted')
     const canSeePendientes = userRole !== undefined && PENDIENTES_ROLES.has(userRole)

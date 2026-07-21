@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from 'lucide-react'
+import { toast } from 'sonner'
+import { AlertTriangle, Download } from 'lucide-react'
 import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { contarDiasHabiles, formatNormativaVinculada } from '../utils/qualityEventHelpers'
+import { useArea } from '../../areas/hooks/useAreas'
+import { useAuthStore } from '../../../stores/authStore'
+import { useExportQualityEventPdf } from '../hooks/useExportQualityEventPdf'
+import { puedeExportarPDF } from '../utils/qualityEventPermissions'
+import { buildQualityEventPdf } from '../export/buildQualityEventPdf'
+import { downloadBlob } from '../../../utils/downloadBlob'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
 import { QEOriginBadge } from './QEOriginBadge'
@@ -26,10 +33,28 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
+  const user = useAuthStore((s) => s.user)
+  const exportPdf = useExportQualityEventPdf(qe.id)
 
+  const { data: area } = useArea(qe.areaId)
   const reportedByName = resolveUserDisplayName(qe.reportadoPorId)
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
   const dateOnlyFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short' })
+
+  const handleExportPdf = () => {
+    exportPdf.mutate(undefined, {
+      onSuccess: (updatedQe) => {
+        const doc = buildQualityEventPdf(updatedQe, {
+          exportadoPorNombre: user ? `${user.nombre} ${user.apellido}` : '',
+          generadoEn: new Date(),
+        })
+        downloadBlob(doc.output('blob'), `${updatedQe.numero}.pdf`)
+      },
+      onError: () => {
+        toast.error(t('detail.header.exportarPDFError'))
+      },
+    })
+  }
 
   const formatDateTime = (value?: string | null) => (value ? dateFormatter.format(new Date(value)) : '—')
   const formatDateOnly = (value?: string | null) => (value ? dateOnlyFormatter.format(new Date(value)) : '—')
@@ -85,10 +110,21 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
             {plazoPendienteCierreLabel}
           </span>
         )}
+        {user && puedeExportarPDF(user.rol) && (
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exportPdf.isPending}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-surface-soft disabled:opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
+          >
+            <Download size={13} aria-hidden="true" />
+            {t('detail.header.exportarPDF')}
+          </button>
+        )}
       </div>
 
       <dl className="divide-y divide-hairline dark:divide-hairline/20">
-        <FieldRow label={t('detail.header.areaAfectada')}>{qe.areaAfectada}</FieldRow>
+        <FieldRow label={t('detail.header.areaAfectada')}>{area?.nombre ?? qe.areaId}</FieldRow>
         {qe.mineralInvolucrado && (
           <FieldRow label={t('detail.header.mineralInvolucrado')}>{qe.mineralInvolucrado}</FieldRow>
         )}

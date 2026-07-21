@@ -28,7 +28,8 @@ import {
   updateIncidentFormSchema,
   type UpdateIncidentFormInput,
 } from '../schemas/incidentForm.schema'
-import { AREAS_SHAC, CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
+import { CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { Incidente, IncidentType, IncidentSeveridad, IncidenteUbicacion } from '../types/incident.types'
 import type { IncidentEvidencia } from '../types/incident.types'
 
@@ -207,6 +208,8 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   const user = useAuthStore((s) => s.user)
   const isJefeCalidad = user?.rol === 'JEFE_CALIDAD_SYST'
   const isEdit = mode === 'edit'
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
 
   const [investigacionOpen, setInvestigacionOpen] = useState(true)
   const [newEvidencias, setNewEvidencias] = useState<File[]>([])
@@ -258,7 +261,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   const localIdValue = useWatch({ control, name: 'localId' }) as string | undefined
   const ubicacionValue = useWatch({ control, name: 'ubicacion' }) as IncidenteUbicacion | undefined
 
-  const { data: locales = [] } = useLocales()
+  const { locales } = useLocales()
   const { data: zonas = [] } = useZonasByLocal(localIdValue ?? '')
   const selectedLocal = locales.find((l) => l.id === localIdValue)
 
@@ -423,8 +426,8 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
               </label>
               <select id="areaId" className={selectClass} {...register('areaId')}>
                 <option value="">{t('form.placeholders.select')}</option>
-                {AREAS_SHAC.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                {areasActivas.map((a) => (
+                  <option key={a.id} value={a.id}>{a.nombre}</option>
                 ))}
               </select>
               {errors.areaId && <p className={errorClass}>{errors.areaId.message as string}</p>}

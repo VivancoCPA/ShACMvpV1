@@ -2,21 +2,21 @@ import { describe, it, expect } from 'vitest'
 import { createUserSchema } from './createUser.schema'
 
 describe('createUserSchema', () => {
-  it('rechaza alta de SUPERVISOR sin areasAsignadas', () => {
+  it('rechaza alta de SUPERVISOR sin areaIds', () => {
     const result = createUserSchema.safeParse({
       nombre: 'Carla',
       apellido: 'Rojas',
       email: 'carla.rojas@shac.pe',
       rol: 'SUPERVISOR',
-      area: 'Operaciones',
+      areaId: 'Operaciones',
     })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.includes('areasAsignadas'))).toBe(true)
+      expect(result.error.issues.some((issue) => issue.path.includes('areaIds'))).toBe(true)
     }
   })
 
-  it('acepta alta de rol distinto de SUPERVISOR sin area ni areasAsignadas', () => {
+  it('acepta alta de rol distinto de SUPERVISOR sin area ni areaIds', () => {
     const result = createUserSchema.safeParse({
       nombre: 'Jorge',
       apellido: 'Lima',
@@ -39,14 +39,14 @@ describe('createUserSchema', () => {
     }
   })
 
-  it('acepta alta de SUPERVISOR con area y areasAsignadas', () => {
+  it('acepta alta de SUPERVISOR con area y areaIds', () => {
     const result = createUserSchema.safeParse({
       nombre: 'Carla',
       apellido: 'Rojas',
       email: 'carla.rojas@shac.pe',
       rol: 'SUPERVISOR',
-      area: 'Operaciones',
-      areasAsignadas: ['Galpón B'],
+      areaId: 'Operaciones',
+      areaIds: ['Galpón B'],
     })
     expect(result.success).toBe(true)
   })

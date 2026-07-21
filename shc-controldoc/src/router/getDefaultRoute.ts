@@ -7,6 +7,6 @@ import type { UserRole } from '../types/auth.types'
  * o condicionar por rol en el sitio de uso (ver M6-S05).
  */
 export function getDefaultRouteForRole(rol: UserRole): string {
-  if (rol === 'ADMINISTRADOR_SISTEMA') return '/admin/locales'
-  return '/documentos'
+  if (rol === 'ADMINISTRADOR_SISTEMA') return '/usuarios'
+  return '/dashboard'
 }

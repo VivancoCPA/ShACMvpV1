@@ -127,7 +127,7 @@ export const KPI_DEFINITIONS: Record<KpiId, KpiDefinition> = {
     id: 'KPI-09',
     nombre: 'NCs por área (mapa de calor)',
     descripcion: 'Distribución de Quality Events por área afectada en el periodo, para identificar las áreas con mayor concentración.',
-    formula: 'Conteo de QE por areaAfectada en el periodo, ranking descendente',
+    formula: 'Conteo de QE por areaId en el periodo, ranking descendente',
     unidad: 'DISTRIBUCION',
     metaTipo: 'ABSOLUTO',
     meta: 3,

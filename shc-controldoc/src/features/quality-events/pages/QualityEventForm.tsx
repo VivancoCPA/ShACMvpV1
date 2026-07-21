@@ -17,17 +17,19 @@ import { useQualityEvent } from '../hooks/useQualityEvent'
 import { useEditarReporteInicial } from '../hooks/useEditarReporteInicial'
 import { useEditarSeveridad } from '../hooks/useEditarSeveridad'
 import { getIncidents } from '../../incidents/api/incidents.api'
+import { useVincularQE } from '../../incidents/hooks/useIncidents'
 import { getNonconformities } from '../../nonconformities/api/nonconformities.api'
+import { useVincularNC } from '../../nonconformities/hooks/useNonconformities'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useAuthStore } from '../../../stores/authStore'
 import { resolveQEEditAccess } from '../utils/qualityEventPermissions'
 import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useAreas } from '../../areas/hooks/useAreas'
 import {
   QE_ORIGIN_LABELS,
   QE_TYPE_LABELS,
   QE_SEVERITY_LABELS,
   QE_MINERALES,
-  AREAS_SHAC,
 } from '../../../constants/shared.constants'
 import type { QEOrigin, QEType, QESeverity, QualityEvent, NormativaVinculada } from '../types/qualityEvent.types'
 import type { QEEditAccess } from '../types/qualityEventPermissions.types'
@@ -43,7 +45,7 @@ type QEFormValues = {
   tipo: QEType | ''
   severidad: QESeverity | ''
   descripcion: string
-  areaAfectada: string
+  areaId: string
   turno: 'DIA' | 'TARDE' | 'NOCHE' | ''
   fechaHoraEvento: string
   mineralInvolucrado: string
@@ -78,8 +80,13 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { mutate: mutateCreate, isPending: isPendingCreate } = useCreateQualityEvent()
+  const { mutate: mutateVincularQE, isPending: isPendingVincularQE } = useVincularQE()
+  const { mutate: mutateVincularNC, isPending: isPendingVincularNC } = useVincularNC()
   const { mutate: mutateEditReporteInicial, isPending: isPendingEditReporteInicial } = useEditarReporteInicial()
   const { mutate: mutateEditSeveridad, isPending: isPendingEditSeveridad } = useEditarSeveridad()
+  const { data: areas } = useAreas()
+  const areasActivas = useMemo(() => (areas ?? []).filter((a) => a.activo), [areas])
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const [mineralFreeText, setMineralFreeText] = useState(() =>
     Boolean(qe?.mineralInvolucrado) && !MINERALES.includes(qe?.mineralInvolucrado as typeof MINERALES[number]),
   )
@@ -123,7 +130,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           tipo: qe.tipo,
           severidad: qe.severidad,
           descripcion: qe.descripcion,
-          areaAfectada: qe.areaAfectada,
+          areaId: qe.areaId,
           turno: qe.turno,
           fechaHoraEvento: qe.fechaHoraEvento.slice(0, 16),
           mineralInvolucrado: qe.mineralInvolucrado ?? '',
@@ -138,7 +145,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           tipo: '',
           severidad: '',
           descripcion: '',
-          areaAfectada: initialOrigenEntidad?.area ?? '',
+          areaId: initialOrigenEntidad?.area ?? '',
           turno: '',
           fechaHoraEvento: '',
           mineralInvolucrado: '',
@@ -154,7 +161,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const severidadValue = watch('severidad')
   const descripcionValue = watch('descripcion') ?? ''
   const mineralValue = watch('mineralInvolucrado') ?? ''
-  const areaAfectadaValue = watch('areaAfectada') ?? ''
+  const areaIdValue = watch('areaId') ?? ''
   const ncIdValue = watch('ncId')
   const incidenteIdValue = watch('incidenteId')
 
@@ -181,7 +188,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const origenEntidad = useMemo(() => {
     if (origenValue === 'O2_NC_DETECTADA') {
       const nc = nonconformities.find((n) => n.id === ncIdValue)
-      if (nc) return { tipoEtiqueta: 'la NC' as const, numero: nc.numero, area: nc.areaAfectada }
+      if (nc) return { tipoEtiqueta: 'la NC' as const, numero: nc.numero, area: nc.areaId }
       return initialOrigenEntidad?.tipoEtiqueta === 'la NC' ? initialOrigenEntidad : null
     }
     if (origenValue === 'O1_INCIDENTE_CAMPO') {
@@ -193,7 +200,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   }, [origenValue, nonconformities, ncIdValue, incidents, incidenteIdValue, initialOrigenEntidad])
 
   const showAreaDivergeWarning =
-    !!origenEntidad && !!areaAfectadaValue && areaAfectadaValue !== origenEntidad.area
+    !!origenEntidad && !!areaIdValue && areaIdValue !== origenEntidad.area
 
   const clearOriginFields = () => {
     setValue('incidenteId', '')
@@ -228,7 +235,31 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
     } as unknown as QualityEventCreateInput
 
     mutateCreate(payload, {
-      onSuccess: (created) => navigate(`/quality-events/${created.id}`),
+      onSuccess: (created) => {
+        // RN-QE-001 — vincula el Incidente origen al QE recién creado antes de navegar, para
+        // que canCrearQE (incidentPermissions.ts) deje de habilitar "Crear QE" al volver a su
+        // detalle. Se navega en onSettled: un fallo en el vínculo no debe bloquear al usuario
+        // de llegar al QE que sí se creó — useVincularQE ya notifica el error por separado.
+        if (payload.origen === 'O1_INCIDENTE_CAMPO' && payload.incidenteId) {
+          mutateVincularQE(
+            { id: payload.incidenteId, qeId: created.id },
+            { onSettled: () => navigate(`/quality-events/${created.id}`) },
+          )
+          return
+        }
+        // RN-QE-013 — mismo patrón que arriba, pero para la NC origen (O2_NC_DETECTADA): vincula
+        // nc.qeGeneradoId antes de navegar, para que canCrearQE deje de habilitar "Crear QE" al
+        // volver al detalle de la NC. Un fallo en el vínculo no bloquea navegar al QE ya creado
+        // — useVincularNC ya notifica el error por separado.
+        if (payload.origen === 'O2_NC_DETECTADA' && payload.ncId) {
+          mutateVincularNC(
+            { id: payload.ncId, qeGeneradoId: created.id },
+            { onSettled: () => navigate(`/quality-events/${created.id}`) },
+          )
+          return
+        }
+        navigate(`/quality-events/${created.id}`)
+      },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : ''
         toast.error(msg || t('form.errors.generic'))
@@ -258,7 +289,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
 
     const candidate: Record<string, unknown> = {
       descripcion: data.descripcion,
-      areaAfectada: data.areaAfectada,
+      areaId: data.areaId,
       turno: data.turno,
       fechaHoraEvento: fechaHoraEventoIso,
       mineralInvolucrado: data.mineralInvolucrado || undefined,
@@ -328,7 +359,9 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   }
 
   const onSubmit = isEditMode ? onSubmitEdit : onSubmitCreate
-  const isPending = isEditMode ? isPendingEditReporteInicial || isPendingEditSeveridad : isPendingCreate
+  const isPending = isEditMode
+    ? isPendingEditReporteInicial || isPendingEditSeveridad
+    : isPendingCreate || isPendingVincularQE || isPendingVincularNC
   const showSeveridadField = !isEditMode || Boolean(access?.severidad)
 
   const inputClass =
@@ -422,13 +455,13 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
                     options={incidents.map((inc) => ({
                       id: inc.id,
                       label: inc.numero,
-                      sublabel: `${inc.descripcion.slice(0, 60)}${inc.descripcion.length > 60 ? '…' : ''} (${inc.areaId})`,
+                      sublabel: `${inc.descripcion.slice(0, 60)}${inc.descripcion.length > 60 ? '…' : ''} (${nombreArea(inc.areaId)})`,
                     }))}
                     value={field.value || undefined}
                     onChange={(id) => {
                       field.onChange(id ?? '')
                       const inc = incidents.find((i) => i.id === id)
-                      if (inc) setValue('areaAfectada', inc.areaId)
+                      if (inc) setValue('areaId', inc.areaId)
                     }}
                   />
                 )}
@@ -463,14 +496,14 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
                       return {
                         id: nc.id,
                         label: nc.numero,
-                        sublabel: `${text.slice(0, 60)}${text.length > 60 ? '…' : ''} (${nc.areaAfectada})`,
+                        sublabel: `${text.slice(0, 60)}${text.length > 60 ? '…' : ''} (${nombreArea(nc.areaId)})`,
                       }
                     })}
                     value={field.value || undefined}
                     onChange={(id) => {
                       field.onChange(id ?? '')
                       const nc = nonconformities.find((n) => n.id === id)
-                      if (nc) setValue('areaAfectada', nc.areaAfectada)
+                      if (nc) setValue('areaId', nc.areaId)
                     }}
                   />
                 )}
@@ -631,19 +664,19 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
 
         {/* ── Área afectada (full width) ── */}
         <div className="md:col-span-2">
-          <label className={labelClass} htmlFor="areaAfectada">
+          <label className={labelClass} htmlFor="areaId">
             {t('form.fields.areaAfectada')} <span className="text-error">*</span>
           </label>
-          <select id="areaAfectada" className={selectClass} {...register('areaAfectada')}>
+          <select id="areaId" className={selectClass} {...register('areaId')}>
             <option value="">{t('form.placeholders.select')}</option>
-            {AREAS_SHAC.map((area) => (
-              <option key={area} value={area}>
-                {area}
+            {areasActivas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.nombre}
               </option>
             ))}
           </select>
-          {errors.areaAfectada && (
-            <p className={errorClass}>{errors.areaAfectada.message as string}</p>
+          {errors.areaId && (
+            <p className={errorClass}>{errors.areaId.message as string}</p>
           )}
           {showAreaDivergeWarning && origenEntidad && (
             <p className="mt-1.5 flex items-start gap-1.5 text-sm text-warning">
@@ -651,7 +684,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
               {t('form.areaDivergeWarning', {
                 tipoEtiqueta: origenEntidad.tipoEtiqueta,
                 numero: origenEntidad.numero,
-                areaOrigen: origenEntidad.area,
+                areaOrigen: nombreArea(origenEntidad.area),
               })}
             </p>
           )}

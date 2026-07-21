@@ -113,7 +113,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       estado: 'EN_VERIFICACION',
       ciclo: 1,
       descripcion: 'QE de prueba — verifica proyección de fechaVerificacionProgramada',
-      areaAfectada: 'Operaciones',
+      areaId: 'area-016',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T00:00:00Z',
       fechaHoraReporte: '2026-05-01T00:00:00Z',
@@ -158,7 +158,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       severidad: 'MEDIA',
       ciclo: 1,
       descripcion: 'QE de prueba — buildSupervisorData',
-      areaAfectada: area,
+      areaId: area,
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T00:00:00Z',
       fechaHoraReporte: '2026-05-01T00:00:00Z',
@@ -187,7 +187,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
 
     const nuevos: QualityEvent[] = [
       {
-        ...baseQeFor('Galpón B'),
+        ...baseQeFor('area-010'),
         id: 'test-qe-tipo-abierto',
         numero: 'QE-TEST-010',
         tipo: 'CALIDAD',
@@ -195,7 +195,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
         accionesCorrectivas: [],
       },
       {
-        ...baseQeFor('Galpón B'),
+        ...baseQeFor('area-010'),
         id: 'test-qe-tipo-verificado',
         numero: 'QE-TEST-011',
         tipo: 'CALIDAD',
@@ -220,7 +220,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     const originalLength = qeStore.length
     const nuevos: QualityEvent[] = [
       {
-        ...baseQeFor('Galpón B'),
+        ...baseQeFor('area-010'),
         id: 'test-qe-verif-con-fecha',
         numero: 'QE-TEST-020',
         tipo: 'SST',
@@ -229,7 +229,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
         accionesCorrectivas: [],
       },
       {
-        ...baseQeFor('Galpón B'),
+        ...baseQeFor('area-010'),
         id: 'test-qe-verif-sin-fecha',
         numero: 'QE-TEST-021',
         tipo: 'SST',
@@ -256,7 +256,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     const enFuturo = new Date(Date.now() + 5 * 86_400_000).toISOString()
 
     const nuevo: QualityEvent = {
-      ...baseQeFor('Galpón C'),
+      ...baseQeFor('area-011'),
       id: 'test-qe-con-acs',
       numero: 'QE-TEST-030',
       tipo: 'OPERACIONAL',
@@ -323,7 +323,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     const originalLength = qeStore.length
     const nuevos: QualityEvent[] = [
       {
-        ...baseQeFor('Almacén Norte'),
+        ...baseQeFor('area-001'),
         id: 'test-qe-multi-norte',
         numero: 'QE-TEST-040',
         tipo: 'ADUANERO',
@@ -332,7 +332,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
         accionesCorrectivas: [],
       },
       {
-        ...baseQeFor('Almacén Sur'),
+        ...baseQeFor('area-002'),
         id: 'test-qe-multi-sur',
         numero: 'QE-TEST-041',
         tipo: 'ADUANERO',
@@ -367,7 +367,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     const qeStore = getQeStore()
     const originalLength = qeStore.length
     const nuevos: QualityEvent[] = [
-      { ...baseQeFor('Galpón B'), id: 'test-qe-porestado-1', numero: 'QE-TEST-050', tipo: 'CALIDAD', estado: 'ABIERTO', accionesCorrectivas: [] },
+      { ...baseQeFor('area-010'), id: 'test-qe-porestado-1', numero: 'QE-TEST-050', tipo: 'CALIDAD', estado: 'ABIERTO', accionesCorrectivas: [] },
       { ...baseQeFor('Zona Portuaria'), id: 'test-qe-porestado-2', numero: 'QE-TEST-051', tipo: 'ADUANERO', estado: 'ABIERTO', accionesCorrectivas: [] },
     ]
 
@@ -430,7 +430,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     const enCuatroDias = new Date(Date.now() + 4 * 86_400_000).toISOString()
 
     const nuevoQe: QualityEvent = {
-      ...baseQeFor('Galpón C'),
+      ...baseQeFor('area-011'),
       id: 'test-qe-porvencer',
       numero: 'QE-TEST-060',
       tipo: 'OPERACIONAL',
@@ -586,7 +586,7 @@ function makeQe(overrides: Partial<QualityEvent> & Pick<QualityEvent, 'id' | 'nu
     estado: 'ABIERTO',
     ciclo: 1,
     descripcion: 'QE de prueba — dashboard.handlers.test.ts',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'Almacén Norte',
     turno: 'DIA',
     fechaHoraEvento: '2031-01-01T00:00:00Z',
     fechaHoraReporte: '2031-01-01T00:00:00Z',
@@ -610,7 +610,7 @@ function makeNc(overrides: Partial<NoConformidad> & Pick<NoConformidad, 'id' | '
     severidad: 'MEDIA',
     estado: 'ABIERTA',
     descripcion: 'NC de prueba — dashboard.handlers.test.ts',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'Almacén Norte',
     reportadoPorId: 'user-test',
     fechaDeteccion: '2031-01-01T00:00:00Z',
     fechaReporte: '2031-01-01T00:00:00Z',
@@ -752,7 +752,7 @@ describe('dashboard.handlers — KPI-04 calcula reducción interanual, no un umb
     const originalHorasLength = horasTrabajadasFixtures.length
     const originalAnioAnteriorLength = kpi04AnioAnteriorFixtures.length
     try {
-      horasTrabajadasFixtures.push({ area: 'Área de prueba', periodo: '2031-06', horas: 1000 })
+      horasTrabajadasFixtures.push({ areaId: 'area-test', periodo: '2031-06', horas: 1000 })
       kpi04AnioAnteriorFixtures.push({ periodo: '2031-06', valor: 10 })
       // Sin incidentes con lesionados en el periodo => valor 0; reducción 100% >= meta 10%.
       const results = await fetchKpis('2031-06')
@@ -774,7 +774,7 @@ describe('dashboard.handlers — KPI-04 calcula reducción interanual, no un umb
     const originalAnioAnteriorLength = kpi04AnioAnteriorFixtures.length
     try {
       // horas = 1e6/9.5 hace que 1 incidente con lesionados dé valor 9.5; anterior 10 => reducción 5%.
-      horasTrabajadasFixtures.push({ area: 'Área de prueba', periodo: '2031-07', horas: 1_000_000 / 9.5 })
+      horasTrabajadasFixtures.push({ areaId: 'area-test', periodo: '2031-07', horas: 1_000_000 / 9.5 })
       kpi04AnioAnteriorFixtures.push({ periodo: '2031-07', valor: 10 })
       incStore.push(makeIncidente({ id: 'test-kpi04-amarillo', numero: 'INC-TEST-KPI04-1', huboLesionados: true, fechaEvento: '2031-07-10T00:00:00Z' }))
       const results = await fetchKpis('2031-07')
@@ -794,7 +794,7 @@ describe('dashboard.handlers — KPI-04 calcula reducción interanual, no un umb
     const originalHorasLength = horasTrabajadasFixtures.length
     const originalAnioAnteriorLength = kpi04AnioAnteriorFixtures.length
     try {
-      horasTrabajadasFixtures.push({ area: 'Área de prueba', periodo: '2031-08', horas: 100_000 })
+      horasTrabajadasFixtures.push({ areaId: 'area-test', periodo: '2031-08', horas: 100_000 })
       kpi04AnioAnteriorFixtures.push({ periodo: '2031-08', valor: 10 })
       // 2 incidentes con lesionados => valor 20, peor que el año anterior (10).
       incStore.push(makeIncidente({ id: 'test-kpi04-rojo-1', numero: 'INC-TEST-KPI04-2', huboLesionados: true, fechaEvento: '2031-08-05T00:00:00Z' }))
@@ -814,7 +814,7 @@ describe('dashboard.handlers — KPI-04 calcula reducción interanual, no un umb
     const originalHorasLength = horasTrabajadasFixtures.length
     try {
       // Sin entrada en kpi04AnioAnteriorFixtures para este periodo.
-      horasTrabajadasFixtures.push({ area: 'Área de prueba', periodo: '2031-09', horas: 1000 })
+      horasTrabajadasFixtures.push({ areaId: 'area-test', periodo: '2031-09', horas: 1000 })
       const results = await fetchKpis('2031-09')
       const kpi04 = kpi(results, 'KPI-04')
       expect(kpi04.valorPeriodoAnterior).toBeUndefined()
@@ -1148,9 +1148,9 @@ describe('dashboard.handlers — KPI-09 retorna una distribución por área, no 
   it('agrupa y ordena de mayor a menor', async () => {
     const qeStore = getQeStore()
     const originalLength = qeStore.length
-    const q1 = makeQe({ id: 'test-kpi09-1', numero: 'QE-TEST-KPI09-1', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2032-02-05T00:00:00Z' })
-    const q2 = makeQe({ id: 'test-kpi09-2', numero: 'QE-TEST-KPI09-2', areaAfectada: 'Almacén Norte', fechaHoraReporte: '2032-02-10T00:00:00Z' })
-    const q3 = makeQe({ id: 'test-kpi09-3', numero: 'QE-TEST-KPI09-3', areaAfectada: 'Calidad', fechaHoraReporte: '2032-02-15T00:00:00Z' })
+    const q1 = makeQe({ id: 'test-kpi09-1', numero: 'QE-TEST-KPI09-1', areaId: 'Almacén Norte', fechaHoraReporte: '2032-02-05T00:00:00Z' })
+    const q2 = makeQe({ id: 'test-kpi09-2', numero: 'QE-TEST-KPI09-2', areaId: 'Almacén Norte', fechaHoraReporte: '2032-02-10T00:00:00Z' })
+    const q3 = makeQe({ id: 'test-kpi09-3', numero: 'QE-TEST-KPI09-3', areaId: 'Calidad', fechaHoraReporte: '2032-02-15T00:00:00Z' })
     try {
       qeStore.push(q1, q2, q3)
       const results = await fetchKpis('2032-02')
@@ -1523,7 +1523,7 @@ describe('dashboard.handlers — AUDITOR: hallazgosPorNorma / hallazgosPorEstado
       numero: 'QE-TEST-AUD-NOO3',
       origen: 'O1_INCIDENTE_CAMPO',
       estado: 'ABIERTO',
-      areaAfectada: 'Área Inexistente Test',
+      areaId: 'Área Inexistente Test',
       documentosVinculados: ['doc-001'],
     })
     try {
@@ -1604,14 +1604,14 @@ describe('dashboard.handlers — AUDITOR: tasaCierreEnPlazoPorArea', () => {
       origen: 'O2_NC_DETECTADA',
       estado: 'CERRADO',
       severidad: 'BAJA',
-      areaAfectada: 'Área Test Tasa Cierre',
+      areaId: 'Área Test Tasa Cierre',
       fechaHoraReporte: reciente,
       fechaCierre: reciente,
     })
     try {
       qeStore.push(qe)
       const data = await auditorData()
-      const entry = data.tasaCierreEnPlazoPorArea.find((e) => e.area === 'Área Test Tasa Cierre')
+      const entry = data.tasaCierreEnPlazoPorArea.find((e) => e.areaId === 'Área Test Tasa Cierre')
       expect(entry).toBeDefined()
       expect(entry?.tasaCierreEnPlazo).toBe(100)
       expect(entry?.totalCerrados).toBe(1)
@@ -1628,13 +1628,13 @@ describe('dashboard.handlers — AUDITOR: tasaCierreEnPlazoPorArea', () => {
       id: 'test-aud-tasa-sin-cerrados',
       numero: 'QE-TEST-AUD-TASASC',
       estado: 'ABIERTO',
-      areaAfectada: 'Área Test Sin Cerrados',
+      areaId: 'Área Test Sin Cerrados',
       fechaHoraReporte: reciente,
     })
     try {
       qeStore.push(qe)
       const data = await auditorData()
-      expect(data.tasaCierreEnPlazoPorArea.some((e) => e.area === 'Área Test Sin Cerrados')).toBe(false)
+      expect(data.tasaCierreEnPlazoPorArea.some((e) => e.areaId === 'Área Test Sin Cerrados')).toBe(false)
     } finally {
       qeStore.length = originalLength
     }

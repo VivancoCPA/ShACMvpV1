@@ -7,7 +7,8 @@ import { FileUploadField } from './FileUploadField'
 import type { DocumentFormInput } from '../schemas/documentForm.schema'
 import type { MockUser } from '../../../mocks/fixtures/documents.fixtures'
 import type { UserRole } from '../../../types/auth.types'
-import { DOC_TYPES, AREAS_SHAC } from '../constants'
+import { DOC_TYPES } from '../constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 
 function fileNameFromUrl(url: string): string {
   return url.split('/').pop() ?? url
@@ -192,6 +193,8 @@ export function DocumentForm({
 
   const confidencialidad = useWatch({ control, name: 'confidencialidad' })
   const canEditConfidencialidad = CONFIDENCIALIDAD_EDIT_ROLES.has(userRole)
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
@@ -221,14 +224,14 @@ export function DocumentForm({
         </div>
 
         <div>
-          <Label htmlFor="area">{t('form.field_area')}</Label>
-          <select id="area" className={selectCls} {...register('area')}>
+          <Label htmlFor="areaId">{t('form.field_area')}</Label>
+          <select id="areaId" className={selectCls} {...register('areaId')}>
             <option value="" disabled>— Seleccionar —</option>
-            {AREAS_SHAC.map((area) => (
-              <option key={area} value={area}>{area}</option>
+            {areasActivas.map((area) => (
+              <option key={area.id} value={area.id}>{area.nombre}</option>
             ))}
           </select>
-          <FieldError name="area" />
+          <FieldError name="areaId" />
         </div>
       </div>
 

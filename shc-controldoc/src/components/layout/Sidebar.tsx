@@ -8,6 +8,7 @@ import {
   BarChart2,
   Users,
   MapPin,
+  Building2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -61,6 +62,12 @@ const NAV_ITEMS: NavItem[] = [
     key: 'users',
     path: '/usuarios',
     icon: Users,
+    roles: ['ADMINISTRADOR_SISTEMA'],
+  },
+  {
+    key: 'areas',
+    path: '/admin/areas',
+    icon: Building2,
     roles: ['ADMINISTRADOR_SISTEMA'],
   },
   {

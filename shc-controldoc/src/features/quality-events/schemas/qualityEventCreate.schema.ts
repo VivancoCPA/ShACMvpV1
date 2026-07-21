@@ -22,7 +22,7 @@ const baseFields = {
   tipo: z.enum(['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL']),
   severidad: z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']),
   descripcion: z.string().min(10).max(2000),
-  areaAfectada: z.string().min(1),
+  areaId: z.string().min(1),
   turno: z.enum(['DIA', 'TARDE', 'NOCHE']),
   fechaHoraEvento: z
     .string()

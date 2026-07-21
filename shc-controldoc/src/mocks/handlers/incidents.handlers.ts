@@ -2,6 +2,8 @@ import { http, HttpResponse, delay } from 'msw'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
+import { authFixtures } from '../fixtures/auth.fixtures'
+import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
   Incidente,
@@ -38,6 +40,14 @@ const VALID_TRANSITIONS: Record<IncidentStatus, IncidentStatus[]> = {
   ANULADO: [],
 }
 
+function getUserFromRequest(request: Request) {
+  const authHeader = request.headers.get('Authorization') ?? ''
+  const token = authHeader.replace('Bearer ', '')
+  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
+  const userId = match?.[1] ?? null
+  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
+}
+
 function generateId(): string {
   return `inc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
@@ -69,6 +79,10 @@ function makeAuditEntry(
 function ok<T>(data: T, status = 200) {
   return HttpResponse.json({ success: true, data }, { status })
 }
+
+// La sincronización de estado Incidente <- QE vive en ./qeOriginSync.ts (syncOrigenFromQEEstado),
+// compartida con la sincronización análoga de No Conformidad. Se invoca desde commitQE() en
+// quality-events.handlers.ts cada vez que el estado del QE cambia.
 
 function err(message: string, status: number, errors?: string[]) {
   return HttpResponse.json({ success: false, data: null, message, errors }, { status })
@@ -281,6 +295,22 @@ export const incidentHandlers = [
     }
 
     incidents = incidents.map((i) => (i.id === params.id ? updated : i))
+
+    const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+    const responsablesACActivas = (inc.accionesCorrectivas ?? [])
+      .filter((ac) => ac.estado !== 'CERRADA')
+      .map((ac) => ac.responsableId)
+
+    createCambioEstadoNotification({
+      entidadTipo: 'INCIDENTE',
+      entidadId: inc.id,
+      entidadCodigo: inc.numero,
+      estadoNuevo: nuevoEstado,
+      reportadoPorId: inc.reportadoPorId,
+      responsablesACActivas,
+      actorId,
+      link: `/incidents/${inc.id}`,
+    })
 
     return ok(updated)
   }),

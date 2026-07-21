@@ -11,7 +11,7 @@ import { createNonconformity, type CreateNCResponse } from '../api/nonconformiti
 import { NC_DOMINIO_LABELS } from '../constants/nonconformity.constants'
 import { QUERY_KEYS } from '../hooks/useNonconformities'
 import { useUsers } from '../hooks/useUsers'
-import { AREAS_SHAC } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { NoConformidad } from '../types/nonconformity.types'
 
 const NC_DOMINIO_KEYS = Object.keys(NC_DOMINIO_LABELS) as (keyof typeof NC_DOMINIO_LABELS)[]
@@ -91,6 +91,8 @@ export function NCForm({ onCancel }: NCFormProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: users = [] } = useUsers()
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
 
   const {
     register,
@@ -282,18 +284,18 @@ export function NCForm({ onCancel }: NCFormProps) {
           </div>
 
           <div>
-            <label className={labelClass} htmlFor="areaAfectada">
+            <label className={labelClass} htmlFor="areaId">
               {t('form.fields.areaAfectada')} <span className="text-error">*</span>
             </label>
-            <select id="areaAfectada" className={selectClass} {...register('areaAfectada')}>
+            <select id="areaId" className={selectClass} {...register('areaId')}>
               <option value="">{t('form.placeholders.areaAfectada')}</option>
-              {AREAS_SHAC.map((area) => (
-                <option key={area} value={area}>
-                  {area}
+              {areasActivas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.nombre}
                 </option>
               ))}
             </select>
-            {errors.areaAfectada && <p className={errorClass}>{errors.areaAfectada.message}</p>}
+            {errors.areaId && <p className={errorClass}>{errors.areaId.message}</p>}
           </div>
         </div>
 

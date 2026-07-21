@@ -16,6 +16,10 @@ import { router } from './index'
 // de routing ("Ruta /nonconformities registrada con RoleGuard para todos los roles
 // autenticados") no debe tener acceso a M2. Este test ejercita el router real de
 // producción, no un árbol de rutas armado a mano.
+//
+// OPERARIO fue removido deliberadamente de requiredRoles: NC no es parte de su
+// flujo (reporta vía Quality Event, origen O1_INCIDENTE_CAMPO); tener acceso de
+// ruta sin estar en el Sidebar era una desincronización, no una funcionalidad.
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -51,13 +55,13 @@ function renderRouterAt(path: string) {
 }
 
 describe('router — acceso a /nonconformities por rol', () => {
-  it('OPERARIO navega a /nonconformities sin redirección a /no-autorizado', async () => {
+  it('OPERARIO es redirigido a /no-autorizado al navegar a /nonconformities', async () => {
     await loginReal('operario@shac.pe')
 
     renderRouterAt('/nonconformities')
 
-    await waitFor(() => expect(screen.getByText('list.title')).toBeInTheDocument())
-    expect(router.state.location.pathname).toBe('/nonconformities')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/no-autorizado'))
+    expect(screen.getByText('Acceso denegado')).toBeInTheDocument()
   })
 
   it('JEFE_CALIDAD_SYST navega a /nonconformities sin redirección', async () => {
@@ -86,15 +90,13 @@ describe('router — acceso a /nonconformities por rol', () => {
 })
 
 describe('router — acceso a /nonconformities/:id por rol', () => {
-  it('OPERARIO navega al detalle /nonconformities/:id sin redirección', async () => {
+  it('OPERARIO es redirigido a /no-autorizado al navegar al detalle de NC', async () => {
     await loginReal('operario@shac.pe')
 
     renderRouterAt('/nonconformities/nc-001')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/nonconformities/nc-001'))
-    await waitFor(() =>
-      expect(screen.queryByText('Acceso denegado')).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(router.state.location.pathname).toBe('/no-autorizado'))
+    expect(screen.getByText('Acceso denegado')).toBeInTheDocument()
   })
 
   it('ADMINISTRADOR_SISTEMA es redirigido a /no-autorizado al navegar al detalle de NC', async () => {

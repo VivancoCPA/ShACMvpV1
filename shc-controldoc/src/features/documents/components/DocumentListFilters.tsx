@@ -7,7 +7,7 @@ import { useDocumentosPendientesCount } from '../hooks/useDocumentosPendientesCo
 import { FilterBar } from '../../../components/shared/FilterBar'
 import { Switch } from '../../../components/ui/Switch'
 import { DOC_STATUSES, DOC_TYPES } from '../constants'
-import { AREAS_SHAC } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { UserRole } from '../../../types/auth.types'
 
 const CAN_SEE_DELETED: Set<UserRole> = new Set(['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'])
@@ -20,11 +20,13 @@ export function DocumentListFilters() {
   const { t } = useTranslation('documents')
   const [searchParams, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol) as UserRole | undefined
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
 
   const currentSearch = searchParams.get('search') ?? ''
   const currentEstado = searchParams.get('estado') ?? ''
   const currentTipo = searchParams.get('tipo') ?? ''
-  const currentArea = searchParams.get('area') ?? ''
+  const currentArea = searchParams.get('areaId') ?? ''
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
   const pendientesActive = searchParams.get('pendientes') === 'true'
 
@@ -108,7 +110,7 @@ export function DocumentListFilters() {
       next.delete('search')
       next.delete('estado')
       next.delete('tipo')
-      next.delete('area')
+      next.delete('areaId')
       next.delete('page')
       next.delete('includeDeleted')
       next.delete('pendientes')
@@ -213,13 +215,13 @@ export function DocumentListFilters() {
         <select
           id="doc-area"
           value={currentArea}
-          onChange={(e) => updateSelectParam('area', e.target.value)}
+          onChange={(e) => updateSelectParam('areaId', e.target.value)}
           className={SELECT_CLASSES}
         >
           <option value="">{t('list.filters.todos')}</option>
-          {AREAS_SHAC.map((a) => (
-            <option key={a} value={a}>
-              {a}
+          {areasActivas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nombre}
             </option>
           ))}
         </select>

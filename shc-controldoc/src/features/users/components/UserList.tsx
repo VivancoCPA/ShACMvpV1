@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Ban, RotateCcw, KeyRound, X, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUsers, useToggleUserActive, useResetUserPassword } from '../hooks/useUsers'
+import { useAreas } from '../../areas/hooks/useAreas'
 import { useAuthStore } from '../../../stores/authStore'
 import { FilterBar } from '../../../components/shared/FilterBar'
 import { Pagination } from '../../../components/shared/Pagination'
@@ -150,6 +151,8 @@ export function UserList() {
   const { t, i18n } = useTranslation('users')
   const authUser = useAuthStore((s) => s.user)
   const canAdminister = authUser?.rol === 'ADMINISTRADOR_SISTEMA'
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
 
   const [rolFilter, setRolFilter] = useState<UserRole | ''>('')
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('TODOS')
@@ -315,7 +318,7 @@ export function UserList() {
                       {u.rol}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-ink dark:text-on-dark">{u.area ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs text-ink dark:text-on-dark">{u.areaId ? nombreArea(u.areaId) : '—'}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${

@@ -452,6 +452,7 @@
     "qualityEvents": "Quality Events",
     "dashboard": "Dashboard",
     "users": "Usuarios",
+    "areas": "Áreas",
     "locations": "Locales y Zonas",
     "logout": "Cerrar sesión",
     "myProfile": "Mi perfil",
@@ -494,6 +495,15 @@
         "editar": "Editar",
         "reintentar": "Reintentar",
         "errorMsg": "Error al cargar los quality events."
+      },
+      "batchExport": {
+        "exportarConteo": "Exportar {{count}} seleccionados",
+        "seleccionarTodosVisibles": "Seleccionar todos los visibles",
+        "seleccionarFila": "Seleccionar {{numero}}",
+        "limiteExcedido": "Selección máxima de {{limite}} Quality Events por exportación.",
+        "progreso": "Generando {{completed}}/{{total}}…",
+        "completado": "Exportación completada.",
+        "error": "Error al exportar los Quality Events seleccionados."
       }
     },
     "form": {
@@ -593,7 +603,9 @@
         "verificacionCountdown": "Verificación de eficacia",
         "verificacionVencida": "Vencido",
         "verificacionDiasRestantes": "{{count}} días",
-        "plazoPendienteCierre": "{{count}} días hábiles (plazo informativo de cierre)"
+        "plazoPendienteCierre": "{{count}} días hábiles (plazo informativo de cierre)",
+        "exportarPDF": "Exportar PDF",
+        "exportarPDFError": "Error al exportar el PDF. Inténtalo de nuevo."
       },
       "transitions": {
         "title": "Transiciones de estado",
@@ -760,7 +772,8 @@
           "QE_MINERAL_EDITADO": "Mineral involucrado editado",
           "AC_AJUSTE_PLAZO_SOLICITADO": "Ajuste de plazo solicitado",
           "AC_AJUSTE_PLAZO_APROBADO": "Ajuste de plazo aprobado",
-          "AC_AJUSTE_PLAZO_RECHAZADO": "Ajuste de plazo rechazado"
+          "AC_AJUSTE_PLAZO_RECHAZADO": "Ajuste de plazo rechazado",
+          "EXPORTACION_PDF": "PDF exportado"
         }
       },
       "notFound": {
@@ -808,9 +821,7 @@
           "fechaCierre": "Fecha de cierre"
         },
         "toasts": {
-          "closed": "Quality Event cerrado exitosamente.",
-          "gerenciaNotificada": "Se notificó a Gerencia.",
-          "reportanteNotificado": "Se notificó al reportante original."
+          "closed": "Quality Event cerrado exitosamente."
         }
       },
       "verificacion": {
@@ -838,9 +849,7 @@
         "toasts": {
           "forzadoAVerificacion": "Se forzó el vencimiento: el QE pasó a EN_VERIFICACION.",
           "verificado": "Verificación registrada: el Quality Event ha sido VERIFICADO.",
-          "gerenciaNotificada": "Se notificó a Gerencia.",
-          "reportanteNotificado": "Se notificó al reportante original.",
-          "reaperturaEscalada": "Se notificó a Gerencia, Jefe de Calidad y Supervisor por la reapertura."
+          "reapertura": "El Quality Event fue reabierto."
         }
       }
     },
@@ -893,6 +902,13 @@
       "tabs": {
         "list": "Lista",
         "map": "Mapa"
+      },
+      "sinQEBadge": {
+        "label": "Sin QE vinculado",
+        "tooltip": {
+          "AMARILLO": "Este incidente se acerca a su plazo de investigación sin tener un Quality Event vinculado.",
+          "ROJO": "Este incidente superó su plazo de investigación sin tener un Quality Event vinculado."
+        }
       }
     },
     "map": {
@@ -954,7 +970,8 @@
       "acUpdated": "Acción correctiva actualizada.",
       "acUpdateError": "Error al actualizar la acción correctiva.",
       "acCerrada": "Acción correctiva cerrada.",
-      "acCerrarError": "Error al cerrar la acción correctiva."
+      "acCerrarError": "Error al cerrar la acción correctiva.",
+      "vincularQEError": "El Quality Event se creó, pero no se pudo vincular al incidente. Actualiza la página para verificarlo."
     },
     "errors": {
       "notFound": "Incidente no encontrado.",
@@ -1272,7 +1289,8 @@
       "deleted": "No conformidad eliminada.",
       "deleteError": "Error al eliminar la no conformidad.",
       "restored": "No conformidad restaurada.",
-      "restoreError": "Error al restaurar la no conformidad."
+      "restoreError": "Error al restaurar la no conformidad.",
+      "vincularQEError": "El Quality Event se creó, pero no se pudo vincular a la no conformidad. Actualiza la página para verificarlo."
     },
     "form": {
       "fields": {
@@ -1521,6 +1539,10 @@
           "NC": "No Conformidad",
           "INCIDENTE": "Incidente"
         }
+      },
+      "notificacionesPendientes": {
+        "title": "Notificaciones pendientes",
+        "empty": "No tienes notificaciones pendientes"
       }
     },
     "supervisor": {
@@ -2015,6 +2037,105 @@
         "reactivarExitosa": "Usuario reactivado correctamente",
         "bajaError": "Error al dar de baja al usuario",
         "reactivarError": "Error al reactivar al usuario"
+      }
+    }
+  },
+  "notifications": {
+    "bell": {
+      "ariaLabel": "Notificaciones"
+    },
+    "title": "Notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "empty": "No tienes notificaciones",
+    "relativeTime": {
+      "justNow": "Justo ahora",
+      "minutesAgo_one": "Hace {{count}} minuto",
+      "minutesAgo_other": "Hace {{count}} minutos",
+      "hoursAgo_one": "Hace {{count}} hora",
+      "hoursAgo_other": "Hace {{count}} horas",
+      "daysAgo_one": "Hace {{count}} día",
+      "daysAgo_other": "Hace {{count}} días"
+    }
+  },
+  "areas": {
+    "header": {
+      "title": "Gestión de áreas",
+      "nuevaArea": "Nueva área"
+    },
+    "list": {
+      "empty": "No hay áreas registradas",
+      "columns": {
+        "nombre": "Nombre",
+        "descripcion": "Descripción",
+        "estado": "Estado",
+        "acciones": "Acciones"
+      }
+    },
+    "badges": {
+      "activo": "Activo",
+      "inactivo": "Inactivo"
+    },
+    "actions": {
+      "editar": "Editar",
+      "desactivar": "Desactivar",
+      "reactivar": "Reactivar"
+    },
+    "confirmarDesactivar": {
+      "titulo": "Desactivar área",
+      "mensaje": "¿Confirma que desea desactivar el área \"{{nombre}}\"?",
+      "cancelar": "Cancelar",
+      "confirmar": "Desactivar"
+    },
+    "confirmarReactivar": {
+      "titulo": "Reactivar área",
+      "mensaje": "¿Confirma que desea reactivar el área \"{{nombre}}\"?",
+      "cancelar": "Cancelar",
+      "confirmar": "Reactivar"
+    },
+    "bloqueo": {
+      "titulo": "No se puede desactivar",
+      "descripcion": "Esta Área tiene registros activos asociados en los siguientes módulos:",
+      "lineaQe_one": "{{count}} Quality Event activo",
+      "lineaQe_other": "{{count}} Quality Events activos",
+      "lineaNc_one": "{{count}} No Conformidad activa",
+      "lineaNc_other": "{{count}} No Conformidades activas",
+      "lineaIncidentes_one": "{{count}} Incidente activo",
+      "lineaIncidentes_other": "{{count}} Incidentes activos",
+      "total": "Total: {{total}} registros",
+      "cerrar": "Cerrar"
+    },
+    "toasts": {
+      "areaCreada": "Área creada correctamente",
+      "areaCreateError": "No se pudo crear el área",
+      "areaActualizada": "Área actualizada correctamente",
+      "areaActualizarError": "No se pudo actualizar el área",
+      "areaDesactivada": "Área desactivada correctamente",
+      "areaDesactivarBloqueada": "No se puede desactivar: {{total}} registros activos asociados",
+      "areaDesactivarError": "No se pudo desactivar el área",
+      "areaReactivada": "Área reactivada correctamente",
+      "areaReactivarError": "No se pudo reactivar el área"
+    },
+    "form": {
+      "fields": {
+        "nombre": "Nombre",
+        "descripcion": "Descripción"
+      },
+      "placeholders": {
+        "nombre": "Ej. Patio de Concentrado",
+        "descripcion": "Descripción opcional"
+      },
+      "actions": {
+        "submit": "Guardar",
+        "submitting": "Guardando...",
+        "cancel": "Cancelar"
+      },
+      "titles": {
+        "nuevaArea": "Nueva área",
+        "editarArea": "Editar área"
+      },
+      "errors": {
+        "nombreDuplicado": "Ya existe un Área con ese nombre",
+        "areaNoEncontrada": "Área no encontrada"
       }
     }
   }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Eye, Trash2, RotateCcw, X } from 'lucide-react'
 import { useNCList } from '../hooks/useNCList'
 import { useDeleteNC, useRestoreNC } from '../hooks/useNonconformities'
+import { useAreas } from '../../areas/hooks/useAreas'
 import { getNCPermissions } from '../utils/ncPermissions'
 import { useAuthStore } from '../../../stores/authStore'
 import { SeverityBadge } from '../../../components/shared/SeverityBadge'
@@ -138,6 +139,8 @@ export function NCList() {
   const user = useAuthStore((s) => s.user)
 
   const { nonconformidades, isLoading, isError, pagination, refetch } = useNCList()
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const deleteNC = useDeleteNC()
   const restoreNC = useRestoreNC()
 
@@ -172,8 +175,8 @@ export function NCList() {
   if (estadoParam) activeChips.push({ key: 'estado', label: t(`status.${estadoParam}`) })
   const severidadParam = searchParams.get('severidad')
   if (severidadParam) activeChips.push({ key: 'severidad', label: severidadParam })
-  const areaAfectadaParam = searchParams.get('areaAfectada')
-  if (areaAfectadaParam) activeChips.push({ key: 'areaAfectada', label: areaAfectadaParam })
+  const areaIdParam = searchParams.get('areaId')
+  if (areaIdParam) activeChips.push({ key: 'areaId', label: nombreArea(areaIdParam) })
   const fechaDesdeParam = searchParams.get('fechaDesde')
   if (fechaDesdeParam) activeChips.push({ key: 'fechaDesde', label: `Desde: ${fechaDesdeParam}` })
   const fechaHastaParam = searchParams.get('fechaHasta')
@@ -293,7 +296,7 @@ export function NCList() {
                       {nc.titulo}
                     </td>
                     <td className="px-4 py-3 text-xs text-ink dark:text-on-dark">
-                      {nc.areaAfectada}
+                      {nombreArea(nc.areaId)}
                     </td>
                     <td className="px-4 py-3">
                       <SeverityBadge severity={nc.severidad} />

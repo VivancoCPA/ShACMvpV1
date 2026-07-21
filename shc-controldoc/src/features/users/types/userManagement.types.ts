@@ -5,8 +5,8 @@ export interface CreateUserRequest {
   apellido: string
   email: string
   rol: UserRole
-  area?: string
-  areasAsignadas?: string[]
+  areaId?: string
+  areaIds?: string[]
   avatarBase64?: string
 }
 
@@ -15,8 +15,8 @@ export interface UpdateUserRequest {
   apellido?: string
   email?: string
   rol?: UserRole
-  area?: string
-  areasAsignadas?: string[]
+  areaId?: string
+  areaIds?: string[]
   avatarBase64?: string
 }
 

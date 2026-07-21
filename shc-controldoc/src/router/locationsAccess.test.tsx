@@ -119,21 +119,28 @@ describe('router — ADMINISTRADOR_SISTEMA sin acceso a M1 (Control Documentario
 // ADMINISTRADOR_SISTEMA (no access to /documentos) on /no-autorizado right
 // after login, hard-refresh, or a direct navigation to `/`.
 describe('router — ruta índice `/` redirige según getDefaultRouteForRole (M6-S05)', () => {
-  it('ADMINISTRADOR_SISTEMA autenticado en / aterriza en /admin/locales sin pasar por /no-autorizado', async () => {
+  it('ADMINISTRADOR_SISTEMA autenticado en / aterriza en /usuarios sin pasar por /no-autorizado', async () => {
     await loginReal('admin@shac.pe')
 
     renderRouterAt('/')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/locales'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/usuarios'))
     expect(screen.queryByText('Acceso denegado')).not.toBeInTheDocument()
   })
 
-  it('un rol operativo autenticado en / sigue aterrizando en /documentos', async () => {
-    await loginReal('jefe.calidad@shac.pe')
+  it.each([
+    ['operario@shac.pe', 'OPERARIO'],
+    ['supervisor@shac.pe', 'SUPERVISOR'],
+    ['jefe.calidad@shac.pe', 'JEFE_CALIDAD_SYST'],
+    ['jefe.docs@shac.pe', 'JEFE_CONTROL_DOCUMENTARIO'],
+    ['auditor@shac.pe', 'AUDITOR_INTERNO'],
+    ['gerencia@shac.pe', 'ALTA_DIRECCION'],
+  ])('rol operativo %s (%s) autenticado en / aterriza en /dashboard, no en /documentos', async (email) => {
+    await loginReal(email)
 
     renderRouterAt('/')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/documentos'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
   })
 })
 

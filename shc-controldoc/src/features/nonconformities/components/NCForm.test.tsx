@@ -37,10 +37,6 @@ vi.mock('../constants/nonconformity.constants', () => ({
   },
 }))
 
-vi.mock('../../../constants/shared.constants', () => ({
-  AREAS_SHAC: ['Almacén Norte', 'Almacén Sur'],
-}))
-
 vi.mock('../hooks/useNonconformities', () => ({
   QUERY_KEYS: { nonconformities: { all: ['nonconformities'] } },
 }))

@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useLogout } from '../../features/auth/hooks/useLogout'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ROLE_BG_CLASSES } from '../ui/roleColors'
+import { NotificationBell } from '../../features/notifications/components/NotificationBell'
 
 interface RouteHandle {
   breadcrumb?: string
@@ -88,6 +89,8 @@ export function TopNav() {
         >
           <ThemeIcon size={17} />
         </button>
+
+        <NotificationBell />
 
         {/* User block */}
         {user && (

@@ -42,6 +42,11 @@ export async function updateNonconformity(id: string, data: UpdateNCInput): Prom
   return response.data
 }
 
+export async function vincularQENonconformidad(id: string, qeGeneradoId: string): Promise<NoConformidad> {
+  const response = await api.patch<NoConformidad>(`/api/nonconformities/${id}`, { qeGeneradoId })
+  return response.data
+}
+
 export async function anularNonconformity(
   id: string,
   justificacion: string,

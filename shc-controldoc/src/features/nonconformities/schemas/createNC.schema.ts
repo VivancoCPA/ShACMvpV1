@@ -14,7 +14,7 @@ export const createNCSchema = z
     tipo: z.enum(['PROCESO', 'PRODUCTO', 'SERVICIO', 'SISTEMA', 'SST']),
     severidad: z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']),
     titulo: z.string().min(1, 'El título es obligatorio.').max(300),
-    areaAfectada: z.string().min(1).max(200),
+    areaId: z.string().min(1).max(200),
     procesoInvolucrado: z.string().min(1).max(300).optional(),
     descripcion: z.string().min(10).max(2000),
     fechaDeteccion: z.string().min(1),

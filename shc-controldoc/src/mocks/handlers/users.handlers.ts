@@ -35,8 +35,8 @@ interface CreateUserBody {
   apellido?: string
   email?: string
   rol?: UserRole
-  area?: string
-  areasAsignadas?: string[]
+  areaId?: string
+  areaIds?: string[]
   avatarBase64?: string
 }
 
@@ -45,8 +45,8 @@ interface UpdateUserBody {
   apellido?: string
   email?: string
   rol?: UserRole
-  area?: string
-  areasAsignadas?: string[]
+  areaId?: string
+  areaIds?: string[]
   avatarBase64?: string
 }
 
@@ -89,8 +89,8 @@ export const userHandlers = [
       activo: true,
       createdAt: now,
       avatarUrl: undefined,
-      ...(body.area ? { area: body.area } : {}),
-      ...(body.areasAsignadas ? { areasAsignadas: body.areasAsignadas } : {}),
+      ...(body.areaId ? { areaId: body.areaId } : {}),
+      ...(body.areaIds ? { areaIds: body.areaIds } : {}),
     }
     if (body.avatarBase64) {
       // MockUser.avatarUrl está tipado `undefined` (semilla fija sin avatar); el CRUD real
@@ -126,8 +126,8 @@ export const userHandlers = [
       ...(body.apellido !== undefined ? { apellido: body.apellido } : {}),
       ...(body.email !== undefined ? { email: body.email } : {}),
       ...(body.rol !== undefined ? { rol: body.rol } : {}),
-      ...(body.area !== undefined ? { area: body.area } : {}),
-      ...(body.areasAsignadas !== undefined ? { areasAsignadas: body.areasAsignadas } : {}),
+      ...(body.areaId !== undefined ? { areaId: body.areaId } : {}),
+      ...(body.areaIds !== undefined ? { areaIds: body.areaIds } : {}),
       ...(body.avatarBase64 !== undefined
         ? ({ avatarUrl: body.avatarBase64 } as unknown as { avatarUrl: undefined })
         : {}),

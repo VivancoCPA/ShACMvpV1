@@ -7,8 +7,8 @@ export interface MockUser {
   email: string
   password: string
   rol: UserRole
-  area?: string
-  areasAsignadas?: string[]
+  areaId?: string
+  areaIds?: string[]
   avatarUrl: undefined
   createdAt: string
   lastLogin?: string
@@ -25,7 +25,7 @@ export const authFixtures: MockUser[] = [
     email: 'operario@shac.pe',
     password: 'Shac2025!',
     rol: 'OPERARIO',
-    area: 'Operaciones',
+    areaId: 'area-016',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2024-11-04T09:15:00.000Z',
@@ -37,8 +37,8 @@ export const authFixtures: MockUser[] = [
     email: 'supervisor@shac.pe',
     password: 'Shac2025!',
     rol: 'SUPERVISOR',
-    area: 'Operaciones',
-    areasAsignadas: ['Galpón B', 'Galpón C'],
+    areaId: 'area-016',
+    areaIds: ['area-010', 'area-011'],
     avatarUrl: undefined,
     activo: true,
     createdAt: '2024-08-12T14:30:00.000Z',
@@ -50,8 +50,8 @@ export const authFixtures: MockUser[] = [
     email: 'supervisor.almacen@shac.pe',
     password: 'Shac2025!',
     rol: 'SUPERVISOR',
-    area: 'Almacén Norte',
-    areasAsignadas: ['Almacén Norte', 'Almacén Sur'],
+    areaId: 'area-001',
+    areaIds: ['area-001', 'area-002'],
     avatarUrl: undefined,
     activo: true,
     createdAt: '2025-01-20T11:00:00.000Z',
@@ -63,7 +63,7 @@ export const authFixtures: MockUser[] = [
     email: 'jefe.calidad@shac.pe',
     password: 'Shac2025!',
     rol: 'JEFE_CALIDAD_SYST',
-    area: 'Calidad y SyST',
+    areaId: 'area-007',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2023-06-15T08:45:00.000Z',
@@ -75,7 +75,7 @@ export const authFixtures: MockUser[] = [
     email: 'jefe.docs@shac.pe',
     password: 'Shac2025!',
     rol: 'JEFE_CONTROL_DOCUMENTARIO',
-    area: 'Control Documentario',
+    areaId: 'area-009',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2024-03-02T10:20:00.000Z',
@@ -87,7 +87,7 @@ export const authFixtures: MockUser[] = [
     email: 'auditor@shac.pe',
     password: 'Shac2025!',
     rol: 'AUDITOR_INTERNO',
-    area: 'Auditoría',
+    areaId: 'area-006',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2024-09-28T16:00:00.000Z',
@@ -102,7 +102,7 @@ export const authFixtures: MockUser[] = [
     email: 'autor@shac.pe',
     password: 'Shac2025!',
     rol: 'SUPERVISOR',
-    area: 'Calidad',
+    areaId: 'area-007',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2025-02-10T13:10:00.000Z',
@@ -118,7 +118,7 @@ export const authFixtures: MockUser[] = [
     email: 'ana.torres@shac.pe',
     password: 'Shac2025!',
     rol: 'AUDITOR_INTERNO',
-    area: 'Auditoría',
+    areaId: 'area-006',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2023-11-22T09:00:00.000Z',
@@ -131,7 +131,7 @@ export const authFixtures: MockUser[] = [
     email: 'luis.paredes@shac.pe',
     password: 'Shac2025!',
     rol: 'JEFE_CALIDAD_SYST',
-    area: 'Calidad',
+    areaId: 'area-007',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2024-05-30T15:40:00.000Z',
@@ -143,7 +143,7 @@ export const authFixtures: MockUser[] = [
     email: 'gerencia@shac.pe',
     password: 'Shac2025!',
     rol: 'ALTA_DIRECCION',
-    area: 'Gerencia General',
+    areaId: 'area-012',
     avatarUrl: undefined,
     activo: true,
     createdAt: '2022-10-01T12:00:00.000Z',

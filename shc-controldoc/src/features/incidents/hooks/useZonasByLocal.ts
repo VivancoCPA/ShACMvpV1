@@ -3,7 +3,7 @@ import api from '../../../lib/axios'
 import type { Zona } from '../types/incident.types'
 
 async function fetchZonasByLocal(localId: string): Promise<Zona[]> {
-  const response = await api.get<Zona[]>(`/api/locales/${localId}/zonas`)
+  const response = await api.get<Zona[]>('/api/zonas', { params: { localId } })
   return response.data
 }
 

@@ -2,8 +2,10 @@ import { http, HttpResponse, delay } from 'msw'
 import { jsPDF } from 'jspdf'
 import { documentFixtures } from '../fixtures/documents.fixtures'
 import { authFixtures } from '../fixtures/auth.fixtures'
+import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
 import { DOC_STATUS_TRANSITIONS } from '../../features/documents/constants'
 import { buildMinimalDocxBytes } from '../utils/minimalDocx'
+import { getAreasStore } from './areas.handlers'
 import type { Documento, DocStatus, DocType } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
@@ -16,6 +18,10 @@ function buildMinimalDistribucionPdfBytes(doc: Documento): Uint8Array {
   pdf.text(`Versión ${doc.version} · Estado: ${doc.estado}`, 20, 40)
   pdf.text('PDF de distribución (documento mock — sin backend real)', 20, 50)
   return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
+}
+
+function nombreArea(areaId: string): string {
+  return getAreasStore().find((a) => a.id === areaId)?.nombre ?? areaId
 }
 
 const MOCK_PIN = '123456'
@@ -155,7 +161,7 @@ export const documentHandlers = [
     const url = new URL(request.url)
     const estado = url.searchParams.get('estado') as DocStatus | null
     const tipo = url.searchParams.get('tipo') as DocType | null
-    const area = url.searchParams.get('area')
+    const area = url.searchParams.get('areaId')
     const search = url.searchParams.get('search')
     const codigo = url.searchParams.get('codigo')
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
@@ -179,7 +185,7 @@ export const documentHandlers = [
     // estado filter only applies when not in deleted view and not in pendientes mode
     if (!includeDeleted && !pendientes && estado) filtered = filtered.filter((d) => d.estado === estado)
     if (tipo) filtered = filtered.filter((d) => d.tipo === tipo)
-    if (area) filtered = filtered.filter((d) => d.area === area)
+    if (area) filtered = filtered.filter((d) => d.areaId === area)
     if (codigo) filtered = filtered.filter((d) => d.codigo === codigo)
     if (search) {
       const q = search.toLowerCase()
@@ -250,6 +256,7 @@ export const documentHandlers = [
   http.post('/api/documents', async ({ request }) => {
     await delay(LATENCY)
 
+    const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
     const body = await request.json() as Record<string, unknown>
     const tipo = body.tipo as DocType
     const now = new Date().toISOString()
@@ -270,7 +277,7 @@ export const documentHandlers = [
       tipo,
       version: (body.version as string | undefined) ?? 'v1.0',
       estado: 'BORRADOR',
-      area: body.area as string,
+      areaId: body.areaId as string,
       confidencialidad: (body.confidencialidad as Documento['confidencialidad'] | undefined) ?? 'INTERNO',
       rolesAutorizados: body.rolesAutorizados as Documento['rolesAutorizados'],
       autorId: (body.autorId as string | undefined) ?? 'user-mock-001',
@@ -294,6 +301,30 @@ export const documentHandlers = [
     doc.auditTrail[0].entidadId = doc.id
 
     store.push(doc)
+
+    if (doc.revisorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        asignadoId: doc.revisorId,
+        actorId,
+        link: `/documentos/${doc.id}`,
+        mensaje: `Se te asignó como revisor del documento ${doc.codigo}.`,
+      })
+    }
+    if (doc.aprobadorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        asignadoId: doc.aprobadorId,
+        actorId,
+        link: `/documentos/${doc.id}`,
+        mensaje: `Se te asignó como aprobador del documento ${doc.codigo}.`,
+      })
+    }
+
     return ok(doc, 201)
   }),
 
@@ -318,7 +349,7 @@ export const documentHandlers = [
       'fechaVigencia',
       'fechaRevisionProxima',
       'version',
-      'area',
+      'areaId',
       'confidencialidad',
       'rolesAutorizados',
     ]
@@ -332,6 +363,31 @@ export const documentHandlers = [
     }
 
     store[idx] = updated
+
+    const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+    if (updated.revisorId && updated.revisorId !== doc.revisorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: updated.id,
+        entidadCodigo: updated.codigo,
+        asignadoId: updated.revisorId,
+        actorId,
+        link: `/documentos/${updated.id}`,
+        mensaje: `Se te asignó como revisor del documento ${updated.codigo}.`,
+      })
+    }
+    if (updated.aprobadorId && updated.aprobadorId !== doc.aprobadorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: updated.id,
+        entidadCodigo: updated.codigo,
+        asignadoId: updated.aprobadorId,
+        actorId,
+        link: `/documentos/${updated.id}`,
+        mensaje: `Se te asignó como aprobador del documento ${updated.codigo}.`,
+      })
+    }
+
     return ok(updated)
   }),
 
@@ -346,6 +402,7 @@ export const documentHandlers = [
     const nuevoEstado = body.nuevoEstado as DocStatus
     const comentario = body.comentario as string | undefined
     const firma = body.firma as string | undefined
+    const notificarAutor = body.notificarAutor as boolean | undefined
 
     // RN-DOC-004: firma requerida
     if (!firma) {
@@ -418,6 +475,21 @@ export const documentHandlers = [
     }
 
     store[idx] = updated
+
+    if (nuevoEstado === 'BORRADOR' && doc.estado === 'EN_REVISION' && notificarAutor === true) {
+      const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+      createCambioEstadoNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        estadoNuevo: nuevoEstado,
+        reportadoPorId: doc.autorId,
+        responsablesACActivas: [],
+        actorId,
+        link: `/documentos/${doc.id}`,
+      })
+    }
+
     return ok(updated)
   }),
 
@@ -496,6 +568,7 @@ export const documentHandlers = [
     const body = await request.json() as Record<string, unknown>
     const nuevoEstado = body.estado as DocStatus
     const motivo = body.motivo as string | undefined
+    const notificarAutor = body.notificarAutor as boolean | undefined
 
     const doc = store[idx]
     const validNext = DOC_STATUS_TRANSITIONS[doc.estado] ?? []
@@ -558,6 +631,21 @@ export const documentHandlers = [
     }
 
     store[idx] = updated
+
+    if (nuevoEstado === 'BORRADOR' && doc.estado === 'EN_REVISION' && notificarAutor === true) {
+      const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+      createCambioEstadoNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        estadoNuevo: nuevoEstado,
+        reportadoPorId: doc.autorId,
+        responsablesACActivas: [],
+        actorId,
+        link: `/documentos/${doc.id}`,
+      })
+    }
+
     return ok(updated)
   }),
 
@@ -777,11 +865,11 @@ export const documentHandlers = [
   <div class="watermark">COPIA NO CONTROLADA</div>
   <div class="header">
     <h1>${doc.codigo} — ${doc.titulo}</h1>
-    <p>Versión ${doc.version} &middot; Estado: ${doc.estado} &middot; Área: ${doc.area}</p>
+    <p>Versión ${doc.version} &middot; Estado: ${doc.estado} &middot; Área: ${nombreArea(doc.areaId)}</p>
   </div>
   <dl class="meta">
     <dt>Tipo</dt><dd>${doc.tipo}</dd>
-    <dt>Área</dt><dd>${doc.area}</dd>
+    <dt>Área</dt><dd>${nombreArea(doc.areaId)}</dd>
     <dt>Emisión</dt><dd>${doc.fechaEmision ?? '—'}</dd>
     <dt>Vigencia</dt><dd>${doc.fechaVigencia ?? '—'}</dd>
   </dl>

@@ -452,6 +452,7 @@
     "qualityEvents": "Quality Events",
     "dashboard": "Dashboard",
     "users": "Users",
+    "areas": "Areas",
     "locations": "Locations and Zones",
     "logout": "Sign out",
     "myProfile": "My profile",
@@ -494,6 +495,15 @@
         "editar": "Edit",
         "reintentar": "Retry",
         "errorMsg": "Error loading quality events."
+      },
+      "batchExport": {
+        "exportarConteo": "Export {{count}} selected",
+        "seleccionarTodosVisibles": "Select all visible",
+        "seleccionarFila": "Select {{numero}}",
+        "limiteExcedido": "Maximum selection of {{limite}} Quality Events per export.",
+        "progreso": "Generating {{completed}}/{{total}}…",
+        "completado": "Export completed.",
+        "error": "Error exporting the selected Quality Events."
       }
     },
     "form": {
@@ -593,7 +603,9 @@
         "verificacionCountdown": "Effectiveness verification",
         "verificacionVencida": "Overdue",
         "verificacionDiasRestantes": "{{count}} days",
-        "plazoPendienteCierre": "{{count}} business days (informational closure deadline)"
+        "plazoPendienteCierre": "{{count}} business days (informational closure deadline)",
+        "exportarPDF": "Export PDF",
+        "exportarPDFError": "Error exporting the PDF. Please try again."
       },
       "transitions": {
         "title": "Status transitions",
@@ -760,7 +772,8 @@
           "QE_MINERAL_EDITADO": "Mineral involved edited",
           "AC_AJUSTE_PLAZO_SOLICITADO": "Deadline extension requested",
           "AC_AJUSTE_PLAZO_APROBADO": "Deadline extension approved",
-          "AC_AJUSTE_PLAZO_RECHAZADO": "Deadline extension rejected"
+          "AC_AJUSTE_PLAZO_RECHAZADO": "Deadline extension rejected",
+          "EXPORTACION_PDF": "PDF exported"
         }
       },
       "notFound": {
@@ -808,9 +821,7 @@
           "fechaCierre": "Closure date"
         },
         "toasts": {
-          "closed": "Quality Event closed successfully.",
-          "gerenciaNotificada": "Management has been notified.",
-          "reportanteNotificado": "The original reporter has been notified."
+          "closed": "Quality Event closed successfully."
         }
       },
       "verificacion": {
@@ -838,9 +849,7 @@
         "toasts": {
           "forzadoAVerificacion": "Deadline forced: the QE moved to EN_VERIFICACION.",
           "verificado": "Verification recorded: the Quality Event has been VERIFIED.",
-          "gerenciaNotificada": "Management has been notified.",
-          "reportanteNotificado": "The original reporter has been notified.",
-          "reaperturaEscalada": "Management, Quality Manager, and Supervisor were notified of the reopening."
+          "reapertura": "The Quality Event was reopened."
         }
       }
     },
@@ -893,6 +902,13 @@
       "tabs": {
         "list": "List",
         "map": "Map"
+      },
+      "sinQEBadge": {
+        "label": "No QE linked",
+        "tooltip": {
+          "AMARILLO": "This incident is approaching its investigation deadline without a linked Quality Event.",
+          "ROJO": "This incident passed its investigation deadline without a linked Quality Event."
+        }
       }
     },
     "map": {
@@ -954,7 +970,8 @@
       "acUpdated": "Corrective action updated.",
       "acUpdateError": "Failed to update the corrective action.",
       "acCerrada": "Corrective action closed.",
-      "acCerrarError": "Failed to close the corrective action."
+      "acCerrarError": "Failed to close the corrective action.",
+      "vincularQEError": "The Quality Event was created, but could not be linked to the incident. Refresh the page to check."
     },
     "errors": {
       "notFound": "Incident not found.",
@@ -1272,7 +1289,8 @@
       "deleted": "Non-conformity deleted.",
       "deleteError": "Error deleting the non-conformity.",
       "restored": "Non-conformity restored.",
-      "restoreError": "Error restoring the non-conformity."
+      "restoreError": "Error restoring the non-conformity.",
+      "vincularQEError": "The Quality Event was created, but could not be linked to the non-conformity. Refresh the page to check."
     },
     "form": {
       "fields": {
@@ -1521,6 +1539,10 @@
           "NC": "Nonconformity",
           "INCIDENTE": "Incident"
         }
+      },
+      "notificacionesPendientes": {
+        "title": "Pending notifications",
+        "empty": "You have no pending notifications"
       }
     },
     "supervisor": {
@@ -2015,6 +2037,105 @@
         "reactivarExitosa": "User reactivated successfully",
         "bajaError": "Error disabling the user",
         "reactivarError": "Error reactivating the user"
+      }
+    }
+  },
+  "notifications": {
+    "bell": {
+      "ariaLabel": "Notifications"
+    },
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "You have no notifications",
+    "relativeTime": {
+      "justNow": "Just now",
+      "minutesAgo_one": "{{count}} minute ago",
+      "minutesAgo_other": "{{count}} minutes ago",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago"
+    }
+  },
+  "areas": {
+    "header": {
+      "title": "Area Management",
+      "nuevaArea": "New area"
+    },
+    "list": {
+      "empty": "No areas registered",
+      "columns": {
+        "nombre": "Name",
+        "descripcion": "Description",
+        "estado": "Status",
+        "acciones": "Actions"
+      }
+    },
+    "badges": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "actions": {
+      "editar": "Edit",
+      "desactivar": "Deactivate",
+      "reactivar": "Reactivate"
+    },
+    "confirmarDesactivar": {
+      "titulo": "Deactivate area",
+      "mensaje": "Are you sure you want to deactivate the area \"{{nombre}}\"?",
+      "cancelar": "Cancel",
+      "confirmar": "Deactivate"
+    },
+    "confirmarReactivar": {
+      "titulo": "Reactivate area",
+      "mensaje": "Are you sure you want to reactivate the area \"{{nombre}}\"?",
+      "cancelar": "Cancel",
+      "confirmar": "Reactivate"
+    },
+    "bloqueo": {
+      "titulo": "Cannot deactivate",
+      "descripcion": "This Area has active records associated in the following modules:",
+      "lineaQe_one": "{{count}} active Quality Event",
+      "lineaQe_other": "{{count}} active Quality Events",
+      "lineaNc_one": "{{count}} active Non-Conformity",
+      "lineaNc_other": "{{count}} active Non-Conformities",
+      "lineaIncidentes_one": "{{count}} active Incident",
+      "lineaIncidentes_other": "{{count}} active Incidents",
+      "total": "Total: {{total}} records",
+      "cerrar": "Close"
+    },
+    "toasts": {
+      "areaCreada": "Area created successfully",
+      "areaCreateError": "Could not create the area",
+      "areaActualizada": "Area updated successfully",
+      "areaActualizarError": "Could not update the area",
+      "areaDesactivada": "Area deactivated successfully",
+      "areaDesactivarBloqueada": "Cannot deactivate: {{total}} active records associated",
+      "areaDesactivarError": "Could not deactivate the area",
+      "areaReactivada": "Area reactivated successfully",
+      "areaReactivarError": "Could not reactivate the area"
+    },
+    "form": {
+      "fields": {
+        "nombre": "Name",
+        "descripcion": "Description"
+      },
+      "placeholders": {
+        "nombre": "E.g. Concentrate Yard",
+        "descripcion": "Optional description"
+      },
+      "actions": {
+        "submit": "Save",
+        "submitting": "Saving...",
+        "cancel": "Cancel"
+      },
+      "titles": {
+        "nuevaArea": "New area",
+        "editarArea": "Edit area"
+      },
+      "errors": {
+        "nombreDuplicado": "An Area with that name already exists",
+        "areaNoEncontrada": "Area not found"
       }
     }
   }

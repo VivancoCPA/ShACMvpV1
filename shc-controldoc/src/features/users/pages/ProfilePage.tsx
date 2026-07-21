@@ -12,6 +12,7 @@ import { formatShortDate, formatDateTime } from '../../../utils/date.utils'
 import { useChangePassword } from '../../auth/hooks/useChangePassword'
 import { changePasswordSchema } from '../../auth/schemas/changePassword.schema'
 import type { ChangePasswordInput } from '../../auth/schemas/changePassword.schema'
+import { useAreas } from '../../areas/hooks/useAreas'
 
 export function ProfilePage() {
   const { t, i18n } = useTranslation('users')
@@ -19,6 +20,8 @@ export function ProfilePage() {
   const locale = i18n.language
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -75,10 +78,10 @@ export function ProfilePage() {
               <dt className="text-muted dark:text-on-dark-soft">{t('profile.readOnlySection.email')}</dt>
               <dd className="text-ink dark:text-on-dark">{user.email}</dd>
             </div>
-            {user.area && (
+            {user.areaId && (
               <div className="flex justify-between border-t border-hairline pt-3 dark:border-hairline/20">
                 <dt className="text-muted dark:text-on-dark-soft">{t('profile.readOnlySection.area')}</dt>
-                <dd className="text-ink dark:text-on-dark">{user.area}</dd>
+                <dd className="text-ink dark:text-on-dark">{nombreArea(user.areaId)}</dd>
               </div>
             )}
             <div className="flex justify-between border-t border-hairline pt-3 dark:border-hairline/20">
@@ -91,18 +94,18 @@ export function ProfilePage() {
                 <dd className="text-ink dark:text-on-dark">{formatDateTime(user.lastLogin, locale)}</dd>
               </div>
             )}
-            {user.rol === 'SUPERVISOR' && user.areasAsignadas && user.areasAsignadas.length > 0 && (
+            {user.rol === 'SUPERVISOR' && user.areaIds && user.areaIds.length > 0 && (
               <div className="flex justify-between border-t border-hairline pt-3 dark:border-hairline/20">
                 <dt className="text-muted dark:text-on-dark-soft">
                   {t('profile.readOnlySection.areasAsignadas')}
                 </dt>
                 <dd className="flex flex-wrap justify-end gap-1.5">
-                  {user.areasAsignadas.map((area) => (
+                  {user.areaIds.map((areaId) => (
                     <span
-                      key={area}
+                      key={areaId}
                       className="rounded-full bg-hairline px-2 py-0.5 text-xs text-body dark:bg-surface-dark-soft dark:text-on-dark-soft"
                     >
-                      {area}
+                      {nombreArea(areaId)}
                     </span>
                   ))}
                 </dd>

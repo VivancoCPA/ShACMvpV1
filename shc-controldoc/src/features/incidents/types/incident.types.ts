@@ -108,6 +108,10 @@ export interface Incidente {
   estado: IncidentStatus
   severidad: IncidentSeveridad
   descripcion: string
+  /** FK a `Area.id` del catálogo administrado (M6-S08, `area-admin-mocks`). Antes de M6-S08 este
+   * campo almacenaba el nombre libre del área (sourced de `AREAS_SHAC`, ahora eliminado); su
+   * significado cambió a un identificador de catálogo opaco aunque el nombre del campo no cambió.
+   * Resolver el nombre visible vía `useAreas()`/`useArea(id)`, nunca mostrar `areaId` crudo. */
   areaId: string
   turno: IncidentTurno
   fechaEvento: string

@@ -1,31 +1,38 @@
 import { useCallback, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { AlertTriangle, Eye, Pencil, Trash2, RotateCcw, X } from 'lucide-react'
 import { useQEList } from '../hooks/useQEList'
 import { useDeleteQualityEvent } from '../hooks/useDeleteQualityEvent'
 import { useReactivateQualityEvent } from '../hooks/useReactivateQualityEvent'
-import { resolveQEEditAccess } from '../utils/qualityEventPermissions'
+import { resolveQEEditAccess, puedeExportarPDF } from '../utils/qualityEventPermissions'
 import { useAuthStore } from '../../../stores/authStore'
+import { exportQualityEventsBatch, buildBatchExportFilename } from '../export/exportQualityEventsBatch'
+import { downloadBlob } from '../../../utils/downloadBlob'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
 import { QEOriginBadge } from './QEOriginBadge'
 import { QESeverityBadge } from './QESeverityBadge'
 import { QEEditSeveridadMineralModal } from './QEEditSeveridadMineralModal'
+import { QEListFilters } from './QEListFilters'
+import { QEBatchExportLink } from './QEBatchExportLink'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { Pagination } from '../../../components/shared/Pagination'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import { QE_STATUS_LABELS, QE_TYPE_LABELS, QE_SEVERITY_LABELS, QE_ORIGIN_LABELS } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
-const COLUMN_COUNT = 9
+const BASE_COLUMN_COUNT = 9
+const BATCH_EXPORT_LIMIT = 50
 
-function TableSkeleton() {
+function TableSkeleton({ columnCount }: { columnCount: number }) {
   return (
     <>
       {Array.from({ length: 5 }).map((_, i) => (
         <tr key={i} className={TABLE_ROW_CLASS}>
-          {Array.from({ length: COLUMN_COUNT }).map((__, j) => (
+          {Array.from({ length: columnCount }).map((__, j) => (
             <td key={j} className="px-4 py-3">
               <div className="h-4 animate-pulse rounded bg-hairline dark:bg-surface-dark-soft" />
             </td>
@@ -171,16 +178,76 @@ export function QEList() {
   const user = useAuthStore((s) => s.user)
 
   const { qualityEvents, isLoading, isError, pagination, refetch } = useQEList()
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const deleteQE = useDeleteQualityEvent()
   const reactivateQE = useReactivateQualityEvent()
 
   const [pendingDelete, setPendingDelete] = useState<QualityEvent | null>(null)
   const [pendingReactivate, setPendingReactivate] = useState<QualityEvent | null>(null)
   const [editModalQE, setEditModalQE] = useState<QualityEvent | null>(null)
+  const [isBatchExporting, setIsBatchExporting] = useState(false)
 
   const canDelete = user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'ALTA_DIRECCION'
+  const canExport = user ? puedeExportarPDF(user.rol) : false
+  const columnCount = canExport ? BASE_COLUMN_COUNT + 1 : BASE_COLUMN_COUNT
 
   const currentPage = parseInt(searchParams.get('page') ?? '1', 10)
+
+  // Selección local que se reinicia cuando cambia el conjunto filtrado (filtros/página) —
+  // ajuste de estado durante el render en vez de useEffect, siguiendo la regla del proyecto.
+  const filtersKey = searchParams.toString()
+  const [selectionState, setSelectionState] = useState<{ key: string; ids: Set<string> }>({
+    key: filtersKey,
+    ids: new Set(),
+  })
+  if (selectionState.key !== filtersKey) {
+    setSelectionState({ key: filtersKey, ids: new Set() })
+  }
+  const selectedIds = selectionState.ids
+  const selectedCount = selectedIds.size
+  const overBatchLimit = selectedCount > BATCH_EXPORT_LIMIT
+
+  const toggleSelectRow = (id: string) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectionState({ key: filtersKey, ids: next })
+  }
+
+  const allVisibleSelected = qualityEvents.length > 0 && qualityEvents.every((qe) => selectedIds.has(qe.id))
+
+  const toggleSelectAllVisible = () => {
+    const next = new Set(selectedIds)
+    if (allVisibleSelected) {
+      qualityEvents.forEach((qe) => next.delete(qe.id))
+    } else {
+      qualityEvents.forEach((qe) => next.add(qe.id))
+    }
+    setSelectionState({ key: filtersKey, ids: next })
+  }
+
+  const handleBatchExport = async () => {
+    if (!user || selectedCount === 0 || overBatchLimit) return
+    const ids = Array.from(selectedIds)
+    const total = ids.length
+    const toastId = toast.loading(t('list.batchExport.progreso', { completed: 0, total }))
+    setIsBatchExporting(true)
+    try {
+      const zipBlob = await exportQualityEventsBatch(ids, `${user.nombre} ${user.apellido}`, (progress) => {
+        toast.loading(t('list.batchExport.progreso', { completed: progress.completed, total: progress.total }), {
+          id: toastId,
+        })
+      })
+      downloadBlob(zipBlob, buildBatchExportFilename(new Date()))
+      toast.success(t('list.batchExport.completado'), { id: toastId })
+      setSelectionState({ key: filtersKey, ids: new Set() })
+    } catch {
+      toast.error(t('list.batchExport.error'), { id: toastId })
+    } finally {
+      setIsBatchExporting(false)
+    }
+  }
 
   const setPage = (page: number) => {
     setSearchParams((prev) => {
@@ -216,6 +283,24 @@ export function QEList() {
 
   return (
     <div>
+      <QEListFilters
+        trailingContent={
+          canExport && selectedCount > 0 ? (
+            <QEBatchExportLink
+              count={selectedCount}
+              disabled={overBatchLimit || isBatchExporting}
+              onClick={() => void handleBatchExport()}
+            />
+          ) : undefined
+        }
+      />
+
+      {canExport && overBatchLimit && (
+        <p className="mb-4 text-right text-sm text-error">
+          {t('list.batchExport.limiteExcedido', { limite: BATCH_EXPORT_LIMIT })}
+        </p>
+      )}
+
       {activeChips.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           {activeChips.map((chip) => (
@@ -241,6 +326,17 @@ export function QEList() {
         <table className="w-full text-sm">
           <thead className="border-b border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
             <tr>
+              {canExport && (
+                <th className={thClass}>
+                  <input
+                    type="checkbox"
+                    aria-label={t('list.batchExport.seleccionarTodosVisibles')}
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                    className="accent-coral"
+                  />
+                </th>
+              )}
               <th className={thClass}>{t('list.columns.numero')}</th>
               <th className={thClass}>{t('list.columns.tipoOrigen')}</th>
               <th className={thClass}>{t('list.columns.descripcion')}</th>
@@ -254,10 +350,10 @@ export function QEList() {
           </thead>
           <tbody className="divide-y divide-hairline dark:divide-hairline/20">
             {isLoading ? (
-              <TableSkeleton />
+              <TableSkeleton columnCount={columnCount} />
             ) : isError ? (
               <tr>
-                <td colSpan={COLUMN_COUNT} className="px-4 py-12 text-center">
+                <td colSpan={columnCount} className="px-4 py-12 text-center">
                   <p className="text-sm text-error">{t('list.actions.errorMsg')}</p>
                   <button
                     type="button"
@@ -271,7 +367,7 @@ export function QEList() {
             ) : qualityEvents.length === 0 ? (
               <tr>
                 <td
-                  colSpan={COLUMN_COUNT}
+                  colSpan={columnCount}
                   className="px-4 py-12 text-center text-sm text-muted dark:text-on-dark-soft"
                 >
                   {t('list.empty')}
@@ -293,6 +389,17 @@ export function QEList() {
                     onClick={() => navigate(`/quality-events/${qe.id}`)}
                     className={rowClass}
                   >
+                    {canExport && (
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={t('list.batchExport.seleccionarFila', { numero: qe.numero })}
+                          checked={selectedIds.has(qe.id)}
+                          onChange={() => toggleSelectRow(qe.id)}
+                          className="accent-coral"
+                        />
+                      </td>
+                    )}
                     {/* Número */}
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
@@ -327,7 +434,7 @@ export function QEList() {
 
                     {/* Área */}
                     <td className="px-4 py-3 text-xs text-ink dark:text-on-dark">
-                      {qe.areaAfectada}
+                      {nombreArea(qe.areaId)}
                     </td>
 
                     {/* Severidad */}

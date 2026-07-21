@@ -25,6 +25,7 @@ import { EscaladoBanner } from '../components/EscaladoBanner'
 import { IncidentACSection } from '../components/IncidentACSection'
 import { formatShortDate } from '../../../utils/date.utils'
 import { CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
+import { useArea } from '../../areas/hooks/useAreas'
 import type { NCSeveridad } from '../../nonconformities/types/nonconformity.types'
 import type { IncidentEvidencia } from '../types/incident.types'
 
@@ -174,7 +175,8 @@ export function IncidentDetailPage() {
 
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const deleteMutation = useDeleteIncident()
-  const { data: locales = [] } = useLocales()
+  const { locales } = useLocales()
+  const { data: area } = useArea(incident?.areaId ?? '')
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [investigacionOpen, setInvestigacionOpen] = useState(true)
@@ -319,7 +321,7 @@ export function IncidentDetailPage() {
             </div>
             <div>
               <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.area')}</dt>
-              <dd className="mt-0.5 text-sm text-body dark:text-on-dark">{incident.areaId}</dd>
+              <dd className="mt-0.5 text-sm text-body dark:text-on-dark">{area?.nombre ?? incident.areaId}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.turno')}</dt>

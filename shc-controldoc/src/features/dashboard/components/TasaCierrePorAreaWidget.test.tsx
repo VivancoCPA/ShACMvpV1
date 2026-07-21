@@ -1,12 +1,16 @@
 import { render, screen, cleanup } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, afterEach, vi } from 'vitest'
 import i18n from '../../../i18n'
 import { TasaCierrePorAreaWidget } from './TasaCierrePorAreaWidget'
 
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: undefined }),
+}))
+
 afterEach(() => cleanup())
 
-function renderWidget(tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]) {
+function renderWidget(tasaCierreEnPlazoPorArea: { areaId: string; tasaCierreEnPlazo: number; totalCerrados: number }[]) {
   return render(
     <I18nextProvider i18n={i18n}>
       <TasaCierrePorAreaWidget tasaCierreEnPlazoPorArea={tasaCierreEnPlazoPorArea} />
@@ -17,8 +21,8 @@ function renderWidget(tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlaz
 describe('TasaCierrePorAreaWidget', () => {
   it('renders each area with its percentage and total, respecting the received order, without clickable rows', () => {
     renderWidget([
-      { area: 'Zona de Pesaje', tasaCierreEnPlazo: 45, totalCerrados: 2 },
-      { area: 'Almacén Norte', tasaCierreEnPlazo: 100, totalCerrados: 5 },
+      { areaId: 'Zona de Pesaje', tasaCierreEnPlazo: 45, totalCerrados: 2 },
+      { areaId: 'Almacén Norte', tasaCierreEnPlazo: 100, totalCerrados: 5 },
     ])
     expect(screen.getByText('Zona de Pesaje')).toBeInTheDocument()
     expect(screen.getByText('Almacén Norte')).toBeInTheDocument()

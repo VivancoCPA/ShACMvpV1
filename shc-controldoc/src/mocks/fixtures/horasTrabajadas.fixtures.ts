@@ -1,7 +1,7 @@
-import { AREAS_SHAC } from '../../constants/shared.constants'
+import { areaFixtures } from './areas.fixtures'
 
 export interface HorasTrabajadasEntry {
-  area: string
+  areaId: string
   periodo: string
   horas: number
 }
@@ -29,9 +29,9 @@ function horasParaAreaYMes(areaIndex: number, mesIndex: number): number {
   return base + variacion
 }
 
-export const horasTrabajadasFixtures: HorasTrabajadasEntry[] = AREAS_SHAC.flatMap((area, areaIndex) =>
+export const horasTrabajadasFixtures: HorasTrabajadasEntry[] = areaFixtures.flatMap((area, areaIndex) =>
   PERIODOS.map((periodo, mesIndex) => ({
-    area,
+    areaId: area.id,
     periodo,
     horas: horasParaAreaYMes(areaIndex, mesIndex),
   })),

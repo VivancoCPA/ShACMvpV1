@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, type Location } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -10,11 +10,14 @@ import { useLogin } from '../hooks/useLogin'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
 import { useAuthStore } from '../../../stores/authStore'
 import { getDefaultRouteForRole } from '../../../router/getDefaultRoute'
+import { isRouteAllowedForRole } from '../../../router/routeAccess'
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
   const [showPassword, setShowPassword] = useState(false)
-  const { mutate: login, isPending } = useLogin()
+  const location = useLocation()
+  const from = (location.state as { from?: Location } | null)?.from
+  const { mutate: login, isPending } = useLogin(from)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
 
@@ -28,9 +31,19 @@ export function LoginPage() {
   // A session already in memory (e.g. an untouched admin session still open
   // in this tab) must never survive a subsequent login submission on this
   // page — redirect away instead of letting the form attach a stale token
-  // to the next login request.
+  // to the next login request. This also fires (in addition to useLogin's
+  // own navigate) right after a successful login flips isAuthenticated, so
+  // it must agree with useLogin's target or it wins the race and clobbers
+  // the deep-link redirect with the role default. Same RBAC check as
+  // useLogin: a `from` the current role has no access to is ignored in
+  // favor of the role default, never /no-autorizado.
   if (isAuthenticated) {
-    return <Navigate to={getDefaultRouteForRole(user?.rol ?? 'OPERARIO')} replace />
+    const rol = user?.rol ?? 'OPERARIO'
+    const target =
+      from && isRouteAllowedForRole(from.pathname, rol)
+        ? `${from.pathname}${from.search}`
+        : getDefaultRouteForRole(rol)
+    return <Navigate to={target} replace />
   }
 
   const onSubmit = (data: LoginInput) => {

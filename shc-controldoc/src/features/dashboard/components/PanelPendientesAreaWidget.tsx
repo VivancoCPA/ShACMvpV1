@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { SemaforoRow } from '../../../components/shared/SemaforoRow'
 import { calcularEstadoSemaforoDesdeFecha } from '../utils/semaforoPendientes'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { QEResumen, AccionCorrectivaResumen } from '../types/dashboardSummary.types'
 
 const ORIGEN_ROUTE: Record<AccionCorrectivaResumen['origenTipo'], string> = {
@@ -21,6 +22,8 @@ export function PanelPendientesAreaWidget({
 }: PanelPendientesAreaWidgetProps) {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
 
   const isEmpty = qesEnVerificacionArea.length === 0 && accionesCorrectivasPendientesArea.length === 0
 
@@ -45,7 +48,7 @@ export function PanelPendientesAreaWidget({
                   key={qe.id}
                   estado={estado}
                   codigo={qe.numero}
-                  descripcion={qe.areaAfectada}
+                  descripcion={nombreArea(qe.areaId)}
                   diasHabilesRestantes={diasHabilesRestantes}
                   onClick={() => navigate(`/quality-events/${qe.id}`)}
                 />

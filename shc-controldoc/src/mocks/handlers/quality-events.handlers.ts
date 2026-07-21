@@ -1,7 +1,12 @@
 import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
+import { getUsersStore } from '../fixtures/auth.fixtures'
+import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
 import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
+import { getIncidentsStore } from './incidents.handlers'
+import { getNonconformitiesStore } from './nonconformities.handlers'
+import { syncOrigenFromQEEstado } from './qeOriginSync'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
 import { contarDiasHabiles } from '../../utils/businessDays'
@@ -17,10 +22,43 @@ function getCurrentUser(): { id: string; nombre: string } {
   return { id: user.id, nombre: `${user.nombre} ${user.apellido}` }
 }
 
-function getCurrentUserForEditAccess(): Pick<User, 'id' | 'rol' | 'areasAsignadas'> {
+function getCurrentUserForEditAccess(): Pick<User, 'id' | 'rol' | 'areaIds'> {
   const user = useAuthStore.getState().user
-  if (!user) return { id: 'user-current', rol: 'OPERARIO', areasAsignadas: [] }
-  return { id: user.id, rol: user.rol, areasAsignadas: user.areasAsignadas }
+  if (!user) return { id: 'user-current', rol: 'OPERARIO', areaIds: [] }
+  return { id: user.id, rol: user.rol, areaIds: user.areaIds }
+}
+
+// RN-QE-008 — escalada compartida por la reapertura NO_EFECTIVO y la reapertura
+// forzada por vencimiento de plazo (ambas representan el mismo tipo de reapertura).
+function notifyReaperturaEscalada(qe: QualityEvent, actorId: string): void {
+  const recipients = getUsersStore().filter(
+    (u) =>
+      u.rol === 'ALTA_DIRECCION' ||
+      u.rol === 'JEFE_CALIDAD_SYST' ||
+      (u.rol === 'SUPERVISOR' && (u.areaIds ?? []).includes(qe.areaId)),
+  )
+  for (const recipient of recipients) {
+    createCambioEstadoNotification({
+      entidadTipo: 'QE',
+      entidadId: qe.id,
+      entidadCodigo: qe.numero,
+      estadoNuevo: 'EN_INVESTIGACION',
+      reportadoPorId: recipient.id,
+      responsablesACActivas: [],
+      actorId,
+      link: `/quality-events/${qe.id}`,
+    })
+  }
+  createCambioEstadoNotification({
+    entidadTipo: 'QE',
+    entidadId: qe.id,
+    entidadCodigo: qe.numero,
+    estadoNuevo: 'EN_INVESTIGACION',
+    reportadoPorId: qe.reportadoPorId,
+    responsablesACActivas: [],
+    actorId,
+    link: `/quality-events/${qe.id}`,
+  })
 }
 
 const PROTECTED_REPORTE_INICIAL_FIELDS = [
@@ -34,7 +72,7 @@ const PROTECTED_REPORTE_INICIAL_FIELDS = [
 
 const REPORTE_INICIAL_EDITABLE_FIELDS = [
   'descripcion',
-  'areaAfectada',
+  'areaId',
   'turno',
   'fechaHoraEvento',
   'mineralInvolucrado',
@@ -57,6 +95,20 @@ export function getQeStore(): QualityEvent[] {
 
 function resetStore() {
   qeStore = [...qualityEventFixtures]
+}
+
+// Único punto de escritura para qeStore: todas las transiciones de estado del QE pasan por
+// acá (reemplaza las asignaciones directas `qeStore[idx] = updated` dispersas en cada
+// handler), para que la sincronización del origen vinculado (Incidente RN-INC-006 / NC —
+// ver qeOriginSync.ts) se dispare siempre que `estado` cambia, sin depender de que cada
+// transición futura recuerde llamarla explícitamente.
+function commitQE(idx: number, previous: QualityEvent, updated: QualityEvent): QualityEvent {
+  qeStore[idx] = updated
+  if (updated.estado !== previous.estado) {
+    const currentUser = getCurrentUser()
+    syncOrigenFromQEEstado(updated, currentUser)
+  }
+  return updated
 }
 
 const ORIGIN_REQUIRED_FIELD: Record<string, string> = {
@@ -129,6 +181,34 @@ export const qualityEventHandlers = [
       }
     }
 
+    // RN-QE-001 — guard server-side: un Incidente ya vinculado a un QE no puede originar otro.
+    // La UI ya bloquea esto vía canCrearQE (incidentPermissions.ts), pero eso no cubre un doble
+    // clic en la ventana entre crear y navegar, ni una llamada directa a la API.
+    if (origen === 'O1_INCIDENTE_CAMPO') {
+      const incidenteId = body.incidenteId as string | undefined
+      const incidente = incidenteId ? getIncidentsStore().find((i) => i.id === incidenteId) : undefined
+      if (incidente?.qeId) {
+        return HttpResponse.json(
+          { success: false, message: 'Este incidente ya tiene un Quality Event vinculado' },
+          { status: 422 }
+        )
+      }
+    }
+
+    // RN-QE-013 — mismo guard server-side que arriba (O1_INCIDENTE_CAMPO), pero para NC: una NC
+    // ya vinculada a un QE no puede originar otro. La UI ya bloquea esto vía canCrearQE
+    // (ncPermissions.ts), pero eso no cubre un doble clic ni una llamada directa a la API.
+    if (origen === 'O2_NC_DETECTADA') {
+      const ncId = body.ncId as string | undefined
+      const nc = ncId ? getNonconformitiesStore().find((n) => n.id === ncId) : undefined
+      if (nc?.qeGeneradoId) {
+        return HttpResponse.json(
+          { success: false, message: 'Esta NC ya tiene un Quality Event vinculado' },
+          { status: 422 }
+        )
+      }
+    }
+
     const numero = `QE-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`
     const now = new Date().toISOString()
     const currentUser = getCurrentUser()
@@ -174,9 +254,10 @@ export const qualityEventHandlers = [
         { status: 404 }
       )
     }
+    const previous = qeStore[idx]
     const body = await request.json() as Partial<QualityEvent>
-    const updated = { ...qeStore[idx], ...body, actualizadoEn: new Date().toISOString() }
-    qeStore[idx] = updated
+    const updated = { ...previous, ...body, actualizadoEn: new Date().toISOString() }
+    commitQE(idx, previous, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -228,7 +309,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -263,7 +344,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -300,7 +381,40 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.post('/api/quality-events/:id/export-pdf', async ({ params }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'EXPORTACION_PDF',
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+
+    const updated: QualityEvent = {
+      ...qe,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -366,7 +480,20 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+
+    if (responsableId) {
+      createAsignacionNotification({
+        entidadTipo: 'QE',
+        entidadId: qe.id,
+        entidadCodigo: qe.numero,
+        asignadoId: responsableId,
+        actorId: currentUser.id,
+        link: `/quality-events/${qe.id}`,
+        mensaje: `Se te asignó una acción correctiva del Quality Event ${qe.numero}.`,
+      })
+    }
+
     return HttpResponse.json({ success: true, data: newAC }, { status: 201 })
   }),
 
@@ -391,6 +518,7 @@ export const qualityEventHandlers = [
 
     const body = await request.json() as Partial<AccionCorrectivaQE>
     const now = new Date().toISOString()
+    const previousResponsableId = qe.accionesCorrectivas[acIdx].responsableId
     const updatedAC: AccionCorrectivaQE = {
       ...qe.accionesCorrectivas[acIdx],
       ...body,
@@ -401,7 +529,21 @@ export const qualityEventHandlers = [
     accionesCorrectivas[acIdx] = updatedAC
 
     const updated: QualityEvent = { ...qe, accionesCorrectivas, actualizadoEn: now }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+
+    if (updatedAC.responsableId && updatedAC.responsableId !== previousResponsableId) {
+      const currentUser = getCurrentUser()
+      createAsignacionNotification({
+        entidadTipo: 'QE',
+        entidadId: qe.id,
+        entidadCodigo: qe.numero,
+        asignadoId: updatedAC.responsableId,
+        actorId: currentUser.id,
+        link: `/quality-events/${qe.id}`,
+        mensaje: `Se te asignó una acción correctiva del Quality Event ${qe.numero}.`,
+      })
+    }
+
     return HttpResponse.json({ success: true, data: updatedAC })
   }),
 
@@ -497,7 +639,24 @@ export const qualityEventHandlers = [
       auditTrail,
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+
+    if (nuevoEstado === 'PENDIENTE_CIERRE') {
+      const jefesCalidad = getUsersStore().filter((u) => u.rol === 'JEFE_CALIDAD_SYST')
+      for (const jefe of jefesCalidad) {
+        createCambioEstadoNotification({
+          entidadTipo: 'QE',
+          entidadId: qe.id,
+          entidadCodigo: qe.numero,
+          estadoNuevo: nuevoEstado,
+          reportadoPorId: jefe.id,
+          responsablesACActivas: [],
+          actorId: currentUser.id,
+          link: `/quality-events/${qe.id}`,
+        })
+      }
+    }
+
     return HttpResponse.json({ success: true, data: updatedAC })
   }),
 
@@ -593,7 +752,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated }, { status: 201 })
   }),
 
@@ -686,7 +845,7 @@ export const qualityEventHandlers = [
         auditTrail: [...qe.auditTrail, auditEntry],
         actualizadoEn: now,
       }
-      qeStore[idx] = updated
+      commitQE(idx, qe, updated)
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -726,7 +885,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -770,7 +929,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -825,7 +984,7 @@ export const qualityEventHandlers = [
         auditTrail: [...qe.auditTrail, auditEntry],
         actualizadoEn: now,
       }
-      qeStore[idx] = updated
+      commitQE(idx, qe, updated)
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -843,7 +1002,7 @@ export const qualityEventHandlers = [
       )
     }
 
-    const rolEsperado = resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)
+    const rolEsperado = resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId)
     if (body.rol !== rolEsperado) {
       return HttpResponse.json(
         { success: false, message: 'QE-AC-006: rol de segunda firma inválido' },
@@ -890,7 +1049,35 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, firmaEntry, transicionEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+
+    createCambioEstadoNotification({
+      entidadTipo: 'QE',
+      entidadId: qe.id,
+      entidadCodigo: qe.numero,
+      estadoNuevo: 'CERRADO',
+      reportadoPorId: qe.reportadoPorId,
+      responsablesACActivas: [],
+      actorId: currentUser.id,
+      link: `/quality-events/${qe.id}`,
+    })
+
+    if (qe.severidad === 'ALTA' || qe.severidad === 'CRITICA') {
+      const gerencia = getUsersStore().filter((u) => u.rol === 'ALTA_DIRECCION')
+      for (const g of gerencia) {
+        createCambioEstadoNotification({
+          entidadTipo: 'QE',
+          entidadId: qe.id,
+          entidadCodigo: qe.numero,
+          estadoNuevo: 'CERRADO',
+          reportadoPorId: g.id,
+          responsablesACActivas: [],
+          actorId: currentUser.id,
+          link: `/quality-events/${qe.id}`,
+        })
+      }
+    }
+
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -930,7 +1117,20 @@ export const qualityEventHandlers = [
         auditTrail: [...qe.auditTrail, auditEntry],
         actualizadoEn: now,
       }
-      qeStore[idx] = updated
+      commitQE(idx, qe, updated)
+
+      if (body.auditorAsignadoId) {
+        createAsignacionNotification({
+          entidadTipo: 'QE',
+          entidadId: qe.id,
+          entidadCodigo: qe.numero,
+          asignadoId: body.auditorAsignadoId,
+          actorId: currentUser.id,
+          link: `/quality-events/${qe.id}`,
+          mensaje: `Se te asignó como verificador de eficacia del Quality Event ${qe.numero}.`,
+        })
+      }
+
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -966,7 +1166,10 @@ export const qualityEventHandlers = [
         auditTrail: [...qe.auditTrail, timeoutEntry, reaperturaEntry],
         actualizadoEn: now,
       }
-      qeStore[idx] = updated
+      commitQE(idx, qe, updated)
+
+      notifyReaperturaEscalada(qe, currentUser.id)
+
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -1022,7 +1225,35 @@ export const qualityEventHandlers = [
         auditTrail: [...qe.auditTrail, auditEntry],
         actualizadoEn: now,
       }
-      qeStore[idx] = updated
+      commitQE(idx, qe, updated)
+
+      createCambioEstadoNotification({
+        entidadTipo: 'QE',
+        entidadId: qe.id,
+        entidadCodigo: qe.numero,
+        estadoNuevo: 'VERIFICADO',
+        reportadoPorId: qe.reportadoPorId,
+        responsablesACActivas: [],
+        actorId: currentUser.id,
+        link: `/quality-events/${qe.id}`,
+      })
+
+      if (qe.severidad === 'ALTA' || qe.severidad === 'CRITICA') {
+        const gerencia = getUsersStore().filter((u) => u.rol === 'ALTA_DIRECCION')
+        for (const g of gerencia) {
+          createCambioEstadoNotification({
+            entidadTipo: 'QE',
+            entidadId: qe.id,
+            entidadCodigo: qe.numero,
+            estadoNuevo: 'VERIFICADO',
+            reportadoPorId: g.id,
+            responsablesACActivas: [],
+            actorId: currentUser.id,
+            link: `/quality-events/${qe.id}`,
+          })
+        }
+      }
+
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -1060,7 +1291,10 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, resultEntry, reaperturaEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
+
+    notifyReaperturaEscalada(qe, currentUser.id)
+
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -1080,7 +1314,7 @@ export const qualityEventHandlers = [
       solicitudesAC: qe.solicitudesAC + 1,
       actualizadoEn: new Date().toISOString(),
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -1163,7 +1397,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, ...auditEntries],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -1215,7 +1449,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({
       success: true,
       data: { ...updated, requiereNotificacionUrgente },
@@ -1270,7 +1504,7 @@ export const qualityEventHandlers = [
       auditTrail: [...qe.auditTrail, auditEntry],
       actualizadoEn: now,
     }
-    qeStore[idx] = updated
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 ]

@@ -13,7 +13,7 @@ export function useNCList() {
   const estadoRaw = searchParams.get("estado");
   const dominioRaw = searchParams.get("dominio");
   const severidadRaw = searchParams.get("severidad");
-  const areaAfectada = searchParams.get("areaAfectada") ?? undefined;
+  const areaId = searchParams.get("areaId") ?? undefined;
   const fechaDesde = searchParams.get("fechaDesde") ?? undefined;
   const fechaHasta = searchParams.get("fechaHasta") ?? undefined;
   const page = parseInt(searchParams.get("page") ?? "1", 10);
@@ -29,7 +29,7 @@ export function useNCList() {
     estado: estado || undefined,
     dominio: dominio || undefined,
     severidad: severidad || undefined,
-    areaAfectada,
+    areaId,
     fechaDesde,
     fechaHasta,
     page,

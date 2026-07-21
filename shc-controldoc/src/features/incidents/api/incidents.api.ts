@@ -66,6 +66,11 @@ export async function restoreIncident(id: string): Promise<Incidente> {
   return response.data
 }
 
+export async function vincularQEIncidente(id: string, qeId: string): Promise<Incidente> {
+  const response = await api.patch<Incidente>(`/api/incidents/${id}`, { qeId })
+  return response.data
+}
+
 export async function createAC(
   incidenteId: string,
   data: CreateACIncidenteInput,

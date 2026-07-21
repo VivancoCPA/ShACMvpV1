@@ -32,9 +32,31 @@ vi.mock('../../nonconformities/api/nonconformities.api', () => ({
   getNonconformities: vi.fn().mockResolvedValue({ items: [] }),
 }))
 
+const AREAS_MOCK = [
+  { id: 'area-001', nombre: 'Almacén Norte', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-002', nombre: 'Almacén Sur', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-007', nombre: 'Calidad', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-015', nombre: 'Logística', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-019', nombre: 'SyST', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+]
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: AREAS_MOCK }),
+  useArea: (id: string) => ({ data: AREAS_MOCK.find((a) => a.id === id) }),
+}))
+
 const createMutate = vi.fn()
 vi.mock('../hooks/useCreateQualityEvent', () => ({
   useCreateQualityEvent: () => ({ mutate: createMutate, isPending: false }),
+}))
+
+const vincularQEMutate = vi.fn()
+vi.mock('../../incidents/hooks/useIncidents', () => ({
+  useVincularQE: () => ({ mutate: vincularQEMutate, isPending: false }),
+}))
+
+const vincularNCMutate = vi.fn()
+vi.mock('../../nonconformities/hooks/useNonconformities', () => ({
+  useVincularNC: () => ({ mutate: vincularNCMutate, isPending: false }),
 }))
 
 const editReporteInicialMutate = vi.fn((_vars: unknown, opts?: { onSuccess?: (d: unknown) => void }) => {
@@ -66,7 +88,7 @@ const baseQE: QualityEvent = {
   estado: 'ABIERTO',
   ciclo: 1,
   descripcion: 'Descripción original del evento reportado',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'area-001',
   turno: 'DIA',
   fechaHoraEvento: '2026-06-01T08:00:00Z',
   fechaHoraReporte: new Date().toISOString(),
@@ -116,7 +138,7 @@ describe('QualityEventForm — edit mode', () => {
     renderEditRoute()
 
     expect(screen.getByDisplayValue('Descripción original del evento reportado')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('Almacén Norte')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('area-001')
     expect(screen.getByRole('textbox', { name: /form.fields.hallazgoCodigo/i })).toHaveValue('HAL-2026-001')
     expect(screen.getByRole('combobox', { name: /form.fields.normaVinculada/i })).toHaveValue('ISO_9001_2015')
     expect(screen.getByRole('combobox', { name: 'form.fields.clausula' })).toHaveValue('8.4.1')
@@ -184,7 +206,7 @@ describe('QualityEventForm — edit mode', () => {
     expect(editReporteInicialMutate).toHaveBeenCalledTimes(1)
     const [vars] = editReporteInicialMutate.mock.calls[0] as [{ id: string; data: Record<string, unknown> }]
     expect(vars.id).toBe('qe-2026-100')
-    expect(vars.data).toEqual({ areaAfectada: 'Almacén Sur' })
+    expect(vars.data).toEqual({ areaId: 'area-002' })
   })
 
   it('navigates back to the detail page on successful edit submit', async () => {
@@ -246,7 +268,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
           id: 'nc-014',
           numero: 'NC-2026-014',
           descripcion: 'NC de prueba',
-          areaAfectada: 'Almacén Norte',
+          areaId: 'area-001',
         },
       ],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -257,7 +279,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
           id: 'inc-003',
           numero: 'INC-2026-003',
           descripcion: 'Incidente de prueba',
-          areaId: 'SyST',
+          areaId: 'area-019',
         },
       ],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,7 +290,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('prefills origen and ncId from O2 query params', async () => {
     renderCreateRoute(
-      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001',
     )
 
     expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O2_NC_DETECTADA')
@@ -277,7 +299,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('prefills origen and incidenteId from O1 query params', async () => {
     renderCreateRoute(
-      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST',
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
 
     expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O1_INCIDENTE_CAMPO')
@@ -300,10 +322,10 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('prefills areaAfectada from the NC origin area with no warning when unchanged', () => {
     renderCreateRoute(
-      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001',
     )
 
-    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('Almacén Norte')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('area-001')
     expect(
       screen.queryByText('Esta área difiere de la registrada en la NC NC-2026-014: Almacén Norte.'),
     ).not.toBeInTheDocument()
@@ -311,7 +333,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('shows the exact warning when areaAfectada diverges from the NC origin', async () => {
     renderCreateRoute(
-      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001',
     )
 
     await userEvent.selectOptions(
@@ -326,7 +348,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('shows the exact warning when areaAfectada diverges from the Incidente origin', async () => {
     renderCreateRoute(
-      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST',
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
 
     await userEvent.selectOptions(
@@ -341,7 +363,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
 
   it('does not block submission when the divergence warning is visible', async () => {
     renderCreateRoute(
-      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001',
     )
 
     await userEvent.selectOptions(
@@ -352,13 +374,79 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
 
     expect(createMutate).toHaveBeenCalledTimes(1)
-    const [payload] = createMutate.mock.calls[0] as [{ areaAfectada: string }]
-    expect(payload.areaAfectada).toBe('Logística')
+    const [payload] = createMutate.mock.calls[0] as [{ areaId: string }]
+    expect(payload.areaId).toBe('area-015')
+  })
+
+  it('links the created QE to its origin Incidente (RN-QE-001) before navigating to the detail page', async () => {
+    createMutate.mockImplementation(
+      (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
+        opts?.onSuccess?.({ id: 'qe-2026-999', numero: 'QE-2026-999' }),
+    )
+    vincularQEMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
+
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+    await fillRequiredFields()
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(vincularQEMutate).toHaveBeenCalledTimes(1)
+    expect(vincularQEMutate.mock.calls[0][0]).toEqual({ id: 'inc-003', qeId: 'qe-2026-999' })
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
+  })
+
+  it('does not call useVincularQE when the QE origin is not O1_INCIDENTE_CAMPO', async () => {
+    createMutate.mockImplementation(
+      (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
+        opts?.onSuccess?.({ id: 'qe-2026-998', numero: 'QE-2026-998' }),
+    )
+    vincularNCMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
+
+    renderCreateRoute('?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001')
+    await fillRequiredFields()
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(vincularQEMutate).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
+  })
+
+  it('links the created QE to its origin NC (RN-QE-013) before navigating to the detail page', async () => {
+    createMutate.mockImplementation(
+      (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
+        opts?.onSuccess?.({ id: 'qe-2026-997', numero: 'QE-2026-997' }),
+    )
+    vincularNCMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
+
+    renderCreateRoute('?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001')
+    await fillRequiredFields()
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(vincularNCMutate).toHaveBeenCalledTimes(1)
+    expect(vincularNCMutate.mock.calls[0][0]).toEqual({ id: 'nc-014', qeGeneradoId: 'qe-2026-997' })
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
+  })
+
+  it('does not call useVincularNC when the QE origin is not O2_NC_DETECTADA', async () => {
+    createMutate.mockImplementation(
+      (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
+        opts?.onSuccess?.({ id: 'qe-2026-996', numero: 'QE-2026-996' }),
+    )
+    vincularQEMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
+
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+    await fillRequiredFields()
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(vincularNCMutate).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
   })
 
   it('warning disappears when the user restores the original origin area', async () => {
     renderCreateRoute(
-      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=Almac%C3%A9n%20Norte',
+      '?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001',
     )
 
     const areaSelect = screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })
@@ -409,7 +497,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     await userEvent.click(await screen.findByRole('option', { name: /NC-2026-014/ }))
 
     expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue(
-      'Almacén Norte',
+      'area-001',
     )
     expect(screen.queryByText(/Esta área difiere/)).not.toBeInTheDocument()
   })
@@ -425,7 +513,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     await userEvent.click(incidenteCombobox)
     await userEvent.click(await screen.findByRole('option', { name: /INC-2026-003/ }))
 
-    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('SyST')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('area-019')
 
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),

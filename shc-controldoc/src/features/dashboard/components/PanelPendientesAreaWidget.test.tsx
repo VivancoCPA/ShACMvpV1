@@ -2,10 +2,14 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, afterEach, vi } from 'vitest'
 import i18n from '../../../i18n'
 import { PanelPendientesAreaWidget } from './PanelPendientesAreaWidget'
 import type { QEResumen, AccionCorrectivaResumen } from '../types/dashboardSummary.types'
+
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: [{ id: 'area-001', nombre: 'Almacén Norte', activo: true, creadoEn: '2026-01-01T00:00:00Z' }] }),
+}))
 
 afterEach(() => cleanup())
 
@@ -16,7 +20,7 @@ const baseQE: QEResumen = {
   severidad: 'MEDIA',
   tipo: 'CALIDAD',
   origen: 'O1_INCIDENTE_CAMPO',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'area-001',
   fechaHoraReporte: '2026-06-01T00:00:00Z',
   fechaVerificacionProgramada: new Date(Date.now() + 3 * 86_400_000).toISOString(),
 }

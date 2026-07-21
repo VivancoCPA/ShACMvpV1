@@ -37,6 +37,10 @@ vi.mock('./QEEditSeveridadMineralModal', () => ({
   ),
 }))
 
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: [{ id: 'Almacén Norte', nombre: 'Almacén Norte', activo: true, creadoEn: '2026-01-01T00:00:00Z' }] }),
+}))
+
 const baseQE: QualityEvent = {
   id: 'qe-2026-300',
   numero: 'QE-2026-300',
@@ -46,7 +50,7 @@ const baseQE: QualityEvent = {
   estado: 'ABIERTO',
   ciclo: 1,
   descripcion: 'Descripción del evento de prueba para la lista',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'Almacén Norte',
   turno: 'DIA',
   fechaHoraEvento: '2026-06-01T08:00:00Z',
   fechaHoraReporte: new Date().toISOString(),
@@ -82,7 +86,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('OPERARIO who is not the creator never sees the Editar icon', () => {
     useAuthStore.setState({
-      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', area: 'Otra Área' },
+      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', areaId: 'Otra Área' },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -92,7 +96,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('omits the icon entirely (no disabled state) when no rule applies', () => {
     useAuthStore.setState({
-      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'SUPERVISOR', area: 'Otra Área', areasAsignadas: ['Otra Área'] },
+      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'SUPERVISOR', areaId: 'Otra Área', areaIds: ['Otra Área'] },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -101,9 +105,9 @@ describe('QEList — Acciones column edit icon', () => {
     expect(screen.queryByRole('button', { name: 'list.actions.editar' })).not.toBeInTheDocument()
   })
 
-  it('Supervisor whose areasAsignadas includes the QE area (not creator) sees Editar and navigates to the full form', async () => {
+  it('Supervisor whose areaIds includes the QE area (not creator) sees Editar and navigates to the full form', async () => {
     useAuthStore.setState({
-      user: { id: 'sup-1', nombre: 'Carmen', apellido: 'Torres', email: 's@shac.internal', rol: 'SUPERVISOR', area: 'Operaciones', areasAsignadas: ['Almacén Norte', 'Almacén Sur'] },
+      user: { id: 'sup-1', nombre: 'Carmen', apellido: 'Torres', email: 's@shac.internal', rol: 'SUPERVISOR', areaId: 'Operaciones', areaIds: ['Almacén Norte', 'Almacén Sur'] },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -112,9 +116,9 @@ describe('QEList — Acciones column edit icon', () => {
     expect(await screen.findByTestId('edit-page')).toBeInTheDocument()
   })
 
-  it('Supervisor whose own area matches but areasAsignadas does not include the QE area never sees the Editar icon', () => {
+  it('Supervisor whose own area matches but areaIds does not include the QE area never sees the Editar icon', () => {
     useAuthStore.setState({
-      user: { id: 'sup-2', nombre: 'Diego', apellido: 'Salazar', email: 's2@shac.internal', rol: 'SUPERVISOR', area: 'Almacén Norte', areasAsignadas: ['Galpón B', 'Galpón C'] },
+      user: { id: 'sup-2', nombre: 'Diego', apellido: 'Salazar', email: 's2@shac.internal', rol: 'SUPERVISOR', areaId: 'Almacén Norte', areaIds: ['Galpón B', 'Galpón C'] },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -124,7 +128,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('creator within the RN-QE-014 window sees Editar and it navigates to the full form', async () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -136,7 +140,7 @@ describe('QEList — Acciones column edit icon', () => {
   it('JEFE_CALIDAD_SYST outside the RN-QE-014 window sees Editar and it opens the reduced modal', async () => {
     mockItems = [{ ...baseQE, fechaHoraReporte: '2020-01-01T00:00:00Z', reportadoPorId: 'user-other' }]
     useAuthStore.setState({
-      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },
+      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' },
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -149,7 +153,7 @@ describe('QEList — Acciones column edit icon', () => {
   it('double-role user sees a single Editar icon routing to the full form, not the modal', async () => {
     mockItems = [{ ...baseQE, reportadoPorId: 'jc-1' }]
     useAuthStore.setState({
-      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },
+      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' },
       isAuthenticated: true,
       accessToken: 'token',
     })

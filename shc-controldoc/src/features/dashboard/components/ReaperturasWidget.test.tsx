@@ -16,7 +16,7 @@ const reapertura: QEReaperturaResumen = {
   severidad: 'ALTA',
   tipo: 'SST',
   origen: 'O1_INCIDENTE_CAMPO',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'area-001',
   fechaHoraReporte: '2026-01-10T09:30:00Z',
   ciclo: 2,
   fechaReapertura: '2026-05-01T09:00:00Z',

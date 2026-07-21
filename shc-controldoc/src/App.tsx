@@ -5,10 +5,12 @@ import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { router } from './router'
 import { useAuthStore } from './stores/authStore'
+import { useUIStore } from './stores/uiStore'
 
 export default function App() {
   const { t } = useTranslation('common')
   const isBootstrapping = useAuthStore((state) => state.isBootstrapping)
+  const theme = useUIStore((state) => state.theme)
 
   // One-time imperative bootstrap: attempt to silently restore the session
   // from the httpOnly refresh cookie before any route (and RoleGuard) sees
@@ -33,7 +35,7 @@ export default function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster richColors position="top-right" />
+      <Toaster richColors closeButton position="top-right" theme={theme} />
     </>
   )
 }

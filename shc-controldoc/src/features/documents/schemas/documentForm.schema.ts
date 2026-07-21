@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import { differenceInCalendarDays } from 'date-fns'
+import { DOC_REVISION_MIN_GAP_DAYS } from '../../../config/businessRules.config'
+
+const RN_DOC_020_MESSAGE = `La próxima revisión debe ser al menos ${DOC_REVISION_MIN_GAP_DAYS} días después de la fecha de vigencia.`
 
 const userRoleEnum = z.enum([
   'OPERARIO',
@@ -13,7 +17,7 @@ export const documentFormSchema = z
   .object({
     titulo: z.string().min(5).max(200),
     tipo: z.enum(['POL', 'PRC', 'INS', 'REG', 'INF', 'MAT', 'PLAN']),
-    area: z.string().min(2).max(100),
+    areaId: z.string().min(2).max(100),
     version: z.string().regex(/^v\d+\.\d+$/, { message: 'Formato requerido: v1.0, v2.3, etc.' }),
     confidencialidad: z.enum(['PUBLICO', 'INTERNO', 'CONFIDENCIAL', 'RESTRINGIDO']),
     rolesAutorizados: z.array(userRoleEnum).optional(),
@@ -48,6 +52,32 @@ export const documentFormSchema = z
         path: ['aprobadorId'],
         message: 'El Revisor y el Aprobador no pueden ser la misma persona.',
       })
+    }
+
+    // RN-DOC-020: fechaRevisionProxima debe ser >= fechaVigencia + 30 días.
+    // Solo se activa una vez que fechaVigencia está definida; para tipo === 'INF'
+    // fechaRevisionProxima sigue siendo opcional si se deja vacía.
+    if (data.fechaVigencia) {
+      if (!data.fechaRevisionProxima) {
+        if (data.tipo !== 'INF') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['fechaRevisionProxima'],
+            message: RN_DOC_020_MESSAGE,
+          })
+        }
+      } else if (
+        differenceInCalendarDays(
+          new Date(data.fechaRevisionProxima),
+          new Date(data.fechaVigencia),
+        ) < DOC_REVISION_MIN_GAP_DAYS
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['fechaRevisionProxima'],
+          message: RN_DOC_020_MESSAGE,
+        })
+      }
     }
   })
 

@@ -53,6 +53,11 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
     'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
   const labelClass = 'mb-1 block text-sm font-medium text-body dark:text-on-dark-soft'
 
+  // La entrega a Gerencia/Jefe de Calidad/Supervisor/reportante ahora ocurre vía
+  // notificaciones reales y persistidas (RN-NOTIF-001, creadas por los handlers
+  // `verificacion-eficacia` y `forzar-vencimiento-verificacion`) — estos toasts
+  // solo confirman la acción propia de quien la realiza, sin afirmar que otras
+  // personas fueron notificadas.
   const onForzarVencimiento = () => {
     forzarVencimiento.mutate(
       { id: qe.id, auditorAsignadoId: qe.estado === 'CERRADO' ? auditorAsignadoId : undefined },
@@ -61,15 +66,11 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
           if (updated.estado === 'EN_VERIFICACION') {
             toast.success(t('detail.verificacion.toasts.forzadoAVerificacion'))
           } else {
-            showReaperturaToasts()
+            toast.info(t('detail.verificacion.toasts.reapertura'))
           }
         },
       },
     )
-  }
-
-  const showReaperturaToasts = () => {
-    toast.info(t('detail.verificacion.toasts.reaperturaEscalada'))
   }
 
   const onSubmitVerificacion = (values: VerificacionEficaciaInput) => {
@@ -80,12 +81,8 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
           reset()
           if (updated.estado === 'VERIFICADO') {
             toast.success(t('detail.verificacion.toasts.verificado'))
-            if (updated.severidad === 'ALTA' || updated.severidad === 'CRITICA') {
-              toast.info(t('detail.verificacion.toasts.gerenciaNotificada'))
-            }
-            toast.info(t('detail.verificacion.toasts.reportanteNotificado'))
           } else {
-            showReaperturaToasts()
+            toast.info(t('detail.verificacion.toasts.reapertura'))
           }
         },
       },

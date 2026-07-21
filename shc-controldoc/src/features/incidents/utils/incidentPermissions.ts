@@ -16,7 +16,7 @@ const DENY_ALL: IncidentPermissions = {
 }
 
 const ANULABLE_STATES: IncidentStatus[] = ['ABIERTO', 'EN_INVESTIGACION']
-const ACTIVE_STATES: IncidentStatus[] = [
+export const ACTIVE_STATES: IncidentStatus[] = [
   'ABIERTO',
   'EN_INVESTIGACION',
   'ANALISIS_COMPLETADO',

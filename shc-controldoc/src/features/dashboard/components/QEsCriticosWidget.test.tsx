@@ -2,10 +2,14 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, afterEach, vi } from 'vitest'
 import i18n from '../../../i18n'
 import { QEsCriticosWidget } from './QEsCriticosWidget'
 import type { QEResumen } from '../types/dashboardSummary.types'
+
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: [{ id: 'area-002', nombre: 'Almacén Sur', activo: true, creadoEn: '2026-01-01T00:00:00Z' }] }),
+}))
 
 afterEach(() => cleanup())
 
@@ -16,7 +20,7 @@ const qeCritico: QEResumen = {
   severidad: 'CRITICA',
   tipo: 'SST',
   origen: 'O1_INCIDENTE_CAMPO',
-  areaAfectada: 'Almacén Sur',
+  areaId: 'area-002',
   fechaHoraReporte: '2026-07-01T00:00:00Z',
 }
 

@@ -126,7 +126,7 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
     qe.estado === 'PENDIENTE_CIERRE' && !!qe.resultadoCierre && !qe.cerradoPorId && user?.rol === 'JEFE_CALIDAD_SYST'
 
   const resolvedRole = qe.cerradoPorId
-    ? resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)
+    ? resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId)
     : null
   const showPendingSecondSignature =
     qe.estado === 'PENDIENTE_CIERRE' && !!qe.cerradoPorId && !qe.cierreFirmaSupervisorId
@@ -153,14 +153,11 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
     setValue('plazoVerificacionDias', parsed)
   }
 
-  const showCierreToasts = (updated: QualityEvent) => {
-    toast.success(t('detail.cierre.toasts.closed'))
-    if (updated.severidad === 'ALTA' || updated.severidad === 'CRITICA') {
-      toast.info(t('detail.cierre.toasts.gerenciaNotificada'))
-    }
-    toast.info(t('detail.cierre.toasts.reportanteNotificado'))
-  }
-
+  // El cierre de un QE con severidad ALTA/CRITICA y la notificación al reportante
+  // original ahora se entregan como notificaciones reales y persistidas (RN-NOTIF-001,
+  // creadas por el handler `firmar-cierre`) — este toast confirma únicamente la
+  // acción propia de quien firma, sin afirmar que otras personas fueron notificadas
+  // (su sesión no tiene forma de confirmar una entrega entre sesiones distintas).
   const onPinConfirm = (rol: 'JEFE_CALIDAD_SYST' | 'SUPERVISOR' | 'ALTA_DIRECCION', pin: string) => {
     firmarCierre.mutate(
       { id: qe.id, data: { rol, pin } },
@@ -168,7 +165,7 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
         onSuccess: (updated) => {
           setPinModalRole(null)
           if (updated.estado === 'CERRADO') {
-            showCierreToasts(updated)
+            toast.success(t('detail.cierre.toasts.closed'))
           }
         },
       },

@@ -7,11 +7,12 @@ import { describe, expect, it, vi, beforeAll, afterEach, afterAll } from 'vitest
 import i18n from '../../../i18n'
 import { localesHandlers } from '../../../mocks/handlers/locales.handlers'
 import { incidentHandlers } from '../../../mocks/handlers/incidents.handlers'
+import { areaHandlers } from '../../../mocks/handlers/areas.handlers'
 import { JefeCalidadDashboard } from './JefeCalidadDashboard'
 import type { DashboardSummaryData } from '../types/dashboardData.types'
 import type { QEStatus } from '../../quality-events/types/qualityEvent.types'
 
-const server = setupServer(...localesHandlers, ...incidentHandlers)
+const server = setupServer(...localesHandlers, ...incidentHandlers, ...areaHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {

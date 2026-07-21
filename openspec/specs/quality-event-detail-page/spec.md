@@ -135,6 +135,19 @@ The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via
 
 ---
 
+### Requirement: QEHeaderSection gates the export action by puedeExportarPDF
+`QEHeaderSection`'s top row (the `flex flex-wrap items-center gap-2.5` row holding `numero` and the status/type/origin/severity badges) SHALL additionally render the "Exportar PDF" button described in `quality-event-pdf-export`, positioned after the badges, but only when `puedeExportarPDF(rol)` evaluates to `true` for the current authenticated user. This requirement defines placement and visibility gating; the click behavior and PDF generation are defined in `quality-event-pdf-export`.
+
+#### Scenario: Export button appears after the badge row for an authorized role
+- **WHEN** a `SUPERVISOR` user renders `QEHeaderSection` for a loaded QE
+- **THEN** the "Exportar PDF" button renders within the same header row as `numero` and the badges, after them
+
+#### Scenario: Export button is absent for a role without puedeExportarPDF
+- **WHEN** a user with role `JEFE_CONTROL_DOCUMENTARIO` renders `QEHeaderSection`
+- **THEN** no "Exportar PDF" button is rendered anywhere in the header
+
+---
+
 ### Requirement: QEStatusTransitionPanel renders role-filtered valid transitions
 The system SHALL render a `QEStatusTransitionPanel` component at `src/features/quality-events/components/QEStatusTransitionPanel.tsx` that computes valid target states via `getValidQETransitions(qe.estado)`, computes the current user's `QEPermissions` via `getQualityEventPermissions(qe.estado, rol, esResponsable)`, and renders one button per valid transition the current role is permitted to trigger (`puedeAvanzarEstado`), matched to the target state. The panel SHALL exclude the targets `CERRADO`, `EN_VERIFICACION`, `VERIFICADO`, and `REABIERTO` from its rendered buttons entirely — those transitions are driven exclusively by `QECierreSection` and `QEVerificacionSection` (per `quality-event-cierre` and `quality-event-verificacion`), not by a generic advance button.
 

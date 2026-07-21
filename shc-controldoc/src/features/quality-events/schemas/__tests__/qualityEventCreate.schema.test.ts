@@ -52,7 +52,7 @@ const basePayload = {
   tipo: 'SST' as const,
   severidad: 'ALTA' as const,
   descripcion: 'Descripción del evento de calidad',
-  areaAfectada: 'Almacén',
+  areaId: 'Almacén',
   turno: 'DIA' as const,
   fechaHoraEvento: '2025-06-01T08:00:00Z',
 }
@@ -78,7 +78,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'CALIDAD',
       severidad: 'MEDIA',
-      areaAfectada: 'Control',
+      areaId: 'Control',
       turno: 'TARDE',
     })
     expect(result.success).toBe(false)
@@ -90,7 +90,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'CALIDAD',
       severidad: 'BAJA',
-      areaAfectada: 'Operaciones',
+      areaId: 'Operaciones',
       turno: 'NOCHE',
     })
     expect(result.success).toBe(false)
@@ -102,7 +102,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'CALIDAD',
       severidad: 'BAJA',
-      areaAfectada: 'Operaciones',
+      areaId: 'Operaciones',
       turno: 'NOCHE',
       hallazgoCodigo: 'HAL-2026-010',
     })
@@ -118,7 +118,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'CALIDAD',
       severidad: 'BAJA',
-      areaAfectada: 'Operaciones',
+      areaId: 'Operaciones',
       turno: 'NOCHE',
       normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
     })
@@ -134,7 +134,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'OPERACIONAL',
       severidad: 'MEDIA',
-      areaAfectada: 'Zona de Pesaje',
+      areaId: 'Zona de Pesaje',
       turno: 'DIA',
       hallazgoCodigo: 'HAL-2026-011',
       normativaVinculada: { norma: 'OTRA', clausula: '3.2' },
@@ -152,7 +152,7 @@ describe('qualityEventCreateSchema', () => {
       fechaHoraEvento: '2025-06-01T08:00',
       tipo: 'CALIDAD',
       severidad: 'BAJA',
-      areaAfectada: 'Operaciones',
+      areaId: 'Operaciones',
       turno: 'NOCHE',
       hallazgoCodigo: 'HAL-2026-010',
       normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
@@ -167,7 +167,7 @@ describe('qualityEventCreateSchema', () => {
       fechaHoraEvento: '2025-06-01T08:00',
       tipo: 'OPERACIONAL',
       severidad: 'MEDIA',
-      areaAfectada: 'Zona de Pesaje',
+      areaId: 'Zona de Pesaje',
       turno: 'DIA',
       hallazgoCodigo: 'HAL-2026-011',
       normativaVinculada: { norma: 'OTRA', clausula: '3.2', normaOtraDetalle: 'Auditoría Operacional' },
@@ -181,7 +181,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'ADUANERO',
       severidad: 'CRITICA',
-      areaAfectada: 'Importación',
+      areaId: 'Importación',
     })
     expect(result.success).toBe(false)
   })
@@ -192,7 +192,7 @@ describe('qualityEventCreateSchema', () => {
       ...basePayload,
       tipo: 'ADUANERO',
       severidad: 'CRITICA',
-      areaAfectada: 'Importación',
+      areaId: 'Importación',
       reporteExternoRef: { nombreCliente: 'Minera ABC', fechaRecepcion: '2025-06-01' },
     })
     expect(result.success).toBe(true)

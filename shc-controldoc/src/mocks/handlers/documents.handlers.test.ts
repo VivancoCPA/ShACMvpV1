@@ -4,12 +4,16 @@ import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { documentHandlers, getDocumentsStore, resetStore } from './documents.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
+import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
 
 const server = setupServer(...documentHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterAll(() => server.close())
-beforeEach(() => resetStore())
+beforeEach(() => {
+  resetStore()
+  resetNotificationsStore()
+})
 
 interface Result<T> {
   status: number
@@ -152,5 +156,74 @@ describe('documents.handlers — GET /api/documents/:id/archivo-distribucion', (
     const bytes = new Uint8Array(response.data as ArrayBuffer)
     const header = Buffer.from(bytes.slice(0, 5)).toString('ascii')
     expect(header).toBe('%PDF-')
+  })
+})
+
+describe('documents.handlers — notificarAutor on rejection (PATCH /api/documents/:id/status)', () => {
+  it('creates a CAMBIO_ESTADO notification for the author when notificarAutor is true', async () => {
+    const { status } = await call(
+      api.patch(
+        '/api/documents/doc-004/status',
+        { estado: 'BORRADOR', motivo: 'Falta evidencia', notificarAutor: true },
+        authHeaders('jefe.docs@shac.pe'),
+      ),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-autor-001' && n.entidadId === 'doc-004' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    expect(notif).toBeDefined()
+  })
+
+  it('creates no notification when notificarAutor is false', async () => {
+    const { status } = await call(
+      api.patch(
+        '/api/documents/doc-004/status',
+        { estado: 'BORRADOR', motivo: 'Falta evidencia', notificarAutor: false },
+        authHeaders('jefe.docs@shac.pe'),
+      ),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-autor-001' && n.entidadId === 'doc-004',
+    )
+    expect(notif).toBeUndefined()
+  })
+})
+
+describe('documents.handlers — asignación notifications on create/update', () => {
+  it('notifies the revisor when a document is created with a revisorId', async () => {
+    const { status, data } = await call(
+      api.post<{ id: string }>(
+        '/api/documents',
+        { titulo: 'Nuevo procedimiento', tipo: 'PRC', areaId: 'area-007', revisorId: 'user-supervisor-001' },
+        authHeaders('jefe.docs@shac.pe'),
+      ),
+    )
+    expect(status).toBe(201)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === data.id && n.tipo === 'ASIGNACION',
+    )
+    expect(notif).toBeDefined()
+  })
+
+  it('notifies the newly assigned aprobador when PUT changes aprobadorId to a different user', async () => {
+    // doc-003's fixture aprobadorId is already user-jefedocs-001 — reassign to a different real account.
+    const { status } = await call(
+      api.put(
+        '/api/documents/doc-003',
+        { aprobadorId: 'user-auditor-001' },
+        authHeaders('autor@shac.pe'),
+      ),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-auditor-001' && n.entidadId === 'doc-003' && n.tipo === 'ASIGNACION',
+    )
+    expect(notif).toBeDefined()
   })
 })

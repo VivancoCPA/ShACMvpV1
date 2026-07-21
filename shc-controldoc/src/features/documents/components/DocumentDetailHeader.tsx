@@ -4,6 +4,7 @@ import { DocumentConfidencialidadBadge } from './DocumentConfidencialidadBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { useAuthStore } from '../../../stores/authStore'
 import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useArea } from '../../areas/hooks/useAreas'
 import type { Documento } from '../../../types/documents.types'
 
 interface DocumentDetailHeaderProps {
@@ -19,6 +20,7 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
   const user = useAuthStore((s) => s.user)
+  const { data: area } = useArea(documento.areaId)
 
   const isJefeDocOrDireccion =
     user?.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user?.rol === 'ALTA_DIRECCION'
@@ -80,7 +82,7 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Área</dt>
-            <dd className="mt-0.5 text-body dark:text-on-dark">{documento.area}</dd>
+            <dd className="mt-0.5 text-body dark:text-on-dark">{area?.nombre ?? documento.areaId}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Autor</dt>

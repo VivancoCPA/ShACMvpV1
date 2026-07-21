@@ -12,12 +12,14 @@ import { SeverityBadge } from '../../../components/shared/SeverityBadge'
 import { Pagination } from '../../../components/shared/Pagination'
 import { IncidentStatusBadge } from './IncidentStatusBadge'
 import { IncidentTypeBadge } from './IncidentTypeBadge'
+import { IncidentSinQEBadge } from './IncidentSinQEBadge'
+import { getIncidentQEAlertLevel } from '../utils/incidentQEAlert'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import {
   INCIDENT_STATUS_LABELS,
   INCIDENT_TYPE_LABELS,
-  AREAS_SHAC,
 } from '../../../constants/shared.constants'
+import { useAreas } from '../../areas/hooks/useAreas'
 import { formatShortDate } from '../../../utils/date.utils'
 import type { Incidente, IncidentType, IncidentStatus, IncidentSeveridad } from '../types/incident.types'
 import type { NCSeveridad } from '../../nonconformities/types/nonconformity.types'
@@ -179,6 +181,9 @@ export function IncidentList() {
   const user = useAuthStore((s) => s.user)
 
   const { incidentes, isLoading, isError, pagination, refetch } = useIncidentList()
+  const { data: areas = [] } = useAreas()
+  const areasActivas = areas.filter((a) => a.activo)
+  const nombreArea = (id: string) => areas.find((a) => a.id === id)?.nombre ?? id
   const deleteIncident = useDeleteIncident()
   const restoreIncident = useRestoreIncident()
 
@@ -264,7 +269,7 @@ export function IncidentList() {
   const severidadParam = searchParams.get('severidad')
   if (severidadParam) activeChips.push({ key: 'severidad', label: severidadParam })
   const areaIdParam = searchParams.get('areaId')
-  if (areaIdParam) activeChips.push({ key: 'areaId', label: areaIdParam })
+  if (areaIdParam) activeChips.push({ key: 'areaId', label: nombreArea(areaIdParam) })
   const fechaDesdeParam = searchParams.get('fechaDesde')
   if (fechaDesdeParam) activeChips.push({ key: 'fechaDesde', label: `Desde: ${fechaDesdeParam}` })
   const fechaHastaParam = searchParams.get('fechaHasta')
@@ -365,9 +370,9 @@ export function IncidentList() {
             onChange={(e) => setParam('areaId', e.target.value)}
           >
             <option value="">{t('filters.todos')}</option>
-            {AREAS_SHAC.map((a) => (
-              <option key={a} value={a}>
-                {a}
+            {areasActivas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
               </option>
             ))}
           </select>
@@ -542,13 +547,16 @@ export function IncidentList() {
                       {descripcionTruncated}
                     </td>
                     <td className="px-4 py-3 text-xs text-ink dark:text-on-dark">
-                      {inc.areaId}
+                      {nombreArea(inc.areaId)}
                     </td>
                     <td className="px-4 py-3">
                       <SeverityBadge severity={inc.severidad as NCSeveridad} />
                     </td>
                     <td className="px-4 py-3">
-                      <IncidentStatusBadge status={inc.estado} />
+                      <div className="flex flex-col items-start gap-1">
+                        <IncidentStatusBadge status={inc.estado} />
+                        <IncidentSinQEBadge nivel={getIncidentQEAlertLevel(inc)} />
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted dark:text-on-dark-soft">
                       {formatShortDate(inc.fechaEvento, i18n.language)}

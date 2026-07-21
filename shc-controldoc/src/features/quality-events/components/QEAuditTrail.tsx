@@ -15,6 +15,7 @@ import {
   CalendarClock,
   ThumbsUp,
   ThumbsDown,
+  FileDown,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQEAuditTrail } from '../hooks/useQEAuditTrail'
@@ -35,6 +36,7 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   AC_AJUSTE_PLAZO_SOLICITADO: CalendarClock,
   AC_AJUSTE_PLAZO_APROBADO: ThumbsUp,
   AC_AJUSTE_PLAZO_RECHAZADO: ThumbsDown,
+  EXPORTACION_PDF: FileDown,
 }
 
 interface QEAuditTrailProps {
@@ -74,6 +76,9 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
   }
   if (entry.accion === 'AC_AJUSTE_PLAZO_RECHAZADO') {
     return `${label}: ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'EXPORTACION_PDF') {
+    return `${label} — ${entry.realizadoPorNombre}`
   }
   return label
 }

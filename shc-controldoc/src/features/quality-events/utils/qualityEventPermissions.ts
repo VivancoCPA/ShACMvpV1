@@ -1,7 +1,6 @@
 import type { QEStatus, QualityEvent } from '../types/qualityEvent.types'
 import type { QEPermissions, QEEditAccess } from '../types/qualityEventPermissions.types'
 import type { UserRole, User } from '../../../types/auth.types'
-import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
 
 const ANTES_DE_CERRADO: QEStatus[] = [
   'ABIERTO',
@@ -90,6 +89,21 @@ export function getQualityEventPermissions(
   }
 }
 
+export function puedeExportarPDF(rol: UserRole): boolean {
+  switch (rol) {
+    case 'JEFE_CALIDAD_SYST':
+    case 'SUPERVISOR':
+    case 'AUDITOR_INTERNO':
+    case 'ALTA_DIRECCION':
+      return true
+
+    case 'OPERARIO':
+    case 'JEFE_CONTROL_DOCUMENTARIO':
+    case 'ADMINISTRADOR_SISTEMA':
+      return false
+  }
+}
+
 export function ventanaReporteInicialAbierta(qe: QualityEvent, ahora: Date): boolean {
   if (qe.estado !== 'ABIERTO') return false
   const transcurridoMs = ahora.getTime() - new Date(qe.fechaHoraReporte).getTime()
@@ -98,11 +112,11 @@ export function ventanaReporteInicialAbierta(qe: QualityEvent, ahora: Date): boo
 
 export function resolveQEEditAccess(
   qe: QualityEvent,
-  usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>,
+  usuario: Pick<User, 'id' | 'rol' | 'areaIds'>,
   ahora: Date = new Date(),
 ): QEEditAccess {
   const esSupervisorDelArea =
-    usuario.rol === 'SUPERVISOR' && (usuario.areasAsignadas ?? []).includes(qe.areaAfectada)
+    usuario.rol === 'SUPERVISOR' && (usuario.areaIds ?? []).includes(qe.areaId)
 
   const reporteInicial =
     ventanaReporteInicialAbierta(qe, ahora) &&
@@ -117,21 +131,23 @@ export function resolveQEEditAccess(
 
 export function puedeEditarQE(
   qe: QualityEvent,
-  usuario: Pick<User, 'id' | 'rol' | 'areasAsignadas'>,
+  usuario: Pick<User, 'id' | 'rol' | 'areaIds'>,
   ahora: Date = new Date(),
 ): boolean {
   const access = resolveQEEditAccess(qe, usuario, ahora)
   return access.reporteInicial || access.severidad || access.mineral
 }
 
+// RN-QE-004: la escalada a ALTA_DIRECCION por "misma persona" (firmante de la
+// primera firma coincide con quien firmaría la segunda) se retiró el 2026-07-17
+// por ser estructuralmente inalcanzable: User.rol es un valor singular, así que
+// ningún usuario real puede ser JEFE_CALIDAD_SYST y SUPERVISOR del área a la vez.
+// La rama solo se ejercitaba con un mock sintético fuera de authFixtures.
+// Si en el futuro se adopta un modelo de roles múltiples, reconsiderar aquí.
 export function resolveRolSegundaFirma(
-  primerFirmanteId: string,
-  areaAfectada: string,
+  _primerFirmanteId: string,
+  _areaId: string,
 ): 'SUPERVISOR' | 'ALTA_DIRECCION' {
-  const firmante = getUsersStore().find((u) => u.id === primerFirmanteId)
-  if (firmante?.rol === 'SUPERVISOR' && firmante.area === areaAfectada) {
-    return 'ALTA_DIRECCION'
-  }
   return 'SUPERVISOR'
 }
 

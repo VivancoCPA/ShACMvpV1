@@ -30,6 +30,10 @@ vi.mock('../hooks/useNonconformities', () => ({
   useAnularNonconformity: () => ({ mutate: anularMutate, isPending: false }),
 }))
 
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useArea: () => ({ data: undefined }),
+}))
+
 vi.mock('../../../stores/authStore', () => ({
   useAuthStore: (sel: (s: { user: { rol: UserRole } | null }) => unknown) =>
     sel({ user: mockRole ? { rol: mockRole } : null }),
@@ -53,7 +57,7 @@ function makeNC(overrides: Partial<NoConformidad> = {}): NoConformidad {
     severidad: 'MEDIA',
     estado: 'EN_INVESTIGACION',
     descripcion: 'Descripción de prueba para la no conformidad',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'Almacén Norte',
     reportadoPorId: 'user-1',
     fechaDeteccion: '2026-01-01T00:00:00Z',
     fechaReporte: '2026-01-01T00:00:00Z',

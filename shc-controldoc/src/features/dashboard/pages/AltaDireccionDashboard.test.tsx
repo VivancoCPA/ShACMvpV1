@@ -7,10 +7,11 @@ import { describe, expect, it, vi, beforeAll, afterEach, afterAll } from 'vitest
 import i18n from '../../../i18n'
 import { localesHandlers } from '../../../mocks/handlers/locales.handlers'
 import { incidentHandlers } from '../../../mocks/handlers/incidents.handlers'
+import { areaHandlers } from '../../../mocks/handlers/areas.handlers'
 import { AltaDireccionDashboard } from './AltaDireccionDashboard'
 import type { DashboardSummaryData } from '../types/dashboardData.types'
 
-const server = setupServer(...localesHandlers, ...incidentHandlers)
+const server = setupServer(...localesHandlers, ...incidentHandlers, ...areaHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
@@ -79,7 +80,7 @@ describe('AltaDireccionDashboard', () => {
             severidad: 'CRITICA',
             tipo: 'SST',
             origen: 'O1_INCIDENTE_CAMPO',
-            areaAfectada: 'Almacén Sur',
+            areaId: 'area-002',
             fechaHoraReporte: '2026-07-01T00:00:00Z',
           },
         ],
@@ -97,7 +98,7 @@ describe('AltaDireccionDashboard', () => {
             severidad: 'ALTA',
             tipo: 'SST',
             origen: 'O1_INCIDENTE_CAMPO',
-            areaAfectada: 'Almacén Norte',
+            areaId: 'area-001',
             fechaHoraReporte: '2026-01-10T09:30:00Z',
             ciclo: 2,
             fechaReapertura: '2026-05-01T09:00:00Z',

@@ -345,13 +345,14 @@ const REFUERZO_POR_MES: Record<string, number> = {
 const TIPOS_ROTACION: QEType[] = ['CALIDAD', 'SST', 'ADUANERO', 'OPERACIONAL']
 const ORIGENES_ROTACION: QEOrigin[] = ['O1_INCIDENTE_CAMPO', 'O2_NC_DETECTADA', 'O3_HALLAZGO_AUDITORIA', 'O4_REPORTE_EXTERNO']
 const SEVERIDADES_ROTACION: QESeverity[] = ['BAJA', 'MEDIA', 'ALTA']
-// Excluye deliberadamente 'Almacén Norte'/'Almacén Sur'/'Galpón B'/'Galpón C': son las
-// áreas asignadas a los 2 Supervisores de auth.fixtures.ts, y useDashboardSummary.test.ts
-// verifica un conteo exacto de QE por Supervisor sobre esas áreas — cualquier QE sintético
-// ahí infla ese conteo y rompe la aserción.
+// Excluye deliberadamente area-001/area-002/area-010/area-011 (Almacén Norte/Almacén
+// Sur/Galpón B/Galpón C): son las áreas asignadas a los 2 Supervisores de
+// auth.fixtures.ts, y useDashboardSummary.test.ts verifica un conteo exacto de QE por
+// Supervisor sobre esas áreas — cualquier QE sintético ahí infla ese conteo y rompe la
+// aserción.
 const AREAS_ROTACION = [
-  'Área de Carga', 'Área de Contenedores', 'Archivo Documentario',
-  'Operaciones Aduaneras', 'Laboratorio de Calidad', 'Laboratorio de Muestras', 'RR.HH.',
+  'area-003', 'area-004', 'area-005',
+  'area-017', 'area-013', 'area-014', 'area-018',
 ]
 const REPORTEROS_ROTACION = ['user-001', 'user-002', 'user-003', 'user-005', 'user-008']
 
@@ -473,7 +474,7 @@ function buildTendenciaSeedQE(): QualityEvent[] {
         estado: esVerificado ? 'VERIFICADO' : 'CERRADO',
         ciclo: 1,
         descripcion: `Quality Event sintético de refuerzo estadístico para la tendencia mensual (cierre ${mes}) — ver design.md M5-S05b, Fix 3.`,
-        areaAfectada: area,
+        areaId: area,
         turno,
         fechaHoraEvento: fechaHoraReporte,
         fechaHoraReporte,
@@ -543,7 +544,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'Dos trabajadores resultaron lesionados por el volcamiento de una carretilla elevadora durante carga nocturna en almacén sur. El evento generó lesiones graves con traslado a clínica.',
-    areaAfectada: 'Almacén Sur',
+    areaId: 'area-002',
     turno: 'NOCHE',
     fechaHoraEvento: '2026-02-05T02:00:00Z',
     fechaHoraReporte: '2026-02-07T08:00:00Z',
@@ -620,7 +621,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'No conformidad detectada en auditoría interna: control de distribución de documentos críticos sin registro conforme a ISO 9001:2015 §7.5.',
-    areaAfectada: 'Control Documentario',
+    areaId: 'area-009',
     turno: 'DIA',
     fechaHoraEvento: '2025-12-15T10:00:00Z',
     fechaHoraReporte: '2025-12-15T14:00:00Z',
@@ -698,7 +699,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'PENDIENTE_CIERRE',
     ciclo: 1,
     descripcion: 'Hallazgo de auditoría ISO 9001:2015 §8.4.1: los registros de importación temporal del proveedor habilitado no cuentan con los controles documentarios requeridos por el procedimiento aduanero.',
-    areaAfectada: 'Operaciones Aduaneras',
+    areaId: 'area-017',
     hallazgoCodigo: 'HAL-2026-001',
     normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.4.1' },
     turno: 'DIA',
@@ -778,7 +779,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'VERIFICADO',
     ciclo: 1,
     descripcion: 'Reporte externo del cliente MINERA ANDINA SAC sobre diferencia de pesaje en lote de zinc exportado. La diferencia superó la tolerancia contractual del 0.05%.',
-    areaAfectada: 'Zona de Pesaje',
+    areaId: 'area-003',
     reporteExternoRef: {
       nombreCliente: 'MINERA ANDINA SAC',
       fechaRecepcion: '2026-06-09',
@@ -904,7 +905,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'REABIERTO',
     ciclo: 2,
     descripcion: 'Operario sufrió golpe en extremidad superior al manipular contenedor de minerales sin guantes de protección adecuados. Las ACs del ciclo 1 resultaron NO_EFECTIVO.',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'area-001',
     turno: 'DIA',
     fechaHoraEvento: '2026-01-10T09:00:00Z',
     fechaHoraReporte: '2026-01-10T09:30:00Z',
@@ -986,7 +987,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'No conformidad CRITICA detectada en operación de campo: trabajador expuesto a polvo de mineral sin EPP adecuado por ventilación inoperativa en almacén sur.',
-    areaAfectada: 'Almacén Sur',
+    areaId: 'area-002',
     turno: 'TARDE',
     fechaHoraEvento: '2026-01-20T14:45:00Z',
     fechaHoraReporte: '2025-08-20T15:00:00Z',
@@ -1061,7 +1062,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'ANALISIS_COMPLETADO',
     ciclo: 1,
     descripcion: 'Hallazgo de auditoría interna: procedimiento de calibración de instrumentos de medición desactualizado, no contempla la frecuencia requerida por ISO 9001 para el contexto del laboratorio.',
-    areaAfectada: 'Laboratorio de Calidad',
+    areaId: 'area-013',
     hallazgoCodigo: 'HAL-2026-002',
     normativaVinculada: { norma: 'ISO_9001_2015', clausula: '7.1.5' },
     turno: 'DIA',
@@ -1159,7 +1160,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_VERIFICACION',
     ciclo: 1,
     descripcion: 'Reporte externo de cliente EXPORTADORA PACIFIC SRL sobre diferencia en inventario de zinc entre stock físico y sistema ERP. La diferencia de 850 kg supera la tolerancia contractual del 0.1%.',
-    areaAfectada: 'Galpón C',
+    areaId: 'area-011',
     reporteExternoRef: {
       nombreCliente: 'EXPORTADORA PACIFIC SRL',
       fechaRecepcion: '2026-06-01',
@@ -1246,7 +1247,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'Operario reportó procedimiento de etiquetado de muestras de mineral no seguido durante turno nocturno. Cuatro muestras de cobre presentaron etiquetas incompletas.',
-    areaAfectada: 'Laboratorio de Calidad',
+    areaId: 'area-013',
     turno: 'NOCHE',
     fechaHoraEvento: '2026-04-01T22:00:00Z',
     fechaHoraReporte: '2026-04-02T06:00:00Z',
@@ -1337,7 +1338,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'VERIFICADO',
     ciclo: 1,
     descripcion: 'NC detectada en revisión de expedientes: documentos de importación temporal presentaban inconsistencias entre DUA físico y registro en sistema, afectando a 3 despachos de zinc.',
-    areaAfectada: 'Operaciones Aduaneras',
+    areaId: 'area-017',
     turno: 'DIA',
     fechaHoraEvento: '2025-10-15T10:00:00Z',
     fechaHoraReporte: '2025-10-15T11:30:00Z',
@@ -1421,7 +1422,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 2,
     descripcion: 'Hallazgo de auditoría externa ISO 45001: señalización de rutas de evacuación en almacén norte incompleta. Segundo hallazgo en el mismo punto tras AC del ciclo anterior.',
-    areaAfectada: 'Almacén Norte',
+    areaId: 'area-001',
     hallazgoCodigo: 'HAL-2026-003',
     normativaVinculada: { norma: 'ISO_45001_2018', clausula: '8.2' },
     turno: 'DIA',
@@ -1500,7 +1501,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_INVESTIGACION',
     ciclo: 1,
     descripcion: 'Reporte externo MINERA GLOBAL SAC: lote de plata exportado presentó certificado de calidad con parámetros de pureza incorrectos. Error afecta contrato por $280,000 USD.',
-    areaAfectada: 'Control Documentario',
+    areaId: 'area-009',
     reporteExternoRef: {
       nombreCliente: 'MINERA GLOBAL SAC',
       fechaRecepcion: '2026-05-10',
@@ -1575,7 +1576,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_EJECUCION',
     ciclo: 3,
     descripcion: 'Demora recurrente en registro de entrada de camiones al patio de minerales. Tercer ciclo: los dos anteriores cerraron sin efectividad comprobada.',
-    areaAfectada: 'Patio de Minerales',
+    areaId: 'area-003',
     turno: 'TARDE',
     fechaHoraEvento: '2025-11-28T14:00:00Z',
     fechaHoraReporte: '2025-11-28T15:00:00Z',
@@ -1653,7 +1654,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'NC detectada: mediciones de temperatura de almacenamiento de muestras fuera de rango especificado durante 6 horas. Afecta integridad de 12 muestras de prueba.',
-    areaAfectada: 'Laboratorio de Calidad',
+    areaId: 'area-013',
     turno: 'NOCHE',
     fechaHoraEvento: '2026-04-05T02:00:00Z',
     fechaHoraReporte: '2026-04-05T08:00:00Z',
@@ -1728,7 +1729,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 2,
     descripcion: 'Hallazgo de auditoría: proceso de despacho de minerales sin confirmación cruzada de peso entre sistema y balanza física. Reincidencia detectada en auditoría de seguimiento.',
-    areaAfectada: 'Zona de Pesaje',
+    areaId: 'area-003',
     hallazgoCodigo: 'HAL-2026-004',
     normativaVinculada: { norma: 'OTRA', normaOtraDetalle: 'Auditoría Operacional', clausula: '3.2' },
     turno: 'DIA',
@@ -1822,7 +1823,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_VERIFICACION',
     ciclo: 1,
     descripcion: 'Reporte externo de agente de aduana: emisión de certificado de origen con código arancelario incorrecto para lote de plomo. Error subsanado con SUNAT sin multa.',
-    areaAfectada: 'Operaciones Aduaneras',
+    areaId: 'area-017',
     reporteExternoRef: {
       nombreCliente: 'AGENCIA ADUANERA ALFA SAC',
       fechaRecepcion: '2026-02-18',
@@ -1909,7 +1910,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'REABIERTO',
     ciclo: 2,
     descripcion: 'Caída de altura leve: trabajador resbaló en rampa mojada de muelle durante descarga nocturna. Las ACs del ciclo 1 (señalización antideslizante) resultaron NO_EFECTIVO.',
-    areaAfectada: 'Muelle de Carga',
+    areaId: 'area-003',
     turno: 'NOCHE',
     fechaHoraEvento: '2026-01-08T21:30:00Z',
     fechaHoraReporte: '2026-01-08T22:00:00Z',
@@ -1989,7 +1990,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'ABIERTO',
     ciclo: 1,
     descripcion: 'NC detectada en revisión de proceso: cargas de zinc despachadas sin confirmación de pesaje final en sistema. 8 despachos afectados en junio sin registro de trazabilidad completa.',
-    areaAfectada: 'Galpón C',
+    areaId: 'area-011',
     turno: 'DIA',
     fechaHoraEvento: '2026-06-12T10:00:00Z',
     fechaHoraReporte: '2026-06-12T11:00:00Z',
@@ -2028,7 +2029,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
         entidadTipo: 'QualityEvent',
         entidadId: 'qe-2026-018',
         accion: 'CAMPO_EDITADO',
-        campoModificado: 'areaAfectada',
+        campoModificado: 'areaId',
         valorNuevo: 'Galpón C',
         realizadoPorId: 'user-005',
         realizadoPorNombre: 'Luis Paredes',
@@ -2062,7 +2063,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_INVESTIGACION',
     ciclo: 1,
     descripcion: 'Hallazgo CRITICO auditoría externa: trazabilidad de lotes de exportación interrumpida en 3 cadenas de custodia. Afecta certificación ISO 9001:2015 vigente del operador.',
-    areaAfectada: 'Control Documentario',
+    areaId: 'area-009',
     hallazgoCodigo: 'HAL-2026-005',
     normativaVinculada: { norma: 'ISO_9001_2015', clausula: '8.5.2' },
     turno: 'DIA',
@@ -2134,7 +2135,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'CERRADO',
     ciclo: 1,
     descripcion: 'Reporte externo de trabajador de empresa contratista: ausencia de kit de primeros auxilios en garita de control durante turno nocturno. Subsanado de forma inmediata.',
-    areaAfectada: 'Garita de Control',
+    areaId: 'area-016',
     reporteExternoRef: {
       nombreCliente: 'CONTRATISTA LOGÍSTICA ANDINA SRL',
       fechaRecepcion: '2026-04-22',
@@ -2229,7 +2230,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     estado: 'EN_VERIFICACION',
     ciclo: 1,
     descripcion: 'Operario detectó acopio de mineral bloqueando parcialmente la ruta de evacuación de la zona de acopio durante turno día.',
-    areaAfectada: 'Operaciones',
+    areaId: 'area-016',
     turno: 'DIA',
     fechaHoraEvento: '2026-07-01T08:00:00Z',
     fechaHoraReporte: '2026-07-01T08:15:00Z',

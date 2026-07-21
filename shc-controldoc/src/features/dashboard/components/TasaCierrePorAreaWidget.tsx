@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next'
+import { useAreas } from '../../areas/hooks/useAreas'
 
 interface TasaCierrePorAreaWidgetProps {
-  tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
+  tasaCierreEnPlazoPorArea: { areaId: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
 }
 
 export function TasaCierrePorAreaWidget({ tasaCierreEnPlazoPorArea }: TasaCierrePorAreaWidgetProps) {
   const { t } = useTranslation('dashboard')
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
 
   return (
     <section className="space-y-3">
@@ -19,12 +22,12 @@ export function TasaCierrePorAreaWidget({ tasaCierreEnPlazoPorArea }: TasaCierre
           </p>
         ) : (
           <div className="space-y-2 p-3">
-            {tasaCierreEnPlazoPorArea.map(({ area, tasaCierreEnPlazo, totalCerrados }) => (
+            {tasaCierreEnPlazoPorArea.map(({ areaId, tasaCierreEnPlazo, totalCerrados }) => (
               <div
-                key={area}
+                key={areaId}
                 className="flex w-full items-center justify-between gap-4 rounded-lg border border-hairline bg-surface-card px-4 py-3 dark:border-hairline/20 dark:bg-surface-dark-elevated"
               >
-                <p className="truncate text-sm font-medium text-ink dark:text-on-dark">{area}</p>
+                <p className="truncate text-sm font-medium text-ink dark:text-on-dark">{nombreArea(areaId)}</p>
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-medium text-body dark:text-on-dark-soft">
                     {t('auditor.tasaCierrePorArea.porcentaje', { valor: Math.round(tasaCierreEnPlazo) })}

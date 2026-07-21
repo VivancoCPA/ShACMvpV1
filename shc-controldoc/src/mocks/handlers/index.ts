@@ -7,6 +7,8 @@ import { localesHandlers } from './locales.handlers'
 import { qualityEventHandlers } from './quality-events.handlers'
 import { dashboardHandlers } from './dashboard.handlers'
 import { userHandlers } from './users.handlers'
+import { notificationHandlers } from './notifications.handlers'
+import { areaHandlers } from './areas.handlers'
 
 export const handlers: RequestHandler[] = [
   ...authHandlers,
@@ -17,4 +19,6 @@ export const handlers: RequestHandler[] = [
   ...qualityEventHandlers,
   ...dashboardHandlers,
   ...userHandlers,
+  ...notificationHandlers,
+  ...areaHandlers,
 ]

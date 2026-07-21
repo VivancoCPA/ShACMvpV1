@@ -1,6 +1,8 @@
 import { http, HttpResponse, delay } from 'msw'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
+import { authFixtures } from '../fixtures/auth.fixtures'
+import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import type {
   NoConformidad,
   NCStatus,
@@ -31,6 +33,14 @@ const DOMINIO_PREFIX: Record<NCDominio, string> = {
   ADUANERO: 'ADU',
   OPERACIONAL: 'OPE',
   PROVEEDOR: 'PRV',
+}
+
+function getUserFromRequest(request: Request) {
+  const authHeader = request.headers.get('Authorization') ?? ''
+  const token = authHeader.replace('Bearer ', '')
+  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
+  const userId = match?.[1] ?? null
+  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
 }
 
 function generateId(): string {
@@ -80,7 +90,7 @@ export const nonconformityHandlers = [
     const tipo = url.searchParams.get('tipo') as NCTipo | null
     const severidad = url.searchParams.get('severidad') as NCSeveridad | null
     const dominio = url.searchParams.get('dominio') as NCDominio | null
-    const areaAfectada = url.searchParams.get('areaAfectada')
+    const areaId = url.searchParams.get('areaId')
     const search = url.searchParams.get('search')
     const fechaDesde = url.searchParams.get('fechaDesde')
     const fechaHasta = url.searchParams.get('fechaHasta')
@@ -98,7 +108,7 @@ export const nonconformityHandlers = [
     if (tipo) filtered = filtered.filter((nc) => nc.tipo === tipo)
     if (severidad) filtered = filtered.filter((nc) => nc.severidad === severidad)
     if (dominio) filtered = filtered.filter((nc) => nc.dominio === dominio)
-    if (areaAfectada) filtered = filtered.filter((nc) => nc.areaAfectada === areaAfectada)
+    if (areaId) filtered = filtered.filter((nc) => nc.areaId === areaId)
     if (search) {
       const q = search.toLowerCase()
       filtered = filtered.filter(
@@ -145,7 +155,7 @@ export const nonconformityHandlers = [
 
     const body = await request.json() as Record<string, unknown>
 
-    const required = ['origen', 'tipo', 'severidad', 'areaAfectada', 'descripcion', 'fechaDeteccion', 'dominio', 'titulo', 'fechaCierre']
+    const required = ['origen', 'tipo', 'severidad', 'areaId', 'descripcion', 'fechaDeteccion', 'dominio', 'titulo', 'fechaCierre']
     const missing = required.filter((f) => !body[f])
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
@@ -163,7 +173,7 @@ export const nonconformityHandlers = [
       : nonconformities.filter(
           (nc) =>
             nc.dominio === dominio &&
-            nc.areaAfectada === body.areaAfectada &&
+            nc.areaId === body.areaId &&
             new Date(nc.creadoEn).getTime() > thirtyDaysAgo,
         )
 
@@ -177,7 +187,7 @@ export const nonconformityHandlers = [
       estado: 'ABIERTA',
       titulo: body.titulo as string,
       descripcion: body.descripcion as string,
-      areaAfectada: body.areaAfectada as string,
+      areaId: body.areaId as string,
       fechaCierre: body.fechaCierre as string,
       reportadoPorId: 'user-mock-001',
       fechaDeteccion: body.fechaDeteccion as string,
@@ -238,6 +248,24 @@ export const nonconformityHandlers = [
     }
 
     nonconformities = nonconformities.map((n) => (n.id === params.id ? updated : n))
+
+    if ('estado' in body && updated.estado !== nc.estado) {
+      const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+      const responsablesACActivas = nc.accionesCorrectivas
+        .filter((ac) => ac.estado !== 'CERRADA')
+        .map((ac) => ac.responsableId)
+
+      createCambioEstadoNotification({
+        entidadTipo: 'NC',
+        entidadId: nc.id,
+        entidadCodigo: nc.numero,
+        estadoNuevo: updated.estado,
+        reportadoPorId: nc.reportadoPorId,
+        responsablesACActivas,
+        actorId,
+        link: `/nonconformities/${nc.id}`,
+      })
+    }
 
     return ok(updated)
   }),

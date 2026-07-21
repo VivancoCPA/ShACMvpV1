@@ -6,6 +6,7 @@ import { getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { Tooltip } from '../../../components/ui/Tooltip'
+import { useArea } from '../../areas/hooks/useAreas'
 import type { Documento, DocRole } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
 
@@ -54,6 +55,7 @@ export function DocumentListRow({
 }: DocumentListRowProps) {
   const { t } = useTranslation('documents')
   const navigate = useNavigate()
+  const { data: area } = useArea(documento.areaId)
 
   const isDeleted = !!documento.deletedAt
   const isReadOnly = READ_ONLY_ROLES.has(userRole)
@@ -129,7 +131,7 @@ export function DocumentListRow({
       </td>
 
       <td className="whitespace-nowrap px-4 py-3 text-xs text-muted dark:text-on-dark-soft">
-        {documento.area}
+        {area?.nombre ?? documento.areaId}
       </td>
 
       <td className="whitespace-nowrap px-4 py-3">

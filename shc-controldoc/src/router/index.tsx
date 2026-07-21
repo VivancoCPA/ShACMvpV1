@@ -3,6 +3,7 @@ import { AppShell } from '../components/layout/AppShell'
 import { RoleGuard } from './RoleGuard'
 import { DocumentEditGuard } from './DocumentEditGuard'
 import { getDefaultRouteForRole } from './getDefaultRoute'
+import { ROUTE_ROLE_GROUPS } from './routeAccess'
 import { useAuthStore } from '../stores/authStore'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
@@ -27,6 +28,7 @@ import { LocalDetailPage } from '../features/locations/pages/LocalDetailPage'
 import { LocalNewPage } from '../features/locations/pages/LocalNewPage'
 import { LocalEditPage } from '../features/locations/pages/LocalEditPage'
 import { ZonaFormPage } from '../features/locations/pages/ZonaFormPage'
+import { AreasAdminPage } from '../features/areas/pages/AreasAdminPage'
 import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
 import { DevResetMocksPage } from '../pages/dev/DevResetMocksPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
@@ -60,18 +62,7 @@ export const router = createBrowserRouter([
           // Account self-service — not linked in Sidebar, only reachable via TopNav dropdown or direct URL. No RBAC restriction beyond auth.
           { path: '/perfil', element: <ProfilePage />, handle: { breadcrumb: 'myProfile' } },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.documentsView} />,
             children: [
               {
                 path: '/documentos',
@@ -88,11 +79,7 @@ export const router = createBrowserRouter([
           // English-path aliases used by form navigation
           { path: '/documents', element: <Navigate to="/documentos" replace /> },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={['JEFE_CONTROL_DOCUMENTARIO', 'JEFE_CALIDAD_SYST']}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.documentsCreate} />,
             children: [
               {
                 path: '/documents/new',
@@ -112,18 +99,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.nonconformitiesView} />,
             children: [
               {
                 path: '/nonconformities',
@@ -133,9 +109,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard requiredRoles={['SUPERVISOR', 'JEFE_CALIDAD_SYST']} />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.nonconformitiesCreate} />,
             children: [
               {
                 path: '/nonconformities/new',
@@ -145,18 +119,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.nonconformitiesView} />,
             children: [
               {
                 path: '/nonconformities/:id',
@@ -166,17 +129,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.incidentsView} />,
             children: [
               {
                 path: '/incidents',
@@ -196,9 +149,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard requiredRoles={['SUPERVISOR', 'JEFE_CALIDAD_SYST']} />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.incidentsEdit} />,
             children: [
               {
                 path: '/incidents/:id/editar',
@@ -208,18 +159,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.qualityEventsView} />,
             children: [
               {
                 path: '/quality-events',
@@ -229,11 +169,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST']}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.qualityEventsCreate} />,
             children: [
               {
                 path: '/quality-events/nuevo',
@@ -248,18 +184,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.qualityEventsView} />,
             children: [
               {
                 path: '/quality-events/:id',
@@ -269,18 +194,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <RoleGuard
-                requiredRoles={[
-                  'OPERARIO',
-                  'SUPERVISOR',
-                  'JEFE_CALIDAD_SYST',
-                  'JEFE_CONTROL_DOCUMENTARIO',
-                  'AUDITOR_INTERNO',
-                  'ALTA_DIRECCION',
-                ]}
-              />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.dashboard} />,
             children: [
               {
                 path: '/dashboard',
@@ -290,19 +204,22 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RoleGuard requiredRoles={['ADMINISTRADOR_SISTEMA']} />,
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.usersAdmin} />,
             children: [
               {
                 path: '/usuarios',
                 element: <UsersListPage />,
                 handle: { breadcrumb: 'users' },
               },
+              {
+                path: '/admin/areas',
+                element: <AreasAdminPage />,
+                handle: { breadcrumb: 'areas' },
+              },
             ],
           },
           {
-            element: (
-              <RoleGuard requiredRoles={['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST']} />
-            ),
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.locationsAdmin} />,
             children: [
               {
                 path: '/admin/locales',

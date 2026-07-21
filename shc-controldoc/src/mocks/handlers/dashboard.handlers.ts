@@ -304,7 +304,7 @@ function calcularKpi09(qes: QualityEvent[], periodo: string): { valor: number; d
   const delPeriodo = qes.filter((qe) => inRange(qe.fechaHoraReporte, start, end))
   const conteos = new Map<string, number>()
   for (const qe of delPeriodo) {
-    conteos.set(qe.areaAfectada, (conteos.get(qe.areaAfectada) ?? 0) + 1)
+    conteos.set(qe.areaId, (conteos.get(qe.areaId) ?? 0) + 1)
   }
   const distribucion = [...conteos.entries()]
     .map(([area, valor]) => ({ area, valor }))
@@ -390,7 +390,7 @@ function toQEResumen(qe: QualityEvent): QEResumen {
     severidad: qe.severidad,
     tipo: qe.tipo,
     origen: qe.origen,
-    areaAfectada: qe.areaAfectada,
+    areaId: qe.areaId,
     fechaHoraReporte: qe.fechaHoraReporte,
     fechaVerificacionProgramada: qe.fechaVerificacionProgramada,
   }
@@ -415,7 +415,7 @@ function toNCResumen(nc: NoConformidad): NCResumen {
     estado: nc.estado,
     severidad: nc.severidad,
     tipo: nc.tipo,
-    areaAfectada: nc.areaAfectada,
+    areaId: nc.areaId,
     fechaDeteccion: nc.fechaDeteccion,
   }
 }
@@ -427,7 +427,7 @@ function toDocumentoResumen(doc: Documento): DocumentoResumen {
     titulo: doc.titulo,
     tipo: doc.tipo,
     estado: doc.estado,
-    area: doc.area,
+    areaId: doc.areaId,
     fechaRevisionProxima: doc.fechaRevisionProxima,
   }
 }
@@ -469,21 +469,17 @@ function buildOperarioData(usuario: MockUser): OperarioDashboardData {
     .map(({ ac, origenTipo, origenId }) => toACResumen(ac, origenTipo, origenId))
 
   const documentosPendientesLectura = docs
-    .filter((d) => !d.deletedAt && d.estado === 'PUBLICADO' && d.area === usuario.area)
+    .filter((d) => !d.deletedAt && d.estado === 'PUBLICADO' && d.areaId === usuario.areaId)
     .map(toDocumentoResumen)
 
   return { misIncidentesReportados, misQEReportados, accionesCorrectivasAsignadas, documentosPendientesLectura }
 }
 
 function buildSupervisorData(usuario: MockUser): SupervisorDashboardData {
-  const areas = usuario.areasAsignadas ?? []
-  const qes = getQeStore().filter((qe) => areas.includes(qe.areaAfectada))
-  const ncs = getNonconformitiesStore().filter((nc) => areas.includes(nc.areaAfectada))
-  // Incidente no tiene un campo `area` alineado a AREAS_SHAC (solo localNombre/zonaNombre);
-  // se usa como mejor aproximación disponible para el alcance del Supervisor.
-  const incidentes = getIncidentsStore().filter(
-    (inc) => (!!inc.localNombre && areas.includes(inc.localNombre)) || (!!inc.zonaNombre && areas.includes(inc.zonaNombre)),
-  )
+  const areas = usuario.areaIds ?? []
+  const qes = getQeStore().filter((qe) => areas.includes(qe.areaId))
+  const ncs = getNonconformitiesStore().filter((nc) => areas.includes(nc.areaId))
+  const incidentes = getIncidentsStore().filter((inc) => areas.includes(inc.areaId))
 
   const qePorEstado = qes.reduce<Record<QEStatus, number>>((acc, qe) => {
     acc[qe.estado] = (acc[qe.estado] ?? 0) + 1
@@ -599,7 +595,7 @@ function buildJefeCalidadData(): JefeCalidadDashboardData {
   }, {} as Record<QEType, number>)
 
   // Desglose organizacional completo (sin filtro por área ni usuario), a diferencia
-  // de buildSupervisorData.qePorEstado que sí filtra por areasAsignadas.
+  // de buildSupervisorData.qePorEstado que sí filtra por areaIds.
   const qePorEstado = qes.reduce<Record<QEStatus, number>>(
     (acc, qe) => {
       acc[qe.estado] += 1
@@ -785,18 +781,18 @@ function buildTasaCierreEnPlazoPorArea(qes: QualityEvent[]): AuditorDashboardDat
 
   const porArea = new Map<string, QualityEvent[]>()
   for (const qe of cerrados) {
-    const grupo = porArea.get(qe.areaAfectada) ?? []
+    const grupo = porArea.get(qe.areaId) ?? []
     grupo.push(qe)
-    porArea.set(qe.areaAfectada, grupo)
+    porArea.set(qe.areaId, grupo)
   }
 
   return [...porArea.entries()]
-    .map(([area, grupo]) => {
+    .map(([areaId, grupo]) => {
       const enPlazo = grupo.filter((qe) => {
         const dias = contarDiasHabiles(new Date(qe.fechaHoraReporte), new Date(qe.fechaCierre!))
         return dias <= PLAZO_MAXIMO_QE_DIAS_HABILES[qe.severidad]
       })
-      return { area, tasaCierreEnPlazo: pct(enPlazo.length, grupo.length), totalCerrados: grupo.length }
+      return { areaId, tasaCierreEnPlazo: pct(enPlazo.length, grupo.length), totalCerrados: grupo.length }
     })
     .sort((a, b) => a.tasaCierreEnPlazo - b.tasaCierreEnPlazo)
 }

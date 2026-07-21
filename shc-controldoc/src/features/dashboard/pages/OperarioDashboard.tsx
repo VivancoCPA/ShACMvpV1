@@ -5,6 +5,8 @@ import { useDashboardSummary } from '../hooks/useDashboardSummary'
 import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget'
 import { MisQEsWidget } from '../components/MisQEsWidget'
 import { MisACsWidget } from '../components/MisACsWidget'
+import { useNotifications } from '../../notifications/hooks/useNotifications'
+import { NotificationList } from '../../notifications/components/NotificationList'
 
 function WidgetSkeleton() {
   return (
@@ -23,6 +25,12 @@ export function OperarioDashboard() {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
   const { data, isLoading } = useDashboardSummary()
+  const { data: notifications = [] } = useNotifications()
+
+  const notificacionesOrdenadas = [...notifications].sort((a, b) => {
+    if (a.leida !== b.leida) return a.leida ? 1 : -1
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 
   const actions = (
     <button
@@ -50,6 +58,16 @@ export function OperarioDashboard() {
           <MisACsWidget accionesCorrectivasAsignadas={data.data.accionesCorrectivasAsignadas} />
         </div>
       )}
+
+      <section className="mt-8 rounded-lg border border-hairline bg-surface-card dark:border-hairline/20 dark:bg-surface-dark-elevated">
+        <h2 className="border-b border-hairline px-6 py-4 text-base font-medium text-ink dark:border-hairline/20 dark:text-on-dark">
+          {t('operario.notificacionesPendientes.title')}
+        </h2>
+        <NotificationList
+          notifications={notificacionesOrdenadas}
+          emptyMessage={t('operario.notificacionesPendientes.empty')}
+        />
+      </section>
     </PageWrapper>
   )
 }

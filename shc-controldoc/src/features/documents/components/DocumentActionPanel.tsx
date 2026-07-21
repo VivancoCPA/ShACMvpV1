@@ -7,6 +7,7 @@ import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fix
 import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
 import { useDocumentsByCode } from '../hooks/useDocuments'
 import { canAccessDocument } from '../permissions'
+import { useArea } from '../../areas/hooks/useAreas'
 import { DocumentSignatureModal } from './DocumentSignatureModal'
 import { DocumentRejectModal } from './DocumentRejectModal'
 import { DocumentNuevaVersionModal } from './DocumentNuevaVersionModal'
@@ -38,6 +39,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
   const user = useAuthStore((s) => s.user)
+  const { data: area } = useArea(documento.areaId)
 
   const [modal, setModal] = useState<ModalState>(() => {
     if (
@@ -398,7 +400,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                     {locale === 'es-PE' ? 'Área' : 'Area'}
                   </dt>
-                  <dd className="mt-0.5">{documento.area}</dd>
+                  <dd className="mt-0.5">{area?.nombre ?? documento.areaId}</dd>
                 </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">

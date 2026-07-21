@@ -5,7 +5,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
   it('accepts a valid payload with only RN-QE-014 fields', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Descripción corregida del evento',
-      areaAfectada: 'Almacén Norte',
+      areaId: 'Almacén Norte',
       turno: 'TARDE',
       fechaHoraEvento: '2026-05-01T08:00:00Z',
     })
@@ -15,7 +15,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
   it('rejects a payload containing numero', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Descripción corregida del evento',
-      areaAfectada: 'Almacén',
+      areaId: 'Almacén',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T08:00:00Z',
       numero: 'QE-2026-010',
@@ -26,7 +26,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
   it('rejects a payload containing severidad', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Descripción corregida del evento',
-      areaAfectada: 'Almacén',
+      areaId: 'Almacén',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T08:00:00Z',
       severidad: 'CRITICA',
@@ -43,7 +43,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
     ]) {
       const result = qualityEventEditReporteInicialSchema.safeParse({
         descripcion: 'Descripción corregida del evento',
-        areaAfectada: 'Almacén',
+        areaId: 'Almacén',
         turno: 'DIA',
         fechaHoraEvento: '2026-05-01T08:00:00Z',
         ...extra,
@@ -55,7 +55,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
   it('rejects descripcion shorter than 10 characters', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Corto',
-      areaAfectada: 'Almacén',
+      areaId: 'Almacén',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T08:00:00Z',
     })
@@ -69,7 +69,7 @@ describe('qualityEventEditReporteInicialSchema', () => {
   it('accepts a valid payload editing hallazgoCodigo and normativaVinculada for an O3 QE', () => {
     const result = qualityEventEditReporteInicialSchema.safeParse({
       descripcion: 'Descripción corregida del hallazgo',
-      areaAfectada: 'Operaciones Aduaneras',
+      areaId: 'Operaciones Aduaneras',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T08:00:00Z',
       hallazgoCodigo: 'HAL-2026-001',

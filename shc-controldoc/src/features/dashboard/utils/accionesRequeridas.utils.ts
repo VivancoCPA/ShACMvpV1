@@ -70,7 +70,7 @@ export function extraerAccionesQE(qes: QualityEvent[], user: User): AccionRequer
         qe.estado === 'PENDIENTE_CIERRE' &&
         !!qe.cerradoPorId &&
         !qe.cierreFirmaSupervisorId &&
-        user.rol === resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)
+        user.rol === resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId)
       if (puedeFirmarCierre) {
         items.push({
           id: `QE-QE_FIRMAR_CIERRE-${qe.id}`,

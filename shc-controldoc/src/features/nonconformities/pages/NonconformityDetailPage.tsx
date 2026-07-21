@@ -13,6 +13,7 @@ import { ACSection } from '../components/ACSection'
 import type { AuditTrailEntry } from '../types/nonconformity.types'
 import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
 import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useArea } from '../../areas/hooks/useAreas'
 
 function SkeletonRow() {
   return (
@@ -68,6 +69,7 @@ export function NonconformityDetailPage() {
   const user = useAuthStore((s) => s.user)
 
   const { data: nc, isLoading, isError, refetch } = useNonconformity(id ?? '')
+  const { data: area } = useArea(nc?.areaId ?? '')
   const anularMutation = useAnularNonconformity()
 
   const [showAnularModal, setShowAnularModal] = useState(false)
@@ -182,7 +184,7 @@ export function NonconformityDetailPage() {
                 type="button"
                 onClick={() =>
                   navigate(
-                    `/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=${encodeURIComponent(nc.id)}&ncNumero=${encodeURIComponent(nc.numero)}&ncArea=${encodeURIComponent(nc.areaAfectada)}`,
+                    `/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=${encodeURIComponent(nc.id)}&ncNumero=${encodeURIComponent(nc.numero)}&ncArea=${encodeURIComponent(nc.areaId)}`,
                   )
                 }
                 className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark"
@@ -217,7 +219,7 @@ export function NonconformityDetailPage() {
             <FieldRow label={t('detail.fields.tipo')}>
               {t(`tipo.${nc.tipo}`)}
             </FieldRow>
-            <FieldRow label={t('detail.fields.area')}>{nc.areaAfectada}</FieldRow>
+            <FieldRow label={t('detail.fields.area')}>{area?.nombre ?? nc.areaId}</FieldRow>
             {nc.procesoInvolucrado && (
               <FieldRow label={t('detail.fields.proceso')}>{nc.procesoInvolucrado}</FieldRow>
             )}

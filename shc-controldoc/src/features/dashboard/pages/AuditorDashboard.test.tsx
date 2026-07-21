@@ -19,6 +19,11 @@ vi.mock('../hooks/useAccionesRequeridas', () => ({
   useAccionesRequeridas: () => ({ items: [], isLoading: false }),
 }))
 
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: undefined }),
+  useArea: () => ({ data: undefined }),
+}))
+
 function renderDashboard() {
   return render(
     <I18nextProvider i18n={i18n}>

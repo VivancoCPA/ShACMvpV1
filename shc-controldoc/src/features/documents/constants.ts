@@ -1,6 +1,4 @@
 import type { DocStatus, DocFilters, DocType } from '../../types/documents.types'
-// AREAS_SHAC moved to src/constants/shared.constants.ts — re-exported for backward compatibility
-export { AREAS_SHAC } from '../../constants/shared.constants'
 
 export const QUERY_KEYS = {
   documents: {

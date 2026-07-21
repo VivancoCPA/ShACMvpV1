@@ -19,6 +19,11 @@ vi.mock('../hooks/useAccionesRequeridas', () => ({
   useAccionesRequeridas: () => ({ items: [], isLoading: false }),
 }))
 
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: undefined }),
+  useArea: () => ({ data: undefined }),
+}))
+
 function renderDashboard() {
   return render(
     <I18nextProvider i18n={i18n}>
@@ -56,7 +61,7 @@ describe('SupervisorDashboard', () => {
             severidad: 'MEDIA',
             tipo: 'CALIDAD',
             origen: 'O1_INCIDENTE_CAMPO',
-            areaAfectada: 'Almacén Norte',
+            areaId: 'area-001',
             fechaHoraReporte: '2026-06-01T00:00:00Z',
             fechaVerificacionProgramada: new Date(Date.now() + 3 * 86_400_000).toISOString(),
           },

@@ -108,7 +108,7 @@ function buildQesCriticosSection(
     ],
     rows: alertasCriticas.map((qe) => [
       qe.numero,
-      qe.areaAfectada,
+      qe.areaId,
       i18n.t(`dashboard:jefeCalidad.qePorEstado.estados.${qe.estado}`),
     ]),
     empty: alertasCriticas.length === 0,

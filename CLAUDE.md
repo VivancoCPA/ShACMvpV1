@@ -230,6 +230,21 @@ PUBLICADO → EN_REVISION_PERIODICA → BORRADOR (versión N+1)
 | RN-DOC-004 | Firma de aprobación requiere contraseña/PIN. Registra: usuario, timestamp, hash SHA-256.                     |
 | RN-DOC-005 | No se puede obsoletizar un documento vinculado a un QE activo (estado ≠ `CERRADO` o `VERIFICADO`).           |
 | RN-DOC-006 | Alerta antes de la fecha de revisión periódica (default 30 días, configurable por tipo).                     |
+| RN-DOC-020 | `fechaRevisionProxima` debe ser posterior a `fechaVigencia`, con margen mínimo de 30 días entre ambas. No pueden ser iguales ni estar invertidas. Excepción: si `tipo === 'INF'`, `fechaRevisionProxima` es opcional y la validación no aplica cuando el campo queda vacío. |
+
+**Nota técnica (RN-DOC-020):** la validación cruzada solo se activa cuando `fechaVigencia` está definida — un documento en `BORRADOR` sin ninguna fecha aún se puede guardar sin error (no fuerza `fechaVigencia`/`fechaRevisionProxima` a ser obligatorios desde la creación). En cuanto `fechaVigencia` tiene valor, `fechaRevisionProxima` pasa a ser obligatoria para todo tipo distinto de `INF` y debe cumplir el margen de 30 días; para `INF`, si se completa igual debe cumplir el mismo margen. El formulario (`useDocumentForm.ts`) sugiere automáticamente `fechaRevisionProxima` al elegir `tipo` + `fechaVigencia`, usando la periodicidad por tipo (PRD tabla 4.1): `POL`/`PRC`/`PLAN` → +12 meses, `INS` → +24 meses, `MAT` → +6 meses, `REG`/`INF` → sin sugerencia (el usuario la define manualmente). La sugerencia solo se recalcula mientras el campo `fechaRevisionProxima` no haya sido tocado por el usuario (`formState.touchedFields`, no un flag propio) — una vez que el usuario lo edita, el autocálculo deja de sobreescribirlo. Este autocálculo solo corre en modo creación (`mode === 'create'`); en edición no se recalcula automáticamente para no sobreescribir una fecha ya guardada al cargar el documento.
+
+---
+
+## Módulo M3 — Incidentes SyST (reglas parciales activas)
+
+### Reglas de negocio M3 — Invariantes
+
+| ID         | Regla                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| RN-INC-006 | Si un incidente supera el plazo de investigación de su tipo (`ACCIDENTE` 24h, `INCIDENTE` 48h, `CUASI_ACCIDENTE` 72h, `CONDICION_INSEGURA` 48h, contado desde `fechaEvento`) sin tener `qeId` asociado — y sigue en un estado activo, mismo criterio que `canCrearQE` (no eliminado, no `CERRADO`/`ANULADO`) — el sistema marca el incidente en `IncidentList` con un badge "Sin QE vinculado" (amarillo al acercarse al plazo, rojo al superarlo) y notifica (categoría `VENCIMIENTO`) al Jefe de Calidad y al Supervisor del área afectada. La alerta visual desaparece automáticamente en cuanto el incidente obtiene `qeId`, sin importar el motivo del retraso. |
+
+**Nota técnica (RN-INC-006 — reconciliación PRD §3):** el texto original del PRD §3 ("todo incidente genera un QE") queda superado por la decisión de M4-S09: la creación de QE desde un incidente es manual (botón "Crear QE" en `IncidentDetailPage`, gateado por `canCrearQE`), complementada por RN-INC-006 (alerta de vencimiento sin QE vinculado) para evitar que un incidente quede sin escalar sin que nadie lo note. RN-INC-006 se implementó deliberadamente después del fix de vinculación `Incidente.qeId` ↔ QE (`useVincularQE`/`QualityEventForm.tsx`), no antes, para no construir la lógica de "tiene o no tiene qeId" sobre un dato que podía estar mal actualizado (ver bug de múltiples QEs por incidente). La tabla de plazos y el cálculo del nivel de alerta viven en `features/incidents/utils/incidentQEAlert.ts` (`PLAZO_QE_HORAS`, `getIncidentQEAlertLevel`) — puros, sin cron, evaluados en cada render. La notificación reutiliza `generateVencimientoNotifications` (`mocks/fixtures/notificationGeneration.ts`), recomputada en cada `GET /api/notifications` (sin cron disponible en el entorno mock, mismo mecanismo que las vencimiento de AC y Documento) y solo dispara al nivel `ROJO` (plazo superado), no en el preaviso `AMARILLO` — ese preaviso lo cubre únicamente el badge visual.
 
 ---
 

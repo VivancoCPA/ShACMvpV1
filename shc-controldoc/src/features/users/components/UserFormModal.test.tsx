@@ -19,6 +19,15 @@ vi.mock('../hooks/useUsers', () => ({
   useUpdateUser: () => ({ mutate: updateUserMutate, isPending: updateUserIsPending }),
 }))
 
+const AREAS_MOCK = [
+  { id: 'area-016', nombre: 'Operaciones', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-010', nombre: 'Galpón B', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+  { id: 'area-011', nombre: 'Galpón C', activo: true, creadoEn: '2026-01-01T00:00:00Z' },
+]
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useAreas: () => ({ data: AREAS_MOCK }),
+}))
+
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }))
@@ -31,8 +40,8 @@ const supervisorFixture: User = {
   apellido: 'Torres',
   email: 'supervisor@shac.pe',
   rol: 'SUPERVISOR',
-  area: 'Operaciones',
-  areasAsignadas: ['Galpón B', 'Galpón C'],
+  areaId: 'area-016',
+  areaIds: ['area-010', 'area-011'],
   createdAt: '2024-08-12T14:30:00.000Z',
   activo: true,
 }
@@ -43,7 +52,7 @@ const operarioFixture: User = {
   apellido: 'Quispe',
   email: 'operario@shac.pe',
   rol: 'OPERARIO',
-  area: 'Operaciones',
+  areaId: 'area-016',
   createdAt: '2024-11-04T09:15:00.000Z',
   activo: true,
 }
@@ -71,7 +80,7 @@ describe('UserFormModal', () => {
     expect(screen.getByLabelText('form.fields.apellido')).toHaveValue('Torres')
     expect(screen.getByLabelText('form.fields.email')).toHaveValue('supervisor@shac.pe')
     expect(screen.getByLabelText('form.fields.rol')).toHaveValue('SUPERVISOR')
-    expect(screen.getByLabelText('form.fields.area')).toHaveValue('Operaciones')
+    expect(screen.getByLabelText('form.fields.area')).toHaveValue('area-016')
 
     // nombre/apellido son editables en modo edición (RN-USR-006 vía UpdateUserRequest)
     await user.clear(screen.getByLabelText('form.fields.nombre'))
@@ -101,7 +110,7 @@ describe('UserFormModal', () => {
   it('modo edición: el campo área es visible y editable para roles distintos de SUPERVISOR, sin areasAsignadas', () => {
     render(<UserFormModal user={operarioFixture} onClose={vi.fn()} />)
 
-    expect(screen.getByLabelText('form.fields.area')).toHaveValue('Operaciones')
+    expect(screen.getByLabelText('form.fields.area')).toHaveValue('area-016')
     expect(screen.queryByText('form.fields.areasAsignadas')).not.toBeInTheDocument()
   })
 

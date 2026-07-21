@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FilterBar } from "../../../components/shared/FilterBar";
 import { Switch } from "../../../components/ui/Switch";
-import { AREAS_SHAC } from "../../../constants/shared.constants";
+import { useAreas } from "../../areas/hooks/useAreas";
 import { useAuthStore } from "../../../stores/authStore";
 import type { NCStatus, NCSeveridad } from "../types/nonconformity.types";
 
@@ -23,7 +23,7 @@ const FILTER_PARAMS = [
   "search",
   "estado",
   "severidad",
-  "areaAfectada",
+  "areaId",
   "fechaDesde",
   "fechaHasta",
   "showDeleted",
@@ -36,6 +36,8 @@ export function NCListFilters() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const user = useAuthStore((s) => s.user);
   const canSeeDeleted = user?.rol === 'JEFE_CALIDAD_SYST';
+  const { data: areas = [] } = useAreas();
+  const areasActivas = areas.filter((a) => a.activo);
 
   const hasActiveFilters = FILTER_PARAMS.some(
     (p) => p !== "page" && searchParams.has(p),
@@ -149,7 +151,7 @@ export function NCListFilters() {
         </select>
       </div>
 
-      {/* Área Afectada — select con AREAS_SHAC */}
+      {/* Área Afectada — select con catálogo administrado (useAreas) */}
       <div className="flex flex-col gap-1">
         <label
           className="text-xs font-medium text-muted dark:text-on-dark-soft"
@@ -160,13 +162,13 @@ export function NCListFilters() {
         <select
           id="nc-area"
           className={`${selectBase} w-44`}
-          value={searchParams.get("areaAfectada") ?? ""}
-          onChange={(e) => setParam("areaAfectada", e.target.value)}
+          value={searchParams.get("areaId") ?? ""}
+          onChange={(e) => setParam("areaId", e.target.value)}
         >
           <option value="">{t("filters.todos")}</option>
-          {AREAS_SHAC.map((a) => (
-            <option key={a} value={a}>
-              {a}
+          {areasActivas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nombre}
             </option>
           ))}
         </select>

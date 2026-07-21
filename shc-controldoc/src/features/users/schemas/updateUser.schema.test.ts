@@ -8,18 +8,18 @@ describe('updateUserSchema', () => {
     )
   })
 
-  it('rechaza edición de SUPERVISOR con areasAsignadas vacío', () => {
+  it('rechaza edición de SUPERVISOR con areaIds vacío', () => {
     const result = updateUserSchema.safeParse({
       nombre: 'Carla',
       apellido: 'Rojas',
       email: 'carla.rojas@shac.pe',
       rol: 'SUPERVISOR',
-      area: 'Operaciones',
-      areasAsignadas: [],
+      areaId: 'Operaciones',
+      areaIds: [],
     })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.includes('areasAsignadas'))).toBe(true)
+      expect(result.error.issues.some((issue) => issue.path.includes('areaIds'))).toBe(true)
     }
   })
 

@@ -596,15 +596,11 @@ export function QEACSection({
   // invalidation refetches the QE detail, not from the mutation's own response.
   const previousEstadoRef = useRef(qeEstado)
   useEffect(() => {
-    if (
-      previousEstadoRef.current === 'EN_EJECUCION' &&
-      qeEstado === 'PENDIENTE_CIERRE' &&
-      (user?.rol === 'JEFE_CALIDAD_SYST' || user?.rol === 'SUPERVISOR')
-    ) {
+    if (previousEstadoRef.current === 'EN_EJECUCION' && qeEstado === 'PENDIENTE_CIERRE') {
       toast.info(t('detail.acSection.autoTransitionToast'))
     }
     previousEstadoRef.current = qeEstado
-  }, [qeEstado, user?.rol, t])
+  }, [qeEstado, t])
 
   const createAC = useCreateQEAccion(qeId)
   const updateAC = useUpdateQEAccion(qeId)

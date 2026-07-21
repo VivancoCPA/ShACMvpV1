@@ -21,7 +21,11 @@ vi.mock('../components/EscaladoBanner', () => ({
 }))
 
 vi.mock('../hooks/useLocales', () => ({
-  useLocales: () => ({ data: [] }),
+  useLocales: () => ({ locales: [] }),
+}))
+
+vi.mock('../../areas/hooks/useAreas', () => ({
+  useArea: () => ({ data: undefined }),
 }))
 
 let mockIncident: Incidente | undefined

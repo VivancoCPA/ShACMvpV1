@@ -132,12 +132,12 @@ describe('users.handlers — PATCH /api/users/:id (RN-USR-006)', () => {
     const updated = await api.patch<User>(`/api/users/${created.data.id}`, {
       email: 'editar.yo@shac.pe',
       rol: 'SUPERVISOR',
-      area: 'Operaciones',
-      areasAsignadas: ['Galpón B'],
+      areaId: 'area-016',
+      areaIds: ['area-010'],
     })
 
     expect(updated.data.rol).toBe('SUPERVISOR')
-    expect(updated.data.area).toBe('Operaciones')
+    expect(updated.data.areaId).toBe('area-016')
     expect(updated.data.activo).toBe(true)
 
     // El login sigue funcionando con la contraseña temporal original (no fue tocada)

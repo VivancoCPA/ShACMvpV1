@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { QEStatusBadge } from '../../quality-events/components/QEStatusBadge'
+import { useAreas } from '../../areas/hooks/useAreas'
 import type { QEResumen } from '../types/dashboardSummary.types'
 
 interface QEsCriticosWidgetProps {
@@ -10,6 +11,8 @@ interface QEsCriticosWidgetProps {
 export function QEsCriticosWidget({ alertasCriticas }: QEsCriticosWidgetProps) {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
 
   return (
     <section className="space-y-3">
@@ -32,7 +35,7 @@ export function QEsCriticosWidget({ alertasCriticas }: QEsCriticosWidgetProps) {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink dark:text-on-dark">{qe.numero}</p>
-                  <p className="truncate text-sm text-muted dark:text-on-dark-soft">{qe.areaAfectada}</p>
+                  <p className="truncate text-sm text-muted dark:text-on-dark-soft">{nombreArea(qe.areaId)}</p>
                 </div>
                 <QEStatusBadge status={qe.estado} className="shrink-0" />
               </button>

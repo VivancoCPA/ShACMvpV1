@@ -36,7 +36,7 @@ describe('QEAuditTrail — RN-QE-014/015/016 edit entries', () => {
     mockEntries = [
       makeEntry({
         accion: 'QE_REPORTE_INICIAL_EDITADO',
-        campoModificado: 'areaAfectada',
+        campoModificado: 'areaId',
         valorAnterior: 'Almacén Norte',
         valorNuevo: 'Almacén Sur',
       }),
@@ -73,5 +73,30 @@ describe('QEAuditTrail — RN-QE-014/015/016 edit entries', () => {
     const { container } = render(<QEAuditTrail qeId="qe-2026-001" />)
     const svgClasses = Array.from(container.querySelectorAll('li svg')).map((el) => el.getAttribute('class'))
     expect(new Set(svgClasses).size).toBe(3)
+  })
+})
+
+describe('QEAuditTrail — EXPORTACION_PDF entry', () => {
+  it('shows who exported the PDF', () => {
+    mockEntries = [makeEntry({ accion: 'EXPORTACION_PDF', realizadoPorNombre: 'Ana Torres' })]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+    expect(screen.getAllByText(/Ana Torres/).length).toBeGreaterThan(0)
+  })
+
+  it('uses a distinct icon from CREADO and ESTADO_CAMBIADO', () => {
+    mockEntries = [
+      makeEntry({ id: 'a1', accion: 'EXPORTACION_PDF', realizadoPorNombre: 'Ana Torres' }),
+      makeEntry({ id: 'a2', accion: 'CREADO' }),
+      makeEntry({ id: 'a3', accion: 'ESTADO_CAMBIADO', estadoAnterior: 'ABIERTO', estadoNuevo: 'EN_INVESTIGACION' }),
+    ]
+    const { container } = render(<QEAuditTrail qeId="qe-2026-001" />)
+    const svgClasses = Array.from(container.querySelectorAll('li svg')).map((el) => el.getAttribute('class'))
+    expect(new Set(svgClasses).size).toBe(3)
+  })
+
+  it('does not render the generadoPorIA badge', () => {
+    mockEntries = [makeEntry({ accion: 'EXPORTACION_PDF', realizadoPorNombre: 'Ana Torres', generadoPorIA: false })]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+    expect(screen.queryByText('detail.auditTrail.generadoPorIA')).not.toBeInTheDocument()
   })
 })

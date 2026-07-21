@@ -11,7 +11,7 @@ const baseQE: QualityEvent = {
   estado: 'EN_VERIFICACION',
   ciclo: 1,
   descripcion: 'Descripción del evento',
-  areaAfectada: 'Almacén Norte',
+  areaId: 'area-001',
   turno: 'DIA',
   fechaHoraEvento: '2025-06-01T08:00:00Z',
   fechaHoraReporte: '2025-06-01T09:00:00Z',

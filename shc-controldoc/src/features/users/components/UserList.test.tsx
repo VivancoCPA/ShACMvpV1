@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import { authHandlers } from '../../../mocks/handlers/auth.handlers'
 import { userHandlers } from '../../../mocks/handlers/users.handlers'
+import { areaHandlers } from '../../../mocks/handlers/areas.handlers'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
 import { useAuthStore } from '../../../stores/authStore'
 import { loginUser } from '../../auth/api/auth.api'
@@ -19,7 +20,7 @@ vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }))
 
-const server = setupServer(...authHandlers, ...userHandlers)
+const server = setupServer(...authHandlers, ...userHandlers, ...areaHandlers)
 const SEED_IDS = new Set(authFixtures.map((u) => u.id))
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))

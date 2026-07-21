@@ -9,6 +9,7 @@ import {
   updateIncidentStatus,
   deleteIncident,
   restoreIncident,
+  vincularQEIncidente,
   createAC,
   updateAC,
   cerrarAC,
@@ -29,7 +30,6 @@ export function useIncidents(filters: IncidentFilters = {}) {
   return useQuery({
     queryKey: INCIDENT_QUERY_KEYS.list(filters),
     queryFn: () => getIncidents(filters),
-    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -70,6 +70,24 @@ export function useUpdateIncident() {
     },
     onError: () => {
       toast.error(t('toasts.updateError'))
+    },
+  })
+}
+
+// RN-QE-001 — vincula el Incidente origen a un QE recién creado (origen O1_INCIDENTE_CAMPO).
+// No emite toast de éxito: la creación del QE ya notifica al usuario y esta escritura es
+// un efecto secundario interno, no una acción que el usuario haya iniciado directamente.
+export function useVincularQE() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('incidents')
+
+  return useMutation({
+    mutationFn: ({ id, qeId }: { id: string; qeId: string }) => vincularQEIncidente(id, qeId),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: INCIDENT_QUERY_KEYS.detail(variables.id) })
+    },
+    onError: () => {
+      toast.error(t('toasts.vincularQEError'))
     },
   })
 }

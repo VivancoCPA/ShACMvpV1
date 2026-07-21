@@ -72,7 +72,7 @@ export interface AuditorDashboardData {
   hallazgosPorNorma: { norma: NormaISO; total: number }[]
   hallazgosPorEstado: Record<QEStatus, number>
   evidenciasHallazgos: { conEvidencia: number; sinEvidencia: number }
-  tasaCierreEnPlazoPorArea: { area: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
+  tasaCierreEnPlazoPorArea: { areaId: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
 }
 
 export type JefeControlDocDashboardData = Record<string, never>

@@ -7,12 +7,13 @@ import { I18nextProvider } from 'react-i18next'
 import { setupServer } from 'msw/node'
 import i18n from '../../../i18n'
 import { authHandlers } from '../../../mocks/handlers/auth.handlers'
+import { areaHandlers } from '../../../mocks/handlers/areas.handlers'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
 import { loginUser } from '../../auth/api/auth.api'
 import { ProfilePage } from './ProfilePage'
 import { useAuthStore } from '../../../stores/authStore'
 
-const server = setupServer(...authHandlers)
+const server = setupServer(...authHandlers, ...areaHandlers)
 
 const toastError = vi.fn()
 const toastSuccess = vi.fn()

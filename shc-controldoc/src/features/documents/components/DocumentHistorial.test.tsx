@@ -20,7 +20,7 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
     tipo: 'PRC',
     version: 'v1.0',
     estado: 'BORRADOR',
-    area: 'Calidad',
+    areaId: 'Calidad',
     confidencialidad: 'INTERNO',
     autorId: 'user-001',
     archivoOriginalUrl: null,

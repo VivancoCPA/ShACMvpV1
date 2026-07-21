@@ -6,6 +6,7 @@ import {
   getNonconformity,
   createNonconformity,
   updateNonconformity,
+  vincularQENonconformidad,
   anularNonconformity,
   deleteNonconformity,
   restoreNonconformity,
@@ -73,6 +74,25 @@ export function useUpdateNonconformity() {
     },
     onError: () => {
       toast.error(t('toasts.updateError'))
+    },
+  })
+}
+
+// RN-QE-013 — vincula la NC origen a un QE recién creado (origen O2_NC_DETECTADA).
+// No emite toast de éxito: la creación del QE ya notifica al usuario y esta escritura es
+// un efecto secundario interno, no una acción que el usuario haya iniciado directamente.
+export function useVincularNC() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('nonconformities')
+
+  return useMutation({
+    mutationFn: ({ id, qeGeneradoId }: { id: string; qeGeneradoId: string }) =>
+      vincularQENonconformidad(id, qeGeneradoId),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.detail(variables.id) })
+    },
+    onError: () => {
+      toast.error(t('toasts.vincularQEError'))
     },
   })
 }

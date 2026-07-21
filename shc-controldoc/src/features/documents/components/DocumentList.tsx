@@ -11,6 +11,7 @@ import { Pagination } from '../../../components/shared/Pagination'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
 import { useAuthStore } from '../../../stores/authStore'
 import { deleteDocument, restaurarDocumento } from '../../../api/endpoints/documents.api'
+import { useAreas } from '../../areas/hooks/useAreas'
 import { QUERY_KEYS } from '../constants'
 import type { Documento, DocStatus } from '../../../types/documents.types'
 import type { UserRole } from '../../../types/auth.types'
@@ -194,6 +195,8 @@ export function DocumentList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const userRole = useAuthStore((s) => s.user?.rol)
   const { documentos, isLoading, isError, pagination, refetch } = useDocumentList()
+  const { data: areas } = useAreas()
+  const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [pendingDeleteDoc, setPendingDeleteDoc] = useState<Documento | null>(null)
   const [pendingRestoreDoc, setPendingRestoreDoc] = useState<Documento | null>(null)
@@ -250,8 +253,8 @@ export function DocumentList() {
   if (estadoParam) activeChips.push({ key: 'estado', label: estadoParam })
   const tipoParam = searchParams.get('tipo')
   if (tipoParam) activeChips.push({ key: 'tipo', label: tipoParam })
-  const areaParam = searchParams.get('area')
-  if (areaParam) activeChips.push({ key: 'area', label: areaParam })
+  const areaParam = searchParams.get('areaId')
+  if (areaParam) activeChips.push({ key: 'areaId', label: nombreArea(areaParam) })
   if (searchParams.get('pendientes') === 'true') activeChips.push({ key: 'pendientes', label: t('pendientes.filtro') })
   if (includeDeleted) activeChips.push({ key: 'includeDeleted', label: t('deleted.toggle.label') })
 

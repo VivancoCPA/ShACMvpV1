@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const qualityEventEditReporteInicialSchema = z
   .object({
     descripcion: z.string().min(10).max(2000).optional(),
-    areaAfectada: z.string().min(1).optional(),
+    areaId: z.string().min(1).optional(),
     turno: z.enum(['DIA', 'TARDE', 'NOCHE']).optional(),
     fechaHoraEvento: z
       .string()

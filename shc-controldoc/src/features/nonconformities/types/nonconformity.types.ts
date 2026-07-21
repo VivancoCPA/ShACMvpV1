@@ -92,7 +92,7 @@ export interface NCFilters {
   severidad?: NCSeveridad
   dominio?: NCDominio
   origen?: NCOrigen
-  areaAfectada?: string
+  areaId?: string
   reportadoPorId?: string
   search?: string
   fechaDesde?: string
@@ -130,7 +130,7 @@ export interface NoConformidad {
   estado: NCStatus
   titulo?: string
   descripcion: string
-  areaAfectada: string
+  areaId: string
   procesoInvolucrado?: string
   detectadoPorId?: string
   reportadoPorId: string

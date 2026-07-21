@@ -7,7 +7,7 @@ const validPayload = {
   tipo: 'PROCESO' as const,
   severidad: 'BAJA' as const,
   titulo: 'Desvío en procedimiento de pesaje',
-  areaAfectada: 'Almacén de minerales',
+  areaId: 'Almacén de minerales',
   descripcion: 'Descripción válida con más de diez caracteres.',
   fechaDeteccion: '2025-01-15',
   fechaCierre: '2025-02-15',

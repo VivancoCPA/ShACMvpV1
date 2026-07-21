@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { IncidentStatusBadge } from './IncidentStatusBadge'
 import { formatShortDate } from '../../../utils/date.utils'
+import { useArea } from '../../areas/hooks/useAreas'
 import type { MarkerGroup } from './IncidentMapCanvas'
 
 interface Props {
@@ -75,6 +76,7 @@ interface SingleDetailProps {
 function SingleDetail({ group, onNavigate }: SingleDetailProps) {
   const { t, i18n } = useTranslation('incidents')
   const inc = group.members[0]
+  const { data: area } = useArea(inc.areaId)
 
   return (
     <div className="flex flex-col gap-3">
@@ -93,7 +95,7 @@ function SingleDetail({ group, onNavigate }: SingleDetailProps) {
         </div>
         <div>
           <dt className="text-muted dark:text-on-dark-soft">{t('list.columns.area')}</dt>
-          <dd className="mt-0.5 text-ink dark:text-on-dark">{inc.areaId}</dd>
+          <dd className="mt-0.5 text-ink dark:text-on-dark">{area?.nombre ?? inc.areaId}</dd>
         </div>
         <div>
           <dt className="text-muted dark:text-on-dark-soft">{t('list.columns.fechaEvento')}</dt>
