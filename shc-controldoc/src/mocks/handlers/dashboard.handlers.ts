@@ -3,11 +3,12 @@ import { getQeStore } from './quality-events.handlers'
 import { getDocumentsStore } from './documents.handlers'
 import { getNonconformitiesStore } from './nonconformities.handlers'
 import { getIncidentsStore } from './incidents.handlers'
+import { useAuthStore } from '../../stores/authStore'
 import { calcularEstadoSemaforoDesdeFecha } from '../../features/dashboard/utils/semaforoPendientes'
 import { horasTrabajadasFixtures } from '../fixtures/horasTrabajadas.fixtures'
 import { kpi04AnioAnteriorFixtures } from '../fixtures/kpi04AnioAnterior.fixtures'
-import { authFixtures } from '../fixtures/auth.fixtures'
-import type { MockUser } from '../fixtures/auth.fixtures'
+import { getSessionUser as getUserFromRequest } from './shared/session'
+import type { User } from '../../types/auth.types'
 import {
   KPI_DEFINITIONS,
   PLAZO_MAXIMO_QE_DIAS_HABILES,
@@ -41,6 +42,33 @@ import type { Documento } from '../../types/documents.types'
 
 const LATENCY = 400
 
+// RN-EMP-004: mismo patrón que los demás handlers (cada uno define su propia
+// copia, ver quality-events.handlers.ts) — authStore ya tiene el dato en
+// memoria, sin necesidad de un helper compartido nuevo.
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
+}
+
+// Único punto de lectura de cada store de dominio en este archivo — todo
+// cálculo de KPIs/resumen agrega sobre estos wrappers, nunca sobre
+// getQeStore()/getDocumentsStore()/getNonconformitiesStore()/getIncidentsStore()
+// directo, para que ninguna agregación mezcle datos de otra empresa (RN-EMP-004).
+function scopedQes(): QualityEvent[] {
+  return getQeStore().filter((qe) => qe.empresaId === getActiveEmpresaId())
+}
+
+function scopedDocs(): Documento[] {
+  return getDocumentsStore().filter((doc) => doc.empresaId === getActiveEmpresaId())
+}
+
+function scopedNcs(): NoConformidad[] {
+  return getNonconformitiesStore().filter((nc) => nc.empresaId === getActiveEmpresaId())
+}
+
+function scopedIncidentes(): Incidente[] {
+  return getIncidentsStore().filter((inc) => inc.empresaId === getActiveEmpresaId())
+}
+
 interface ACBase {
   id: string
   descripcion: string
@@ -55,14 +83,6 @@ interface ACConOrigen {
   ac: ACBase
   origenTipo: AccionCorrectivaResumen['origenTipo']
   origenId: string
-}
-
-function getUserFromRequest(request: Request): MockUser | null {
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
-  const userId = match?.[1] ?? null
-  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
 }
 
 function currentPeriodo(): string {
@@ -313,10 +333,10 @@ function calcularKpi09(qes: QualityEvent[], periodo: string): { valor: number; d
 }
 
 function calcularKpis(periodo: string): KpiResult[] {
-  const qes = getQeStore()
-  const docs = getDocumentsStore()
-  const ncs = getNonconformitiesStore()
-  const incidentes = getIncidentsStore()
+  const qes = scopedQes()
+  const docs = scopedDocs()
+  const ncs = scopedNcs()
+  const incidentes = scopedIncidentes()
   const calculadoEn = new Date().toISOString()
 
   const kpi04Valor = calcularKpi04(incidentes, periodo)
@@ -453,11 +473,11 @@ function toACResumen(
 
 const SUPERVISOR_KPI_IDS: KpiId[] = ['KPI-02', 'KPI-03', 'KPI-04', 'KPI-05', 'KPI-07']
 
-function buildOperarioData(usuario: MockUser): OperarioDashboardData {
-  const qes = getQeStore()
-  const incidentes = getIncidentsStore()
-  const ncs = getNonconformitiesStore()
-  const docs = getDocumentsStore()
+function buildOperarioData(usuario: User): OperarioDashboardData {
+  const qes = scopedQes()
+  const incidentes = scopedIncidentes()
+  const ncs = scopedNcs()
+  const docs = scopedDocs()
 
   const misIncidentesReportados = incidentes
     .filter((inc) => inc.reportadoPorId === usuario.id)
@@ -475,11 +495,11 @@ function buildOperarioData(usuario: MockUser): OperarioDashboardData {
   return { misIncidentesReportados, misQEReportados, accionesCorrectivasAsignadas, documentosPendientesLectura }
 }
 
-function buildSupervisorData(usuario: MockUser): SupervisorDashboardData {
+function buildSupervisorData(usuario: User): SupervisorDashboardData {
   const areas = usuario.areaIds ?? []
-  const qes = getQeStore().filter((qe) => areas.includes(qe.areaId))
-  const ncs = getNonconformitiesStore().filter((nc) => areas.includes(nc.areaId))
-  const incidentes = getIncidentsStore().filter((inc) => areas.includes(inc.areaId))
+  const qes = scopedQes().filter((qe) => areas.includes(qe.areaId))
+  const ncs = scopedNcs().filter((nc) => areas.includes(nc.areaId))
+  const incidentes = scopedIncidentes().filter((inc) => areas.includes(inc.areaId))
 
   const qePorEstado = qes.reduce<Record<QEStatus, number>>((acc, qe) => {
     acc[qe.estado] = (acc[qe.estado] ?? 0) + 1
@@ -577,9 +597,9 @@ const ALL_QE_STATUSES: QEStatus[] = [
 ]
 
 function buildJefeCalidadData(): JefeCalidadDashboardData {
-  const qes = getQeStore()
-  const ncs = getNonconformitiesStore()
-  const incidentes = getIncidentsStore()
+  const qes = scopedQes()
+  const ncs = scopedNcs()
+  const incidentes = scopedIncidentes()
 
   const qeCriticosAbiertos = qes
     .filter((qe) => qe.severidad === 'CRITICA' && qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
@@ -697,10 +717,10 @@ function buildAcsConSolicitudAjustePlazo(qes: QualityEvent[]): ACSolicitudAjuste
 }
 
 function buildAltaDireccionData(): AltaDireccionDashboardData {
-  const qes = getQeStore()
-  const docs = getDocumentsStore().filter((d) => !d.deletedAt)
-  const ncs = getNonconformitiesStore().filter((nc) => !nc.deletedAt)
-  const incidentes = getIncidentsStore().filter((inc) => !inc.deletedAt)
+  const qes = scopedQes()
+  const docs = scopedDocs().filter((d) => !d.deletedAt)
+  const ncs = scopedNcs().filter((nc) => !nc.deletedAt)
+  const incidentes = scopedIncidentes().filter((inc) => !inc.deletedAt)
 
   const qesAbiertos = qes.filter((qe) => qe.estado !== 'CERRADO' && qe.estado !== 'VERIFICADO')
   const qesVencidos = qesAbiertos.filter((qe) => {
@@ -802,7 +822,7 @@ function buildJefeControlDocumentarioData(): JefeControlDocDashboardData {
 }
 
 function buildAuditorData(): AuditorDashboardData {
-  const qes = getQeStore()
+  const qes = scopedQes()
   const hallazgosO3 = qes.filter((qe) => qe.origen === 'O3_HALLAZGO_AUDITORIA')
 
   return {
@@ -813,7 +833,7 @@ function buildAuditorData(): AuditorDashboardData {
   }
 }
 
-function buildDashboardSummary(usuario: MockUser): DashboardSummaryData | undefined {
+function buildDashboardSummary(usuario: User): DashboardSummaryData | undefined {
   const rol = getDashboardDataTypeForRole(usuario.rol)
   if (!rol) return undefined
 

@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import { createElement } from 'react'
 import { qualityEventHandlers } from '../../../mocks/handlers/quality-events.handlers'
+import { useAuthStore } from '../../../stores/authStore'
 import { useTransitionQEStatus } from './useTransitionQEStatus'
 import { INCIDENT_QUERY_KEYS } from '../../incidents/hooks/useIncidents'
 
@@ -17,6 +18,11 @@ vi.mock('sonner', () => ({
 const server = setupServer(...qualityEventHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// qe-2026-005/007 fixtures belong to empresa-001 — el handler ahora filtra por
+// empresa activa de sesión (me-f3-scoping-modulos).
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 

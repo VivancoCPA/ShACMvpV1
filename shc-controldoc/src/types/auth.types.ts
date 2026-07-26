@@ -6,6 +6,8 @@ export type UserRole =
   | 'AUDITOR_INTERNO'
   | 'ALTA_DIRECCION'
   | 'ADMINISTRADOR_SISTEMA'
+  | 'ADMINISTRADOR_EMPRESA'
+  | 'SUPERADMIN'
 
 export interface User {
   id: string
@@ -24,6 +26,8 @@ export interface User {
   lastLogin?: string
   /** Habilitado para loguear. `false` bloquea el login (RN-USR-002) sin eliminar el registro. */
   activo: boolean
+  /** Flag global independiente de `UsuarioEmpresa` (me-f4-admin-empresas). `true` resuelve la sesión con `rol: 'SUPERADMIN'` y `empresaActivaId: null`, sin importar las asignaciones `UsuarioEmpresa` que tenga el usuario. */
+  esSuperadminMultiempresa?: boolean
 }
 
 export interface LoginCredentials {

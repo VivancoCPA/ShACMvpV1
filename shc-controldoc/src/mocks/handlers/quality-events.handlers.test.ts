@@ -32,6 +32,7 @@ function baseIncidente(overrides: Partial<Incidente>): Incidente {
     severidad: 'MEDIA',
     descripcion: 'Incidente de prueba con descripción suficientemente larga',
     areaId: 'area-001',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaEvento: now,
     fechaReporte: now,
@@ -56,6 +57,7 @@ function baseNC(overrides: Partial<NoConformidad>): NoConformidad {
     estado: 'ABIERTA',
     descripcion: 'No conformidad de prueba con descripción suficientemente larga',
     areaId: 'area-001',
+    empresaId: 'empresa-001',
     reportadoPorId: 'user-operario-001',
     fechaDeteccion: now,
     fechaReporte: now,
@@ -86,11 +88,15 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
   }
 }
 
+// `empresaActivaId` fijo en 'empresa-001' — todos los fixtures de este archivo
+// (baseIncidente/baseNC/baseQE) usan esa empresa; los handlers ahora filtran/
+// asignan por empresa activa de sesión (me-f3-scoping-modulos).
 function setCurrentUser(id: string, rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'ALTA_DIRECCION' | 'AUDITOR_INTERNO') {
   useAuthStore.setState({
     user: { id, nombre: 'Test', apellido: 'User', email: `${id}@shac.internal`, rol },
     isAuthenticated: true,
     accessToken: 'token',
+    empresaActivaId: 'empresa-001',
   })
 }
 
@@ -106,6 +112,7 @@ function baseQE(overrides: Partial<QualityEvent>): QualityEvent {
     ciclo: 1,
     descripcion: 'Descripción de prueba',
     areaId: 'Almacén Norte',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaHoraEvento: now,
     fechaHoraReporte: now,
@@ -227,6 +234,55 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
     expect(
       getNotificationsStore().find(
         (n) => n.usuarioId === 'user-005' && n.entidadId === 'qe-test-auto-transition' && n.tipo === 'CAMBIO_ESTADO',
+      ),
+    ).toBeDefined()
+  })
+
+  it('resolves recipients by rol efectivo in the QE empresa, not the base MockUser.rol (RN-EMP-004)', async () => {
+    // user-supervisor-001 is SUPERVISOR in empresa-001 but JEFE_CALIDAD_SYST in
+    // empresa-002 (see empresas.fixtures.ts) — their base MockUser.rol fixture
+    // value is 'SUPERVISOR', which must NOT be what recipient resolution reads.
+    setCurrentUser('user-jefecalidad-101', 'JEFE_CALIDAD_SYST')
+    useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+    getQeStore().push(
+      baseQE({
+        id: 'qe-test-empresa2-transition',
+        numero: 'QE-TEST-E2-AUTO',
+        empresaId: 'empresa-002',
+        estado: 'EN_EJECUCION',
+        accionesCorrectivas: [
+          {
+            id: 'ac-e2-auto-1',
+            qeId: 'qe-test-empresa2-transition',
+            descripcion: 'Última AC pendiente',
+            responsableId: 'user-operario-101',
+            responsableNombre: 'Operario E2',
+            plazoFecha: '2026-08-01',
+            estado: 'EN_EJECUCION',
+            creadoEn: '2026-01-01T00:00:00Z',
+            actualizadoEn: '2026-01-01T00:00:00Z',
+            solicitudesAjustePlazo: [],
+          },
+        ],
+      }),
+    )
+
+    const { status } = await call(
+      api.patch('/api/quality-events/qe-test-empresa2-transition/acciones-correctivas/ac-e2-auto-1/status', {
+        estado: 'CERRADA',
+        descripcionEvidencia: 'Evidencia de cierre',
+      }),
+    )
+    expect(status).toBe(200)
+    expect(getQeStore().find((q) => q.id === 'qe-test-empresa2-transition')?.estado).toBe('PENDIENTE_CIERRE')
+
+    // Notified as JEFE_CALIDAD_SYST of empresa-002, despite MockUser.rol === 'SUPERVISOR'.
+    expect(
+      getNotificationsStore().find(
+        (n) =>
+          n.usuarioId === 'user-supervisor-001' &&
+          n.entidadId === 'qe-test-empresa2-transition' &&
+          n.tipo === 'CAMBIO_ESTADO',
       ),
     ).toBeDefined()
   })
@@ -408,6 +464,13 @@ describe('quality-events.handlers — export-pdf', () => {
     expect(exportEntries).toHaveLength(2)
     expect(exportEntries[0].timestamp).toBeDefined()
     expect(exportEntries[1].timestamp).toBeDefined()
+  })
+
+  it('rejects export of a QE from another empresa with 404 (RN-EMP-004)', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    // qe-e2-2026-001 belongs to empresa-002
+    const { status } = await call(api.post('/api/quality-events/qe-e2-2026-001/export-pdf'))
+    expect(status).toBe(404)
   })
 })
 
@@ -814,5 +877,95 @@ describe('quality-events.handlers — sincronización de estado NC <- QE (RN-QE-
     expect(status).toBe(200)
 
     expect(getNonconformitiesStore().find((n) => n.id === 'nc-sync-anulada')?.estado).toBe('ANULADA')
+  })
+})
+
+describe('quality-events.handlers — empresa isolation (me-f3-scoping-modulos)', () => {
+  it('list excludes quality events from another empresa', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    // pageSize large enough that empresa-002's fixtures (appended at the end of
+    // qualityEventFixtures) would surface here if the empresa filter were missing —
+    // the default pageSize of 10 would hide them regardless, masking the bug.
+    const { status, data } = await call(
+      api.get<{ items: { id: string; empresaId: string }[]; pagination: { totalItems: number } }>(
+        '/api/quality-events?pageSize=100',
+      ),
+    )
+    expect(status).toBe(200)
+    expect(data.items.length).toBeGreaterThan(0)
+    expect(data.items.every((qe) => qe.empresaId === 'empresa-001')).toBe(true)
+    expect(data.pagination.totalItems).toBe(
+      getQeStore().filter((qe) => qe.empresaId === 'empresa-001' && !qe.deletedAt).length,
+    )
+  })
+
+  it('list combines the empresa filter with an existing query param filter', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    const { status, data } = await call(
+      api.get<{ items: { id: string; empresaId: string; estado: string }[] }>(
+        '/api/quality-events?estado=EN_INVESTIGACION&pageSize=100',
+      ),
+    )
+    expect(status).toBe(200)
+    expect(data.items.every((qe) => qe.empresaId === 'empresa-001' && qe.estado === 'EN_INVESTIGACION')).toBe(true)
+  })
+
+  it('detail returns 404 for a quality event belonging to another empresa', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    // qe-e2-2026-001 belongs to empresa-002
+    const { status } = await call(api.get('/api/quality-events/qe-e2-2026-001'))
+    expect(status).toBe(404)
+  })
+
+  it('status transition on another empresa quality event is rejected as not found', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    // qe-e2-2026-002 (empresa-002, EN_INVESTIGACION)
+    const { status } = await call(
+      api.patch('/api/quality-events/qe-e2-2026-002/status', { nuevoEstado: 'ANALISIS_COMPLETADO' }),
+    )
+    expect(status).toBe(404)
+    expect(getQeStore().find((q) => q.id === 'qe-e2-2026-002')!.estado).toBe('EN_INVESTIGACION')
+  })
+
+  it('delete on another empresa quality event is rejected as not found', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST') // empresa-001
+    const { status } = await call(api.delete('/api/quality-events/qe-e2-2026-001'))
+    expect(status).toBe(404)
+    expect(getQeStore().find((q) => q.id === 'qe-e2-2026-001')!.deletedAt).toBeUndefined()
+  })
+
+  it('created quality event carries the active empresa and an independent numero sequence', async () => {
+    setCurrentUser('user-jefecalidad-101', 'JEFE_CALIDAD_SYST')
+    useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+    const { status, data } = await call(
+      api.post<QualityEvent>('/api/quality-events', {
+        tipo: 'SST',
+        severidad: 'MEDIA',
+        descripcion: 'QE de prueba para aislamiento multiempresa',
+        areaId: 'area-001',
+        turno: 'DIA',
+        fechaHoraEvento: '2026-01-01T08:00',
+      }),
+    )
+    expect(status).toBe(201)
+    expect(data.empresaId).toBe('empresa-002')
+    // 4 fixtures empresa-002 (qe-e2-2026-001..004) — this is the 5th.
+    expect(data.numero).toBe('QE-2026-005')
+  })
+
+  it('create is rejected with 401 when the session has no active empresa', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    useAuthStore.setState({ empresaActivaId: null })
+    const { status } = await call(
+      api.post('/api/quality-events', {
+        tipo: 'SST',
+        severidad: 'MEDIA',
+        descripcion: 'QE sin empresa activa en sesión',
+        areaId: 'area-001',
+        turno: 'DIA',
+        fechaHoraEvento: '2026-01-01T08:00',
+      }),
+    )
+    expect(status).toBe(401)
   })
 })

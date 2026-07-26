@@ -5,6 +5,7 @@ import { getQeStore } from '../handlers/quality-events.handlers'
 import { getNonconformitiesStore } from '../handlers/nonconformities.handlers'
 import { getIncidentsStore } from '../handlers/incidents.handlers'
 import { getDocumentsStore } from '../handlers/documents.handlers'
+import { getRolEfectivo } from './empresas.fixtures'
 import { calcularEstadoSemaforoDesdeFecha } from '../../features/dashboard/utils/semaforoPendientes'
 import { getIncidentQEAlertLevel } from '../../features/incidents/utils/incidentQEAlert'
 import type { Notificacion, NotificacionEntidadTipo } from '../../types/notification.types'
@@ -26,6 +27,7 @@ interface CreateCambioEstadoParams {
   entidadTipo: NotificacionEntidadTipo
   entidadId: string
   entidadCodigo: string
+  empresaId: string
   estadoNuevo: string
   reportadoPorId: string
   responsablesACActivas: string[]
@@ -39,6 +41,7 @@ export function createCambioEstadoNotification(params: CreateCambioEstadoParams)
     entidadTipo,
     entidadId,
     entidadCodigo,
+    empresaId,
     estadoNuevo,
     reportadoPorId,
     responsablesACActivas,
@@ -54,6 +57,7 @@ export function createCambioEstadoNotification(params: CreateCambioEstadoParams)
   const created: Notificacion[] = recipients.map((usuarioId) => ({
     id: generateId(),
     usuarioId,
+    empresaId,
     tipo: 'CAMBIO_ESTADO',
     entidadTipo,
     entidadId,
@@ -72,6 +76,7 @@ interface CreateAsignacionParams {
   entidadTipo: NotificacionEntidadTipo
   entidadId: string
   entidadCodigo: string
+  empresaId: string
   asignadoId: string
   actorId: string
   link: string
@@ -80,13 +85,14 @@ interface CreateAsignacionParams {
 
 // RN-NOTIF-002
 export function createAsignacionNotification(params: CreateAsignacionParams): Notificacion | null {
-  const { entidadTipo, entidadId, entidadCodigo, asignadoId, actorId, link, mensaje } = params
+  const { entidadTipo, entidadId, entidadCodigo, empresaId, asignadoId, actorId, link, mensaje } = params
 
   if (asignadoId === actorId || !isResolvableAccount(asignadoId)) return null
 
   const notification: Notificacion = {
     id: generateId(),
     usuarioId: asignadoId,
+    empresaId,
     tipo: 'ASIGNACION',
     entidadTipo,
     entidadId,
@@ -122,6 +128,7 @@ interface ACLike {
 interface ACSource {
   ac: ACLike
   entidadCodigo: string
+  empresaId: string
   link: string
 }
 
@@ -131,19 +138,19 @@ function collectActiveACSources(): ACSource[] {
   for (const qe of getQeStore()) {
     for (const ac of qe.accionesCorrectivas) {
       if (ac.estado === 'CERRADA') continue
-      sources.push({ ac, entidadCodigo: qe.numero, link: `/quality-events/${qe.id}` })
+      sources.push({ ac, entidadCodigo: qe.numero, empresaId: qe.empresaId, link: `/quality-events/${qe.id}` })
     }
   }
   for (const nc of getNonconformitiesStore()) {
     for (const ac of nc.accionesCorrectivas) {
       if (ac.estado === 'CERRADA') continue
-      sources.push({ ac, entidadCodigo: nc.numero, link: `/nonconformities/${nc.id}` })
+      sources.push({ ac, entidadCodigo: nc.numero, empresaId: nc.empresaId, link: `/nonconformities/${nc.id}` })
     }
   }
   for (const inc of getIncidentsStore()) {
     for (const ac of inc.accionesCorrectivas ?? []) {
       if (ac.estado === 'CERRADA') continue
-      sources.push({ ac, entidadCodigo: inc.numero, link: `/incidents/${inc.id}` })
+      sources.push({ ac, entidadCodigo: inc.numero, empresaId: inc.empresaId, link: `/incidents/${inc.id}` })
     }
   }
 
@@ -161,7 +168,7 @@ export function generateVencimientoNotifications(): Notificacion[] {
   const created: Notificacion[] = []
   const now = new Date()
 
-  for (const { ac, entidadCodigo, link } of collectActiveACSources()) {
+  for (const { ac, entidadCodigo, empresaId, link } of collectActiveACSources()) {
     const key = buildVencimientoKey('AC', ac.id)
     if (existingKeys.has(key)) continue
 
@@ -172,6 +179,7 @@ export function generateVencimientoNotifications(): Notificacion[] {
     const notification: Notificacion = {
       id: generateId(),
       usuarioId: ac.responsableId,
+      empresaId,
       tipo: 'VENCIMIENTO',
       entidadTipo: 'AC',
       entidadId: ac.id,
@@ -198,7 +206,8 @@ export function generateVencimientoNotifications(): Notificacion[] {
     const recipients = new Set<string>()
     if (isResolvableAccount(doc.autorId)) recipients.add(doc.autorId)
     for (const u of getUsersStore()) {
-      if (u.rol === 'JEFE_CONTROL_DOCUMENTARIO' || u.rol === 'JEFE_CALIDAD_SYST') recipients.add(u.id)
+      const rolEfectivo = getRolEfectivo(u.id, doc.empresaId)
+      if (rolEfectivo === 'JEFE_CONTROL_DOCUMENTARIO' || rolEfectivo === 'JEFE_CALIDAD_SYST') recipients.add(u.id)
     }
 
     let createdAny = false
@@ -206,6 +215,7 @@ export function generateVencimientoNotifications(): Notificacion[] {
       const notification: Notificacion = {
         id: generateId(),
         usuarioId,
+        empresaId: doc.empresaId,
         tipo: 'VENCIMIENTO',
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
@@ -233,8 +243,9 @@ export function generateVencimientoNotifications(): Notificacion[] {
 
     const recipients = new Set<string>()
     for (const u of getUsersStore()) {
-      if (u.rol === 'JEFE_CALIDAD_SYST') recipients.add(u.id)
-      if (u.rol === 'SUPERVISOR' && (u.areaIds ?? []).includes(inc.areaId)) recipients.add(u.id)
+      const rolEfectivo = getRolEfectivo(u.id, inc.empresaId)
+      if (rolEfectivo === 'JEFE_CALIDAD_SYST') recipients.add(u.id)
+      if (rolEfectivo === 'SUPERVISOR' && (u.areaIds ?? []).includes(inc.areaId)) recipients.add(u.id)
     }
 
     let createdAny = false
@@ -242,6 +253,7 @@ export function generateVencimientoNotifications(): Notificacion[] {
       const notification: Notificacion = {
         id: generateId(),
         usuarioId,
+        empresaId: inc.empresaId,
         tipo: 'VENCIMIENTO',
         entidadTipo: 'INCIDENTE',
         entidadId: inc.id,

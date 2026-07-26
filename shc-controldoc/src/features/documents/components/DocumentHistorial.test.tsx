@@ -21,6 +21,7 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
     version: 'v1.0',
     estado: 'BORRADOR',
     areaId: 'Calidad',
+    empresaId: 'empresa-001',
     confidencialidad: 'INTERNO',
     autorId: 'user-001',
     archivoOriginalUrl: null,

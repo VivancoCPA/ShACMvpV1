@@ -27,3 +27,23 @@ export function persistMockRefreshToken(token: string | null): void {
 export function readMockRefreshToken(): string | null {
   return localStorage.getItem(MOCK_REFRESH_TOKEN_KEY)
 }
+
+// Same mock-only rationale as the refresh token above: a real backend would
+// carry `empresaActivaId` inside its own server-side session/JWT, not in
+// localStorage. This value survives a full page reload so `bootstrap()` can
+// ask `/api/auth/refresh` to resolve the effective role for the empresa that
+// was active before the reload, instead of silently falling back to the
+// user's first assigned empresa (see me-f2-sesion-rbac-login design.md, D7).
+const ACTIVE_EMPRESA_ID_KEY = 'shac_active_empresa_id'
+
+export function persistActiveEmpresaId(id: string | null): void {
+  if (id) {
+    localStorage.setItem(ACTIVE_EMPRESA_ID_KEY, id)
+  } else {
+    localStorage.removeItem(ACTIVE_EMPRESA_ID_KEY)
+  }
+}
+
+export function readActiveEmpresaId(): string | null {
+  return localStorage.getItem(ACTIVE_EMPRESA_ID_KEY)
+}

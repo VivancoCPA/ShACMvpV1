@@ -13,6 +13,7 @@ function makeNC(estado: NoConformidad['estado'], qeGeneradoId?: string): NoConfo
     estado,
     descripcion: 'Descripción de prueba para la no conformidad',
     areaId: 'Almacén',
+    empresaId: 'empresa-001',
     reportadoPorId: 'user-1',
     fechaDeteccion: '2026-01-01T00:00:00Z',
     fechaReporte: '2026-01-01T00:00:00Z',

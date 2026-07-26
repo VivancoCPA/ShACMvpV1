@@ -9,6 +9,7 @@ import { dashboardHandlers } from './dashboard.handlers'
 import { userHandlers } from './users.handlers'
 import { notificationHandlers } from './notifications.handlers'
 import { areaHandlers } from './areas.handlers'
+import { empresasHandlers } from './empresas.handlers'
 
 export const handlers: RequestHandler[] = [
   ...authHandlers,
@@ -21,4 +22,5 @@ export const handlers: RequestHandler[] = [
   ...userHandlers,
   ...notificationHandlers,
   ...areaHandlers,
+  ...empresasHandlers,
 ]

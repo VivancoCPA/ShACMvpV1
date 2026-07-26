@@ -25,6 +25,7 @@ const ROLE_VALUES: UserRole[] = [
   'AUDITOR_INTERNO',
   'ALTA_DIRECCION',
   'ADMINISTRADOR_SISTEMA',
+  'ADMINISTRADOR_EMPRESA',
 ]
 
 type EstadoFilter = 'TODOS' | 'ACTIVOS' | 'INACTIVOS'
@@ -150,7 +151,7 @@ function ConfirmResetModal({ user, isPending, onConfirm, onClose }: ConfirmReset
 export function UserList() {
   const { t, i18n } = useTranslation('users')
   const authUser = useAuthStore((s) => s.user)
-  const canAdminister = authUser?.rol === 'ADMINISTRADOR_SISTEMA'
+  const canAdminister = authUser?.rol === 'ADMINISTRADOR_EMPRESA'
   const { data: areas } = useAreas()
   const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
 

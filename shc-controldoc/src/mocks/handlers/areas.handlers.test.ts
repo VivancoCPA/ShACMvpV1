@@ -1,14 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { areaHandlers } from './areas.handlers'
 import { qualityEventHandlers } from './quality-events.handlers'
+import { useAuthStore } from '../../stores/authStore'
 import type { Area, AreaConteoBloqueo } from '../../features/areas/types/area.types'
 
 const server = setupServer(...areaHandlers, ...qualityEventHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// El QE sintético creado más abajo requiere una empresa activa en sesión
+// (me-f3-scoping-modulos) — el resto de este archivo (CRUD de Áreas) no
+// depende de sesión, así que fijarlo globalmente aquí no afecta esos tests.
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterAll(() => server.close())
 
 interface Result<T> {

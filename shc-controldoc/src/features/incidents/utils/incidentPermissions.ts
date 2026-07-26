@@ -96,5 +96,11 @@ export function getIncidentPermissions(
 
     case 'ADMINISTRADOR_SISTEMA':
       return { ...DENY_ALL }
+
+    case 'ADMINISTRADOR_EMPRESA':
+      return { ...DENY_ALL }
+
+    case 'SUPERADMIN':
+      return { ...DENY_ALL }
   }
 }

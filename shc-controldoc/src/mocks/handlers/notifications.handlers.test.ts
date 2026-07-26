@@ -4,7 +4,8 @@ import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { notificationHandlers, resetStore } from './notifications.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
-import { getNotificationsStore } from '../fixtures/notifications.fixtures'
+import { useAuthStore } from '../../stores/authStore'
+import { getNotificationsStore, addNotification } from '../fixtures/notifications.fixtures'
 import type { Notificacion } from '../../types/notification.types'
 
 const server = setupServer(...notificationHandlers)
@@ -33,14 +34,17 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
   }
 }
 
-function tokenFor(email: string): string {
-  const user = authFixtures.find((u) => u.email === email)
-  if (!user) throw new Error(`Fixture no encontrado: ${email}`)
-  return `mock-access-token-${user.id}-${Date.now()}`
-}
-
+// `getSessionUser` (empresa-session, me-f2-sesion-rbac-login) resuelve el
+// usuario actuante desde la sesión activa en memoria, no solo del Bearer
+// token — este helper pobla `authStore` además de construir el token, para
+// que los handlers de dominio reconozcan al usuario de cada fixture.
 function authHeaders(email: string) {
-  return { headers: { Authorization: `Bearer ${tokenFor(email)}` } }
+  const mockUser = authFixtures.find((u) => u.email === email)
+  if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
+  const { password: _password, ...user } = mockUser
+  const accessToken = `mock-access-token-${user.id}-${Date.now()}`
+  useAuthStore.setState({ user, accessToken, isAuthenticated: true, empresaActivaId: 'empresa-001' })
+  return { headers: { Authorization: `Bearer ${accessToken}` } }
 }
 
 describe('notifications.handlers — GET /api/notifications', () => {
@@ -99,6 +103,59 @@ describe('notifications.handlers — PATCH /api/notifications/marcar-todas-leida
 
     const otherUserNotification = getNotificationsStore().find((n) => n.usuarioId === 'user-jefedocs-001')
     expect(otherUserNotification?.leida).toBe(false)
+  })
+})
+
+describe('notifications.handlers — aislamiento por empresa activa (RN-EMP-004, me-f5-verificacion-cruzada)', () => {
+  // user-supervisor-001: SUPERVISOR en empresa-001, JEFE_CALIDAD_SYST en
+  // empresa-002 (ver empresas.fixtures.ts) — mismo usuario, notificaciones en
+  // ambas empresas.
+  it('GET /api/notifications solo devuelve las notificaciones de la empresa activa', async () => {
+    addNotification({
+      id: 'notif-test-empresa2',
+      usuarioId: 'user-supervisor-001',
+      empresaId: 'empresa-002',
+      tipo: 'CAMBIO_ESTADO',
+      entidadTipo: 'QE',
+      entidadId: 'qe-e2-2026-001',
+      entidadCodigo: 'QE-2026-E2-001',
+      mensaje: 'Notificación de prueba en empresa-002.',
+      leida: false,
+      createdAt: new Date().toISOString(),
+      link: '/quality-events/qe-e2-2026-001',
+    })
+
+    const headersEmpresa1 = authHeaders('supervisor@shac.pe') // empresaActivaId: 'empresa-001'
+    const { data: dataEmpresa1 } = await call(api.get<Notificacion[]>('/api/notifications', headersEmpresa1))
+    expect(dataEmpresa1.some((n) => n.id === 'notif-test-empresa2')).toBe(false)
+
+    authHeaders('supervisor@shac.pe')
+    useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+    const { data: dataEmpresa2 } = await call(api.get<Notificacion[]>('/api/notifications'))
+    expect(dataEmpresa2.some((n) => n.id === 'notif-test-empresa2')).toBe(true)
+  })
+
+  it('marcar-todas-leidas no marca como leída una notificación de otra empresa', async () => {
+    addNotification({
+      id: 'notif-test-marcar-empresa2',
+      usuarioId: 'user-supervisor-001',
+      empresaId: 'empresa-002',
+      tipo: 'CAMBIO_ESTADO',
+      entidadTipo: 'QE',
+      entidadId: 'qe-e2-2026-001',
+      entidadCodigo: 'QE-2026-E2-001',
+      mensaje: 'Notificación de prueba en empresa-002.',
+      leida: false,
+      createdAt: new Date().toISOString(),
+      link: '/quality-events/qe-e2-2026-001',
+    })
+
+    await call(
+      api.patch('/api/notifications/marcar-todas-leidas', undefined, authHeaders('supervisor@shac.pe')),
+    )
+
+    const stillUnread = getNotificationsStore().find((n) => n.id === 'notif-test-marcar-empresa2')
+    expect(stillUnread?.leida).toBe(false)
   })
 })
 

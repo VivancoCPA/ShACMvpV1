@@ -110,6 +110,7 @@ export interface QualityEvent {
   ciclo: number
   descripcion: string
   areaId: string
+  empresaId: string
   turno: 'DIA' | 'TARDE' | 'NOCHE'
   fechaHoraEvento: string
   fechaHoraReporte: string

@@ -37,6 +37,8 @@ function userRoleToDocRole(role: UserRole): DocRole {
     case 'AUDITOR_INTERNO':
     case 'ALTA_DIRECCION':
     case 'ADMINISTRADOR_SISTEMA':
+    case 'ADMINISTRADOR_EMPRESA':
+    case 'SUPERADMIN':
       return 'OPERARIO'
   }
 }

@@ -62,7 +62,7 @@ const NAV_ITEMS: NavItem[] = [
     key: 'users',
     path: '/usuarios',
     icon: Users,
-    roles: ['ADMINISTRADOR_SISTEMA'],
+    roles: ['ADMINISTRADOR_EMPRESA'],
   },
   {
     key: 'areas',
@@ -75,6 +75,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/admin/locales',
     icon: MapPin,
     roles: ['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST'],
+  },
+  {
+    key: 'empresas',
+    path: '/admin/empresas',
+    icon: Building2,
+    roles: ['SUPERADMIN'],
   },
 ]
 

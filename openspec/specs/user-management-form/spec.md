@@ -5,7 +5,7 @@
 ## Requirements
 
 ### Requirement: Formulario único de alta y edición de usuario
-`src/features/users/components/UserFormModal.tsx` SHALL implementar un único formulario (React Hook Form + Zod) reutilizado tanto para alta como para edición, distinguiendo el modo por la presencia de un `userId` inicial. El campo de contraseña inicial SHALL mostrarse únicamente en modo alta; en modo edición no SHALL existir ningún campo de contraseña.
+`src/features/users/components/UserFormModal.tsx` SHALL implementar un único formulario (React Hook Form + Zod) reutilizado tanto para alta como para edición, distinguiendo el modo por la presencia de un `userId` inicial. El campo de contraseña inicial SHALL mostrarse únicamente en modo alta; en modo edición no SHALL existir ningún campo de contraseña. Los campos `area` (single-select) y `areasAsignadas` (checkbox-grid multi-select) SHALL poblarse desde `useAreas()` (`area-admin-hooks`, M6-S08) en vez de `AREAS_SHAC.map`, mostrando `Area.nombre` como etiqueta visible y enviando `Area.id` como valor (`areaId`/`areaIds`).
 
 #### Scenario: Modo alta no precarga campos
 - **WHEN** el admin abre el formulario para crear un usuario nuevo
@@ -13,11 +13,15 @@
 
 #### Scenario: Modo edición precarga los datos del usuario
 - **WHEN** el admin abre el formulario para editar un usuario existente
-- **THEN** los campos `nombre`, `apellido`, `email`, `rol`, `area` y `areasAsignadas` aparecen precargados con los valores actuales del usuario
+- **THEN** los campos `nombre`, `apellido`, `email`, `rol`, `areaId` y `areaIds` aparecen precargados con los valores actuales del usuario, y el combobox de `areaId` muestra el `nombre` del Área correspondiente (resuelto vía `useAreas()`), no su `id`
 
-#### Scenario: Campo areasAsignadas solo aparece para rol SUPERVISOR
+#### Scenario: Campo areaIds solo aparece para rol SUPERVISOR
 - **WHEN** el admin selecciona `rol: 'SUPERVISOR'` en el formulario (alta o edición)
-- **THEN** los campos `area` y `areasAsignadas` se vuelven visibles y requeridos
+- **THEN** los campos `areaId` y `areaIds` se vuelven visibles y requeridos
+
+#### Scenario: Opciones de área provienen del catálogo administrado, no de una constante estática
+- **WHEN** un `ADMINISTRADOR_SISTEMA` crea una Área nueva en `/admin/areas` y luego un admin abre `UserFormModal`
+- **THEN** la Área recién creada aparece como opción en los combobox de `areaId` y `areaIds`, sin requerir un despliegue de código
 
 ### Requirement: Alta muestra la contraseña temporal generada en el modal reutilizable de CA-USR-08 (RN-USR-005)
 Al enviar el formulario en modo alta, tras la respuesta exitosa de `useCreateUser()`, la UI SHALL mostrar la `temporaryPassword` recibida reutilizando el mismo modal persistente con botón "Copiar" (`navigator.clipboard.writeText` + feedback visual temporal) ya implementado para el reset de contraseña (RN-USR-004/CA-USR-08) — no un componente nuevo. El toast de confirmación de alta ("Usuario creado correctamente") SHALL poder mantenerse como notificación adicional, pero nunca como el único lugar donde se muestra la contraseña. El nuevo usuario SHALL aparecer inmediatamente en el listado sin recargar la página.

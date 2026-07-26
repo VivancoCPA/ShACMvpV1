@@ -4,6 +4,8 @@ import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { documentHandlers, getDocumentsStore, resetStore } from './documents.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
+import { getEmpresasActivasForUsuario } from '../fixtures/empresas.fixtures'
+import { useAuthStore } from '../../stores/authStore'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
 
 const server = setupServer(...documentHandlers)
@@ -35,14 +37,22 @@ async function call<T>(
   }
 }
 
-function tokenFor(email: string): string {
-  const user = authFixtures.find((u) => u.email === email)
-  if (!user) throw new Error(`Fixture no encontrado: ${email}`)
-  return `mock-access-token-${user.id}-${Date.now()}`
-}
-
-function authHeaders(email: string) {
-  return { headers: { Authorization: `Bearer ${tokenFor(email)}` } }
+// `getSessionUser` (empresa-session, me-f2-sesion-rbac-login) resuelve el
+// usuario actuante desde la sesión activa en memoria, no solo del Bearer
+// token — este helper pobla `authStore` además de construir el token, para
+// que los handlers de dominio reconozcan al usuario de cada fixture.
+// `empresaActivaId` se resuelve igual que lo haría un login real (primera
+// empresa ACTIVO de `UsuarioEmpresa`) — los handlers de Documentos ahora
+// filtran/asignan por empresa activa de sesión (me-f3-scoping-modulos).
+function authHeaders(email: string, empresaId?: string) {
+  const mockUser = authFixtures.find((u) => u.email === email)
+  if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
+  const { password: _password, ...user } = mockUser
+  const accessToken = `mock-access-token-${user.id}-${Date.now()}`
+  const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
+  const empresaActivaId = empresaId ?? empresasDisponibles[0]?.id ?? null
+  useAuthStore.setState({ user, accessToken, isAuthenticated: true, empresaActivaId, empresasDisponibles })
+  return { headers: { Authorization: `Bearer ${accessToken}` } }
 }
 
 describe('documents.handlers — GET /api/documents/:id/archivo-original', () => {
@@ -225,5 +235,71 @@ describe('documents.handlers — asignación notifications on create/update', ()
       (n) => n.usuarioId === 'user-auditor-001' && n.entidadId === 'doc-003' && n.tipo === 'ASIGNACION',
     )
     expect(notif).toBeDefined()
+  })
+})
+
+describe('documents.handlers — empresa isolation (me-f3-scoping-modulos)', () => {
+  it('list excludes documents from another empresa', async () => {
+    const { status, data } = await call(
+      api.get<{ items: { id: string; empresaId: string }[] }>(
+        '/api/documents',
+        authHeaders('jefe.docs@shac.pe'), // empresa-001
+      ),
+    )
+    expect(status).toBe(200)
+    expect(data.items.some((d) => d.empresaId === 'empresa-002')).toBe(false)
+  })
+
+  it('detail returns 404 for a document belonging to another empresa', async () => {
+    // doc-e2-001 belongs to empresa-002; acting session is empresa-001
+    const { status } = await call(
+      api.get('/api/documents/doc-e2-001', authHeaders('jefe.docs@shac.pe')),
+    )
+    expect(status).toBe(404)
+  })
+
+  it('status transition on another empresa document is rejected as not found', async () => {
+    // doc-e2-002 (empresa-002, EN_REVISION) — acting session is empresa-001
+    const { status } = await call(
+      api.patch(
+        '/api/documents/doc-e2-002/status',
+        { estado: 'EN_APROBACION' },
+        authHeaders('jefe.docs@shac.pe'),
+      ),
+    )
+    expect(status).toBe(404)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-e2-002')!.estado).toBe('EN_REVISION')
+  })
+
+  it('delete on another empresa document is rejected as not found', async () => {
+    // doc-e2-003 (empresa-002, BORRADOR) — acting session is empresa-001
+    const { status } = await call(
+      api.delete('/api/documents/doc-e2-003', authHeaders('jefe.docs@shac.pe')),
+    )
+    expect(status).toBe(404)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-e2-003')!.deletedAt).toBeUndefined()
+  })
+
+  it('created document carries the active empresa and an independent codigo sequence', async () => {
+    const { status, data } = await call(
+      api.post<{ empresaId: string; codigo: string }>(
+        '/api/documents',
+        { titulo: 'Procedimiento Terminal Portuario', tipo: 'PRC', areaId: 'area-009' },
+        authHeaders('jefe.docs@ilo.pe'), // empresa-002, JEFE_CONTROL_DOCUMENTARIO
+      ),
+    )
+    expect(status).toBe(201)
+    expect(data.empresaId).toBe('empresa-002')
+    // Only doc-e2-002 (PRC-CD-E2-001) is empresa-002/PRC in fixtures — this is the 2nd for that empresa.
+    expect(data.codigo).toBe('PRC-CD-002')
+  })
+
+  it('create is rejected with 401 when the session has no active empresa', async () => {
+    const headers = authHeaders('jefe.docs@shac.pe')
+    useAuthStore.setState({ empresaActivaId: null })
+    const { status } = await call(
+      api.post('/api/documents', { titulo: 'Documento sin empresa activa', tipo: 'PRC', areaId: 'area-007' }, headers),
+    )
+    expect(status).toBe(401)
   })
 })

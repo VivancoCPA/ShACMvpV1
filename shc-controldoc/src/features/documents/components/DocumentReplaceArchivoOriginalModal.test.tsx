@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
 import { render, screen, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import { documentHandlers } from '../../../mocks/handlers/documents.handlers'
+import { useAuthStore } from '../../../stores/authStore'
 import { DocumentReplaceArchivoOriginalModal } from './DocumentReplaceArchivoOriginalModal'
 
 vi.mock('react-i18next', () => ({
@@ -17,6 +18,11 @@ vi.mock('react-i18next', () => ({
 const server = setupServer(...documentHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }))
+// doc-004 pertenece a empresa-001 — el handler ahora filtra/asigna por
+// empresa activa de sesión (me-f3-scoping-modulos).
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterEach(() => {
   server.resetHandlers()
   cleanup()

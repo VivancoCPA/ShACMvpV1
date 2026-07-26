@@ -384,12 +384,20 @@
     "login": {
       "title": "Iniciar sesión",
       "subtitle": "Sistema Híbrido de Acciones Correctivas",
+      "artTitle": "SHAC",
+      "artTagline": "Gestión de calidad y seguridad para operaciones logísticas.",
       "email": "Correo electrónico",
       "password": "Contraseña",
       "submit": "Ingresar",
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "showPassword": "Mostrar contraseña",
       "hidePassword": "Ocultar contraseña"
+    },
+    "empresaSelection": {
+      "title": "Elige con qué empresa trabajar",
+      "subtitle": "Tu cuenta tiene acceso a más de una empresa.",
+      "confirm": "Continuar",
+      "back": "Volver"
     },
     "forgotPassword": {
       "title": "Recuperar contraseña",
@@ -427,7 +435,8 @@
       "tokenExpired": "El enlace ha expirado o no es válido.",
       "networkError": "Error de conexión. Inténtalo de nuevo.",
       "invalidLink": "El enlace no es válido. Solicita uno nuevo.",
-      "userDisabled": "Usuario deshabilitado, contacte al administrador"
+      "userDisabled": "Usuario deshabilitado, contacte al administrador",
+      "empresaNotAssigned": "La empresa seleccionada no está asignada a este usuario."
     },
     "roles": {
       "OPERARIO": "Operario",
@@ -436,7 +445,9 @@
       "JEFE_CONTROL_DOCUMENTARIO": "Jefe de Control Documentario",
       "AUDITOR_INTERNO": "Auditor Interno",
       "ALTA_DIRECCION": "Alta Dirección",
-      "ADMINISTRADOR_SISTEMA": "Administrador de Sistema"
+      "ADMINISTRADOR_SISTEMA": "Administrador de Sistema",
+      "ADMINISTRADOR_EMPRESA": "Administrador de Empresa",
+      "SUPERADMIN": "Superadmin"
     },
     "devMode": {
       "roleSelector": "Modo desarrollo — seleccionar rol"
@@ -454,10 +465,15 @@
     "users": "Usuarios",
     "areas": "Áreas",
     "locations": "Locales y Zonas",
+    "empresas": "Empresas",
     "logout": "Cerrar sesión",
     "myProfile": "Mi perfil",
     "toggleTheme": "Cambiar tema",
-    "toggleLanguage": "Cambiar idioma"
+    "toggleLanguage": "Cambiar idioma",
+    "empresaSwitcher": {
+      "label": "Cambiar de empresa",
+      "switchError": "No se pudo cambiar de empresa. Inténtalo de nuevo."
+    }
   },
   "qualityEvents": {
     "list": {
@@ -2136,6 +2152,132 @@
       "errors": {
         "nombreDuplicado": "Ya existe un Área con ese nombre",
         "areaNoEncontrada": "Área no encontrada"
+      }
+    }
+  },
+  "empresas": {
+    "header": {
+      "title": "Administración de empresas",
+      "nuevaEmpresa": "Nueva empresa"
+    },
+    "list": {
+      "cargando": "Cargando empresas...",
+      "vacio": "No hay empresas registradas",
+      "columns": {
+        "logo": "Logo",
+        "razonSocial": "Razón social",
+        "ruc": "RUC",
+        "estado": "Estado",
+        "fechaAlta": "Fecha de alta",
+        "acciones": "Acciones"
+      },
+      "actions": {
+        "usuarios": "Usuarios",
+        "editar": "Editar",
+        "desactivar": "Desactivar",
+        "reactivar": "Reactivar"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Desactivar empresa",
+        "mensaje": "¿Confirma que desea desactivar \"{{nombre}}\"? Todos los usuarios asignados a esta empresa perderán acceso a ella.",
+        "cancelar": "Cancelar",
+        "confirmar": "Desactivar"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivar empresa",
+        "mensaje": "¿Confirma que desea reactivar \"{{nombre}}\"? Las asignaciones de usuario no se restauran automáticamente — deberá reactivarlas manualmente si corresponde.",
+        "confirmar": "Reactivar"
+      }
+    },
+    "estado": {
+      "ACTIVA": "Activa",
+      "INACTIVA": "Inactiva"
+    },
+    "form": {
+      "fields": {
+        "razonSocial": "Razón social",
+        "ruc": "RUC",
+        "estado": "Estado",
+        "logo": "Logo"
+      },
+      "placeholders": {
+        "razonSocial": "Ej. Minera Andina del Sur S.A.C.",
+        "ruc": "11 dígitos"
+      },
+      "actions": {
+        "cancel": "Cancelar",
+        "submit": "Guardar",
+        "submitting": "Guardando...",
+        "reemplazarLogo": "Reemplazar",
+        "quitarLogo": "Quitar logo"
+      },
+      "titles": {
+        "nuevaEmpresa": "Nueva empresa",
+        "editarEmpresa": "Editar empresa"
+      },
+      "validation": {
+        "razonSocialRequired": "La razón social es obligatoria",
+        "rucInvalido": "El RUC debe tener 11 dígitos numéricos"
+      },
+      "errors": {
+        "rucDuplicado": "Ya existe una empresa con ese RUC"
+      },
+      "logoPreviewAlt": "Logo de la empresa",
+      "dragHintLogo": "Seleccionar imagen (JPG o PNG, máx. 2MB)"
+    },
+    "toasts": {
+      "empresaCreada": "Empresa creada correctamente",
+      "empresaCreateError": "No se pudo crear la empresa",
+      "empresaActualizada": "Empresa actualizada correctamente",
+      "empresaActualizarError": "No se pudo actualizar la empresa",
+      "asignacionCreada": "Usuario asignado correctamente",
+      "asignacionActualizada": "Asignación actualizada correctamente",
+      "asignacionError": "No se pudo completar la operación"
+    },
+    "asignacion": {
+      "header": {
+        "title": "Usuarios de {{empresa}}",
+        "asignarUsuario": "Asignar usuario"
+      },
+      "cargando": "Cargando asignaciones...",
+      "vacio": "No hay usuarios asignados a esta empresa",
+      "columns": {
+        "usuario": "Usuario",
+        "email": "Email",
+        "rol": "Rol",
+        "estado": "Estado",
+        "fechaAsignacion": "Fecha de asignación",
+        "acciones": "Acciones"
+      },
+      "estado": {
+        "ACTIVO": "Activo",
+        "INACTIVO": "Inactivo"
+      },
+      "actions": {
+        "desactivar": "Desactivar",
+        "reactivar": "Reactivar"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Desactivar asignación",
+        "mensaje": "¿Confirma que desea desactivar el acceso de \"{{nombre}}\" a esta empresa?",
+        "cancelar": "Cancelar",
+        "confirmar": "Desactivar"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivar asignación",
+        "confirmar": "Reactivar"
+      },
+      "modal": {
+        "titulo": "Asignar usuario existente",
+        "usuario": "Usuario",
+        "buscarUsuario": "Buscar por nombre o email...",
+        "rol": "Rol en esta empresa",
+        "confirmar": "Asignar",
+        "avisoReactivar": "Este usuario ya tuvo acceso a esta empresa (inactivo) — se reactivará con el rol elegido.",
+        "avisoYaAsignado": "Este usuario ya está asignado a esta empresa — se actualizará su rol."
+      },
+      "validation": {
+        "usuarioRequired": "Debe seleccionar un usuario"
       }
     }
   }

@@ -6,6 +6,7 @@ function makeInc(id: string, x: number, y: number, localId = 'loc-001'): Inciden
   return {
     id,
     numero: `INC-${id}`,
+    empresaId: 'empresa-001',
     tipo: 'ACCIDENTE',
     estado: 'ABIERTO',
     severidad: 'MEDIA',

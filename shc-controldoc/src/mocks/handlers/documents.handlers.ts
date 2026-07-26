@@ -1,11 +1,12 @@
-import { http, HttpResponse, delay } from 'msw'
+﻿import { http, HttpResponse, delay } from 'msw'
 import { jsPDF } from 'jspdf'
 import { documentFixtures } from '../fixtures/documents.fixtures'
-import { authFixtures } from '../fixtures/auth.fixtures'
 import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
 import { DOC_STATUS_TRANSITIONS } from '../../features/documents/constants'
 import { buildMinimalDocxBytes } from '../utils/minimalDocx'
 import { getAreasStore } from './areas.handlers'
+import { getSessionUser as getUserFromRequest } from './shared/session'
+import { useAuthStore } from '../../stores/authStore'
 import type { Documento, DocStatus, DocType } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
@@ -44,14 +45,6 @@ const CONFIDENCIAL_ROLES = new Set([
 ])
 
 const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
-
-function getUserFromRequest(request: Request) {
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
-  const userId = match?.[1] ?? null
-  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
-}
 
 // Document-relative role, mirrors features/documents/permissions.ts + DocumentDetailPage's
 // derivation: access to the original file depends on the caller's assignment on THIS document
@@ -116,9 +109,16 @@ function generateId(): string {
   return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-function generateCodigo(tipo: DocType): string {
-  const count = store.filter((d) => d.tipo === tipo).length + 1
+function generateCodigo(tipo: DocType, empresaId: string): string {
+  const count = store.filter((d) => d.tipo === tipo && d.empresaId === empresaId).length + 1
   return `${tipo}-CD-${String(count).padStart(3, '0')}`
+}
+
+// RN-EMP-001/003: empresa activa de la sesión — nunca un valor fijo. Mismo mecanismo
+// que getSessionUser/getSessionUserUnchecked (shared/session.ts): authStore ya tiene
+// el dato en memoria, sin necesidad de un helper compartido nuevo (ver me-f3-scoping-modulos design.md, D1).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 function makeAuditEntry(
@@ -170,7 +170,10 @@ export const documentHandlers = [
 
     // RN-DOC-012: filter by confidencialidad based on simulated user role
     const userRole = url.searchParams.get('_role') ?? 'JEFE_CALIDAD_SYST'
+    const activeEmpresaId = getActiveEmpresaId()
     let filtered = store.filter((d) => {
+      // RN-EMP-001: nunca mostrar documentos de otra empresa, sin importar el resto de filtros.
+      if (d.empresaId !== activeEmpresaId) return false
       // Additive behavior: when includeDeleted=true, show active docs matching filters
       // PLUS all deleted docs. When false, exclude deleted entirely.
       if (!includeDeleted && d.deletedAt) return false
@@ -220,7 +223,8 @@ export const documentHandlers = [
       return ok({ count: 0 })
     }
 
-    const activeDocs = store.filter((d) => !d.deletedAt)
+    const activeEmpresaId = getActiveEmpresaId()
+    const activeDocs = store.filter((d) => !d.deletedAt && d.empresaId === activeEmpresaId)
     const pendientesDocs = filterPendientes(activeDocs, requestUser.id, requestUser.rol)
     return ok({ count: pendientesDocs.length })
   }),
@@ -230,7 +234,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const doc = store.find((d) => d.id === params.id)
-    if (!doc) return err('Documento no encontrado', 404)
+    if (!doc || doc.empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const requestUser = getUserFromRequest(request)
     const userRole = requestUser?.rol ?? 'OPERARIO'
@@ -256,13 +260,18 @@ export const documentHandlers = [
   http.post('/api/documents', async ({ request }) => {
     await delay(LATENCY)
 
+    const activeEmpresaId = getActiveEmpresaId()
+    if (!activeEmpresaId) return err('Sesión sin empresa activa', 401)
+
     const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
     const body = await request.json() as Record<string, unknown>
     const tipo = body.tipo as DocType
     const now = new Date().toISOString()
-    const codigo = generateCodigo(tipo)
+    const codigo = generateCodigo(tipo, activeEmpresaId)
 
-    const blocker = store.find((d) => !d.deletedAt && d.codigo === codigo && IN_PROCESS_STATUSES.has(d.estado))
+    const blocker = store.find(
+      (d) => !d.deletedAt && d.codigo === codigo && d.empresaId === activeEmpresaId && IN_PROCESS_STATUSES.has(d.estado),
+    )
     if (blocker) {
       return err(
         `El código ${codigo} ya tiene una versión en estado ${blocker.estado}. Cancela o publica esa versión antes de crear un nuevo borrador (RN-DOC-001).`,
@@ -278,6 +287,7 @@ export const documentHandlers = [
       version: (body.version as string | undefined) ?? 'v1.0',
       estado: 'BORRADOR',
       areaId: body.areaId as string,
+      empresaId: activeEmpresaId,
       confidencialidad: (body.confidencialidad as Documento['confidencialidad'] | undefined) ?? 'INTERNO',
       rolesAutorizados: body.rolesAutorizados as Documento['rolesAutorizados'],
       autorId: (body.autorId as string | undefined) ?? 'user-mock-001',
@@ -307,6 +317,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
         entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
         asignadoId: doc.revisorId,
         actorId,
         link: `/documentos/${doc.id}`,
@@ -318,6 +329,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
         entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
         asignadoId: doc.aprobadorId,
         actorId,
         link: `/documentos/${doc.id}`,
@@ -333,7 +345,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
     if (doc.estado !== 'BORRADOR') {
@@ -370,6 +382,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: updated.id,
         entidadCodigo: updated.codigo,
+        empresaId: updated.empresaId,
         asignadoId: updated.revisorId,
         actorId,
         link: `/documentos/${updated.id}`,
@@ -381,6 +394,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: updated.id,
         entidadCodigo: updated.codigo,
+        empresaId: updated.empresaId,
         asignadoId: updated.aprobadorId,
         actorId,
         link: `/documentos/${updated.id}`,
@@ -396,7 +410,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const nuevoEstado = body.nuevoEstado as DocStatus
@@ -428,10 +442,11 @@ export const documentHandlers = [
       )
     }
 
-    // RN-DOC-001: si se publica, obsoletizar la versión publicada del mismo código
+    // RN-DOC-001: si se publica, obsoletizar la versión publicada del mismo código (misma empresa —
+    // el código ya no es único entre empresas desde que la numeración es correlativa por empresa, RN-EMP-003)
     if (nuevoEstado === 'PUBLICADO') {
       for (let i = 0; i < store.length; i++) {
-        if (store[i].codigo === doc.codigo && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
+        if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
           store[i] = {
             ...store[i],
             estado: 'OBSOLETO',
@@ -482,6 +497,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
         entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
         estadoNuevo: nuevoEstado,
         reportadoPorId: doc.autorId,
         responsablesACActivas: [],
@@ -501,7 +517,7 @@ export const documentHandlers = [
 
     const id = params.id as string
     const idx = store.findIndex((d) => d.id === id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const filename = `documento-${id}.pdf`
     const archivoUrl = `/mock/uploads/${id}/${filename}`
@@ -524,7 +540,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
 
@@ -563,7 +579,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const nuevoEstado = body.estado as DocStatus
@@ -584,10 +600,10 @@ export const documentHandlers = [
       )
     }
 
-    // RN-DOC-001: obsoletizar versión publicada del mismo código
+    // RN-DOC-001: obsoletizar versión publicada del mismo código (misma empresa)
     if (nuevoEstado === 'PUBLICADO') {
       for (let i = 0; i < store.length; i++) {
-        if (store[i].codigo === doc.codigo && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
+        if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
           store[i] = {
             ...store[i],
             estado: 'OBSOLETO',
@@ -638,6 +654,7 @@ export const documentHandlers = [
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
         entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
         estadoNuevo: nuevoEstado,
         reportadoPorId: doc.autorId,
         responsablesACActivas: [],
@@ -654,7 +671,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const password = body.password as string
@@ -671,9 +688,9 @@ export const documentHandlers = [
       return err('Solo se puede firmar un documento en estado EN_APROBACION', 409)
     }
 
-    // RN-DOC-001: obsoletizar versión publicada del mismo código
+    // RN-DOC-001: obsoletizar versión publicada del mismo código (misma empresa)
     for (let i = 0; i < store.length; i++) {
-      if (store[i].codigo === doc.codigo && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
+      if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
         store[i] = {
           ...store[i],
           estado: 'OBSOLETO',
@@ -722,7 +739,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
@@ -753,12 +770,12 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
 
     const versionEnProceso = store.find(
-      (d) => !d.deletedAt && d.codigo === doc.codigo && d.id !== doc.id && IN_PROCESS_STATUSES.has(d.estado),
+      (d) => !d.deletedAt && d.codigo === doc.codigo && d.empresaId === doc.empresaId && d.id !== doc.id && IN_PROCESS_STATUSES.has(d.estado),
     )
     if (versionEnProceso) {
       return err(
@@ -819,7 +836,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
     if (doc.estado !== 'PUBLICADO') {
@@ -907,7 +924,7 @@ export const documentHandlers = [
     }
 
     const doc = store.find((d) => d.id === params.id)
-    if (!doc) return err('Documento no encontrado', 404)
+    if (!doc || doc.empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     return ok({ url: `mock://signed-url-${params.id as string}`, expiresAt })
@@ -918,7 +935,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
     if (doc.estado !== 'PUBLICADO' && doc.estado !== 'EN_REVISION_PERIODICA') {
@@ -974,7 +991,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
     if (!doc.deletedAt) {
@@ -1006,7 +1023,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const accion = body.accion as string
@@ -1028,7 +1045,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
 
@@ -1083,7 +1100,7 @@ export const documentHandlers = [
 
     const id = params.id as string
     const idx = store.findIndex((d) => d.id === id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
 
@@ -1122,7 +1139,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
 
@@ -1161,7 +1178,7 @@ export const documentHandlers = [
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1) return err('Documento no encontrado', 404)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const password = body.password as string | undefined
@@ -1178,9 +1195,9 @@ export const documentHandlers = [
       return err('Solo se puede publicar un documento en estado EN_APROBACION', 409)
     }
 
-    // RN-DOC-001: obsoletizar versión publicada del mismo código
+    // RN-DOC-001: obsoletizar versión publicada del mismo código (misma empresa)
     for (let i = 0; i < store.length; i++) {
-      if (store[i].codigo === doc.codigo && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
+      if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
         store[i] = {
           ...store[i],
           estado: 'OBSOLETO',

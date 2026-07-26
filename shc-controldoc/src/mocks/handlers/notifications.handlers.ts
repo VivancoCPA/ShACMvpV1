@@ -1,17 +1,16 @@
 import { http, HttpResponse, delay } from 'msw'
-import { authFixtures } from '../fixtures/auth.fixtures'
 import { getNotificationsStore, resetStore } from '../fixtures/notifications.fixtures'
 import { generateVencimientoNotifications } from '../fixtures/notificationGeneration'
+import { getSessionUser as getUserFromRequest } from './shared/session'
+import { useAuthStore } from '../../stores/authStore'
 import type { Notificacion } from '../../types/notification.types'
 
 const LATENCY = 400
 
-function getUserFromRequest(request: Request) {
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
-  const userId = match?.[1] ?? null
-  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
+// RN-EMP-004: mismo patrón que los demás handlers (cada uno define su propia
+// copia, ver quality-events.handlers.ts).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 function ok<T>(data: T, status = 200) {
@@ -32,8 +31,9 @@ export const notificationHandlers = [
     const requestUser = getUserFromRequest(request)
     if (!requestUser) return ok([])
 
+    const activeEmpresaId = getActiveEmpresaId()
     const items = getNotificationsStore()
-      .filter((n) => n.usuarioId === requestUser.id)
+      .filter((n) => n.usuarioId === requestUser.id && n.empresaId === activeEmpresaId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return ok(items)
@@ -58,17 +58,18 @@ export const notificationHandlers = [
     await delay(LATENCY)
 
     const requestUser = getUserFromRequest(request)
+    const activeEmpresaId = getActiveEmpresaId()
     const store = getNotificationsStore()
 
     if (requestUser) {
       for (let i = 0; i < store.length; i++) {
-        if (store[i].usuarioId === requestUser.id) {
+        if (store[i].usuarioId === requestUser.id && store[i].empresaId === activeEmpresaId) {
           store[i] = { ...store[i], leida: true }
         }
       }
     }
 
-    const items = store.filter((n) => n.usuarioId === requestUser?.id)
+    const items = store.filter((n) => n.usuarioId === requestUser?.id && n.empresaId === activeEmpresaId)
     return ok(items)
   }),
 ]

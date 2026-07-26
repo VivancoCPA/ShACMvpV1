@@ -28,7 +28,12 @@ function loginAs(email: string) {
   const mockUser = authFixtures.find((u) => u.email === email)
   if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
   const { password: _password, ...user } = mockUser
-  useAuthStore.getState().login({ user, accessToken: `mock-access-token-${user.id}-${Date.now()}` })
+  useAuthStore.getState().login({
+    user,
+    accessToken: `mock-access-token-${user.id}-${Date.now()}`,
+    empresaActivaId: 'empresa-001',
+    empresasDisponibles: [],
+  })
 }
 
 describe('useDashboardSummary', () => {

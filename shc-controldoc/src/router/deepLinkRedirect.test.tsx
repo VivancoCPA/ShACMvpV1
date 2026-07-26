@@ -46,6 +46,21 @@ async function submitLogin(email: string, password: string) {
   await user.type(screen.getByLabelText('login.email'), email)
   await user.type(screen.getByLabelText('login.password'), password)
   await user.click(screen.getByRole('button', { name: 'login.submit' }))
+
+  // Usuarios con más de una empresa asignada (ej. supervisor@shac.pe, ver
+  // Fase 1) caen en el paso de selección de empresa en vez de navegar de
+  // inmediato — confirmar la empresa sugerida (la primera asignada) para
+  // completar el login, igual que un usuario real haría un click más.
+  await waitFor(() => {
+    const requiresSelection = screen.queryByRole('button', { name: 'empresaSelection.confirm' })
+    if (!requiresSelection && router.state.location.pathname === '/login') {
+      throw new Error('esperando resolución de login')
+    }
+  })
+  const confirmEmpresaButton = screen.queryByRole('button', { name: 'empresaSelection.confirm' })
+  if (confirmEmpresaButton) {
+    await user.click(confirmEmpresaButton)
+  }
 }
 
 describe('router — deep link no autenticado se preserva a través del login', () => {

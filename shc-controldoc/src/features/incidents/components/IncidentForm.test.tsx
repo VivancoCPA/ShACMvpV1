@@ -51,6 +51,7 @@ vi.mock('../hooks/useLocales', () => ({
 const localFixtures: Local[] = [
   {
     id: 'loc-001',
+    empresaId: 'empresa-001',
     nombre: 'Almacén Principal',
     codigo: 'LOC-001',
     activo: true,
@@ -59,6 +60,7 @@ const localFixtures: Local[] = [
   },
   {
     id: 'loc-002',
+    empresaId: 'empresa-001',
     nombre: 'Patio de Minerales',
     codigo: 'LOC-002',
     activo: true,

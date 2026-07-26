@@ -7,9 +7,17 @@ import { documentHandlers } from './mocks/handlers/documents.handlers'
 import { localesHandlers } from './mocks/handlers/locales.handlers'
 import { incidentHandlers } from './mocks/handlers/incidents.handlers'
 import { useAuthStore } from './stores/authStore'
-import { loginUser } from './features/auth/api/auth.api'
+import { loginUser, isLoginResolved } from './features/auth/api/auth.api'
 import { router } from './router'
 import App from './App'
+
+async function loginResolved(credentials: { email: string; password: string }) {
+  const response = await loginUser(credentials)
+  if (!isLoginResolved(response)) {
+    throw new Error(`loginResolved: ${credentials.email} requiere selección de empresa`)
+  }
+  return response
+}
 
 // Regression coverage for the reported bug: login as ADMINISTRADOR_SISTEMA,
 // then navigate directly to /admin/locales (e.g. typing the URL) lands on
@@ -55,11 +63,11 @@ function renderAppAt(path: string) {
 
 describe('App — restauración de sesión tras un reload real (bootstrap vía refresh token en localStorage)', () => {
   it('ADMINISTRADOR_SISTEMA que recarga la página (o pega la URL) sigue llegando a /admin/locales, no a /login', async () => {
-    const { user, accessToken, mockRefreshToken } = await loginUser({
+    const { user, accessToken, empresaActivaId, empresasDisponibles, mockRefreshToken } = await loginResolved({
       email: 'admin@shac.pe',
       password: 'Shac2025!',
     })
-    useAuthStore.getState().login({ user, accessToken, mockRefreshToken })
+    useAuthStore.getState().login({ user, accessToken, empresaActivaId, empresasDisponibles, mockRefreshToken })
     expect(localStorage.getItem('shac_mock_refresh_token')).toBe(mockRefreshToken)
 
     // Simulate exactly what a real full-page reload does: localStorage
@@ -85,10 +93,12 @@ describe('App — restauración de sesión tras un reload real (bootstrap vía r
 
 describe('App — un login nuevo nunca reutiliza la sesión anterior', () => {
   it('el token de una sesión previa (admin) nunca viaja como Authorization en el POST /api/auth/login de otro usuario', async () => {
-    const admin = await loginUser({ email: 'admin@shac.pe', password: 'Shac2025!' })
+    const admin = await loginResolved({ email: 'admin@shac.pe', password: 'Shac2025!' })
     useAuthStore.getState().login({
       user: admin.user,
       accessToken: admin.accessToken,
+      empresaActivaId: admin.empresaActivaId,
+      empresasDisponibles: admin.empresasDisponibles,
       mockRefreshToken: admin.mockRefreshToken,
     })
 

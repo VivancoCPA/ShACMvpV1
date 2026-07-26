@@ -9,7 +9,7 @@ import i18n from '../../../i18n'
 import { authHandlers } from '../../../mocks/handlers/auth.handlers'
 import { areaHandlers } from '../../../mocks/handlers/areas.handlers'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
-import { loginUser } from '../../auth/api/auth.api'
+import { loginUser, isLoginResolved } from '../../auth/api/auth.api'
 import { ProfilePage } from './ProfilePage'
 import { useAuthStore } from '../../../stores/authStore'
 
@@ -36,8 +36,12 @@ afterEach(() => {
 afterAll(() => server.close())
 
 async function loginAsOperario() {
-  const { user, accessToken } = await loginUser({ email: 'operario@shac.pe', password: 'Shac2025!' })
-  useAuthStore.getState().login({ user, accessToken })
+  const response = await loginUser({ email: 'operario@shac.pe', password: 'Shac2025!' })
+  if (!isLoginResolved(response)) {
+    throw new Error('loginAsOperario: requiere selección de empresa')
+  }
+  const { user, accessToken, empresaActivaId, empresasDisponibles } = response
+  useAuthStore.getState().login({ user, accessToken, empresaActivaId, empresasDisponibles })
 }
 
 function renderProfilePage() {
@@ -83,7 +87,8 @@ describe('ProfilePage — formulario de cambio de contraseña', () => {
 
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Contraseña actualizada correctamente'))
 
-    const { user } = await loginUser({ email: 'operario@shac.pe', password: 'NuevaPass1!' })
-    expect(user.email).toBe('operario@shac.pe')
+    const relogin = await loginUser({ email: 'operario@shac.pe', password: 'NuevaPass1!' })
+    if (!isLoginResolved(relogin)) throw new Error('requiere selección de empresa')
+    expect(relogin.user.email).toBe('operario@shac.pe')
   })
 })

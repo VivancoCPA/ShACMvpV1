@@ -61,6 +61,7 @@ function makeQE(index: number, overrides: Partial<QualityEvent> = {}): QualityEv
     ciclo: 1,
     descripcion: `Descripción ${index}`,
     areaId: 'Almacén Norte',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaHoraEvento: '2026-06-01T08:00:00Z',
     fechaHoraReporte: '2026-06-01T08:00:00Z',

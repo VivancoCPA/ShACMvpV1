@@ -49,10 +49,10 @@ MSW v2 handlers and fixtures backing M6 user administration: a shared mutable us
 - **THEN** la respuesta es `409` y ningún usuario nuevo se agrega al store
 
 ### Requirement: Handler MSW de edición de usuario (RN-USR-006)
-`PATCH /api/users/:id` SHALL actualizar `email`, `rol`, `area`, `areasAsignadas` y `avatarUrl` (si se envía) del usuario indicado, sin tocar `password` ni `activo`. El handler SHALL validar unicidad de `email` excluyendo al propio usuario editado.
+`PATCH /api/users/:id` SHALL actualizar `email`, `rol`, `areaId`, `areaIds` y `avatarUrl` (si se envía) del usuario indicado, sin tocar `password` ni `activo`. El handler SHALL validar unicidad de `email` excluyendo al propio usuario editado.
 
 #### Scenario: Edición exitosa actualiza los campos permitidos
-- **WHEN** se envía `PATCH /api/users/:id` con un nuevo `rol` y `area`
+- **WHEN** se envía `PATCH /api/users/:id` con un nuevo `rol` y `areaId`
 - **THEN** `GET /api/users` refleja los nuevos valores para ese usuario, y su `password`/`activo` permanecen sin cambios
 
 #### Scenario: Edición no invalida referencias históricas de otros dominios

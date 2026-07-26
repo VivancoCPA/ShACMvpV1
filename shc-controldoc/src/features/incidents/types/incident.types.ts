@@ -79,6 +79,7 @@ export interface Local {
   nombre: string
   codigo: string
   activo: boolean
+  empresaId: string
   creadoEn: string
   actualizadoEn: string
   direccion?: string
@@ -91,6 +92,7 @@ export interface Zona {
   nombre: string
   codigo: string
   activo: boolean
+  empresaId: string
   creadoEn: string
   actualizadoEn: string
   descripcion?: string
@@ -113,6 +115,7 @@ export interface Incidente {
    * significado cambió a un identificador de catálogo opaco aunque el nombre del campo no cambió.
    * Resolver el nombre visible vía `useAreas()`/`useArea(id)`, nunca mostrar `areaId` crudo. */
   areaId: string
+  empresaId: string
   turno: IncidentTurno
   fechaEvento: string
   fechaReporte: string

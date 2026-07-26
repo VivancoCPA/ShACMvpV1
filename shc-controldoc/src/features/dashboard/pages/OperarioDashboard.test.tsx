@@ -145,6 +145,7 @@ describe('OperarioDashboard — Notificaciones pendientes', () => {
       {
         id: 'notif-1',
         usuarioId: 'user-operario-001',
+        empresaId: 'empresa-001',
         tipo: 'CAMBIO_ESTADO',
         entidadTipo: 'QE',
         entidadId: 'qe-2026-001',
@@ -165,6 +166,7 @@ describe('OperarioDashboard — Notificaciones pendientes', () => {
       {
         id: 'notif-1',
         usuarioId: 'user-operario-001',
+        empresaId: 'empresa-001',
         tipo: 'ASIGNACION',
         entidadTipo: 'DOCUMENTO',
         entidadId: 'doc-001',

@@ -32,6 +32,7 @@ afterEach(() => cleanup())
 
 const localFixture: LocalConZonas = {
   id: 'loc-001',
+  empresaId: 'empresa-001',
   nombre: 'Almacén Sur',
   codigo: 'LOC-001',
   activo: true,

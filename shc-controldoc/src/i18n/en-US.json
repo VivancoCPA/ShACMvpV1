@@ -384,12 +384,20 @@
     "login": {
       "title": "Sign in",
       "subtitle": "Corrective Actions Hybrid System",
+      "artTitle": "SHAC",
+      "artTagline": "Quality and safety management for logistics operations.",
       "email": "Email address",
       "password": "Password",
       "submit": "Sign in",
       "forgotPassword": "Forgot your password?",
       "showPassword": "Show password",
       "hidePassword": "Hide password"
+    },
+    "empresaSelection": {
+      "title": "Choose which company to work with",
+      "subtitle": "Your account has access to more than one company.",
+      "confirm": "Continue",
+      "back": "Back"
     },
     "forgotPassword": {
       "title": "Reset password",
@@ -427,7 +435,8 @@
       "tokenExpired": "The link has expired or is invalid.",
       "networkError": "Connection error. Please try again.",
       "invalidLink": "The link is not valid. Request a new one.",
-      "userDisabled": "User disabled, contact your administrator"
+      "userDisabled": "User disabled, contact your administrator",
+      "empresaNotAssigned": "The selected company is not assigned to this user."
     },
     "roles": {
       "OPERARIO": "Operator",
@@ -436,7 +445,9 @@
       "JEFE_CONTROL_DOCUMENTARIO": "Document Control Manager",
       "AUDITOR_INTERNO": "Internal Auditor",
       "ALTA_DIRECCION": "Senior Management",
-      "ADMINISTRADOR_SISTEMA": "System Administrator"
+      "ADMINISTRADOR_SISTEMA": "System Administrator",
+      "ADMINISTRADOR_EMPRESA": "Company Administrator",
+      "SUPERADMIN": "Superadmin"
     },
     "devMode": {
       "roleSelector": "Dev mode — select role"
@@ -454,10 +465,15 @@
     "users": "Users",
     "areas": "Areas",
     "locations": "Locations and Zones",
+    "empresas": "Companies",
     "logout": "Sign out",
     "myProfile": "My profile",
     "toggleTheme": "Toggle theme",
-    "toggleLanguage": "Toggle language"
+    "toggleLanguage": "Toggle language",
+    "empresaSwitcher": {
+      "label": "Switch company",
+      "switchError": "Could not switch company. Please try again."
+    }
   },
   "qualityEvents": {
     "list": {
@@ -2136,6 +2152,132 @@
       "errors": {
         "nombreDuplicado": "An Area with that name already exists",
         "areaNoEncontrada": "Area not found"
+      }
+    }
+  },
+  "empresas": {
+    "header": {
+      "title": "Company administration",
+      "nuevaEmpresa": "New company"
+    },
+    "list": {
+      "cargando": "Loading companies...",
+      "vacio": "No companies registered",
+      "columns": {
+        "logo": "Logo",
+        "razonSocial": "Company name",
+        "ruc": "Tax ID",
+        "estado": "Status",
+        "fechaAlta": "Created on",
+        "acciones": "Actions"
+      },
+      "actions": {
+        "usuarios": "Users",
+        "editar": "Edit",
+        "desactivar": "Deactivate",
+        "reactivar": "Reactivate"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Deactivate company",
+        "mensaje": "Are you sure you want to deactivate \"{{nombre}}\"? All users assigned to this company will lose access to it.",
+        "cancelar": "Cancel",
+        "confirmar": "Deactivate"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivate company",
+        "mensaje": "Are you sure you want to reactivate \"{{nombre}}\"? User assignments are not restored automatically — reactivate them manually if needed.",
+        "confirmar": "Reactivate"
+      }
+    },
+    "estado": {
+      "ACTIVA": "Active",
+      "INACTIVA": "Inactive"
+    },
+    "form": {
+      "fields": {
+        "razonSocial": "Company name",
+        "ruc": "Tax ID",
+        "estado": "Status",
+        "logo": "Logo"
+      },
+      "placeholders": {
+        "razonSocial": "E.g. Minera Andina del Sur S.A.C.",
+        "ruc": "11 digits"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "submit": "Save",
+        "submitting": "Saving...",
+        "reemplazarLogo": "Replace",
+        "quitarLogo": "Remove logo"
+      },
+      "titles": {
+        "nuevaEmpresa": "New company",
+        "editarEmpresa": "Edit company"
+      },
+      "validation": {
+        "razonSocialRequired": "Company name is required",
+        "rucInvalido": "Tax ID must be 11 digits"
+      },
+      "errors": {
+        "rucDuplicado": "A company with that Tax ID already exists"
+      },
+      "logoPreviewAlt": "Company logo",
+      "dragHintLogo": "Select image (JPG or PNG, max 2MB)"
+    },
+    "toasts": {
+      "empresaCreada": "Company created successfully",
+      "empresaCreateError": "Could not create the company",
+      "empresaActualizada": "Company updated successfully",
+      "empresaActualizarError": "Could not update the company",
+      "asignacionCreada": "User assigned successfully",
+      "asignacionActualizada": "Assignment updated successfully",
+      "asignacionError": "Could not complete the operation"
+    },
+    "asignacion": {
+      "header": {
+        "title": "Users of {{empresa}}",
+        "asignarUsuario": "Assign user"
+      },
+      "cargando": "Loading assignments...",
+      "vacio": "No users assigned to this company",
+      "columns": {
+        "usuario": "User",
+        "email": "Email",
+        "rol": "Role",
+        "estado": "Status",
+        "fechaAsignacion": "Assigned on",
+        "acciones": "Actions"
+      },
+      "estado": {
+        "ACTIVO": "Active",
+        "INACTIVO": "Inactive"
+      },
+      "actions": {
+        "desactivar": "Deactivate",
+        "reactivar": "Reactivate"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Deactivate assignment",
+        "mensaje": "Are you sure you want to deactivate \"{{nombre}}\"'s access to this company?",
+        "cancelar": "Cancel",
+        "confirmar": "Deactivate"
+      },
+      "confirmarReactivar": {
+        "titulo": "Reactivate assignment",
+        "confirmar": "Reactivate"
+      },
+      "modal": {
+        "titulo": "Assign existing user",
+        "usuario": "User",
+        "buscarUsuario": "Search by name or email...",
+        "rol": "Role in this company",
+        "confirmar": "Assign",
+        "avisoReactivar": "This user previously had access to this company (inactive) — it will be reactivated with the chosen role.",
+        "avisoYaAsignado": "This user is already assigned to this company — their role will be updated."
+      },
+      "validation": {
+        "usuarioRequired": "You must select a user"
       }
     }
   }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw'
 import React from 'react'
 import { documentHandlers } from '../../../../mocks/handlers/documents.handlers'
 import { documentFixtures } from '../../../../mocks/fixtures/documents.fixtures'
+import { useAuthStore } from '../../../../stores/authStore'
 import {
   useDocuments,
   useDocument,
@@ -28,6 +29,12 @@ vi.mock('sonner', () => ({
 const server = setupServer(...documentHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// Los handlers de Documentos filtran/asignan por empresa activa de sesión
+// (me-f3-scoping-modulos) — todos los fixtures usados en este archivo
+// (doc-001, doc-002, etc.) pertenecen a empresa-001.
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterEach(() => {
   server.resetHandlers()
   vi.clearAllMocks()
@@ -53,7 +60,7 @@ describe('useDocuments', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    const activeFixtures = documentFixtures.filter((d) => !d.deletedAt)
+    const activeFixtures = documentFixtures.filter((d) => !d.deletedAt && d.empresaId === 'empresa-001')
     expect(result.current.data?.items.length).toBeGreaterThan(0)
     expect(result.current.data?.pagination).toBeDefined()
     expect(result.current.data?.pagination.totalItems).toBe(activeFixtures.length)

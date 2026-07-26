@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import React from 'react'
 import { localesHandlers } from '../../../mocks/handlers/locales.handlers'
+import { useAuthStore } from '../../../stores/authStore'
 import {
   LOCATION_ADMIN_QUERY_KEYS,
   useLocales,
@@ -31,6 +32,11 @@ vi.mock('sonner', () => ({
 const server = setupServer(...localesHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// loc-*/zon-* fixtures usados en este archivo pertenecen a empresa-001 — el
+// handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterEach(() => {
   server.resetHandlers()
   vi.clearAllMocks()

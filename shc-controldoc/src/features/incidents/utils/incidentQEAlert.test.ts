@@ -11,6 +11,7 @@ function makeIncidente(overrides: Partial<Incidente> = {}): Incidente {
     severidad: 'MEDIA',
     descripcion: 'Descripción de prueba para el incidente',
     areaId: 'area-001',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaEvento: '2026-01-01T00:00:00Z',
     fechaReporte: '2026-01-01T00:00:00Z',

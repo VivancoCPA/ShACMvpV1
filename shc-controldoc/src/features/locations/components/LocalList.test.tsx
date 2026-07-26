@@ -9,7 +9,7 @@ import { authHandlers } from '../../../mocks/handlers/auth.handlers'
 import { localesHandlers } from '../../../mocks/handlers/locales.handlers'
 import { incidentHandlers } from '../../../mocks/handlers/incidents.handlers'
 import { useAuthStore } from '../../../stores/authStore'
-import { loginUser } from '../../auth/api/auth.api'
+import { loginUser, isLoginResolved } from '../../auth/api/auth.api'
 import {
   listarLocales,
   crearLocal,
@@ -44,9 +44,13 @@ afterEach(() => {
 })
 afterAll(() => server.close())
 
-async function loginReal(email: string) {
-  const { user, accessToken } = await loginUser({ email, password: 'Shac2025!' })
-  useAuthStore.getState().login({ user, accessToken })
+async function loginReal(email: string, empresaId = 'empresa-001') {
+  const response = await loginUser({ email, password: 'Shac2025!', empresaId })
+  if (!isLoginResolved(response)) {
+    throw new Error(`loginReal: ${email} requiere selección de empresa`)
+  }
+  const { user, accessToken, empresaActivaId, empresasDisponibles } = response
+  useAuthStore.getState().login({ user, accessToken, empresaActivaId, empresasDisponibles })
   return user
 }
 

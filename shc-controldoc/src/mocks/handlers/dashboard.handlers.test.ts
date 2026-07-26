@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { dashboardHandlers } from './dashboard.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
+import { useAuthStore } from '../../stores/authStore'
 import { horasTrabajadasFixtures } from '../fixtures/horasTrabajadas.fixtures'
 import { kpi04AnioAnteriorFixtures } from '../fixtures/kpi04AnioAnterior.fixtures'
 import { getQeStore } from './quality-events.handlers'
@@ -40,14 +41,17 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
   }
 }
 
-function tokenFor(email: string): string {
-  const user = authFixtures.find((u) => u.email === email)
-  if (!user) throw new Error(`Fixture no encontrado: ${email}`)
-  return `mock-access-token-${user.id}-${Date.now()}`
-}
-
+// `getSessionUser` (empresa-session, me-f2-sesion-rbac-login) resuelve el
+// usuario actuante desde la sesión activa en memoria, no solo del Bearer
+// token — este helper pobla `authStore` además de construir el token, para
+// que los handlers de dominio reconozcan al usuario de cada fixture.
 function authHeaders(email: string) {
-  return { headers: { Authorization: `Bearer ${tokenFor(email)}` } }
+  const mockUser = authFixtures.find((u) => u.email === email)
+  if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
+  const { password: _password, ...user } = mockUser
+  const accessToken = `mock-access-token-${user.id}-${Date.now()}`
+  useAuthStore.setState({ user, accessToken, isAuthenticated: true, empresaActivaId: 'empresa-001' })
+  return { headers: { Authorization: `Bearer ${accessToken}` } }
 }
 
 describe('dashboard.handlers — GET /api/dashboard/kpis', () => {
@@ -114,6 +118,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       ciclo: 1,
       descripcion: 'QE de prueba — verifica proyección de fechaVerificacionProgramada',
       areaId: 'area-016',
+      empresaId: 'empresa-001',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T00:00:00Z',
       fechaHoraReporte: '2026-05-01T00:00:00Z',
@@ -159,6 +164,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       ciclo: 1,
       descripcion: 'QE de prueba — buildSupervisorData',
       areaId: area,
+      empresaId: 'empresa-001',
       turno: 'DIA',
       fechaHoraEvento: '2026-05-01T00:00:00Z',
       fechaHoraReporte: '2026-05-01T00:00:00Z',
@@ -587,6 +593,7 @@ function makeQe(overrides: Partial<QualityEvent> & Pick<QualityEvent, 'id' | 'nu
     ciclo: 1,
     descripcion: 'QE de prueba — dashboard.handlers.test.ts',
     areaId: 'Almacén Norte',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaHoraEvento: '2031-01-01T00:00:00Z',
     fechaHoraReporte: '2031-01-01T00:00:00Z',
@@ -611,6 +618,7 @@ function makeNc(overrides: Partial<NoConformidad> & Pick<NoConformidad, 'id' | '
     estado: 'ABIERTA',
     descripcion: 'NC de prueba — dashboard.handlers.test.ts',
     areaId: 'Almacén Norte',
+    empresaId: 'empresa-001',
     reportadoPorId: 'user-test',
     fechaDeteccion: '2031-01-01T00:00:00Z',
     fechaReporte: '2031-01-01T00:00:00Z',
@@ -631,6 +639,7 @@ function makeIncidente(overrides: Partial<Incidente> & Pick<Incidente, 'id' | 'n
     severidad: 'MEDIA',
     descripcion: 'Incidente de prueba — dashboard.handlers.test.ts',
     areaId: 'area-test',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaEvento: '2031-01-01T00:00:00Z',
     fechaReporte: '2031-01-01T00:00:00Z',
@@ -652,7 +661,8 @@ function makeDoc(id: string, overrides: Partial<Documento> = {}): Documento {
     tipo: 'PRC',
     version: 'v1.0',
     estado: 'PUBLICADO',
-    area: 'Almacén Norte',
+    areaId: 'Almacén Norte',
+    empresaId: 'empresa-001',
     confidencialidad: 'INTERNO',
     autorId: 'user-test',
     fechaEmision: '2031-01-01T00:00:00Z',
@@ -1169,6 +1179,81 @@ describe('dashboard.handlers — KPI-09 retorna una distribución por área, no 
     const kpi09 = kpi(results, 'KPI-09')
     expect(kpi09.distribucion).toEqual([])
     expect(kpi09.valor).toBe(0)
+  })
+})
+
+describe('dashboard.handlers — aislamiento por empresa activa (RN-EMP-004, me-f5-verificacion-cruzada)', () => {
+  it('KPI-09 no mezcla QE de otra empresa en la distribución por área', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const qeOtraEmpresa = makeQe({
+      id: 'test-empresa-kpi09',
+      numero: 'QE-TEST-EMPRESA-KPI09',
+      empresaId: 'empresa-002',
+      areaId: 'Área Exclusiva Empresa 2',
+      fechaHoraReporte: '2032-04-05T00:00:00Z',
+    })
+    try {
+      qeStore.push(qeOtraEmpresa)
+
+      authHeaders('gerencia@shac.pe') // empresaActivaId: 'empresa-001'
+      const resultsEmpresa1 = await fetchKpis('2032-04')
+      const kpi09Empresa1 = kpi(resultsEmpresa1, 'KPI-09')
+      expect(kpi09Empresa1.distribucion?.some((d) => d.area === 'Área Exclusiva Empresa 2')).toBe(false)
+
+      authHeaders('jefe.calidad@ilo.pe')
+      useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+      const resultsEmpresa2 = await fetchKpis('2032-04')
+      const kpi09Empresa2 = kpi(resultsEmpresa2, 'KPI-09')
+      expect(kpi09Empresa2.distribucion?.some((d) => d.area === 'Área Exclusiva Empresa 2')).toBe(true)
+    } finally {
+      qeStore.length = originalLength
+    }
+  })
+
+  async function altaDireccionResumen() {
+    const { data } = await call(api.get<DashboardSummaryData>('/api/dashboard/summary'))
+    if (data.rol !== 'ALTA_DIRECCION') throw new Error('esperaba rol ALTA_DIRECCION')
+    return data.data
+  }
+
+  it('GET /api/dashboard/summary de ALTA_DIRECCION no agrega QE de otra empresa a resumenPorModulo', async () => {
+    const qeStore = getQeStore()
+    const originalLength = qeStore.length
+    const qeOtraEmpresa = makeQe({
+      id: 'test-empresa-summary',
+      numero: 'QE-TEST-EMPRESA-SUMMARY',
+      empresaId: 'empresa-002',
+      estado: 'ABIERTO',
+      fechaHoraReporte: new Date().toISOString(),
+    })
+    try {
+      authHeaders('gerencia@shac.pe') // empresaActivaId: 'empresa-001'
+      const baselineEmpresa1 = await altaDireccionResumen()
+
+      // Mismo actor, empresa activa distinta — este harness de test setea authStore
+      // directamente sin pasar por resolución real de UsuarioEmpresa/switch-empresa.
+      authHeaders('gerencia@shac.pe')
+      useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+      const baselineEmpresa2 = await altaDireccionResumen()
+
+      qeStore.push(qeOtraEmpresa)
+
+      authHeaders('gerencia@shac.pe')
+      const sinCambiarEmpresa1 = await altaDireccionResumen()
+      expect(sinCambiarEmpresa1.resumenPorModulo.qualityEvents.abiertos).toBe(
+        baselineEmpresa1.resumenPorModulo.qualityEvents.abiertos,
+      )
+
+      authHeaders('gerencia@shac.pe')
+      useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+      const conNuevoEmpresa2 = await altaDireccionResumen()
+      expect(conNuevoEmpresa2.resumenPorModulo.qualityEvents.abiertos).toBe(
+        baselineEmpresa2.resumenPorModulo.qualityEvents.abiertos + 1,
+      )
+    } finally {
+      qeStore.length = originalLength
+    }
   })
 })
 

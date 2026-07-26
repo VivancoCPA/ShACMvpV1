@@ -86,6 +86,12 @@ export function getQualityEventPermissions(
 
     case 'ADMINISTRADOR_SISTEMA':
       return { ...DENY_ALL, soloLectura: true }
+
+    case 'ADMINISTRADOR_EMPRESA':
+      return { ...DENY_ALL, soloLectura: true }
+
+    case 'SUPERADMIN':
+      return { ...DENY_ALL, soloLectura: true }
   }
 }
 
@@ -100,6 +106,8 @@ export function puedeExportarPDF(rol: UserRole): boolean {
     case 'OPERARIO':
     case 'JEFE_CONTROL_DOCUMENTARIO':
     case 'ADMINISTRADOR_SISTEMA':
+    case 'ADMINISTRADOR_EMPRESA':
+    case 'SUPERADMIN':
       return false
   }
 }

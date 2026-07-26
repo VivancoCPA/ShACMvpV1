@@ -9,6 +9,7 @@ import type { Local, Zona, Incidente, IncidentStatus } from '../../incidents/typ
 function buildLocal(overrides: Partial<Local> = {}): Local {
   return {
     id: 'loc-001',
+    empresaId: 'empresa-001',
     nombre: 'Almacén Central',
     codigo: 'LOC-001',
     activo: true,
@@ -21,6 +22,7 @@ function buildLocal(overrides: Partial<Local> = {}): Local {
 function buildZona(overrides: Partial<Zona> = {}): Zona {
   return {
     id: 'zona-001',
+    empresaId: 'empresa-001',
     localId: 'loc-001',
     nombre: 'Zona de Carga',
     codigo: 'ZON-001',
@@ -40,6 +42,7 @@ function buildIncidente(overrides: Partial<Incidente> = {}): Incidente {
     severidad: 'BAJA',
     descripcion: 'Incidente de prueba',
     areaId: 'area-1',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaEvento: '2026-01-01T00:00:00Z',
     fechaReporte: '2026-01-01T00:00:00Z',

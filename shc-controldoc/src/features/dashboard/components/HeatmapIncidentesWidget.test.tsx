@@ -19,6 +19,7 @@ function daysAgo(n: number): string {
 const LOCALES_FIXTURE: Local[] = [
   {
     id: 'loc-001',
+    empresaId: 'empresa-001',
     nombre: 'Almacén Principal',
     codigo: 'LOC-001',
     activo: true,
@@ -28,6 +29,7 @@ const LOCALES_FIXTURE: Local[] = [
   },
   {
     id: 'loc-002',
+    empresaId: 'empresa-001',
     nombre: 'Patio de Minerales',
     codigo: 'LOC-002',
     activo: true,
@@ -40,6 +42,7 @@ const LOCALES_FIXTURE: Local[] = [
 function makeIncidente(overrides: Partial<Incidente> & Pick<Incidente, 'id'>): Incidente {
   return {
     numero: `INC-2026-${overrides.id}`,
+    empresaId: 'empresa-001',
     tipo: 'INCIDENTE',
     estado: 'ABIERTO',
     severidad: 'BAJA',

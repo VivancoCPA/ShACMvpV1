@@ -1,7 +1,8 @@
-import { http, HttpResponse, delay } from 'msw'
+﻿import { http, HttpResponse, delay } from 'msw'
 import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getUsersStore } from '../fixtures/auth.fixtures'
+import { getRolEfectivo } from '../fixtures/empresas.fixtures'
 import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
 import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
 import { getIncidentsStore } from './incidents.handlers'
@@ -10,6 +11,7 @@ import { syncOrigenFromQEEstado } from './qeOriginSync'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
 import { contarDiasHabiles } from '../../utils/businessDays'
+import { getSessionUserUnchecked } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
 import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC } from '../../features/quality-events/types/qualityEvent.types'
@@ -17,31 +19,41 @@ import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, Sol
 const LATENCY = 400
 
 function getCurrentUser(): { id: string; nombre: string } {
-  const user = useAuthStore.getState().user
+  const user = getSessionUserUnchecked()
   if (!user) return { id: 'user-current', nombre: 'Usuario actual' }
   return { id: user.id, nombre: `${user.nombre} ${user.apellido}` }
 }
 
 function getCurrentUserForEditAccess(): Pick<User, 'id' | 'rol' | 'areaIds'> {
-  const user = useAuthStore.getState().user
+  const user = getSessionUserUnchecked()
   if (!user) return { id: 'user-current', rol: 'OPERARIO', areaIds: [] }
   return { id: user.id, rol: user.rol, areaIds: user.areaIds }
+}
+
+// RN-EMP-001/003: empresa activa de la sesión — nunca un valor fijo. Mismo mecanismo
+// que getSessionUserUnchecked (shared/session.ts): authStore ya tiene el dato en
+// memoria, sin necesidad de un helper compartido nuevo (ver me-f3-scoping-modulos design.md, D1).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 // RN-QE-008 — escalada compartida por la reapertura NO_EFECTIVO y la reapertura
 // forzada por vencimiento de plazo (ambas representan el mismo tipo de reapertura).
 function notifyReaperturaEscalada(qe: QualityEvent, actorId: string): void {
-  const recipients = getUsersStore().filter(
-    (u) =>
-      u.rol === 'ALTA_DIRECCION' ||
-      u.rol === 'JEFE_CALIDAD_SYST' ||
-      (u.rol === 'SUPERVISOR' && (u.areaIds ?? []).includes(qe.areaId)),
-  )
+  const recipients = getUsersStore().filter((u) => {
+    const rolEfectivo = getRolEfectivo(u.id, qe.empresaId)
+    return (
+      rolEfectivo === 'ALTA_DIRECCION' ||
+      rolEfectivo === 'JEFE_CALIDAD_SYST' ||
+      (rolEfectivo === 'SUPERVISOR' && (u.areaIds ?? []).includes(qe.areaId))
+    )
+  })
   for (const recipient of recipients) {
     createCambioEstadoNotification({
       entidadTipo: 'QE',
       entidadId: qe.id,
       entidadCodigo: qe.numero,
+      empresaId: qe.empresaId,
       estadoNuevo: 'EN_INVESTIGACION',
       reportadoPorId: recipient.id,
       responsablesACActivas: [],
@@ -53,6 +65,7 @@ function notifyReaperturaEscalada(qe: QualityEvent, actorId: string): void {
     entidadTipo: 'QE',
     entidadId: qe.id,
     entidadCodigo: qe.numero,
+    empresaId: qe.empresaId,
     estadoNuevo: 'EN_INVESTIGACION',
     reportadoPorId: qe.reportadoPorId,
     responsablesACActivas: [],
@@ -134,6 +147,7 @@ export const qualityEventHandlers = [
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '10', 10)
 
     let filtered = incluirEliminados ? [...qeStore] : qeStore.filter(qe => !qe.deletedAt)
+    filtered = filtered.filter(qe => qe.empresaId === getActiveEmpresaId())
     if (estado) filtered = filtered.filter(qe => qe.estado === estado)
     if (tipo) filtered = filtered.filter(qe => qe.tipo === tipo)
     if (severidad) filtered = filtered.filter(qe => qe.severidad === severidad)
@@ -157,7 +171,7 @@ export const qualityEventHandlers = [
   http.get('/api/quality-events/:id', async ({ params }) => {
     await delay(LATENCY)
     const qe = qeStore.find(q => q.id === params.id)
-    if (!qe) {
+    if (!qe || qe.empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -168,6 +182,13 @@ export const qualityEventHandlers = [
 
   http.post('/api/quality-events', async ({ request }) => {
     await delay(LATENCY)
+    const activeEmpresaId = getActiveEmpresaId()
+    if (!activeEmpresaId) {
+      return HttpResponse.json(
+        { success: false, message: 'Sesión sin empresa activa' },
+        { status: 401 }
+      )
+    }
     const body = await request.json() as Record<string, unknown>
     const origen = body.origen as string | undefined
 
@@ -209,7 +230,8 @@ export const qualityEventHandlers = [
       }
     }
 
-    const numero = `QE-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`
+    const numeroCount = qeStore.filter((q) => q.empresaId === activeEmpresaId).length + 1
+    const numero = `QE-2026-${numeroCount.toString().padStart(3, '0')}`
     const now = new Date().toISOString()
     const currentUser = getCurrentUser()
     const newQE: QualityEvent = {
@@ -220,6 +242,7 @@ export const qualityEventHandlers = [
       ciclo: 1,
       fechaHoraReporte: now,
       reportadoPorId: currentUser.id,
+      empresaId: activeEmpresaId,
       requiereEvaluacionRiesgos: (body.requiereEvaluacionRiesgos as boolean) ?? false,
       solicitudesAC: 0,
       documentosVinculados: [],
@@ -248,7 +271,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -264,7 +287,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/status', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -316,7 +339,7 @@ export const qualityEventHandlers = [
   http.delete('/api/quality-events/:id', async ({ params }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -351,7 +374,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/reactivar', async ({ params }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -388,7 +411,7 @@ export const qualityEventHandlers = [
   http.post('/api/quality-events/:id/export-pdf', async ({ params }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -421,7 +444,7 @@ export const qualityEventHandlers = [
   http.get('/api/quality-events/:id/acciones-correctivas', async ({ params }) => {
     await delay(LATENCY)
     const qe = qeStore.find(q => q.id === params.id)
-    if (!qe) {
+    if (!qe || qe.empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -433,7 +456,7 @@ export const qualityEventHandlers = [
   http.post('/api/quality-events/:id/acciones-correctivas', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -487,6 +510,7 @@ export const qualityEventHandlers = [
         entidadTipo: 'QE',
         entidadId: qe.id,
         entidadCodigo: qe.numero,
+        empresaId: qe.empresaId,
         asignadoId: responsableId,
         actorId: currentUser.id,
         link: `/quality-events/${qe.id}`,
@@ -500,7 +524,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/acciones-correctivas/:acId', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -537,6 +561,7 @@ export const qualityEventHandlers = [
         entidadTipo: 'QE',
         entidadId: qe.id,
         entidadCodigo: qe.numero,
+        empresaId: qe.empresaId,
         asignadoId: updatedAC.responsableId,
         actorId: currentUser.id,
         link: `/quality-events/${qe.id}`,
@@ -550,7 +575,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/acciones-correctivas/:acId/status', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -642,12 +667,13 @@ export const qualityEventHandlers = [
     commitQE(idx, qe, updated)
 
     if (nuevoEstado === 'PENDIENTE_CIERRE') {
-      const jefesCalidad = getUsersStore().filter((u) => u.rol === 'JEFE_CALIDAD_SYST')
+      const jefesCalidad = getUsersStore().filter((u) => getRolEfectivo(u.id, qe.empresaId) === 'JEFE_CALIDAD_SYST')
       for (const jefe of jefesCalidad) {
         createCambioEstadoNotification({
           entidadTipo: 'QE',
           entidadId: qe.id,
           entidadCodigo: qe.numero,
+          empresaId: qe.empresaId,
           estadoNuevo: nuevoEstado,
           reportadoPorId: jefe.id,
           responsablesACActivas: [],
@@ -663,7 +689,7 @@ export const qualityEventHandlers = [
   http.post('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -759,7 +785,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo/:solicitudId', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -892,7 +918,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/cerrar', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -936,7 +962,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/firmar-cierre', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1055,6 +1081,7 @@ export const qualityEventHandlers = [
       entidadTipo: 'QE',
       entidadId: qe.id,
       entidadCodigo: qe.numero,
+      empresaId: qe.empresaId,
       estadoNuevo: 'CERRADO',
       reportadoPorId: qe.reportadoPorId,
       responsablesACActivas: [],
@@ -1063,12 +1090,13 @@ export const qualityEventHandlers = [
     })
 
     if (qe.severidad === 'ALTA' || qe.severidad === 'CRITICA') {
-      const gerencia = getUsersStore().filter((u) => u.rol === 'ALTA_DIRECCION')
+      const gerencia = getUsersStore().filter((u) => getRolEfectivo(u.id, qe.empresaId) === 'ALTA_DIRECCION')
       for (const g of gerencia) {
         createCambioEstadoNotification({
           entidadTipo: 'QE',
           entidadId: qe.id,
           entidadCodigo: qe.numero,
+          empresaId: qe.empresaId,
           estadoNuevo: 'CERRADO',
           reportadoPorId: g.id,
           responsablesACActivas: [],
@@ -1084,7 +1112,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/forzar-vencimiento-verificacion', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1124,6 +1152,7 @@ export const qualityEventHandlers = [
           entidadTipo: 'QE',
           entidadId: qe.id,
           entidadCodigo: qe.numero,
+          empresaId: qe.empresaId,
           asignadoId: body.auditorAsignadoId,
           actorId: currentUser.id,
           link: `/quality-events/${qe.id}`,
@@ -1182,7 +1211,7 @@ export const qualityEventHandlers = [
   http.post('/api/quality-events/:id/verificacion-eficacia', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1231,6 +1260,7 @@ export const qualityEventHandlers = [
         entidadTipo: 'QE',
         entidadId: qe.id,
         entidadCodigo: qe.numero,
+        empresaId: qe.empresaId,
         estadoNuevo: 'VERIFICADO',
         reportadoPorId: qe.reportadoPorId,
         responsablesACActivas: [],
@@ -1239,12 +1269,13 @@ export const qualityEventHandlers = [
       })
 
       if (qe.severidad === 'ALTA' || qe.severidad === 'CRITICA') {
-        const gerencia = getUsersStore().filter((u) => u.rol === 'ALTA_DIRECCION')
+        const gerencia = getUsersStore().filter((u) => getRolEfectivo(u.id, qe.empresaId) === 'ALTA_DIRECCION')
         for (const g of gerencia) {
           createCambioEstadoNotification({
             entidadTipo: 'QE',
             entidadId: qe.id,
             entidadCodigo: qe.numero,
+            empresaId: qe.empresaId,
             estadoNuevo: 'VERIFICADO',
             reportadoPorId: g.id,
             responsablesACActivas: [],
@@ -1301,7 +1332,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/solicitar-ac', async ({ params }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1321,7 +1352,7 @@ export const qualityEventHandlers = [
   http.get('/api/quality-events/:id/audit-trail', async ({ params }) => {
     await delay(LATENCY)
     const qe = qeStore.find(q => q.id === params.id)
-    if (!qe) {
+    if (!qe || qe.empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1336,7 +1367,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/editar-reporte-inicial', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1404,7 +1435,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/editar-severidad', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }
@@ -1459,7 +1490,7 @@ export const qualityEventHandlers = [
   http.patch('/api/quality-events/:id/editar-mineral', async ({ params, request }) => {
     await delay(LATENCY)
     const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1) {
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
       return HttpResponse.json(
         { success: false, message: 'Quality Event no encontrado' },
         { status: 404 }

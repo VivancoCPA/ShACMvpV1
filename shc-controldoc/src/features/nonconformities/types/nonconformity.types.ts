@@ -131,6 +131,7 @@ export interface NoConformidad {
   titulo?: string
   descripcion: string
   areaId: string
+  empresaId: string
   procesoInvolucrado?: string
   detectadoPorId?: string
   reportadoPorId: string

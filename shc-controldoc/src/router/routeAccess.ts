@@ -48,8 +48,10 @@ export const ROUTE_ROLE_GROUPS = {
     'AUDITOR_INTERNO',
     'ALTA_DIRECCION',
   ],
-  usersAdmin: ['ADMINISTRADOR_SISTEMA'],
+  usersAdmin: ['ADMINISTRADOR_EMPRESA'],
+  areasAdmin: ['ADMINISTRADOR_SISTEMA'],
   locationsAdmin: ['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST'],
+  empresasAdmin: ['SUPERADMIN'],
 } satisfies Record<string, UserRole[]>
 
 interface RouteAccessEntry {
@@ -80,7 +82,9 @@ export const ROUTE_ACCESS_TABLE: RouteAccessEntry[] = [
   { path: '/quality-events/:id', requiredRoles: ROUTE_ROLE_GROUPS.qualityEventsView },
   { path: '/dashboard', requiredRoles: ROUTE_ROLE_GROUPS.dashboard },
   { path: '/usuarios', requiredRoles: ROUTE_ROLE_GROUPS.usersAdmin },
-  { path: '/admin/areas', requiredRoles: ROUTE_ROLE_GROUPS.usersAdmin },
+  { path: '/admin/areas', requiredRoles: ROUTE_ROLE_GROUPS.areasAdmin },
+  { path: '/admin/empresas', requiredRoles: ROUTE_ROLE_GROUPS.empresasAdmin },
+  { path: '/admin/empresas/:id/usuarios', requiredRoles: ROUTE_ROLE_GROUPS.empresasAdmin },
   { path: '/admin/locales', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },
   { path: '/admin/locales/new', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },
   { path: '/admin/locales/:id/editar', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },

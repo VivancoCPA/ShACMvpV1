@@ -51,6 +51,7 @@ const baseQE: QualityEvent = {
   ciclo: 1,
   descripcion: 'Descripción del evento de prueba para la lista',
   areaId: 'Almacén Norte',
+  empresaId: 'empresa-001',
   turno: 'DIA',
   fechaHoraEvento: '2026-06-01T08:00:00Z',
   fechaHoraReporte: new Date().toISOString(),

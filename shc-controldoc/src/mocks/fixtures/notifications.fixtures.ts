@@ -7,6 +7,7 @@ export const notificationFixtures: Notificacion[] = [
   {
     id: 'notif-001',
     usuarioId: 'user-operario-001',
+    empresaId: 'empresa-001',
     tipo: 'CAMBIO_ESTADO',
     entidadTipo: 'QE',
     entidadId: 'qe-2026-001',
@@ -19,6 +20,7 @@ export const notificationFixtures: Notificacion[] = [
   {
     id: 'notif-002',
     usuarioId: 'user-jefedocs-001',
+    empresaId: 'empresa-001',
     tipo: 'ASIGNACION',
     entidadTipo: 'DOCUMENTO',
     entidadId: 'doc-001',
@@ -31,6 +33,7 @@ export const notificationFixtures: Notificacion[] = [
   {
     id: 'notif-003',
     usuarioId: 'user-supervisor-001',
+    empresaId: 'empresa-001',
     tipo: 'VENCIMIENTO',
     entidadTipo: 'AC',
     entidadId: 'ac-nc-001-1',

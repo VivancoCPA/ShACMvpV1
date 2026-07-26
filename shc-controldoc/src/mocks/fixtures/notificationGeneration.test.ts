@@ -26,6 +26,7 @@ function baseIncidente(overrides: Partial<Incidente>): Incidente {
     severidad: 'ALTA',
     descripcion: 'Incidente de prueba con descripción suficientemente larga',
     areaId: 'area-001',
+    empresaId: 'empresa-001',
     turno: 'DIA',
     fechaEvento: now,
     fechaReporte: now,
@@ -63,6 +64,7 @@ describe('createCambioEstadoNotification', () => {
     entidadTipo: 'QE' as const,
     entidadId: 'qe-x',
     entidadCodigo: 'QE-2026-999',
+    empresaId: 'empresa-001',
     estadoNuevo: 'EN_INVESTIGACION',
     link: '/quality-events/qe-x',
   }
@@ -123,6 +125,7 @@ describe('createAsignacionNotification', () => {
     entidadTipo: 'DOCUMENTO' as const,
     entidadId: 'doc-x',
     entidadCodigo: 'PRC-CD-999',
+    empresaId: 'empresa-001',
     link: '/documents/doc-x',
     mensaje: 'Asignación de prueba',
   }
@@ -230,6 +233,30 @@ describe('generateVencimientoNotifications — RN-INC-006 (incidente sin QE vinc
 
     const secondRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'inc-notif-dup')
     expect(secondRun).toHaveLength(0)
+  })
+
+  it('resolves JEFE_CALIDAD_SYST recipients by rol efectivo in the incident empresa, not by MockUser.rol (RN-EMP-004)', () => {
+    // user-jefecalidad-001's MockUser.rol is 'JEFE_CALIDAD_SYST', but they only
+    // have a UsuarioEmpresa assignment in empresa-001 — they must NOT be
+    // notified for an incident in empresa-002, even though the old logic
+    // (filtering getUsersStore() by raw u.rol) would have matched them
+    // regardless of empresa. user-jefecalidad-101 is JEFE_CALIDAD_SYST in
+    // empresa-002 and must be notified.
+    getIncidentsStore().push(
+      baseIncidente({
+        id: 'inc-notif-empresa2',
+        numero: 'INC-NOTIF-E2',
+        empresaId: 'empresa-002',
+        areaId: 'area-999-sin-supervisor',
+        fechaEvento: hoursAgo(25),
+      }),
+    )
+
+    const created = generateVencimientoNotifications().filter((n) => n.entidadId === 'inc-notif-empresa2')
+
+    expect(created.some((n) => n.usuarioId === 'user-jefecalidad-101')).toBe(true)
+    expect(created.some((n) => n.usuarioId === 'user-jefecalidad-001')).toBe(false)
+    expect(created.every((n) => n.empresaId === 'empresa-002')).toBe(true)
   })
 
   it('creates nothing once the incident has a qeId, even if it is overdue', () => {

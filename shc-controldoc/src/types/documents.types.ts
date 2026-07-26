@@ -62,6 +62,7 @@ export interface Documento {
   version: string
   estado: DocStatus
   areaId: string
+  empresaId: string
   confidencialidad: DocConfidencialidad
   rolesAutorizados?: UserRole[]
   autorId: string

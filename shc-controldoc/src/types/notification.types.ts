@@ -7,6 +7,7 @@ export type NotificacionEntidadTipo = 'QE' | 'NC' | 'INCIDENTE' | 'DOCUMENTO' | 
 export interface Notificacion {
   id: string
   usuarioId: string
+  empresaId: string
   tipo: NotificacionTipo
   entidadTipo: NotificacionEntidadTipo
   entidadId: string

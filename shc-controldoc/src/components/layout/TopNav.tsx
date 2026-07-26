@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import { useMatches, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Menu, Sun, Moon, Monitor, ChevronDown } from 'lucide-react'
+import { Menu, Sun, Moon, Monitor, ChevronDown, Building2 } from 'lucide-react'
 import { useUIStore } from '../../stores/uiStore'
 import { usePreferencesStore } from '../../stores/preferencesStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useLogout } from '../../features/auth/hooks/useLogout'
+import { useSwitchEmpresa } from '../../features/auth/hooks/useSwitchEmpresa'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ROLE_BG_CLASSES } from '../ui/roleColors'
 import { NotificationBell } from '../../features/notifications/components/NotificationBell'
@@ -20,10 +21,17 @@ export function TopNav() {
   const { theme, setTheme, toggleSidebar } = useUIStore()
   const { language, setLanguage } = usePreferencesStore()
   const user = useAuthStore((s) => s.user)
+  const empresaActivaId = useAuthStore((s) => s.empresaActivaId)
+  const empresasDisponibles = useAuthStore((s) => s.empresasDisponibles)
   const { mutate: logout } = useLogout()
+  const { mutate: switchEmpresa, isPending: isSwitchingEmpresa } = useSwitchEmpresa()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [empresaDropdownOpen, setEmpresaDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const empresaDropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+
+  const empresaActiva = empresasDisponibles.find((e) => e.id === empresaActivaId)
 
   const matches = useMatches()
   const breadcrumbs = matches
@@ -72,6 +80,57 @@ export function TopNav() {
 
       {/* Right: controls */}
       <div className="flex items-center gap-2">
+        {/* Empresa activa: el nombre se muestra siempre que haya una empresa
+            resuelta; el control de cambio (botón + dropdown) solo aparece
+            si el usuario tiene más de una empresa asignada — no hay entre
+            qué cambiar con una sola. */}
+        {empresaActiva && (
+          <div className="relative" ref={empresaDropdownRef}>
+            {empresasDisponibles.length > 1 ? (
+              <button
+                onClick={() => setEmpresaDropdownOpen((v) => !v)}
+                disabled={isSwitchingEmpresa}
+                aria-label={t('empresaSwitcher.label')}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hairline hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-surface-dark-elevated dark:hover:text-on-dark"
+              >
+                <Building2 size={15} />
+                <span className="hidden max-w-[10rem] truncate sm:inline">
+                  {empresaActiva.razonSocial}
+                </span>
+                <ChevronDown size={13} />
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted dark:text-on-dark-soft">
+                <Building2 size={15} />
+                <span className="hidden max-w-[10rem] truncate sm:inline">
+                  {empresaActiva.razonSocial}
+                </span>
+              </div>
+            )}
+
+            {empresasDisponibles.length > 1 && empresaDropdownOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-canvas py-1 shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
+                {empresasDisponibles.map((empresa) => (
+                  <button
+                    key={empresa.id}
+                    onClick={() => {
+                      setEmpresaDropdownOpen(false)
+                      if (empresa.id !== empresaActivaId) switchEmpresa(empresa.id)
+                    }}
+                    className={`w-full px-4 py-2 text-left text-sm hover:bg-hairline dark:hover:bg-surface-dark-soft ${
+                      empresa.id === empresaActivaId
+                        ? 'font-medium text-coral'
+                        : 'text-ink dark:text-on-dark'
+                    }`}
+                  >
+                    {empresa.razonSocial}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Language toggle */}
         <button
           onClick={handleLanguageToggle}

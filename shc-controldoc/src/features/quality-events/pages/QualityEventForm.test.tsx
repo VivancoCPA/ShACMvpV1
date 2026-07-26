@@ -89,6 +89,7 @@ const baseQE: QualityEvent = {
   ciclo: 1,
   descripcion: 'Descripción original del evento reportado',
   areaId: 'area-001',
+  empresaId: 'empresa-001',
   turno: 'DIA',
   fechaHoraEvento: '2026-06-01T08:00:00Z',
   fechaHoraReporte: new Date().toISOString(),

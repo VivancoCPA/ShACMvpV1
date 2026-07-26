@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+// Excluye 'SUPERADMIN' a propósito — es un flag global (User.esSuperadminMultiempresa),
+// nunca un rol asignado desde este flujo (ver empresa-admin-types).
 const userRoleEnum = z.enum([
   'OPERARIO',
   'SUPERVISOR',
@@ -8,6 +10,7 @@ const userRoleEnum = z.enum([
   'AUDITOR_INTERNO',
   'ALTA_DIRECCION',
   'ADMINISTRADOR_SISTEMA',
+  'ADMINISTRADOR_EMPRESA',
 ])
 
 export const updateUserSchema = z

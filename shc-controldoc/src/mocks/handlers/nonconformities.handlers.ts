@@ -1,7 +1,8 @@
 import { http, HttpResponse, delay } from 'msw'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
-import { authFixtures } from '../fixtures/auth.fixtures'
+import { getSessionUser as getUserFromRequest } from './shared/session'
+import { useAuthStore } from '../../stores/authStore'
 import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import type {
   NoConformidad,
@@ -35,23 +36,22 @@ const DOMINIO_PREFIX: Record<NCDominio, string> = {
   PROVEEDOR: 'PRV',
 }
 
-function getUserFromRequest(request: Request) {
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
-  const userId = match?.[1] ?? null
-  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
-}
-
 function generateId(): string {
   return `nc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-function generateNumero(dominio: NCDominio): string {
+function generateNumero(dominio: NCDominio, empresaId: string): string {
   const prefix = DOMINIO_PREFIX[dominio]
   const year = new Date().getFullYear()
-  const count = nonconformities.filter((nc) => nc.dominio === dominio).length + 1
+  const count = nonconformities.filter((nc) => nc.dominio === dominio && nc.empresaId === empresaId).length + 1
   return `NC-${prefix}-${year}-${String(count).padStart(3, '0')}`
+}
+
+// RN-EMP-001/003: empresa activa de la sesión — nunca un valor fijo. Mismo mecanismo
+// que getSessionUser/getSessionUserUnchecked (shared/session.ts): authStore ya tiene
+// el dato en memoria, sin necesidad de un helper compartido nuevo (ver me-f3-scoping-modulos design.md, D1).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 function makeAuditEntry(
@@ -100,9 +100,11 @@ export const nonconformityHandlers = [
 
     const showDeleted = url.searchParams.get('showDeleted') === 'true'
 
-    let filtered = showDeleted
+    const activeEmpresaId = getActiveEmpresaId()
+    let filtered = (showDeleted
       ? [...nonconformities]
       : nonconformities.filter((nc) => !nc.deletedAt)
+    ).filter((nc) => nc.empresaId === activeEmpresaId)
 
     if (estado) filtered = filtered.filter((nc) => nc.estado === estado)
     if (tipo) filtered = filtered.filter((nc) => nc.tipo === tipo)
@@ -144,7 +146,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.id)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     return ok(nc)
   }),
@@ -152,6 +154,9 @@ export const nonconformityHandlers = [
   // POST /api/nonconformities — create
   http.post('/api/nonconformities', async ({ request }) => {
     await delay(LATENCY)
+
+    const activeEmpresaId = getActiveEmpresaId()
+    if (!activeEmpresaId) return err('Sesión sin empresa activa', 401)
 
     const body = await request.json() as Record<string, unknown>
 
@@ -165,7 +170,7 @@ export const nonconformityHandlers = [
     const forzar = body.forzar === true
     const now = new Date().toISOString()
     const id = generateId()
-    const numero = generateNumero(dominio)
+    const numero = generateNumero(dominio, activeEmpresaId)
 
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     const similares = forzar
@@ -174,6 +179,7 @@ export const nonconformityHandlers = [
           (nc) =>
             nc.dominio === dominio &&
             nc.areaId === body.areaId &&
+            nc.empresaId === activeEmpresaId &&
             new Date(nc.creadoEn).getTime() > thirtyDaysAgo,
         )
 
@@ -188,6 +194,7 @@ export const nonconformityHandlers = [
       titulo: body.titulo as string,
       descripcion: body.descripcion as string,
       areaId: body.areaId as string,
+      empresaId: activeEmpresaId,
       fechaCierre: body.fechaCierre as string,
       reportadoPorId: 'user-mock-001',
       fechaDeteccion: body.fechaDeteccion as string,
@@ -223,7 +230,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.id)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     if (nc.estado === 'CERRADA' || nc.estado === 'ANULADA') {
       return err('nonconformities:errors.editBlockedByStatus', 409)
@@ -259,6 +266,7 @@ export const nonconformityHandlers = [
         entidadTipo: 'NC',
         entidadId: nc.id,
         entidadCodigo: nc.numero,
+        empresaId: nc.empresaId,
         estadoNuevo: updated.estado,
         reportadoPorId: nc.reportadoPorId,
         responsablesACActivas,
@@ -275,7 +283,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.id)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     if (nc.estado !== 'ABIERTA') {
       return err('Solo se pueden eliminar NCs en estado ABIERTA', 422)
@@ -305,7 +313,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.id)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     if (!nc.deletedAt) {
       return err('La NC no está eliminada', 422)
@@ -331,7 +339,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.id)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
     const justificacion = body?.justificacion as string | undefined
@@ -366,7 +374,7 @@ export const nonconformityHandlers = [
     await delay(LATENCY)
 
     const nc = nonconformities.find((n) => n.id === params.ncId)
-    if (!nc) return err('nonconformities:errors.notFound', 404)
+    if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
     const required = ['titulo', 'descripcion', 'responsableId', 'plazoFecha', 'prioridad']
@@ -415,7 +423,7 @@ export const nonconformityHandlers = [
       await delay(LATENCY)
 
       const nc = nonconformities.find((n) => n.id === params.ncId)
-      if (!nc) return err('nonconformities:errors.notFound', 404)
+      if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
       const ac = nc.accionesCorrectivas.find((a) => a.id === params.acId)
       if (!ac) return err('nonconformities:errors.notFound', 404)
@@ -454,7 +462,7 @@ export const nonconformityHandlers = [
       await delay(LATENCY)
 
       const nc = nonconformities.find((n) => n.id === params.ncId)
-      if (!nc) return err('nonconformities:errors.notFound', 404)
+      if (!nc || nc.empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
 
       const ac = nc.accionesCorrectivas.find((a) => a.id === params.acId)
       if (!ac) return err('nonconformities:errors.notFound', 404)

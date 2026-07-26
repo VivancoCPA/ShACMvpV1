@@ -5,14 +5,14 @@ Zod schemas validating the M6 user administration CRUD: create/update user forms
 ## Requirements
 
 ### Requirement: Schema Zod de alta de usuario (RN-USR-005)
-`src/features/users/schemas/createUser.schema.ts` SHALL exportar `createUserSchema` (Zod) validando: `nombre` y `apellido` (`min(1)`), `email` (formato válido), `rol` (`enum` de `UserRole`), `area` (`string` opcional) y `areasAsignadas` (`string[]` opcional). El schema SHALL requerir `area` y al menos un elemento en `areasAsignadas` cuando `rol === 'SUPERVISOR'`, usando `.superRefine()`, siguiendo el mismo patrón condicional ya usado para `areasAsignadas` en M4.
+`src/features/users/schemas/createUser.schema.ts` SHALL exportar `createUserSchema` (Zod) validando: `nombre` y `apellido` (`min(1)`), `email` (formato válido), `rol` (`enum` de `UserRole`), `areaId` (`string` opcional — FK a `Area.id`) y `areaIds` (`string[]` opcional — FKs a `Area.id`). El schema SHALL requerir `areaId` y al menos un elemento en `areaIds` cuando `rol === 'SUPERVISOR'`, usando `.superRefine()`, siguiendo el mismo patrón condicional ya usado para `areasAsignadas` en M4 (ahora `areaIds`).
 
-#### Scenario: Alta de SUPERVISOR sin areasAsignadas falla validación
-- **WHEN** se valida `createUserSchema` con `rol: 'SUPERVISOR'` y `areasAsignadas` ausente o vacío
-- **THEN** la validación falla con un error localizado en el campo `areasAsignadas`
+#### Scenario: Alta de SUPERVISOR sin areaIds falla validación
+- **WHEN** se valida `createUserSchema` con `rol: 'SUPERVISOR'` y `areaIds` ausente o vacío
+- **THEN** la validación falla con un error localizado en el campo `areaIds`
 
-#### Scenario: Alta de rol distinto de SUPERVISOR no requiere areasAsignadas
-- **WHEN** se valida `createUserSchema` con `rol: 'OPERARIO'` y sin `area` ni `areasAsignadas`
+#### Scenario: Alta de rol distinto de SUPERVISOR no requiere areaIds
+- **WHEN** se valida `createUserSchema` con `rol: 'OPERARIO'` y sin `areaId` ni `areaIds`
 - **THEN** la validación pasa
 
 #### Scenario: Email con formato inválido falla validación
@@ -31,15 +31,15 @@ El flujo de alta SHALL validar que el `email` no exista ya en el store de usuari
 - **THEN** el handler responde `409` con el mismo mensaje descriptivo
 
 ### Requirement: Schema Zod de edición de usuario (RN-USR-006)
-`src/features/users/schemas/updateUser.schema.ts` SHALL exportar `updateUserSchema` (Zod) validando `email`, `rol`, `area` y `areasAsignadas` con las mismas reglas condicionales que `createUserSchema` para `rol === 'SUPERVISOR'`, SIN campo de contraseña (el reset de contraseña es una acción independiente, RN-USR-004).
+`src/features/users/schemas/updateUser.schema.ts` SHALL exportar `updateUserSchema` (Zod) validando `email`, `rol`, `areaId` y `areaIds` con las mismas reglas condicionales que `createUserSchema` para `rol === 'SUPERVISOR'`, SIN campo de contraseña (el reset de contraseña es una acción independiente, RN-USR-004).
 
 #### Scenario: Edición no expone campo de contraseña
 - **WHEN** se inspecciona la forma (`shape`) de `updateUserSchema`
 - **THEN** no existe ninguna clave relacionada a contraseña
 
-#### Scenario: Edición de SUPERVISOR sin areasAsignadas falla validación
-- **WHEN** se valida `updateUserSchema` con `rol: 'SUPERVISOR'` y `areasAsignadas` vacío
-- **THEN** la validación falla con un error localizado en el campo `areasAsignadas`
+#### Scenario: Edición de SUPERVISOR sin areaIds falla validación
+- **WHEN** se valida `updateUserSchema` con `rol: 'SUPERVISOR'` y `areaIds` vacío
+- **THEN** la validación falla con un error localizado en el campo `areaIds`
 
 ### Requirement: Validación de archivo de avatar (RN-USR-007)
 El schema de alta/edición (o un schema de campo dedicado consumido por el componente de carga de avatar) SHALL validar que el archivo cargado tenga tipo MIME `image/jpeg` o `image/png` y tamaño máximo de 2MB (2 * 1024 * 1024 bytes). Un archivo que no cumpla estas reglas SHALL producir un error de validación localizado sin bloquear el resto del formulario (los demás campos conservan sus valores y pueden seguir editándose).

@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { getIncidentsStore } from './incidents.handlers'
+import { useAuthStore } from '../../stores/authStore'
 import {
   puedeCrearLocalActivo,
   puedeDesactivarLocal,
@@ -31,12 +32,21 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-function generateCodigoLocal(): string {
-  return `LOC-${String(locales.length + 1).padStart(3, '0')}`
+function generateCodigoLocal(empresaId: string): string {
+  const count = locales.filter((l) => l.empresaId === empresaId).length + 1
+  return `LOC-${String(count).padStart(3, '0')}`
 }
 
-function generateCodigoZona(): string {
-  return `ZON-${String(zonas.length + 1).padStart(3, '0')}`
+function generateCodigoZona(empresaId: string): string {
+  const count = zonas.filter((z) => z.empresaId === empresaId).length + 1
+  return `ZON-${String(count).padStart(3, '0')}`
+}
+
+// RN-EMP-001/003: empresa activa de la sesión — nunca un valor fijo. Mismo mecanismo
+// que getSessionUser/getSessionUserUnchecked (shared/session.ts): authStore ya tiene
+// el dato en memoria, sin necesidad de un helper compartido nuevo (ver me-f3-scoping-modulos design.md, D1).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 interface PlanoValidationResult {
@@ -97,10 +107,10 @@ export const localesHandlers = [
     await delay(LATENCY)
     const url = new URL(request.url)
     const activo = url.searchParams.get('activo')
+    const activeEmpresaId = getActiveEmpresaId()
 
-    const result = activo !== null
-      ? locales.filter((l) => l.activo === (activo === 'true'))
-      : locales
+    let result = locales.filter((l) => l.empresaId === activeEmpresaId)
+    if (activo !== null) result = result.filter((l) => l.activo === (activo === 'true'))
 
     return ok(result)
   }),
@@ -109,10 +119,10 @@ export const localesHandlers = [
     await delay(LATENCY)
     const url = new URL(request.url)
     const localId = url.searchParams.get('localId')
+    const activeEmpresaId = getActiveEmpresaId()
 
-    const result = localId !== null
-      ? zonas.filter((z) => z.localId === localId)
-      : zonas
+    let result = zonas.filter((z) => z.empresaId === activeEmpresaId)
+    if (localId !== null) result = result.filter((z) => z.localId === localId)
 
     return ok(result)
   }),
@@ -122,7 +132,7 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const local = locales.find((l) => l.id === params.id)
-    if (!local) return err('Local no encontrado', 404)
+    if (!local || local.empresaId !== getActiveEmpresaId()) return err('Local no encontrado', 404)
 
     const zonasDelLocal = zonas.filter((z) => z.localId === local.id)
     return ok({ ...local, zonas: zonasDelLocal })
@@ -132,7 +142,11 @@ export const localesHandlers = [
   http.post('/api/locales', async ({ request }) => {
     await delay(LATENCY)
 
-    if (!puedeCrearLocalActivo(locales)) {
+    const activeEmpresaId = getActiveEmpresaId()
+    if (!activeEmpresaId) return err('Sesión sin empresa activa', 401)
+
+    // RN-LOC-001: máximo 5 locales activos es un límite por empresa, no global.
+    if (!puedeCrearLocalActivo(locales.filter((l) => l.empresaId === activeEmpresaId))) {
       return err('No se puede crear el local: ya existen 5 locales activos', 400)
     }
 
@@ -148,8 +162,9 @@ export const localesHandlers = [
     const newLocal: Local = {
       id,
       nombre: body.nombre as string,
-      codigo: generateCodigoLocal(),
+      codigo: generateCodigoLocal(activeEmpresaId),
       activo: true,
+      empresaId: activeEmpresaId,
       creadoEn: now,
       actualizadoEn: now,
       ...(body.direccion ? { direccion: body.direccion as string } : {}),
@@ -166,7 +181,7 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const local = locales.find((l) => l.id === params.id)
-    if (!local) return err('Local no encontrado', 404)
+    if (!local || local.empresaId !== getActiveEmpresaId()) return err('Local no encontrado', 404)
 
     const planoResult = await validatePlanoFromRequest(request.clone())
     if (!planoResult.ok) {
@@ -194,9 +209,11 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const local = locales.find((l) => l.id === params.id)
-    if (!local) return err('Local no encontrado', 404)
+    if (!local || local.empresaId !== getActiveEmpresaId()) return err('Local no encontrado', 404)
 
-    const { permitido, incidentesBloqueantes } = puedeDesactivarLocal(local, getIncidentsStore())
+    // RN-LOC-002: un incidente de otra empresa nunca bloquea la desactivación.
+    const incidentesDeLaEmpresa = getIncidentsStore().filter((i) => i.empresaId === local.empresaId)
+    const { permitido, incidentesBloqueantes } = puedeDesactivarLocal(local, incidentesDeLaEmpresa)
     if (!permitido) {
       return err(
         `No se puede desactivar: ${incidentesBloqueantes} incidentes activos/en investigación asociados`,
@@ -216,9 +233,10 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const local = locales.find((l) => l.id === params.id)
-    if (!local) return err('Local no encontrado', 404)
+    if (!local || local.empresaId !== getActiveEmpresaId()) return err('Local no encontrado', 404)
 
-    if (!puedeCrearLocalActivo(locales)) {
+    // RN-LOC-001: máximo 5 locales activos es un límite por empresa, no global.
+    if (!puedeCrearLocalActivo(locales.filter((l) => l.empresaId === local.empresaId))) {
       return err('No se puede reactivar el local: ya existen 5 locales activos', 400)
     }
 
@@ -234,7 +252,7 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const local = locales.find((l) => l.id === params.id)
-    if (!local) return err('Local no encontrado', 404)
+    if (!local || local.empresaId !== getActiveEmpresaId()) return err('Local no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
     const now = new Date().toISOString()
@@ -243,8 +261,9 @@ export const localesHandlers = [
       id: generateId('zon'),
       localId: local.id,
       nombre: body.nombre as string,
-      codigo: generateCodigoZona(),
+      codigo: generateCodigoZona(local.empresaId),
       activo: true,
+      empresaId: local.empresaId,
       creadoEn: now,
       actualizadoEn: now,
       ...(body.descripcion ? { descripcion: body.descripcion as string } : {}),
@@ -260,7 +279,7 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const zona = zonas.find((z) => z.id === params.id)
-    if (!zona) return err('Zona no encontrada', 404)
+    if (!zona || zona.empresaId !== getActiveEmpresaId()) return err('Zona no encontrada', 404)
 
     const body = await request.json() as Record<string, unknown>
     const now = new Date().toISOString()
@@ -282,9 +301,11 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const zona = zonas.find((z) => z.id === params.id)
-    if (!zona) return err('Zona no encontrada', 404)
+    if (!zona || zona.empresaId !== getActiveEmpresaId()) return err('Zona no encontrada', 404)
 
-    const { permitido, incidentesBloqueantes } = puedeDesactivarZona(zona, getIncidentsStore())
+    // RN-ZON-002: un incidente de otra empresa nunca bloquea la desactivación.
+    const incidentesDeLaEmpresa = getIncidentsStore().filter((i) => i.empresaId === zona.empresaId)
+    const { permitido, incidentesBloqueantes } = puedeDesactivarZona(zona, incidentesDeLaEmpresa)
     if (!permitido) {
       return err(
         `No se puede desactivar: ${incidentesBloqueantes} incidentes activos/en investigación/en ejecución asociados`,
@@ -304,7 +325,7 @@ export const localesHandlers = [
     await delay(LATENCY)
 
     const zona = zonas.find((z) => z.id === params.id)
-    if (!zona) return err('Zona no encontrada', 404)
+    if (!zona || zona.empresaId !== getActiveEmpresaId()) return err('Zona no encontrada', 404)
 
     const now = new Date().toISOString()
     const updated: Zona = { ...zona, activo: true, actualizadoEn: now }

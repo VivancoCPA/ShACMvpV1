@@ -2,7 +2,8 @@ import { http, HttpResponse, delay } from 'msw'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
-import { authFixtures } from '../fixtures/auth.fixtures'
+import { getSessionUser as getUserFromRequest } from './shared/session'
+import { useAuthStore } from '../../stores/authStore'
 import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
 import type {
@@ -40,22 +41,21 @@ const VALID_TRANSITIONS: Record<IncidentStatus, IncidentStatus[]> = {
   ANULADO: [],
 }
 
-function getUserFromRequest(request: Request) {
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  const match = /^mock-access-token-(.+)-\d{13}$/.exec(token)
-  const userId = match?.[1] ?? null
-  return userId ? (authFixtures.find((u) => u.id === userId) ?? null) : null
-}
-
 function generateId(): string {
   return `inc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-function generateNumero(): string {
+function generateNumero(empresaId: string): string {
   const year = new Date().getFullYear()
-  const count = incidents.length + 1
+  const count = incidents.filter((i) => i.empresaId === empresaId).length + 1
   return `INC-${year}-${String(count).padStart(3, '0')}`
+}
+
+// RN-EMP-001/003: empresa activa de la sesión — nunca un valor fijo. Mismo mecanismo
+// que getSessionUser/getSessionUserUnchecked (shared/session.ts): authStore ya tiene
+// el dato en memoria, sin necesidad de un helper compartido nuevo (ver me-f3-scoping-modulos design.md, D1).
+function getActiveEmpresaId(): string | null {
+  return useAuthStore.getState().empresaActivaId
 }
 
 function makeAuditEntry(
@@ -106,9 +106,11 @@ export const incidentHandlers = [
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '20', 10)
 
-    let filtered = showDeleted
+    const activeEmpresaId = getActiveEmpresaId()
+    let filtered = (showDeleted
       ? [...incidents]
       : incidents.filter((inc) => !inc.deletedAt)
+    ).filter((inc) => inc.empresaId === activeEmpresaId)
 
     if (tipo) filtered = filtered.filter((inc) => inc.tipo === tipo)
     if (estado) filtered = filtered.filter((inc) => inc.estado === estado)
@@ -144,7 +146,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     return ok(inc)
   }),
@@ -152,6 +154,9 @@ export const incidentHandlers = [
   // POST /api/incidents — create
   http.post('/api/incidents', async ({ request }) => {
     await delay(LATENCY)
+
+    const activeEmpresaId = getActiveEmpresaId()
+    if (!activeEmpresaId) return err('Sesión sin empresa activa', 401)
 
     const body = await request.json() as Record<string, unknown>
 
@@ -173,7 +178,7 @@ export const incidentHandlers = [
 
     const now = new Date().toISOString()
     const id = generateId()
-    const numero = generateNumero()
+    const numero = generateNumero(activeEmpresaId)
     const fechaEvento = body.fechaEvento as string
 
     const auditTrail: AuditTrailEntry[] = [
@@ -201,6 +206,7 @@ export const incidentHandlers = [
       severidad,
       descripcion,
       areaId: body.areaId as string,
+      empresaId: activeEmpresaId,
       turno: body.turno as IncidentTurno,
       fechaEvento,
       fechaReporte: now,
@@ -240,7 +246,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
     const now = new Date().toISOString()
@@ -265,7 +271,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
     const nuevoEstado = body.estado as IncidentStatus
@@ -305,6 +311,7 @@ export const incidentHandlers = [
       entidadTipo: 'INCIDENTE',
       entidadId: inc.id,
       entidadCodigo: inc.numero,
+      empresaId: inc.empresaId,
       estadoNuevo: nuevoEstado,
       reportadoPorId: inc.reportadoPorId,
       responsablesACActivas,
@@ -320,7 +327,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     if (inc.estado !== 'ABIERTO') {
       return err('Solo se pueden eliminar incidentes en estado ABIERTO', 422)
@@ -351,7 +358,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     if (!inc.deletedAt) {
       return err('El incidente no está eliminado', 422)
@@ -378,7 +385,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.id)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
     const required = ['titulo', 'descripcion', 'responsableId', 'plazoFecha', 'prioridad']
@@ -426,7 +433,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.incidenteId)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const ac = (inc.accionesCorrectivas ?? []).find((a) => a.id === params.acId)
     if (!ac) return err('incidents:errors.acNotFound', 404)
@@ -473,7 +480,7 @@ export const incidentHandlers = [
     await delay(LATENCY)
 
     const inc = incidents.find((i) => i.id === params.incidenteId)
-    if (!inc) return err('incidents:errors.notFound', 404)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const ac = (inc.accionesCorrectivas ?? []).find((a) => a.id === params.acId)
     if (!ac) return err('incidents:errors.acNotFound', 404)

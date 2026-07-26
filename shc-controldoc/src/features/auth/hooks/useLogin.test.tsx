@@ -20,9 +20,13 @@ vi.mock('react-router-dom', async () => {
 })
 
 let mockLoginResponse: { user: User; accessToken: string }
-vi.mock('../api/auth.api', () => ({
-  loginUser: () => Promise.resolve(mockLoginResponse),
-}))
+vi.mock('../api/auth.api', async () => {
+  const actual = await vi.importActual<typeof import('../api/auth.api')>('../api/auth.api')
+  return {
+    ...actual,
+    loginUser: () => Promise.resolve(mockLoginResponse),
+  }
+})
 
 afterEach(() => {
   vi.clearAllMocks()

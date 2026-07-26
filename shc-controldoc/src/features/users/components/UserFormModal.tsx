@@ -4,6 +4,7 @@ import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { isAxiosError } from 'axios'
 import { X, Loader2 } from 'lucide-react'
 import { useAreas } from '../../areas/hooks/useAreas'
 import { UserAvatar } from '../../../components/ui/UserAvatar'
@@ -15,6 +16,8 @@ import { useCreateUser, useUpdateUser } from '../hooks/useUsers'
 import { TemporaryPasswordModal } from './TemporaryPasswordModal'
 import type { User, UserRole } from '../../../types/auth.types'
 
+// SUPERADMIN excluido a propósito — es un flag global, nunca un rol asignado
+// desde este formulario (ver empresa-admin-types).
 const ROLE_VALUES: UserRole[] = [
   'OPERARIO',
   'SUPERVISOR',
@@ -23,7 +26,15 @@ const ROLE_VALUES: UserRole[] = [
   'AUDITOR_INTERNO',
   'ALTA_DIRECCION',
   'ADMINISTRADOR_SISTEMA',
+  'ADMINISTRADOR_EMPRESA',
 ]
+
+function getServerErrorMessage(error: unknown): string | null {
+  if (isAxiosError(error) && (error.response?.status === 409 || error.response?.status === 400)) {
+    return (error.response.data as { message?: string } | null)?.message ?? null
+  }
+  return null
+}
 
 type UserFormValues = CreateUserInput
 
@@ -62,7 +73,10 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
       nombre: user?.nombre ?? '',
       apellido: user?.apellido ?? '',
       email: user?.email ?? '',
-      rol: user?.rol ?? 'OPERARIO',
+      // SUPERADMIN nunca llega aquí en la práctica (no aparece en el listado de
+      // /usuarios, ver empresa-admin-mocks), pero UserRole lo incluye a nivel de
+      // tipo — se excluye explícitamente del formulario (ver ROLE_VALUES arriba).
+      rol: user && user.rol !== 'SUPERADMIN' ? user.rol : 'OPERARIO',
       areaId: user?.areaId ?? '',
       areaIds: user?.areaIds ?? [],
     },
@@ -130,7 +144,7 @@ export function UserFormModal({ user, onClose }: UserFormModalProps) {
             password: created.temporaryPassword,
           })
         },
-        onError: () => toast.error(t('form.toasts.crearError')),
+        onError: (error) => toast.error(getServerErrorMessage(error) ?? t('form.toasts.crearError')),
       },
     )
   }

@@ -20,6 +20,7 @@ afterEach(() => cleanup())
 
 const zonaFixture: Zona = {
   id: 'zon-005',
+  empresaId: 'empresa-001',
   localId: 'loc-001',
   nombre: 'Zona de Carga',
   codigo: 'ZON-005',

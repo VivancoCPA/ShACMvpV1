@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
@@ -12,6 +12,12 @@ import api from '../../../lib/axios'
 const server = setupServer(...qualityEventHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// qe-2026-* fixtures usados en este archivo pertenecen a empresa-001 — se fija
+// aquí porque `primeWindow` llama al handler directamente antes de `loginAs`
+// en varios tests (me-f3-scoping-modulos).
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterEach(() => {
   server.resetHandlers()
   useAuthStore.setState({ user: null, isAuthenticated: false })
@@ -26,8 +32,10 @@ function createWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
+// Los fixtures de QE usados en este archivo pertenecen a empresa-001 — el
+// handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
 function loginAs(user: User) {
-  useAuthStore.setState({ user, isAuthenticated: true })
+  useAuthStore.setState({ user, isAuthenticated: true, empresaActivaId: 'empresa-001' })
 }
 
 async function primeWindow(id: string, overrides: Record<string, unknown> = {}) {

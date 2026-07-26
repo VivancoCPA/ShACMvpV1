@@ -5,7 +5,7 @@ Zod validation schemas for M2 non-conformity operations. Consumed by React Hook 
 ## Requirements
 
 ### Requirement: createNCSchema validates required fields for reporting a new NC
-The system SHALL export a `createNCSchema` Zod schema from `src/features/nonconformities/schemas/createNC.schema.ts` that validates: `origen` (NCOrigen enum), `tipo` (NCTipo enum), `severidad` (NCSeveridad enum), `areaAfectada` (string, min 1, max 200), `descripcion` (string, min 10, max 2000), `fechaDeteccion` (ISO 8601 datetime string), `turno` (optional, `'DIA' | 'TARDE' | 'NOCHE'`), `mineralInvolucrado` (optional string, max 100), `accionInmediata` (optional string, max 1000), `documentosVinculados` (optional string array, defaults to `[]`).
+The system SHALL export a `createNCSchema` Zod schema from `src/features/nonconformities/schemas/createNC.schema.ts` that validates: `origen` (NCOrigen enum), `tipo` (NCTipo enum), `severidad` (NCSeveridad enum), `areaId` (string, min 1 — FK to `Area.id`, the M6-S08 administered area catalog), `descripcion` (string, min 10, max 2000), `fechaDeteccion` (ISO 8601 datetime string), `turno` (optional, `'DIA' | 'TARDE' | 'NOCHE'`), `mineralInvolucrado` (optional string, max 100), `accionInmediata` (optional string, max 1000), `documentosVinculados` (optional string array, defaults to `[]`).
 
 #### Scenario: createNCSchema rejects missing origen
 - **WHEN** a developer parses an object without `origen` through `createNCSchema`
@@ -22,6 +22,10 @@ The system SHALL export a `createNCSchema` Zod schema from `src/features/nonconf
 #### Scenario: CreateNCInput type is inferred from createNCSchema
 - **WHEN** a developer imports `CreateNCInput` from the schemas file
 - **THEN** TypeScript infers it as `z.infer<typeof createNCSchema>` with no `any`
+
+#### Scenario: createNCSchema rejects missing areaId
+- **WHEN** a developer parses an object without `areaId` through `createNCSchema`
+- **THEN** Zod returns an error with path `['areaId']`
 
 ### Requirement: updateNCSchema validates only fields editable after creation
 The system SHALL export an `updateNCSchema` Zod schema from `src/features/nonconformities/schemas/updateNC.schema.ts` that accepts only fields that remain editable after `DETECTADA`: `responsableInvestigacionId` (optional UUID), `accionInmediata` (optional string, max 1000), `accionInmediataFecha` (optional ISO 8601 date), `correccion` (optional string, max 2000), `correccionEvidenciaUrl` (optional URL string), `causaRaiz` (optional string, max 2000), `documentosVinculados` (optional string array). The schema SHALL use `.partial()` or all fields optional so a partial update is valid.

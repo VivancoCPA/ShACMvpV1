@@ -1,14 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { localesHandlers, validatePlano } from './locales.handlers'
 import { crearLocal, actualizarLocal } from '../../features/locations/api/locales.api'
-import type { Local, Zona } from '../../features/incidents/types/incident.types'
+import { getIncidentsStore } from './incidents.handlers'
+import { useAuthStore } from '../../stores/authStore'
+import type { Local, Zona, Incidente } from '../../features/incidents/types/incident.types'
 
 const server = setupServer(...localesHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// Los fixtures de Local/Zona usados en este archivo pertenecen a empresa-001 —
+// el handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
+beforeEach(() => {
+  useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+})
 afterAll(() => server.close())
 
 interface Result<T> {
@@ -221,5 +228,104 @@ describe('locales.handlers — Zonas', () => {
     const result = await call<Zona>(api.patch('/api/zonas/zon-002/reactivar'))
     expect(result.status).toBe(200)
     expect(result.data.activo).toBe(true)
+  })
+})
+
+describe('locales.handlers — empresa isolation (me-f3-scoping-modulos)', () => {
+  it('list excludes locales and zonas from another empresa', async () => {
+    const locales = await api.get<Local[]>('/api/locales')
+    expect(locales.data.some((l) => l.empresaId === 'empresa-002')).toBe(false)
+
+    const zonas = await api.get<Zona[]>('/api/zonas')
+    expect(zonas.data.some((z) => z.empresaId === 'empresa-002')).toBe(false)
+  })
+
+  it('detail returns 404 for a local belonging to another empresa', async () => {
+    // loc-e2-001 belongs to empresa-002; acting session is empresa-001
+    const result = await call<ErrorBody>(api.get('/api/locales/loc-e2-001'))
+    expect(result.status).toBe(404)
+  })
+
+  it('update on another empresa local is rejected as not found', async () => {
+    const result = await call<ErrorBody>(
+      api.patch('/api/locales/loc-e2-001', { nombre: 'Intento cross-empresa' }),
+    )
+    expect(result.status).toBe(404)
+  })
+
+  it('reactivar on another empresa local is rejected as not found', async () => {
+    // loc-e2-001 is activo: false in fixtures
+    const result = await call<ErrorBody>(api.patch('/api/locales/loc-e2-001/reactivar'))
+    expect(result.status).toBe(404)
+  })
+
+  it('creating a zona under another empresa local is rejected as not found', async () => {
+    const result = await call<ErrorBody>(
+      api.post('/api/locales/loc-e2-001/zonas', { nombre: 'Zona cross-empresa' }),
+    )
+    expect(result.status).toBe(404)
+  })
+
+  it('update on another empresa zona is rejected as not found', async () => {
+    // zon-e2-001 belongs to empresa-002
+    const result = await call<ErrorBody>(
+      api.patch('/api/zonas/zon-e2-001', { nombre: 'Intento cross-empresa' }),
+    )
+    expect(result.status).toBe(404)
+  })
+
+  it('an incident from another empresa never counts as a blocking incident (RN-LOC-002)', async () => {
+    useAuthStore.setState({ empresaActivaId: 'empresa-001' })
+    // empresa-001 is at its 5-active cap at this point in the suite — release a
+    // filler slot first, same pattern as the RN-LOC-002 test above.
+    const activeList = await api.get<Local[]>('/api/locales', { params: { activo: true } })
+    const filler = activeList.data.find((l) => !['loc-001', 'loc-002', 'loc-003'].includes(l.id))
+    if (filler) await api.patch(`/api/locales/${filler.id}/desactivar`)
+
+    const created = await api.post<Local>('/api/locales', { nombre: 'Local Para Falso Bloqueo' })
+
+    getIncidentsStore().push({
+      id: 'inc-cross-empresa-test',
+      numero: 'INC-2026-CROSS-TEST',
+      tipo: 'INCIDENTE',
+      estado: 'ABIERTO',
+      severidad: 'MEDIA',
+      descripcion: 'Incidente sintético de otra empresa para probar RN-LOC-002',
+      areaId: 'area-001',
+      empresaId: 'empresa-002',
+      localId: created.data.id,
+      turno: 'DIA',
+      fechaEvento: new Date().toISOString(),
+      fechaReporte: new Date().toISOString(),
+      reportadoPorId: 'user-mock-001',
+      huboLesionados: false,
+      auditTrail: [],
+      creadoEn: new Date().toISOString(),
+      actualizadoEn: new Date().toISOString(),
+    } as Incidente)
+
+    const result = await call<Local>(api.patch(`/api/locales/${created.data.id}/desactivar`))
+    expect(result.status).toBe(200)
+    expect(result.data.activo).toBe(false)
+  })
+
+  it('RN-LOC-001 max-5-activos limit is independent per empresa', async () => {
+    // empresa-001 already has 5 active locales at this point in the suite;
+    // switching to empresa-002 (which only has loc-e2-001, inactivo) must not be blocked by that.
+    useAuthStore.setState({ empresaActivaId: 'empresa-002' })
+    const result = await call<Local>(api.post('/api/locales', { nombre: 'Local Nuevo Empresa 2' }))
+    expect(result.status).toBe(201)
+    expect(result.data.empresaId).toBe('empresa-002')
+    // RN-EMP-003: la numeración es por empresa — empresa-002 solo tenía
+    // loc-e2-001 (1 local), por lo que este es su 2º ('LOC-002'), el mismo
+    // código que ya existe para empresa-001's `loc-002`, sin colisión real
+    // porque cada uno vive en su propia empresa (me-f5-verificacion-cruzada).
+    expect(result.data.codigo).toBe('LOC-002')
+  })
+
+  it('create is rejected with 401 when the session has no active empresa', async () => {
+    useAuthStore.setState({ empresaActivaId: null })
+    const result = await call<ErrorBody>(api.post('/api/locales', { nombre: 'Local sin empresa activa' }))
+    expect(result.status).toBe(401)
   })
 })

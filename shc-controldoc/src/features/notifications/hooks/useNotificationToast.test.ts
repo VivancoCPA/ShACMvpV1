@@ -21,6 +21,7 @@ function makeNotificacion(overrides: Partial<Notificacion> = {}): Notificacion {
   return {
     id: 'notif-1',
     usuarioId: 'user-operario-001',
+    empresaId: 'empresa-001',
     tipo: 'CAMBIO_ESTADO',
     entidadTipo: 'QE',
     entidadId: 'qe-2026-001',

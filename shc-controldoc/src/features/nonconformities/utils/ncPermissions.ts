@@ -108,5 +108,9 @@ export function getNCPermissions(nc: NoConformidad, userRole: UserRole): NCPermi
       return { ...DENY_ALL, canRead: true, canVerAuditTrail: true }
     case 'ADMINISTRADOR_SISTEMA':
       return { ...DENY_ALL }
+    case 'ADMINISTRADOR_EMPRESA':
+      return { ...DENY_ALL }
+    case 'SUPERADMIN':
+      return { ...DENY_ALL }
   }
 }

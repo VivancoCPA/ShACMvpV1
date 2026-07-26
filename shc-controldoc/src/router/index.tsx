@@ -34,6 +34,8 @@ import { DevResetMocksPage } from '../pages/dev/DevResetMocksPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 import { ProfilePage } from '../features/users/pages/ProfilePage'
 import { UsersListPage } from '../features/users/pages/UsersListPage'
+import { EmpresasAdminPage } from '../features/empresas/pages/EmpresasAdminPage'
+import { EmpresaUsuariosPage } from '../features/empresas/pages/EmpresaUsuariosPage'
 
 function DefaultRouteRedirect() {
   const user = useAuthStore((state) => state.user)
@@ -211,10 +213,30 @@ export const router = createBrowserRouter([
                 element: <UsersListPage />,
                 handle: { breadcrumb: 'users' },
               },
+            ],
+          },
+          {
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.areasAdmin} />,
+            children: [
               {
                 path: '/admin/areas',
                 element: <AreasAdminPage />,
                 handle: { breadcrumb: 'areas' },
+              },
+            ],
+          },
+          {
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.empresasAdmin} />,
+            children: [
+              {
+                path: '/admin/empresas',
+                element: <EmpresasAdminPage />,
+                handle: { breadcrumb: 'empresas' },
+              },
+              {
+                path: '/admin/empresas/:id/usuarios',
+                element: <EmpresaUsuariosPage />,
+                handle: { breadcrumb: 'empresas' },
               },
             ],
           },

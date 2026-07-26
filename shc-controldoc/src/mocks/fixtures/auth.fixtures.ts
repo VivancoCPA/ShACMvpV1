@@ -13,6 +13,7 @@ export interface MockUser {
   createdAt: string
   lastLogin?: string
   activo: boolean
+  esSuperadminMultiempresa?: boolean
 }
 
 export const MOCK_RESET_TOKEN = 'mock-reset-token'
@@ -158,6 +159,98 @@ export const authFixtures: MockUser[] = [
     avatarUrl: undefined,
     activo: true,
     createdAt: '2022-01-15T08:00:00.000Z',
+  },
+  {
+    // empresa-002 (Terminal Portuario Ilo S.A.C.) — usuario nuevo, ver empresa-msw-fixtures
+    id: 'user-operario-101',
+    nombre: 'Jorge',
+    apellido: 'Aliaga',
+    email: 'operario@ilo.pe',
+    password: 'Shac2025!',
+    rol: 'OPERARIO',
+    areaId: 'area-016',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    // empresa-002 (Terminal Portuario Ilo S.A.C.) — usuario nuevo, ver empresa-msw-fixtures
+    id: 'user-supervisor-101',
+    nombre: 'Rosa',
+    apellido: 'Chávez',
+    email: 'supervisor@ilo.pe',
+    password: 'Shac2025!',
+    rol: 'SUPERVISOR',
+    areaId: 'area-001',
+    areaIds: ['area-001'],
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    // empresa-002 (Terminal Portuario Ilo S.A.C.) — usuario nuevo, ver empresa-msw-fixtures
+    id: 'user-jefecalidad-101',
+    nombre: 'Fernando',
+    apellido: 'Rojas',
+    email: 'jefe.calidad@ilo.pe',
+    password: 'Shac2025!',
+    rol: 'JEFE_CALIDAD_SYST',
+    areaId: 'area-007',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    // empresa-002 (Terminal Portuario Ilo S.A.C.) — usuario nuevo, ver empresa-msw-fixtures
+    id: 'user-jefedocs-101',
+    nombre: 'Karina',
+    apellido: 'Ponce',
+    email: 'jefe.docs@ilo.pe',
+    password: 'Shac2025!',
+    rol: 'JEFE_CONTROL_DOCUMENTARIO',
+    areaId: 'area-009',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    // me-f4-admin-empresas — Superadmin de verificación. Deliberadamente SIN
+    // ninguna fila UsuarioEmpresa (ver empresas.fixtures.ts): prueba el caso
+    // "cero asignaciones" del proposal — el flag basta para resolver sesión.
+    id: 'user-superadmin-001',
+    nombre: 'Valeria',
+    apellido: 'Ríos',
+    email: 'superadmin@shac.pe',
+    password: 'Shac2025!',
+    rol: 'SUPERADMIN',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    esSuperadminMultiempresa: true,
+  },
+  {
+    // me-f4-admin-empresas — ADMINISTRADOR_EMPRESA de verificación de empresa-001.
+    id: 'user-adminempresa-001',
+    nombre: 'Renzo',
+    apellido: 'Delgado',
+    email: 'admin.empresa@shac.pe',
+    password: 'Shac2025!',
+    rol: 'ADMINISTRADOR_EMPRESA',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
+  },
+  {
+    // me-f4-admin-empresas — ADMINISTRADOR_EMPRESA de verificación de empresa-002.
+    id: 'user-adminempresa-101',
+    nombre: 'Gabriela',
+    apellido: 'Núñez',
+    email: 'admin.empresa@ilo.pe',
+    password: 'Shac2025!',
+    rol: 'ADMINISTRADOR_EMPRESA',
+    avatarUrl: undefined,
+    activo: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
   },
 ]
 

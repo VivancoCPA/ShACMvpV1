@@ -25,8 +25,10 @@ function createWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
+// Los fixtures de QE usados en este archivo pertenecen a empresa-001 — el
+// handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
 function loginAs(user: User) {
-  useAuthStore.setState({ user, isAuthenticated: true })
+  useAuthStore.setState({ user, isAuthenticated: true, empresaActivaId: 'empresa-001' })
 }
 
 describe('PATCH /api/quality-events/:id/editar-severidad', () => {

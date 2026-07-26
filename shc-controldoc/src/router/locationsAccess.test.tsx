@@ -8,7 +8,7 @@ import { documentHandlers } from '../mocks/handlers/documents.handlers'
 import { localesHandlers } from '../mocks/handlers/locales.handlers'
 import { incidentHandlers } from '../mocks/handlers/incidents.handlers'
 import { useAuthStore } from '../stores/authStore'
-import { loginUser } from '../features/auth/api/auth.api'
+import { loginUser, isLoginResolved } from '../features/auth/api/auth.api'
 import { router } from './index'
 
 // Regression test for M6-S01: ADMINISTRADOR_SISTEMA was added to the router's RoleGuard
@@ -34,9 +34,13 @@ afterEach(() => {
 })
 afterAll(() => server.close())
 
-async function loginReal(email: string) {
-  const { user, accessToken } = await loginUser({ email, password: 'Shac2025!' })
-  useAuthStore.getState().login({ user, accessToken })
+async function loginReal(email: string, empresaId = 'empresa-001') {
+  const response = await loginUser({ email, password: 'Shac2025!', empresaId })
+  if (!isLoginResolved(response)) {
+    throw new Error(`loginReal: ${email} requiere selección de empresa`)
+  }
+  const { user, accessToken, empresaActivaId, empresasDisponibles } = response
+  useAuthStore.getState().login({ user, accessToken, empresaActivaId, empresasDisponibles })
   return user
 }
 

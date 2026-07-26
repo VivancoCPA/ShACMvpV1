@@ -171,10 +171,10 @@ These types SHALL be defined in or exported from the nonconformity types/schemas
 ---
 
 ### Requirement: NoConformidad interface
-The system SHALL define a `NoConformidad` interface with the following required fields: `id`, `numero` (format `NC-[DOMINIO_ABBR]-YYYY-NNN` where DOMINIO_ABBR is CAL, SST, ADU, OPE, or PRV), `dominio` (NCDominio), `titulo` (string), `origen`, `tipo`, `severidad`, `estado`, `descripcion`, `areaAfectada`, `reportadoPorId`, `fechaDeteccion`, `fechaReporte`, `requiereIPER` (boolean — only meaningful when `dominio === 'NC-SST'`), `accionesCorrectivas` (AccionCorrectiva[]), `documentosVinculados`, `adjuntos`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include the following optional fields: `detectadoPor` (string or undefined), `justificacionAnulacion` (string or undefined), `mineralInvolucrado`, `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `responsableInvestigacionId`, `accionInmediata`, `accionInmediataFecha`, `correccion`, `correccionEvidenciaUrl`, `causaRaiz`, `corregidoPorId`, `verificadoPorId`, `fechaVerificacion`, `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `qeGeneradoId`, `notificacionComercioExterior` (NCNotificacionComercioExterior — only meaningful when `dominio === 'NC-ADU'`).
+The system SHALL define a `NoConformidad` interface with the following required fields: `id`, `numero` (format `NC-[DOMINIO_ABBR]-YYYY-NNN` where DOMINIO_ABBR is CAL, SST, ADU, OPE, or PRV), `dominio` (NCDominio), `titulo` (string), `origen`, `tipo`, `severidad`, `estado`, `descripcion`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `reportadoPorId`, `fechaDeteccion`, `fechaReporte`, `requiereIPER` (boolean — only meaningful when `dominio === 'NC-SST'`), `accionesCorrectivas` (AccionCorrectiva[]), `documentosVinculados`, `adjuntos`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include the following optional fields: `detectadoPor` (string or undefined), `justificacionAnulacion` (string or undefined), `mineralInvolucrado`, `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `responsableInvestigacionId`, `accionInmediata`, `accionInmediataFecha`, `correccion`, `correccionEvidenciaUrl`, `causaRaiz`, `corregidoPorId`, `verificadoPorId`, `fechaVerificacion`, `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `qeGeneradoId`, `notificacionComercioExterior` (NCNotificacionComercioExterior — only meaningful when `dominio === 'NC-ADU'`). The interface SHALL NOT include an `areaAfectada` field — it is replaced by `areaId`.
 
 #### Scenario: NoConformidad rejects missing required fields
-- **WHEN** a developer constructs a `NoConformidad` without `numero` or `areaAfectada`
+- **WHEN** a developer constructs a `NoConformidad` without `numero` or `areaId`
 - **THEN** TypeScript emits a compile error for each missing required field
 
 #### Scenario: NoConformidad requires dominio field
@@ -209,6 +209,10 @@ The system SHALL define a `NoConformidad` interface with the following required 
 - **WHEN** a developer assigns `resultadoVerificacion`
 - **THEN** TypeScript accepts only `'EFECTIVO'` or `'NO_EFECTIVO'` and rejects any other string
 
+#### Scenario: NoConformidad no longer has an areaAfectada field
+- **WHEN** a developer attempts to read or assign `nc.areaAfectada`
+- **THEN** TypeScript emits a compile error, as the property does not exist on `NoConformidad` — the field is `areaId`
+
 ---
 
 ### Requirement: NoConformidad includes optional fechaCierre field
@@ -229,7 +233,7 @@ The system SHALL add a `fechaCierre?: string` optional field to the `NoConformid
 ---
 
 ### Requirement: NCFilters interface
-The system SHALL define an `NCFilters` interface for list queries with the following optional fields: `estado` (NCStatus), `tipo` (NCTipo), `severidad` (NCSeveridad), `dominio` (NCDominio), `origen` (NCOrigen), `areaAfectada` (string), `reportadoPorId` (string), `search` (string), `fechaDesde` (ISO 8601 date string), `fechaHasta` (ISO 8601 date string), `page` (number), `pageSize` (number).
+The system SHALL define an `NCFilters` interface for list queries with the following optional fields: `estado` (NCStatus), `tipo` (NCTipo), `severidad` (NCSeveridad), `dominio` (NCDominio), `origen` (NCOrigen), `areaId` (string — FK to `Area.id`), `reportadoPorId` (string), `search` (string), `fechaDesde` (ISO 8601 date string), `fechaHasta` (ISO 8601 date string), `page` (number), `pageSize` (number). The interface SHALL NOT include an `areaAfectada` field — it is replaced by `areaId`.
 
 #### Scenario: NCFilters accepts dominio as an optional filter
 - **WHEN** a developer passes `{ dominio: 'SST' }` as `NCFilters`
@@ -241,6 +245,10 @@ The system SHALL define an `NCFilters` interface for list queries with the follo
 
 #### Scenario: NCFilters with no fields is valid
 - **WHEN** a developer passes an empty object `{}` as `NCFilters`
+- **THEN** TypeScript accepts it without error
+
+#### Scenario: NCFilters accepts areaId as an optional filter
+- **WHEN** a developer passes `{ areaId: 'area-001' }` as `NCFilters`
 - **THEN** TypeScript accepts it without error
 
 ---

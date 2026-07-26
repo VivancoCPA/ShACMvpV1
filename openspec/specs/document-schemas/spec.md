@@ -20,7 +20,7 @@ The system SHALL define a `DocConfidencialidad` union type in `src/types/api.typ
 - **THEN** each fixture document has a `confidencialidad` value and RESTRINGIDO fixtures have a non-empty `rolesAutorizados` array
 
 ### Requirement: createDocument Zod schema
-The system SHALL provide a `createDocumentSchema` in `src/features/documents/schemas/createDocument.schema.ts` that validates: `titulo` (string, min 5, max 200), `tipo` (DocType enum), `area` (string, min 1), `confidencialidad` (DocConfidencialidad enum, required, default `'INTERNO'`), `rolesAutorizados` (array of UserRole enum, required with min(1) when `confidencialidad === 'RESTRINGIDO'`, otherwise optional), `revisorId` (UUID string), `aprobadorId` (UUID string), `descripcion` (string, max 2000, optional). The file SHALL also export `CreateDocumentInput` as the inferred type.
+The system SHALL provide a `createDocumentSchema` in `src/features/documents/schemas/createDocument.schema.ts` that validates: `titulo` (string, min 5, max 200), `tipo` (DocType enum), `areaId` (string, min 1 — FK to `Area.id`, the M6-S08 administered area catalog), `confidencialidad` (DocConfidencialidad enum, required, default `'INTERNO'`), `rolesAutorizados` (array of UserRole enum, required with min(1) when `confidencialidad === 'RESTRINGIDO'`, otherwise optional), `revisorId` (UUID string), `aprobadorId` (UUID string), `descripcion` (string, max 2000, optional). The file SHALL also export `CreateDocumentInput` as the inferred type.
 
 #### Scenario: Valid create payload passes validation
 - **WHEN** `createDocumentSchema.safeParse` receives a complete valid payload
@@ -53,6 +53,10 @@ The system SHALL provide a `createDocumentSchema` in `src/features/documents/sch
 #### Scenario: INTERNO without rolesAutorizados passes createDocument validation
 - **WHEN** `createDocumentSchema.safeParse` receives a valid payload with `confidencialidad: 'INTERNO'` and no `rolesAutorizados`
 - **THEN** `success` is `true`
+
+#### Scenario: Missing areaId fails validation
+- **WHEN** `createDocumentSchema.safeParse` receives a payload without `areaId`
+- **THEN** `success` is `false` and the error path includes `areaId`
 
 ### Requirement: updateDocument Zod schema
 The system SHALL provide an `updateDocumentSchema` in `src/features/documents/schemas/updateDocument.schema.ts` that validates the fields editable after creation: `titulo?`, `descripcion?`, `revisorId?`, `aprobadorId?`, `fechaVigencia?` (ISO date string), `confidencialidad?` (DocConfidencialidad enum), `rolesAutorizados?` (array of UserRole enum, required with min(1) when `confidencialidad === 'RESTRINGIDO'`). All fields are optional (partial update). The file SHALL also export `UpdateDocumentInput` as the inferred type.

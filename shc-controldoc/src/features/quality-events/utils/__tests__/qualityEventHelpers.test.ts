@@ -12,6 +12,7 @@ const baseQE: QualityEvent = {
   ciclo: 1,
   descripcion: 'Descripción del evento',
   areaId: 'area-001',
+  empresaId: 'empresa-001',
   turno: 'DIA',
   fechaHoraEvento: '2025-06-01T08:00:00Z',
   fechaHoraReporte: '2025-06-01T09:00:00Z',

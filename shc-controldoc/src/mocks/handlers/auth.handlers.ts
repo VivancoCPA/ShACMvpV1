@@ -1,11 +1,17 @@
 import { http, HttpResponse, delay } from 'msw'
-import { authFixtures, getUsersStore, MOCK_RESET_TOKEN } from '../fixtures/auth.fixtures'
+import { authFixtures, getUsersStore, MOCK_RESET_TOKEN, type MockUser } from '../fixtures/auth.fixtures'
+import { getEmpresasActivasForUsuario, getRolEfectivo } from '../fixtures/empresas.fixtures'
+import type { Empresa } from '../../features/empresas/types/empresa.types'
+import type { User } from '../../types/auth.types'
 
 const LATENCY = 400
 // MSW's Service Worker can't set a real httpOnly cookie from a synthetic
 // Response in the browser (see src/lib/mockSession.ts), so the mock refresh
 // token travels as an explicit header instead of Set-Cookie/Cookie.
 const REFRESH_HEADER = 'x-mock-refresh-token'
+// Same rationale, for the empresa activa persisted across page reloads
+// (see src/lib/mockSession.ts, persistActiveEmpresaId/readActiveEmpresaId).
+const EMPRESA_ACTIVA_HEADER = 'x-mock-empresa-activa'
 
 function ok<T>(data: T, status = 200, headers?: HeadersInit) {
   return HttpResponse.json({ success: true, data }, { status, headers })
@@ -32,10 +38,65 @@ function readAccessUserId(request: Request): string | undefined {
   return match?.[1]
 }
 
+interface ResolvedSession {
+  user: User
+  empresaActivaId: string | null
+  empresasDisponibles: Empresa[]
+}
+
+interface SelectionRequired {
+  requiresEmpresaSelection: true
+  empresasDisponibles: Empresa[]
+}
+
+/**
+ * Resuelve la empresa activa y el rol efectivo de `user` contra
+ * `UsuarioEmpresa` (ver empresa-session capability):
+ * - una sola empresa asignada → autoselección, `empresaId` se ignora si vino
+ * - más de una y sin `empresaId` → selección pendiente
+ * - `empresaId` presente → se valida contra las asignaciones activas
+ */
+function resolveSession(
+  user: MockUser,
+  empresaId?: string,
+): ResolvedSession | SelectionRequired | { error: string } {
+  if (user.esSuperadminMultiempresa) {
+    const { password: _pw, ...userWithoutPassword } = user
+    return {
+      user: { ...userWithoutPassword, rol: 'SUPERADMIN' },
+      empresaActivaId: null,
+      empresasDisponibles: [],
+    }
+  }
+
+  const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
+  if (empresasDisponibles.length === 0) {
+    return { error: 'El usuario no tiene ninguna empresa asignada' }
+  }
+
+  const resolvedEmpresaId =
+    empresasDisponibles.length === 1 ? empresasDisponibles[0].id : empresaId
+  if (!resolvedEmpresaId) {
+    return { requiresEmpresaSelection: true, empresasDisponibles }
+  }
+
+  const rol = getRolEfectivo(user.id, resolvedEmpresaId)
+  if (!rol) {
+    return { error: 'La empresa indicada no está asignada a este usuario' }
+  }
+
+  const { password: _pw, ...userWithoutPassword } = user
+  return {
+    user: { ...userWithoutPassword, rol },
+    empresaActivaId: resolvedEmpresaId,
+    empresasDisponibles,
+  }
+}
+
 export const authHandlers = [
   http.post('/api/auth/login', async ({ request }) => {
     await delay(LATENCY)
-    const body = (await request.json()) as { email?: string; password?: string }
+    const body = (await request.json()) as { email?: string; password?: string; empresaId?: string }
     const user = getUsersStore().find(
       (u) => u.email === body.email && u.password === body.password,
     )
@@ -45,12 +106,26 @@ export const authHandlers = [
     if (!user.activo) {
       return err('Usuario deshabilitado, contacte al administrador', 403)
     }
+
+    const resolved = resolveSession(user, body.empresaId)
+    if ('error' in resolved) {
+      return err(resolved.error, 403)
+    }
+    if ('requiresEmpresaSelection' in resolved) {
+      return ok(resolved)
+    }
+
+    // `resolved.user` es una copia tomada en `resolveSession` — actualizar
+    // `lastLogin` ahí también, no solo en el fixture crudo, o la respuesta
+    // seguiría devolviendo el valor stale de antes de este login.
     user.lastLogin = new Date().toISOString()
-    const { password: _pw, ...userWithoutPassword } = user
+    resolved.user.lastLogin = user.lastLogin
     return ok({
       accessToken: `mock-access-token-${user.id}-${Date.now()}`,
       mockRefreshToken: issueRefreshToken(user.id),
-      user: userWithoutPassword,
+      user: resolved.user,
+      empresaActivaId: resolved.empresaActivaId,
+      empresasDisponibles: resolved.empresasDisponibles,
     })
   }),
 
@@ -66,11 +141,73 @@ export const authHandlers = [
     if (!user) {
       return err('Sesión expirada', 401)
     }
+
+    if (user.esSuperadminMultiempresa) {
+      const { password: _pw, ...userWithoutPassword } = user
+      return ok({
+        accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
+        mockRefreshToken: issueRefreshToken(user.id),
+        user: { ...userWithoutPassword, rol: 'SUPERADMIN' },
+        empresaActivaId: null,
+        empresasDisponibles: [],
+      })
+    }
+
+    const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
+    const empresaActivaHeader = request.headers.get(EMPRESA_ACTIVA_HEADER) ?? undefined
+    const empresaActivaId =
+      empresaActivaHeader && empresasDisponibles.some((e) => e.id === empresaActivaHeader)
+        ? empresaActivaHeader
+        : empresasDisponibles[0]?.id
+    if (!empresaActivaId) {
+      return err('El usuario no tiene ninguna empresa asignada', 401)
+    }
+    const rol = getRolEfectivo(user.id, empresaActivaId)
+    if (!rol) {
+      return err('Sesión expirada', 401)
+    }
+
     const { password: _pw, ...userWithoutPassword } = user
     return ok({
       accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
       mockRefreshToken: issueRefreshToken(user.id),
-      user: userWithoutPassword,
+      user: { ...userWithoutPassword, rol },
+      empresaActivaId,
+      empresasDisponibles,
+    })
+  }),
+
+  http.post('/api/auth/switch-empresa', async ({ request }) => {
+    await delay(LATENCY)
+    const userId = readAccessUserId(request)
+    const user = userId ? authFixtures.find((u) => u.id === userId) : undefined
+    if (!user) {
+      return err('Sesión expirada', 401)
+    }
+    if (user.esSuperadminMultiempresa) {
+      return err('Superadmin no cambia de empresa', 403)
+    }
+
+    const body = (await request.json()) as { empresaId?: string }
+    if (!body.empresaId) {
+      return err('empresaId es requerido', 400)
+    }
+
+    const resolved = resolveSession(user, body.empresaId)
+    if ('error' in resolved) {
+      return err(resolved.error, 403)
+    }
+    if ('requiresEmpresaSelection' in resolved) {
+      // No debería ocurrir: se pasó empresaId explícito, pero por si acaso
+      // no matchea ninguna asignación, se trata como empresa inválida.
+      return err('La empresa indicada no está asignada a este usuario', 403)
+    }
+
+    return ok({
+      accessToken: `mock-access-token-${user.id}-${Date.now()}`,
+      user: resolved.user,
+      empresaActivaId: resolved.empresaActivaId,
+      empresasDisponibles: resolved.empresasDisponibles,
     })
   }),
 
