@@ -6,6 +6,7 @@ import { qualityEventHandlers, getQeStore, resetStore } from './quality-events.h
 import { incidentHandlers, getIncidentsStore, resetStore as resetIncidentsStore } from './incidents.handlers'
 import { nonconformityHandlers, getNonconformitiesStore, resetStore as resetNonconformitiesStore } from './nonconformities.handlers'
 import { useAuthStore } from '../../stores/authStore'
+import { createMockUser } from '../fixtures/mockUser'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
 import type { QualityEvent } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
@@ -93,7 +94,7 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
 // asignan por empresa activa de sesión (me-f3-scoping-modulos).
 function setCurrentUser(id: string, rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'ALTA_DIRECCION' | 'AUDITOR_INTERNO') {
   useAuthStore.setState({
-    user: { id, nombre: 'Test', apellido: 'User', email: `${id}@shac.internal`, rol },
+    user: createMockUser({ id, nombre: 'Test', apellido: 'User', email: `${id}@shac.internal`, rol }),
     isAuthenticated: true,
     accessToken: 'token',
     empresaActivaId: 'empresa-001',

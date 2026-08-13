@@ -180,7 +180,7 @@ export const documentHandlers = [
       if (d.confidencialidad === 'PUBLICO' || d.confidencialidad === 'INTERNO') return true
       if (d.confidencialidad === 'CONFIDENCIAL') return CONFIDENCIAL_ROLES.has(userRole)
       // RESTRINGIDO
-      return (d.rolesAutorizados ?? []).includes(userRole as UserRole)
+      return ((d.rolesAutorizados as string[] | undefined) ?? []).includes(userRole)
     })
 
     const pendientes = url.searchParams.get('pendientes') === 'true'

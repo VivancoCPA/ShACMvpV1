@@ -117,3 +117,47 @@ describe('IncidentDetailPage — botón Crear QE', () => {
     )
   })
 })
+
+describe('IncidentDetailPage — caption de evidencia (m7-ajuste-texto-foto-incidencia)', () => {
+  it('evidencia con descripcion muestra el texto bajo su thumbnail', () => {
+    mockIncident = makeIncidente({
+      evidencias: [
+        {
+          id: 'ev-001',
+          url: 'https://example.com/foto.jpg',
+          nombre: 'foto.jpg',
+          tipo: 'imagen',
+          tamanioKb: 120,
+          creadoEn: '2026-01-01T00:00:00Z',
+          creadoPor: 'user-1',
+          descripcion: 'válvula de escape dañada',
+        },
+      ],
+    })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+
+    expect(screen.getByText('válvula de escape dañada')).toBeInTheDocument()
+  })
+
+  it('evidencia sin descripcion no renderiza ningún texto adicional', () => {
+    mockIncident = makeIncidente({
+      evidencias: [
+        {
+          id: 'ev-002',
+          url: 'https://example.com/foto2.jpg',
+          nombre: 'foto2.jpg',
+          tipo: 'imagen',
+          tamanioKb: 90,
+          creadoEn: '2026-01-01T00:00:00Z',
+          creadoPor: 'user-1',
+        },
+      ],
+    })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+
+    const thumbnail = screen.getByLabelText('foto2.jpg')
+    expect(thumbnail.parentElement?.querySelector('p')).not.toBeInTheDocument()
+  })
+})

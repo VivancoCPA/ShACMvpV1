@@ -6,6 +6,7 @@ import { describe, expect, it, afterEach } from 'vitest'
 import i18n from '../../../i18n'
 import { DashboardPage } from './DashboardPage'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 
 afterEach(() => {
   cleanup()
@@ -14,7 +15,7 @@ afterEach(() => {
 
 function loginAs(rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'JEFE_CONTROL_DOCUMENTARIO' | 'AUDITOR_INTERNO' | 'ALTA_DIRECCION') {
   useAuthStore.setState({
-    user: {
+    user: createMockUser({
       id: 'user-1',
       nombre: 'Test',
       apellido: 'User',
@@ -22,7 +23,7 @@ function loginAs(rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALIDAD_SYST' | 'JEFE_CO
       rol,
       areaId: 'area-016',
       areaIds: rol === 'SUPERVISOR' ? ['area-016'] : undefined,
-    },
+    }),
     accessToken: 'token',
     isAuthenticated: true,
   })

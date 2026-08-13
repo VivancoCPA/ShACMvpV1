@@ -9,11 +9,15 @@ TypeScript types for the notification system: the `Notificacion` interface, its 
 ## Requirements
 
 ### Requirement: Notificacion interface
-The system SHALL define a `Notificacion` interface in `src/types/notification.types.ts` with fields: `id: string`, `usuarioId: string` (an id resolvable in the live `authFixtures` store), `tipo: NotificacionTipo`, `entidadTipo: NotificacionEntidadTipo`, `entidadId: string`, `entidadCodigo: string`, `mensaje: string`, `leida: boolean`, `createdAt: string` (ISO 8601), `link: string` (deep-link route to the entity's detail page).
+The system SHALL define a `Notificacion` interface in `src/types/notification.types.ts` with fields: `id: string`, `usuarioId: string` (an id resolvable in the live `authFixtures` store), `empresaId: string` (the `empresaId` of the entity that originated the notification), `tipo: NotificacionTipo`, `entidadTipo: NotificacionEntidadTipo`, `entidadId: string`, `entidadCodigo: string`, `mensaje: string`, `leida: boolean`, `createdAt: string` (ISO 8601), `link: string` (deep-link route to the entity's detail page).
 
 #### Scenario: Notificacion rejects missing required fields
-- **WHEN** a developer constructs a `Notificacion` object literal without `usuarioId` or `link`
+- **WHEN** a developer constructs a `Notificacion` object literal without `usuarioId`, `empresaId`, or `link`
 - **THEN** TypeScript emits a compile error for each missing required field
+
+#### Scenario: empresaId is populated from the originating entity, not derived at read time
+- **WHEN** a `Notificacion` is constructed for a QE with `empresaId: 'empresa-002'`
+- **THEN** the created `Notificacion.empresaId` is `'empresa-002'`, set at creation time rather than looked up later from the QE store
 
 ### Requirement: NotificacionTipo and NotificacionEntidadTipo enums
 The system SHALL define `type NotificacionTipo = 'CAMBIO_ESTADO' | 'ASIGNACION' | 'VENCIMIENTO'` and `type NotificacionEntidadTipo = 'QE' | 'NC' | 'INCIDENTE' | 'DOCUMENTO' | 'AC'` in `src/types/notification.types.ts`.

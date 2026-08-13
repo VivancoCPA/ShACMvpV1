@@ -58,7 +58,7 @@ function renderList() {
 
 describe('UserList — listado con datos mockeados', () => {
   it('muestra nombre, email, rol, área, estado y lastLogin de cada usuario', async () => {
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -69,7 +69,7 @@ describe('UserList — listado con datos mockeados', () => {
 describe('UserList — filtros', () => {
   it('filtrar por rol muestra solo usuarios de ese rol', async () => {
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -82,7 +82,7 @@ describe('UserList — filtros', () => {
 
   it('filtrar por estado inactivo muestra solo usuarios dados de baja', async () => {
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     const jefeCalidad = authFixtures.find((u) => u.email === 'jefe.calidad@shac.pe')
     if (jefeCalidad) jefeCalidad.activo = false
 
@@ -100,7 +100,7 @@ describe('UserList — filtros', () => {
 describe('UserList — acciones por fila', () => {
   it('dar de baja requiere confirmación y actualiza la fila sin recargar', async () => {
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -121,7 +121,7 @@ describe('UserList — acciones por fila', () => {
 
   it('resetear contraseña pide confirmación antes de ejecutar', async () => {
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -135,7 +135,7 @@ describe('UserList — acciones por fila', () => {
 
   it('confirmar el reset muestra la contraseña temporal en un modal con botón Copiar', async () => {
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -149,11 +149,24 @@ describe('UserList — acciones por fila', () => {
     expect(screen.getByRole('button', { name: 'temporaryPassword.copiar' })).toBeInTheDocument()
   })
 
-  it('el botón Copiar copia la contraseña al portapapeles y muestra feedback visual', async () => {
-    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
-
+  // Flaky conocido (verificado 2026-08-12): falla solo corriendo junto a sus
+  // vecinos en este archivo, pasa limpio en aislamiento
+  // (`vitest run ... -t "el botón Copiar"`). Causa raíz: condición de
+  // carrera de teardown — el mutation request de resetearPassword sigue en
+  // vuelo (400ms de latencia artificial de MSW) cuando el test termina y el
+  // siguiente `afterEach`/`beforeEach` ya tumbó la sesión. No es un bug de
+  // producción. Arreglarlo de raíz implicaría que todos los tests de
+  // mutación con MSW esperen el settlement real de la red en vez del efecto
+  // visual en UI — cambio transversal, no un fix de una línea; decisión
+  // (Toño, 2026-08-12): posponer. `it.fails` en vez de `it.skip` para que
+  // quede visible en la suite y Vitest avise si algún día empieza a pasar.
+  it.fails('el botón Copiar copia la contraseña al portapapeles y muestra feedback visual', async () => {
+    // userEvent.setup() reemplaza navigator.clipboard con su propio stub —
+    // el spy debe crearse DESPUÉS de setup(), o queda apuntando a un objeto
+    // huérfano que el componente nunca vuelve a leer.
     const user = userEvent.setup()
-    await loginReal('admin@shac.pe')
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())
@@ -172,7 +185,7 @@ describe('UserList — acciones por fila', () => {
 
 describe('UserList — accesibilidad', () => {
   it('botones de acción sin texto tienen aria-label, y los filtros tienen label asociado', async () => {
-    await loginReal('admin@shac.pe')
+    await loginReal('admin.empresa@shac.pe')
     renderList()
 
     await waitFor(() => expect(screen.getByText('operario@shac.pe')).toBeInTheDocument())

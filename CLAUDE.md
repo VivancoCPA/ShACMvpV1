@@ -250,14 +250,38 @@ PUBLICADO → EN_REVISION_PERIODICA → BORRADOR (versión N+1)
 
 ## Módulos del Sistema
 
-| ID  | Módulo                      | Directorio                  | Estado          |
-| --- | --------------------------- | --------------------------- | --------------- |
-| M1  | Control Documentario        | `features/documents/`       | En construcción |
-| M2  | Gestión de No Conformidades | `features/nonconformities/` | Pendiente       |
-| M3  | Gestión de Incidentes SyST  | `features/incidents/`       | Pendiente       |
-| M4  | Quality Event (núcleo)      | `features/quality-events/`  | Pendiente       |
-| M5  | Dashboard e Indicadores     | `features/dashboard/`       | Pendiente       |
-| M6  | Gestión de Usuarios y Roles | `features/users/`           | Pendiente       |
+> **Estado actualizado 2026-08-13** (Cowork), a partir de una auditoría real
+> de `openspec/specs/` (145 specs vigentes) y `openspec/changes/archive/`
+> — la tabla anterior estaba desactualizada desde los primeros días del
+> proyecto y marcaba como "Pendiente" módulos que ya llevaban semanas
+> implementados. Si un módulo avanza y esta tabla no se actualiza en el
+> mismo cambio, priorizar lo que digan `openspec/specs/` y
+> `openspec/changes/archive/` por encima de esta tabla — son la fuente de
+> verdad real, esta tabla es solo un resumen de navegación rápida.
+
+| ID  | Módulo                                   | Directorio                      | Estado               | Última fase archivada |
+| --- | ----------------------------------------- | -------------------------------- | --------------------- | ----------------------- |
+| M1  | Control Documentario                      | `features/documents/`           | Implementado (mock)   | 2026-07-20               |
+| M2  | Gestión de No Conformidades               | `features/nonconformities/`     | Implementado (mock)   | 2026-06-27               |
+| M3  | Gestión de Incidentes SyST                | `features/incidents/`           | Implementado (mock)   | 2026-08-11 (vía M7)      |
+| M4  | Quality Event (núcleo)                    | `features/quality-events/`      | Implementado (mock)   | 2026-07-21               |
+| M5  | Dashboard e Indicadores                   | `features/dashboard/`           | Implementado (mock)   | 2026-07-14               |
+| M6  | Gestión de Usuarios y Roles               | `features/users/`                | Implementado (mock)   | 2026-08-12 (hardening)   |
+| M7  | PWA Mobile de Incidentes (offline-first)  | `features/incidents/` (mobile)  | Implementado (mock)   | 2026-08-12               |
+| M8  | Normativa Vinculada (extensión de M4)     | `features/quality-events/`      | Implementado (mock)   | 2026-07-14               |
+| —   | Multiempresa (transversal a M1-M6)        | varios                           | Implementado (mock)   | 2026-07-26               |
+
+Los ocho módulos y la capa Multiempresa tienen specs completas en
+`openspec/specs/` (tipos, schemas, permisos, hooks, vistas de
+lista/detalle, formularios, badges, y vinculación entre módulos donde
+aplica — AC↔QE, Incidente↔QE, NC↔QE). No se encontraron gaps funcionales
+documentados al auditar esta lista contra los `proposal.md` archivados.
+
+**Lo único genuinamente pendiente, y es transversal a todos los módulos**:
+no existe backend .NET real — todo corre contra MSW (mock). Ver "MSW —
+Estrategia de Mock" más abajo para el plan de transición. Además,
+`ForgotPasswordPage`/`ResetPasswordPage` son un stub sin envío de email real
+(ver "Recuperación de contraseña — estado actual").
 
 ---
 

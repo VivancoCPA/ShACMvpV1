@@ -64,8 +64,8 @@ describe('VersionEntry', () => {
 })
 
 describe('AuditTrailEntry', () => {
-  it('narrows entidadTipo to the literal Documento', () => {
-    expectTypeOf<AuditTrailEntry['entidadTipo']>().toEqualTypeOf<'Documento'>()
+  it('narrows entidadTipo to the Documento | NoConformidad union', () => {
+    expectTypeOf<AuditTrailEntry['entidadTipo']>().toEqualTypeOf<'Documento' | 'NoConformidad'>()
   })
 
   it('has required and optional fields', () => {

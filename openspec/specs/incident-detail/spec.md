@@ -84,7 +84,7 @@ El sistema SHALL renderizar un botón "Crear QE" en la cabecera de acciones de l
 - **THEN** el router navega a `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST`
 
 ### Requirement: Bloque "Descripción del evento" con datos del reporte
-La sección de detalle SHALL incluir un bloque "Descripción del evento" (expandido por defecto) con: `descripcion`, indicador de lesionados y número si aplica, `condicionesEntorno` como badges, `equiposInvolucrados` / `personalInvolucrado` / `testigos` cuando tienen valor, y `atencionMedicaRequerida` + `descripcionAtencionMedica` si aplica. Si `informeMedicoAdjunto` existe, se muestra como enlace de descarga con ícono FileText. Después de `condicionesEntorno`, SHALL renderizar un sub-bloque "Evidencias adjuntas" (solo si `incidente.evidencias?.length > 0`) con ícono Paperclip, grid de thumbnails 80×80 px para imágenes, y lista de PDFs con ícono FileText + nombre + peso en KB. Si `tipo = ACCIDENTE` y no hay evidencias, SHALL mostrar alerta amarilla "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)".
+La sección de detalle SHALL incluir un bloque "Descripción del evento" (expandido por defecto) con: `descripcion`, indicador de lesionados y número si aplica, `condicionesEntorno` como badges, `equiposInvolucrados` / `personalInvolucrado` / `testigos` cuando tienen valor, y `atencionMedicaRequerida` + `descripcionAtencionMedica` si aplica. Si `informeMedicoAdjunto` existe, se muestra como enlace de descarga con ícono FileText. Después de `condicionesEntorno`, SHALL renderizar un sub-bloque "Evidencias adjuntas" (solo si `incidente.evidencias?.length > 0`) con ícono Paperclip, grid de thumbnails 80×80 px para imágenes, y lista de PDFs con ícono FileText + nombre + peso en KB. Cuando una evidencia de imagen tiene `descripcion` (caption), SHALL mostrarse como texto pequeño bajo su thumbnail, truncado a 2 líneas si excede el ancho disponible; el `alt` del thumbnail SHALL seguir siendo `nombre` del archivo, no el caption. Si `tipo = ACCIDENTE` y no hay evidencias, SHALL mostrar alerta amarilla "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)".
 
 #### Scenario: Descripción completa visible
 - **WHEN** se carga el detalle de un incidente con todos los campos de descripción
@@ -113,6 +113,14 @@ La sección de detalle SHALL incluir un bloque "Descripción del evento" (expand
 #### Scenario: Sin alerta para CUASI_ACCIDENTE sin evidencias
 - **WHEN** el incidente tiene `tipo = CUASI_ACCIDENTE` y no tiene evidencias
 - **THEN** no se muestra ninguna alerta amarilla
+
+#### Scenario: Evidencia con caption muestra el texto bajo el thumbnail
+- **WHEN** una evidencia de imagen tiene `descripcion` definida
+- **THEN** el texto de `descripcion` se muestra bajo su thumbnail de 80×80 px, sin reemplazar el `alt` del thumbnail (que sigue siendo el nombre del archivo)
+
+#### Scenario: Evidencia sin caption no muestra texto adicional
+- **WHEN** una evidencia de imagen no tiene `descripcion`
+- **THEN** su thumbnail se muestra igual que hoy, sin ningún texto adicional debajo
 
 ### Requirement: Bloque "Ubicación" en detalle de incidente (ADD-03)
 La sección de detalle SHALL incluir un bloque "Ubicación" posicionado en la misma posición relativa que en el formulario (después del bloque "Descripción del evento" y antes de "Información de investigación"). El bloque SHALL renderizarse únicamente cuando `incidente.localId` tiene valor; si `localId` es `undefined`, el bloque no se muestra.

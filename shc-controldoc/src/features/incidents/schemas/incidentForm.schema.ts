@@ -4,6 +4,7 @@ import { CondicionEntornoValues } from '../types/incident.types'
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 const MAX_FILES = 5
+const MAX_CAPTION_LENGTH = 140
 
 const now = () => new Date()
 const MS_72H = 72 * 60 * 60 * 1000
@@ -11,14 +12,14 @@ const MS_72H = 72 * 60 * 60 * 1000
 export const createIncidentFormSchema = z
   .object({
     tipo: z.enum(['ACCIDENTE', 'INCIDENTE', 'CUASI_ACCIDENTE', 'CONDICION_INSEGURA'], {
-      required_error: 'El tipo es obligatorio',
+      error: 'El tipo es obligatorio',
     }),
     descripcion: z
       .string()
       .min(20, 'Mínimo 20 caracteres')
       .max(2000, 'Máximo 2000 caracteres'),
     areaId: z.string().min(1, 'El área es obligatoria'),
-    turno: z.enum(['DIA', 'TARDE', 'NOCHE'], { required_error: 'El turno es obligatorio' }),
+    turno: z.enum(['DIA', 'TARDE', 'NOCHE'], { error: 'El turno es obligatorio' }),
     fechaEvento: z.string().min(1, 'La fecha del evento es obligatoria').superRefine((val, ctx) => {
 
       const fecha = new Date(val)
@@ -62,8 +63,14 @@ export const createIncidentFormSchema = z
           }
         }
       }),
-    localId: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
-    zonaId: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    // Caption opcional por foto nueva, alineado por índice con `evidencias` —
+    // un string vacío se normaliza a `undefined` al construir la evidencia
+    // final, nunca se persiste como string vacío (design.md D2).
+    evidenciaCaptions: z
+      .array(z.string().max(MAX_CAPTION_LENGTH, `Máximo ${MAX_CAPTION_LENGTH} caracteres`).optional())
+      .optional(),
+    localId: z.string().optional().transform((v) => (v === '' ? undefined : v)),
+    zonaId: z.string().optional().transform((v) => (v === '' ? undefined : v)),
     ubicacion: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   })
   .refine(

@@ -1,13 +1,7 @@
 import { z } from 'zod'
+import { DOCUMENT_AUTHORIZED_ROLES } from '../constants'
 
-const userRoleEnum = z.enum([
-  'OPERARIO',
-  'SUPERVISOR',
-  'JEFE_CALIDAD_SYST',
-  'JEFE_CONTROL_DOCUMENTARIO',
-  'AUDITOR_INTERNO',
-  'ALTA_DIRECCION',
-])
+const userRoleEnum = z.enum(DOCUMENT_AUTHORIZED_ROLES)
 
 export const createDocumentSchema = z
   .object({

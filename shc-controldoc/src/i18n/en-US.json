@@ -1073,7 +1073,9 @@
         "removeFile": "Remove file",
         "cerrarLightbox": "Close image",
         "acidenteNota": "For Accident type incidents, photographic evidence is required for closure (RN-INC-002)",
-        "existentes": "Saved evidence"
+        "existentes": "Saved evidence",
+        "captionPlaceholder": "Describe the photo (optional)",
+        "captionAriaLabel": "Photo description"
       },
       "actions": {
         "submit": "Save incident",
@@ -1179,6 +1181,53 @@
       "verEnQE": "View in QE →",
       "toasts": {
         "solicitudEnviada": "Request sent — pending in QE"
+      }
+    },
+    "mobile": {
+      "form": {
+        "title": "Quick incident report",
+        "severidadOpcional": "(optional)",
+        "submit": "Send report",
+        "evidencias": {
+          "label": "Photos",
+          "uploadLabel": "Take or attach photo",
+          "errorMaxFiles": "Maximum 5 photos allowed",
+          "compressing": "Optimizing photo…",
+          "captionPlaceholder": "Describe the photo (optional)",
+          "captionAriaLabel": "Photo description"
+        }
+      },
+      "gps": {
+        "idle": "Location not captured",
+        "capturing": "Capturing location…",
+        "captured": "Location captured",
+        "unavailable": "Location unavailable (optional)"
+      },
+      "success": {
+        "title": "Incident reported",
+        "numero": "Folio: {{numero}}",
+        "reportarOtro": "Report another incident"
+      },
+      "offline": {
+        "queuedTitle": "Report saved",
+        "queuedMessage": "No connection — it will be sent automatically once the signal comes back.",
+        "enqueueError": "Couldn't save the report offline. The device's local storage is full.",
+        "pendingBadge": "{{count}} pending",
+        "pendingBadge_other": "{{count}} pending",
+        "syncing": "Syncing…",
+        "retry": "Retry",
+        "syncErrorToast": "Couldn't sync a pending report",
+        "retriesExhaustedError": "Couldn't sync after several automatic attempts due to poor signal. Retry manually once you have a better connection.",
+        "badgeAriaLabel": "View queue of reports pending sync",
+        "panel": {
+          "title": "Pending reports",
+          "empty": "No reports pending sync",
+          "status": {
+            "pending": "Pending",
+            "syncing": "Syncing…",
+            "error": "Error"
+          }
+        }
       }
     }
   },

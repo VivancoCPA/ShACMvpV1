@@ -72,7 +72,7 @@ describe('AuditorDashboard', () => {
           REABIERTO: 1,
         },
         evidenciasHallazgos: { conEvidencia: 2, sinEvidencia: 3 },
-        tasaCierreEnPlazoPorArea: [{ area: 'Zona de Pesaje', tasaCierreEnPlazo: 50, totalCerrados: 2 }],
+        tasaCierreEnPlazoPorArea: [{ areaId: 'Zona de Pesaje', tasaCierreEnPlazo: 50, totalCerrados: 2 }],
       },
     }
     renderDashboard()

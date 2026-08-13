@@ -134,7 +134,6 @@ interface DocumentFormProps {
   isLoading: boolean
   mockUsers: MockUser[]
   descriptionLocked: boolean
-  existingFileUrl?: string
   userRole: UserRole
   isUploading?: boolean
   onSubmit: (e: React.FormEvent) => void
@@ -178,7 +177,6 @@ export function DocumentForm({
   isLoading,
   mockUsers,
   descriptionLocked,
-  existingFileUrl,
   userRole,
   isUploading = false,
   onSubmit,

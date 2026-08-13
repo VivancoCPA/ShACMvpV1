@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { QualityEventForm } from './QualityEventForm'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import { getIncidents } from '../../incidents/api/incidents.api'
 import { getNonconformities } from '../../nonconformities/api/nonconformities.api'
 import type { QualityEvent } from '../types/qualityEvent.types'
@@ -132,7 +133,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('pre-fills the RN-QE-014 field set for an authorized creator', () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -147,7 +148,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('renders protected fields as read-only text with no editable control', () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -161,7 +162,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('omits the severidad field for a reporteInicial-only editor', () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -171,7 +172,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('renders an editable severidad select for a double-role editor', () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -181,7 +182,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('redirects to the detail page for a user without RN-QE-014 access', () => {
     useAuthStore.setState({
-      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Dos', email: 'a@shac.internal', rol: 'OPERARIO', area: 'Otra Área' },
+      user: createMockUser({ id: 'user-other', nombre: 'Ajeno', apellido: 'Dos', email: 'a@shac.internal', rol: 'OPERARIO', areaId: 'Otra Área' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -191,7 +192,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('submits only the changed field via useEditarReporteInicial, never useCreateQualityEvent', async () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -212,7 +213,7 @@ describe('QualityEventForm — edit mode', () => {
 
   it('navigates back to the detail page on successful edit submit', async () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -259,7 +260,7 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     mockQE = undefined
     mockQELoading = false
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'SUPERVISOR', area: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'SUPERVISOR', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })

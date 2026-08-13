@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node'
 import { createElement } from 'react'
 import { qualityEventHandlers } from '../../../mocks/handlers/quality-events.handlers'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { User } from '../../../types/auth.types'
 import { useEditarMineral } from './useEditarMineral'
 
@@ -27,20 +28,20 @@ function createWrapper() {
 
 // Los fixtures de QE usados en este archivo pertenecen a empresa-001 — el
 // handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
-function loginAs(user: User) {
-  useAuthStore.setState({ user, isAuthenticated: true, empresaActivaId: 'empresa-001' })
+function loginAs(overrides: Partial<User>) {
+  useAuthStore.setState({ user: createMockUser(overrides), isAuthenticated: true, empresaActivaId: 'empresa-001' })
 }
 
 describe('PATCH /api/quality-events/:id/editar-mineral', () => {
   it('returns 404 for an unknown id', async () => {
-    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
+    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' })
     const { result } = renderHook(() => useEditarMineral(), { wrapper: createWrapper() })
     result.current.mutate({ id: 'does-not-exist', data: { mineralInvolucrado: 'Zinc' } })
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
 
   it('rejects a request on a SST-tipo QE', async () => {
-    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
+    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' })
     const { result } = renderHook(() => useEditarMineral(), { wrapper: createWrapper() })
     // qe-2026-001 is tipo SST
     result.current.mutate({ id: 'qe-2026-001', data: { mineralInvolucrado: 'Zinc' } })
@@ -48,7 +49,7 @@ describe('PATCH /api/quality-events/:id/editar-mineral', () => {
   })
 
   it('rejects a request from a non-JEFE_CALIDAD_SYST user', async () => {
-    loginAs({ id: 'user-004', nombre: 'Ana', apellido: 'Torres', email: 'a@shac.internal', rol: 'AUDITOR_INTERNO', area: 'Auditoría' })
+    loginAs({ id: 'user-004', nombre: 'Ana', apellido: 'Torres', email: 'a@shac.internal', rol: 'AUDITOR_INTERNO', areaId: 'Auditoría' })
     const { result } = renderHook(() => useEditarMineral(), { wrapper: createWrapper() })
     // qe-2026-002 is tipo CALIDAD, EN_EJECUCION
     result.current.mutate({ id: 'qe-2026-002', data: { mineralInvolucrado: 'Zinc' } })
@@ -56,7 +57,7 @@ describe('PATCH /api/quality-events/:id/editar-mineral', () => {
   })
 
   it('updates mineralInvolucrado and appends an audit entry for a valid request', async () => {
-    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', area: 'Calidad' })
+    loginAs({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' })
     const { result } = renderHook(() => useEditarMineral(), { wrapper: createWrapper() })
     // qe-2026-019 is tipo CALIDAD, EN_INVESTIGACION
     result.current.mutate({ id: 'qe-2026-019', data: { mineralInvolucrado: 'Zinc' } })

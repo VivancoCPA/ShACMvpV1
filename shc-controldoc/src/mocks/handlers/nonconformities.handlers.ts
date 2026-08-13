@@ -242,7 +242,7 @@ export const nonconformityHandlers = [
     const newAuditEntries: AuditTrailEntry[] = Object.keys(body).map((campo) =>
       makeAuditEntry(nc.id, 'CAMPO_EDITADO', {
         campoModificado: campo,
-        valorAnterior: String((nc as Record<string, unknown>)[campo] ?? ''),
+        valorAnterior: String((nc as unknown as Record<string, unknown>)[campo] ?? ''),
         valorNuevo: String(body[campo] ?? ''),
       }),
     )

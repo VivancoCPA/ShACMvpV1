@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { JSX } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronDown, ChevronUp, FileText, FileType, Sheet, Download, Lock, Upload, FileDown, Loader2 } from 'lucide-react'

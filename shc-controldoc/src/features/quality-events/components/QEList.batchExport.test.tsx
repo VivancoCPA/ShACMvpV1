@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QEList } from './QEList'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
 afterEach(() => cleanup())
@@ -79,7 +80,7 @@ function makeQE(index: number, overrides: Partial<QualityEvent> = {}): QualityEv
 
 function setUser(rol: 'JEFE_CALIDAD_SYST' | 'OPERARIO') {
   useAuthStore.setState({
-    user: { id: 'user-1', nombre: 'Ana', apellido: 'Torres', email: 'a@shac.internal', rol },
+    user: createMockUser({ id: 'user-1', nombre: 'Ana', apellido: 'Torres', email: 'a@shac.internal', rol }),
     isAuthenticated: true,
     accessToken: 'token',
   })

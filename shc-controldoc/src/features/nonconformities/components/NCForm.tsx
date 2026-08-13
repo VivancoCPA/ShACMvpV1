@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
@@ -94,6 +95,11 @@ export function NCForm({ onCancel }: NCFormProps) {
   const { data: areas = [] } = useAreas()
   const areasActivas = areas.filter((a) => a.activo)
 
+  // `requiereIPER`/`documentosVinculados` usan `.default()` en el schema, así
+  // que el resolver de zod distingue TFieldValues (input, ambos opcionales)
+  // de TTransformedValues (output, ambos requeridos) — pasar solo
+  // `CreateNCInput` (el output) para ambos slots choca con el tipo real del
+  // resolver ("Two different types with this name exist").
   const {
     register,
     handleSubmit,
@@ -101,7 +107,7 @@ export function NCForm({ onCancel }: NCFormProps) {
     setValue,
     formState: { errors, isSubmitting },
     getValues,
-  } = useForm<CreateNCInput>({
+  } = useForm<z.input<typeof createNCSchema>, unknown, CreateNCInput>({
     resolver: zodResolver(createNCSchema),
     defaultValues: {
       requiereIPER: false,
@@ -148,7 +154,18 @@ export function NCForm({ onCancel }: NCFormProps) {
 
   const handleForzar = async () => {
     resetMutation()
-    const data = { ...getValues(), forzar: true }
+    const values = getValues()
+    // getValues() devuelve la forma cruda (pre-parseo) del formulario, donde
+    // requiereIPER/documentosVinculados son opcionales (tienen `.default()`
+    // en el schema) — se replican aquí los mismos defaults que usa
+    // `defaultValues` arriba para no depender de que el usuario ya los haya
+    // tocado.
+    const data: CreateNCInput = {
+      ...values,
+      requiereIPER: values.requiereIPER ?? false,
+      documentosVinculados: values.documentosVinculados ?? [],
+      forzar: true,
+    }
     try {
       const result = await mutateAsync(data)
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })

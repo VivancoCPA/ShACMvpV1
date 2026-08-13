@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
+import { MobileShell } from '../components/layout/MobileShell'
 import { RoleGuard } from './RoleGuard'
 import { DocumentEditGuard } from './DocumentEditGuard'
 import { getDefaultRouteForRole } from './getDefaultRoute'
@@ -16,6 +17,7 @@ import { NonconformityNewPage } from '../features/nonconformities/pages/Nonconfo
 import { NonconformityDetailPage } from '../features/nonconformities/pages/NonconformityDetailPage'
 import { IncidentListPage } from '../features/incidents/pages/IncidentListPage'
 import { IncidentNewPage } from '../features/incidents/pages/IncidentNewPage'
+import { IncidentQuickReportPage } from '../features/incidents/pages/IncidentQuickReportPage'
 import { IncidentEditPage } from '../features/incidents/pages/IncidentEditPage'
 import { IncidentDetailPage } from '../features/incidents/pages/IncidentDetailPage'
 import { QualityEventListPage } from '../features/quality-events/pages/QualityEventListPage'
@@ -272,6 +274,23 @@ export const router = createBrowserRouter([
                 path: '/admin/locales/:id',
                 element: <LocalDetailPage />,
                 handle: { breadcrumb: 'locations' },
+              },
+            ],
+          },
+        ],
+      },
+      // Rama mobile PWA — hermana de AppShell (no hija): sin Sidebar/TopNav de
+      // escritorio. Ver openspec/changes/m7-f1-pwa-formulario-mobile/design.md D1.
+      {
+        element: <MobileShell />,
+        children: [
+          {
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.incidentsView} />,
+            children: [
+              {
+                path: '/m/incidentes/nuevo',
+                element: <IncidentQuickReportPage />,
+                handle: { breadcrumb: 'incidents' },
               },
             ],
           },

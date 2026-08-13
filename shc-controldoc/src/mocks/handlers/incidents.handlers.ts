@@ -3,6 +3,7 @@ import { incidentFixtures } from '../fixtures/incidents.fixtures'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getSessionUser as getUserFromRequest } from './shared/session'
+import { getRolEfectivo } from '../fixtures/empresas.fixtures'
 import { useAuthStore } from '../../stores/authStore'
 import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import { getAutoSeveridad } from '../../features/incidents/utils/incidentSeveridad'
@@ -160,6 +161,24 @@ export const incidentHandlers = [
 
     const body = await request.json() as Record<string, unknown>
 
+    // RN-EMP-001/003 excepción documentada (m7-f2-offline-sync design.md D8):
+    // un `empresaId` explícito en el body SOLO se acepta para el flujo de
+    // sincronización offline (useOfflineIncidentSync), para que un reporte
+    // encolado se registre bajo la empresa que estaba activa al momento de
+    // *crear* el reporte, no la que esté activa al momento de *sincronizar*
+    // (el usuario pudo haber cambiado de empresa activa entretanto). Se
+    // valida que el usuario autenticado siga teniendo una asignación ACTIVA
+    // en esa empresa antes de confiarlo — ningún otro caller de este handler
+    // debe enviar este campo.
+    let empresaId = activeEmpresaId
+    if (typeof body.empresaId === 'string' && body.empresaId !== activeEmpresaId) {
+      const actor = getUserFromRequest(request)
+      if (!actor || !getRolEfectivo(actor.id, body.empresaId)) {
+        return err('El usuario no tiene acceso a la empresa indicada', 403)
+      }
+      empresaId = body.empresaId
+    }
+
     const required = ['tipo', 'descripcion', 'areaId', 'turno', 'fechaEvento', 'huboLesionados']
     const missing = required.filter((f) => body[f] === undefined || body[f] === null || body[f] === '')
     if (missing.length > 0) {
@@ -178,7 +197,7 @@ export const incidentHandlers = [
 
     const now = new Date().toISOString()
     const id = generateId()
-    const numero = generateNumero(activeEmpresaId)
+    const numero = generateNumero(empresaId)
     const fechaEvento = body.fechaEvento as string
 
     const auditTrail: AuditTrailEntry[] = [
@@ -206,7 +225,7 @@ export const incidentHandlers = [
       severidad,
       descripcion,
       areaId: body.areaId as string,
-      empresaId: activeEmpresaId,
+      empresaId,
       turno: body.turno as IncidentTurno,
       fechaEvento,
       fechaReporte: now,
@@ -234,6 +253,7 @@ export const incidentHandlers = [
         zonaNombre: zonaFixtures.find((z) => z.id === body.zonaId)?.nombre,
       } : {}),
       ...(body.ubicacion ? { ubicacion: body.ubicacion as IncidenteUbicacion } : {}),
+      ...(body.geoUbicacion ? { geoUbicacion: body.geoUbicacion as Incidente['geoUbicacion'] } : {}),
     }
 
     incidents = [...incidents, newIncident]

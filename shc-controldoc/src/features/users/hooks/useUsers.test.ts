@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import React from 'react'
 import { userHandlers } from '../../../mocks/handlers/users.handlers'
+import { authHandlers } from '../../../mocks/handlers/auth.handlers'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
+import { getEmpresasActivasForUsuario } from '../../../mocks/fixtures/empresas.fixtures'
+import { useAuthStore } from '../../../stores/authStore'
 import {
   USERS_QUERY_KEYS,
   useUsers,
@@ -16,10 +19,27 @@ import {
 } from './useUsers'
 import { getUserAuditTrailLog } from '../utils/userAuditTrail'
 
-const server = setupServer(...userHandlers)
+const server = setupServer(...userHandlers, ...authHandlers)
 const SEED_IDS = new Set(authFixtures.map((u) => u.id))
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// GET/POST/PATCH /api/users requieren sesión activa con empresaActivaId
+// (RN-EMP-*, me-f3-scoping-modulos) — sin esto cada llamada devuelve 401 y
+// el intento de refresh automático del interceptor de axios no tiene
+// `authHandlers` registrado para responder.
+beforeEach(() => {
+  const mockUser = authFixtures.find((u) => u.email === 'admin@shac.pe')
+  if (!mockUser) throw new Error('Fixture no encontrado: admin@shac.pe')
+  const { password: _password, ...user } = mockUser
+  const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
+  useAuthStore.setState({
+    user,
+    accessToken: `mock-access-token-${user.id}-${Date.now()}`,
+    isAuthenticated: true,
+    empresaActivaId: empresasDisponibles[0]?.id ?? null,
+    empresasDisponibles,
+  })
+})
 afterEach(() => {
   server.resetHandlers()
   // Los usuarios creados durante los tests tienen ids generados dinámicamente
@@ -27,6 +47,7 @@ afterEach(() => {
   for (let i = authFixtures.length - 1; i >= 0; i--) {
     if (!SEED_IDS.has(authFixtures[i].id)) authFixtures.splice(i, 1)
   }
+  useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false, empresaActivaId: null })
 })
 afterAll(() => server.close())
 

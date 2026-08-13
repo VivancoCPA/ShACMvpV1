@@ -9,8 +9,8 @@ import { useAuthStore } from '../stores/authStore'
 import { loginUser, isLoginResolved } from '../features/auth/api/auth.api'
 import { router } from './index'
 
-// M6-S07: RoleGuard de /usuarios cambia de ['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'] a
-// ['ADMINISTRADOR_SISTEMA'] exclusivamente — este test conduce el router real, no un
+// me-f4-admin-empresas: RoleGuard de /usuarios cambia de ['ADMINISTRADOR_SISTEMA']
+// exclusivamente a ['ADMINISTRADOR_EMPRESA'] — este test conduce el router real, no un
 // árbol de Routes armado a mano, igual que locationsAccess.test.tsx (M6-S01).
 
 vi.mock('react-i18next', () => ({
@@ -50,14 +50,23 @@ function renderRouterAt(path: string) {
   )
 }
 
-describe('router — acceso a /usuarios por rol (M6-S07)', () => {
-  it('ADMINISTRADOR_SISTEMA navega a /usuarios sin redirección a /no-autorizado', async () => {
-    await loginReal('admin@shac.pe')
+describe('router — acceso a /usuarios por rol (me-f4-admin-empresas)', () => {
+  it('ADMINISTRADOR_EMPRESA navega a /usuarios sin redirección a /no-autorizado', async () => {
+    await loginReal('admin.empresa@shac.pe')
 
     renderRouterAt('/usuarios')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/usuarios'))
     expect(screen.queryByText('Acceso denegado')).not.toBeInTheDocument()
+  })
+
+  it('ADMINISTRADOR_SISTEMA es redirigido a /no-autorizado al intentar /usuarios', async () => {
+    await loginReal('admin@shac.pe')
+
+    renderRouterAt('/usuarios')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/no-autorizado'))
+    expect(screen.getByText('Acceso denegado')).toBeInTheDocument()
   })
 
   it('JEFE_CALIDAD_SYST es redirigido a /no-autorizado al navegar a /usuarios', async () => {

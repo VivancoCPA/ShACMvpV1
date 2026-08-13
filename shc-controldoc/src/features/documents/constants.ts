@@ -1,4 +1,18 @@
-import type { DocStatus, DocFilters, DocType } from '../../types/documents.types'
+import type { DocStatus, DocFilters, DocType, DocumentAuthorizedRole } from '../../types/documents.types'
+
+// Única fuente de la lista de roles elegibles como lector autorizado de un
+// documento RESTRINGIDO/CONFIDENCIAL — antes duplicada como `userRoleEnum`
+// en createDocument.schema.ts, updateDocument.schema.ts y
+// documentForm.schema.ts, lo que dejó la lista desincronizada cuando se
+// agregaron ADMINISTRADOR_EMPRESA/SUPERADMIN a UserRole.
+export const DOCUMENT_AUTHORIZED_ROLES: readonly DocumentAuthorizedRole[] = [
+  'OPERARIO',
+  'SUPERVISOR',
+  'JEFE_CALIDAD_SYST',
+  'JEFE_CONTROL_DOCUMENTARIO',
+  'AUDITOR_INTERNO',
+  'ALTA_DIRECCION',
+]
 
 export const QUERY_KEYS = {
   documents: {

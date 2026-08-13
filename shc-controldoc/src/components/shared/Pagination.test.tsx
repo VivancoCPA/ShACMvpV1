@@ -1,12 +1,15 @@
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
-import i18n from '../../i18n/config'
+import i18n from '../../i18n'
 import { Pagination } from './Pagination'
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 )
+
+afterEach(() => cleanup())
 
 describe('Pagination', () => {
   it('renders showing summary with correct range', () => {

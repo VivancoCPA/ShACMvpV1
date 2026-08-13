@@ -1,11 +1,13 @@
 # user-management-schemas
 
+## Purpose
+
 Zod schemas validating the M6 user administration CRUD: create/update user forms with conditional `SUPERVISOR` fields, email uniqueness against the mock user store, and avatar file upload constraints.
 
 ## Requirements
 
 ### Requirement: Schema Zod de alta de usuario (RN-USR-005)
-`src/features/users/schemas/createUser.schema.ts` SHALL exportar `createUserSchema` (Zod) validando: `nombre` y `apellido` (`min(1)`), `email` (formato válido), `rol` (`enum` de `UserRole`), `areaId` (`string` opcional — FK a `Area.id`) y `areaIds` (`string[]` opcional — FKs a `Area.id`). El schema SHALL requerir `areaId` y al menos un elemento en `areaIds` cuando `rol === 'SUPERVISOR'`, usando `.superRefine()`, siguiendo el mismo patrón condicional ya usado para `areasAsignadas` en M4 (ahora `areaIds`).
+`src/features/users/schemas/createUser.schema.ts` SHALL exportar `createUserSchema` (Zod) validando: `nombre` y `apellido` (`min(1)`), `email` (formato válido), `rol` (`enum` de `UserRole` **excluyendo** `'SUPERADMIN'` — el flag de Superadmin nunca se asigna desde este flujo, ver `empresa-admin-types`; `'ADMINISTRADOR_EMPRESA'` sí queda incluido, como cualquier otro rol asignable dentro de una empresa), `areaId` (`string` opcional — FK a `Area.id`) y `areaIds` (`string[]` opcional — FKs a `Area.id`). El schema SHALL requerir `areaId` y al menos un elemento en `areaIds` cuando `rol === 'SUPERVISOR'`, usando `.superRefine()`, siguiendo el mismo patrón condicional ya usado para `areasAsignadas` en M4 (ahora `areaIds`).
 
 #### Scenario: Alta de SUPERVISOR sin areaIds falla validación
 - **WHEN** se valida `createUserSchema` con `rol: 'SUPERVISOR'` y `areaIds` ausente o vacío
@@ -18,6 +20,14 @@ Zod schemas validating the M6 user administration CRUD: create/update user forms
 #### Scenario: Email con formato inválido falla validación
 - **WHEN** se valida `createUserSchema` con `email: 'no-es-un-email'`
 - **THEN** la validación falla con un error localizado en el campo `email`
+
+#### Scenario: Alta de ADMINISTRADOR_EMPRESA es un valor de rol válido
+- **WHEN** se valida `createUserSchema` con `rol: 'ADMINISTRADOR_EMPRESA'`
+- **THEN** la validación pasa (sin requerir `areaId`/`areaIds`, igual que cualquier rol distinto de `SUPERVISOR`)
+
+#### Scenario: SUPERADMIN no es un valor de rol aceptado
+- **WHEN** se valida `createUserSchema` con `rol: 'SUPERADMIN'`
+- **THEN** la validación falla — `SUPERADMIN` no está entre los valores aceptados por el campo `rol`
 
 ### Requirement: Validación de unicidad de email contra el store de usuarios (RN-USR-005)
 El flujo de alta SHALL validar que el `email` no exista ya en el store de usuarios (`authFixtures`/store mutable), considerando TODOS los usuarios sin importar su valor de `activo`. Esta validación SHALL ocurrir en el handler MSW de creación (no solo client-side), retornando un error `409` con mensaje descriptivo si el email ya existe.

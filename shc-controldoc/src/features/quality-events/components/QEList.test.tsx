@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QEList } from './QEList'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
 vi.mock('react-i18next', () => ({
@@ -87,7 +88,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('OPERARIO who is not the creator never sees the Editar icon', () => {
     useAuthStore.setState({
-      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', areaId: 'Otra Área' },
+      user: createMockUser({ id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', areaId: 'Otra Área' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -97,7 +98,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('omits the icon entirely (no disabled state) when no rule applies', () => {
     useAuthStore.setState({
-      user: { id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'SUPERVISOR', areaId: 'Otra Área', areaIds: ['Otra Área'] },
+      user: createMockUser({ id: 'user-other', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'SUPERVISOR', areaId: 'Otra Área', areaIds: ['Otra Área'] }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -108,7 +109,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('Supervisor whose areaIds includes the QE area (not creator) sees Editar and navigates to the full form', async () => {
     useAuthStore.setState({
-      user: { id: 'sup-1', nombre: 'Carmen', apellido: 'Torres', email: 's@shac.internal', rol: 'SUPERVISOR', areaId: 'Operaciones', areaIds: ['Almacén Norte', 'Almacén Sur'] },
+      user: createMockUser({ id: 'sup-1', nombre: 'Carmen', apellido: 'Torres', email: 's@shac.internal', rol: 'SUPERVISOR', areaId: 'Operaciones', areaIds: ['Almacén Norte', 'Almacén Sur'] }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -119,7 +120,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('Supervisor whose own area matches but areaIds does not include the QE area never sees the Editar icon', () => {
     useAuthStore.setState({
-      user: { id: 'sup-2', nombre: 'Diego', apellido: 'Salazar', email: 's2@shac.internal', rol: 'SUPERVISOR', areaId: 'Almacén Norte', areaIds: ['Galpón B', 'Galpón C'] },
+      user: createMockUser({ id: 'sup-2', nombre: 'Diego', apellido: 'Salazar', email: 's2@shac.internal', rol: 'SUPERVISOR', areaId: 'Almacén Norte', areaIds: ['Galpón B', 'Galpón C'] }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -129,7 +130,7 @@ describe('QEList — Acciones column edit icon', () => {
 
   it('creator within the RN-QE-014 window sees Editar and it navigates to the full form', async () => {
     useAuthStore.setState({
-      user: { id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' },
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -141,7 +142,7 @@ describe('QEList — Acciones column edit icon', () => {
   it('JEFE_CALIDAD_SYST outside the RN-QE-014 window sees Editar and it opens the reduced modal', async () => {
     mockItems = [{ ...baseQE, fechaHoraReporte: '2020-01-01T00:00:00Z', reportadoPorId: 'user-other' }]
     useAuthStore.setState({
-      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' },
+      user: createMockUser({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -154,7 +155,7 @@ describe('QEList — Acciones column edit icon', () => {
   it('double-role user sees a single Editar icon routing to the full form, not the modal', async () => {
     mockItems = [{ ...baseQE, reportadoPorId: 'jc-1' }]
     useAuthStore.setState({
-      user: { id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' },
+      user: createMockUser({ id: 'jc-1', nombre: 'Luis', apellido: 'Paredes', email: 'l@shac.internal', rol: 'JEFE_CALIDAD_SYST', areaId: 'Calidad' }),
       isAuthenticated: true,
       accessToken: 'token',
     })

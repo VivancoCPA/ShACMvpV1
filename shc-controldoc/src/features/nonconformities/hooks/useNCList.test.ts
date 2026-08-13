@@ -24,10 +24,10 @@ describe('useNCList', () => {
     })
   })
 
-  it('calls useNonconformities with pageSize 5 by default', () => {
+  it('calls useNonconformities with pageSize 10 by default', () => {
     renderHook(() => useNCList())
     expect(mockUseNonconformities).toHaveBeenCalledWith(
-      expect.objectContaining({ pageSize: 5 }),
+      expect.objectContaining({ pageSize: 10 }),
     )
   })
 

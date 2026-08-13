@@ -85,7 +85,7 @@ describe('PanelPendientesAreaWidget', () => {
     ['QE', '/quality-events'],
     ['NC', '/nonconformities'],
     ['INCIDENTE', '/incidents'],
-  ] as const)('navigates to %s route when an AC row is clicked', async (origenTipo) => {
+  ] as const)('navigates to %s route when an AC row is clicked', async (origenTipo, _route) => {
     const user = userEvent.setup()
     renderWidget([], [ac({ origenTipo, origenId: 'origen-99' })])
     await user.click(screen.getByRole('button'))

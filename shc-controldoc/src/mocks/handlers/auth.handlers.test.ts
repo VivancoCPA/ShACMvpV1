@@ -35,7 +35,7 @@ describe('auth.handlers — POST /api/auth/login', () => {
     expect(res.status).toBe(200)
     expect(res.data.user.lastLogin).toBeDefined()
     expect(fixture.lastLogin).toBe(res.data.user.lastLogin)
-    expect(new Date(fixture.lastLogin as string).toString()).not.toBe('Invalid Date')
+    expect(new Date(fixture.lastLogin as unknown as string).toString()).not.toBe('Invalid Date')
   })
 })
 

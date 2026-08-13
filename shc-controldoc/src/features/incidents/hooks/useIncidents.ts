@@ -5,6 +5,7 @@ import {
   getIncidents,
   getIncident,
   createIncident,
+  createIncidentOfflineSync,
   updateIncident,
   updateIncidentStatus,
   deleteIncident,
@@ -53,6 +54,26 @@ export function useCreateIncident() {
     },
     onError: () => {
       toast.error(t('toasts.createError'))
+    },
+  })
+}
+
+/**
+ * Usado exclusivamente por `useOfflineIncidentSync` (m7-f2-offline-sync
+ * design.md D8): igual que `useCreateIncident`, pero envía el `empresaId`
+ * capturado al encolar el reporte en vez del que esté activo al momento de
+ * sincronizar. Sin toasts propios — el hook de sincronización maneja su
+ * propio feedback (confirmación silenciosa en éxito, toast de error propio
+ * en fallo) para no competir con el `onSuccess`/`onError` de este hook.
+ */
+export function useCreateIncidentOfflineSync() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ data, empresaId }: { data: CreateIncidentInput; empresaId: string }) =>
+      createIncidentOfflineSync(data, empresaId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: INCIDENT_QUERY_KEYS.all })
     },
   })
 }

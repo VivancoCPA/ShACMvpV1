@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse } from '../types/api.types'
 import { useAuthStore } from '../stores/authStore'
@@ -36,11 +36,36 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 api.interceptors.response.use(
   (response: AxiosResponse<ApiResponse<unknown>>) => {
+    // Descargas de archivo (`responseType: 'arraybuffer' | 'blob'`) devuelven
+    // bytes binarios crudos a propósito — nunca van envueltos en
+    // { success, data } y no deben pasar por este chequeo (ver
+    // archivo-original/archivo-distribucion en documents.handlers.ts).
+    const isBinaryDownload =
+      response.config.responseType === 'arraybuffer' || response.config.responseType === 'blob'
+    if (isBinaryDownload) return response
+
     const body = response.data
-    if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
-      return { ...response, data: body.data }
+    const isEnvelope = body !== null && typeof body === 'object' && 'success' in body && 'data' in body
+    if (!isEnvelope) {
+      // Un 200 con body que no es { success, data } no es una respuesta válida
+      // del backend (ni del mock) — típicamente el fallback SPA de un
+      // servidor estático (index.html) cuando el request no fue interceptado
+      // por el Service Worker de MSW (ver bug: reload sin SW controlando la
+      // página). Tratarlo como éxito silencioso deja accessToken/user como
+      // `undefined` en vez de fallar, lo cual corrompe el estado de sesión
+      // sin ningún error visible. Se convierte en un fallo duro para que
+      // caiga en el mismo camino de error que cualquier otro fallo de red.
+      return Promise.reject(
+        new AxiosError(
+          `Respuesta inesperada de ${response.config.url}: no tiene el formato ApiResponse<T> esperado.`,
+          'ERR_INVALID_RESPONSE_ENVELOPE',
+          response.config,
+          response.request,
+          response,
+        ),
+      )
     }
-    return response
+    return { ...response, data: body.data }
   },
   async (error: unknown) => {
     const axiosError = error as import('axios').AxiosError

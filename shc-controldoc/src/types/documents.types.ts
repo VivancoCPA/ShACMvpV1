@@ -1,5 +1,3 @@
-import type { UserRole } from './auth.types'
-
 export type DocStatus =
   | 'BORRADOR'
   | 'EN_REVISION'
@@ -11,6 +9,18 @@ export type DocStatus =
 export type DocType = 'POL' | 'PRC' | 'INS' | 'REG' | 'INF' | 'MAT' | 'PLAN'
 
 export type DocConfidencialidad = 'PUBLICO' | 'INTERNO' | 'CONFIDENCIAL' | 'RESTRINGIDO'
+
+// Roles elegibles como lector autorizado de un documento RESTRINGIDO/CONFIDENCIAL.
+// Excluye deliberadamente ADMINISTRADOR_SISTEMA, ADMINISTRADOR_EMPRESA y
+// SUPERADMIN — ningún rol de sistema o multi-empresa tiene acceso a M1
+// Control Documentario (ver CLAUDE.md).
+export type DocumentAuthorizedRole =
+  | 'OPERARIO'
+  | 'SUPERVISOR'
+  | 'JEFE_CALIDAD_SYST'
+  | 'JEFE_CONTROL_DOCUMENTARIO'
+  | 'AUDITOR_INTERNO'
+  | 'ALTA_DIRECCION'
 
 export type DocRole = 'AUTOR' | 'REVISOR' | 'APROBADOR' | 'JEFE_CALIDAD' | 'OPERARIO'
 
@@ -64,7 +74,7 @@ export interface Documento {
   areaId: string
   empresaId: string
   confidencialidad: DocConfidencialidad
-  rolesAutorizados?: UserRole[]
+  rolesAutorizados?: DocumentAuthorizedRole[]
   autorId: string
   revisorId?: string
   aprobadorId?: string

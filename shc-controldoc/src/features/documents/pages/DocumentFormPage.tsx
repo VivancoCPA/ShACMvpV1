@@ -94,7 +94,6 @@ export function DocumentFormPage() {
               isLoading={isSubmitting}
               mockUsers={mockUsers}
               descriptionLocked={descriptionLocked}
-              existingFileUrl={documento?.archivoUrl}
               userRole={userRole}
               isUploading={isSubmitting}
               onSubmit={onSubmit}

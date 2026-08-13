@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import type { z } from 'zod'
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
@@ -45,9 +46,12 @@ const SEVERIDAD_VALUES: IncidentSeveridad[] = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA
 const MAX_FILES = 5
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 
+const MAX_CAPTION_LENGTH = 140
+
 interface EvidenciaPreviewItem {
   file: File
   previewUrl: string | null
+  caption?: string
 }
 
 function buildPreview(file: File): EvidenciaPreviewItem {
@@ -58,10 +62,18 @@ function buildPreview(file: File): EvidenciaPreviewItem {
 interface EvidenciasZonaProps {
   existingEvidencias?: IncidentEvidencia[]
   onFilesChange: (files: File[]) => void
+  onCaptionsChange: (captions: (string | undefined)[]) => void
+  captionErrors?: { [index: number]: { message?: string } | undefined }
   tipoAccidente: boolean
 }
 
-function EvidenciasZona({ existingEvidencias, onFilesChange, tipoAccidente }: EvidenciasZonaProps) {
+function EvidenciasZona({
+  existingEvidencias,
+  onFilesChange,
+  onCaptionsChange,
+  captionErrors,
+  tipoAccidente,
+}: EvidenciasZonaProps) {
   const { t } = useTranslation('incidents')
   const [previews, setPreviews] = useState<EvidenciaPreviewItem[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
@@ -87,6 +99,7 @@ function EvidenciasZona({ existingEvidencias, onFilesChange, tipoAccidente }: Ev
     const newPreviews = [...previews, ...selected.map(buildPreview)]
     setPreviews(newPreviews)
     onFilesChange(newPreviews.map((p) => p.file))
+    onCaptionsChange(newPreviews.map((p) => p.caption))
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -96,6 +109,13 @@ function EvidenciasZona({ existingEvidencias, onFilesChange, tipoAccidente }: Ev
     if (old.previewUrl) URL.revokeObjectURL(old.previewUrl)
     setPreviews(updated)
     onFilesChange(updated.map((p) => p.file))
+    onCaptionsChange(updated.map((p) => p.caption))
+  }
+
+  const updateCaption = (index: number, caption: string) => {
+    const updated = previews.map((p, i) => (i === index ? { ...p, caption } : p))
+    setPreviews(updated)
+    onCaptionsChange(updated.map((p) => p.caption))
   }
 
   return (
@@ -135,7 +155,7 @@ function EvidenciasZona({ existingEvidencias, onFilesChange, tipoAccidente }: Ev
       {previews.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {previews.map((p, i) => (
-            <div key={i} className="relative">
+            <div key={i} className="w-20">
               {p.previewUrl ? (
                 <div className="relative h-20 w-20 overflow-hidden rounded-md border border-hairline dark:border-hairline/20">
                   <img src={p.previewUrl} alt={p.file.name} className="h-full w-full object-cover" />
@@ -163,6 +183,18 @@ function EvidenciasZona({ existingEvidencias, onFilesChange, tipoAccidente }: Ev
                     <X size={10} />
                   </button>
                 </div>
+              )}
+              <input
+                type="text"
+                maxLength={MAX_CAPTION_LENGTH}
+                value={p.caption ?? ''}
+                onChange={(e) => updateCaption(i, e.target.value)}
+                placeholder={t('form.evidencias.captionPlaceholder')}
+                aria-label={t('form.evidencias.captionAriaLabel')}
+                className="mt-1 w-20 rounded border border-hairline bg-canvas px-1 py-0.5 text-[10px] text-ink focus:outline-none focus:ring-1 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+              />
+              {captionErrors?.[i]?.message && (
+                <p className="text-[10px] text-error">{captionErrors[i]?.message}</p>
               )}
             </div>
           ))}
@@ -213,12 +245,18 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
 
   const [investigacionOpen, setInvestigacionOpen] = useState(true)
   const [newEvidencias, setNewEvidencias] = useState<File[]>([])
+  const [newEvidenciaCaptions, setNewEvidenciaCaptions] = useState<(string | undefined)[]>([])
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const createMutation = useCreateIncident()
   const updateMutation = useUpdateIncident()
 
-  type FormValues = UpdateIncidentFormInput
+  // El resolver de zod expone TFieldValues (forma cruda pre-parseo, z.input)
+  // distinta de TTransformedValues (forma post-parseo que recibe onSubmit,
+  // z.output/UpdateIncidentFormInput) porque localId/zonaId usan `.transform()`
+  // en el schema — sin esta distinción, useForm<UpdateIncidentFormInput> choca
+  // con el tipo real del resolver ("Two different types with this name exist").
+  type FormValues = z.input<typeof updateIncidentFormSchema>
 
   const defaultValues = isEdit && incident
     ? {
@@ -248,7 +286,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
     setValue,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<FormValues, unknown, UpdateIncidentFormInput>({
     resolver: zodResolver(updateIncidentFormSchema),
     defaultValues,
   })
@@ -289,7 +327,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
     setValue('ubicacion', { x, y })
   }
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: UpdateIncidentFormInput) => {
     const mockEvidencias: IncidentEvidencia[] = newEvidencias.map((f, i) => ({
       id: `ev-new-${Date.now()}-${i}`,
       url: URL.createObjectURL(f),
@@ -298,6 +336,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
       tamanioKb: Math.round(f.size / 1024),
       creadoEn: new Date().toISOString(),
       creadoPor: user?.id ?? 'user-mock',
+      ...(newEvidenciaCaptions[i] ? { descripcion: newEvidenciaCaptions[i] } : {}),
     }))
 
     if (isEdit && incident) {
@@ -622,6 +661,11 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
           <EvidenciasZona
             existingEvidencias={isEdit ? incident?.evidencias : undefined}
             onFilesChange={setNewEvidencias}
+            onCaptionsChange={(captions) => {
+              setNewEvidenciaCaptions(captions)
+              setValue('evidenciaCaptions', captions)
+            }}
+            captionErrors={errors.evidenciaCaptions}
             tipoAccidente={tipoValue === 'ACCIDENTE'}
           />
         </div>

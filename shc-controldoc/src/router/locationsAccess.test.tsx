@@ -123,12 +123,12 @@ describe('router — ADMINISTRADOR_SISTEMA sin acceso a M1 (Control Documentario
 // ADMINISTRADOR_SISTEMA (no access to /documentos) on /no-autorizado right
 // after login, hard-refresh, or a direct navigation to `/`.
 describe('router — ruta índice `/` redirige según getDefaultRouteForRole (M6-S05)', () => {
-  it('ADMINISTRADOR_SISTEMA autenticado en / aterriza en /usuarios sin pasar por /no-autorizado', async () => {
+  it('ADMINISTRADOR_SISTEMA autenticado en / aterriza en /admin/locales sin pasar por /no-autorizado', async () => {
     await loginReal('admin@shac.pe')
 
     renderRouterAt('/')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/usuarios'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/locales'))
     expect(screen.queryByText('Acceso denegado')).not.toBeInTheDocument()
   })
 

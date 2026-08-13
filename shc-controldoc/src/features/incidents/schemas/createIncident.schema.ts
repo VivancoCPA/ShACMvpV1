@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CondicionEntornoValues } from '../types/incident.types'
+import type { IncidentEvidencia } from '../types/incident.types'
 
 export const createIncidentSchema = z
   .object({
@@ -14,7 +15,10 @@ export const createIncidentSchema = z
     localId: z.string().optional(),
     zonaId: z.string().optional(),
     ubicacion: z.object({ x: z.number(), y: z.number() }).optional(),
-    evidencias: z.array(z.unknown()).optional(),
+    geoUbicacion: z
+      .object({ lat: z.number(), lng: z.number(), capturadoEn: z.string() })
+      .optional(),
+    evidencias: z.array(z.custom<IncidentEvidencia>()).optional(),
   })
   .refine(
     (data) => {

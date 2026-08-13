@@ -2,6 +2,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QEACSection } from './QEACSection'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { AccionCorrectivaQE } from '../types/qualityEvent.types'
 
 afterEach(() => cleanup())
@@ -64,13 +65,13 @@ describe('QEACSection — cierre con evidencia', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -133,13 +134,13 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
 
   it('shows a toast.info for JEFE_CALIDAD_SYST when qeEstado transitions EN_EJECUCION → PENDIENTE_CIERRE', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -158,13 +159,13 @@ describe('QEACSection — notificación de transición automática a PENDIENTE_C
 
   it('shows the toast regardless of the acting user role — real recipients are notified via a persisted notification instead', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-002',
         nombre: 'Carlos',
         apellido: 'Mendoza',
         email: 'carlos@shac.internal',
         rol: 'OPERARIO',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -188,13 +189,13 @@ describe('QEACSection — banner de solicitudes de AC', () => {
 
   it('shows the pending-AC-requests banner for JEFE_CALIDAD_SYST when solicitudesAC > 0', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -206,13 +207,13 @@ describe('QEACSection — banner de solicitudes de AC', () => {
 
   it('hides the banner when solicitudesAC is 0', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -224,13 +225,13 @@ describe('QEACSection — banner de solicitudes de AC', () => {
 
   it('hides the banner for roles other than JEFE_CALIDAD_SYST even when solicitudesAC > 0', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-003',
         nombre: 'María',
         apellido: 'Castro',
         email: 'maria@shac.internal',
         rol: 'SUPERVISOR',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })

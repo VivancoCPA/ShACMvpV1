@@ -33,7 +33,7 @@ vi.mock('../hooks/useExportQualityEventPdf', () => ({
   useExportQualityEventPdf: () => ({ mutate: exportMutate, isPending: exportIsPending }),
 }))
 
-const buildQualityEventPdfMock = vi.fn(() => ({ output: () => new Blob() }))
+const buildQualityEventPdfMock = vi.fn((..._args: unknown[]) => ({ output: () => new Blob() }))
 vi.mock('../export/buildQualityEventPdf', () => ({
   buildQualityEventPdf: (...args: unknown[]) => buildQualityEventPdfMock(...args),
 }))

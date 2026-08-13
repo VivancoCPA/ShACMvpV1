@@ -67,17 +67,24 @@ describe('Sidebar — visibilidad del ítem Dashboard', () => {
   })
 })
 
-// M6-S07: el ítem "Usuarios" cambia de ['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'] a
-// ['ADMINISTRADOR_SISTEMA'] exclusivamente, alineado con el RoleGuard de /usuarios.
-describe('Sidebar — visibilidad del ítem Usuarios (M6-S07)', () => {
+// me-f4-admin-empresas: el ítem "Usuarios" cambia de ['ADMINISTRADOR_SISTEMA']
+// exclusivamente a ['ADMINISTRADOR_EMPRESA'], alineado con el RoleGuard de
+// /usuarios. ADMINISTRADOR_SISTEMA conserva sin cambios su alcance
+// (/admin/locales, /admin/areas).
+describe('Sidebar — visibilidad del ítem Usuarios (me-f4-admin-empresas)', () => {
   afterEach(() => {
     cleanup()
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
   })
 
-  it('muestra el ítem Usuarios para ADMINISTRADOR_SISTEMA', () => {
-    renderSidebarAs('ADMINISTRADOR_SISTEMA')
+  it('muestra el ítem Usuarios para ADMINISTRADOR_EMPRESA', () => {
+    renderSidebarAs('ADMINISTRADOR_EMPRESA')
     expect(screen.getByText('users')).toBeInTheDocument()
+  })
+
+  it('NO muestra el ítem Usuarios para ADMINISTRADOR_SISTEMA', () => {
+    renderSidebarAs('ADMINISTRADOR_SISTEMA')
+    expect(screen.queryByText('users')).not.toBeInTheDocument()
   })
 
   it.each<UserRole>([

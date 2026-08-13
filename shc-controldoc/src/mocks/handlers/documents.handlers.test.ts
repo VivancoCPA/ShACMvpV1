@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
+import type { AxiosResponse } from 'axios'
 import api from '../../lib/axios'
 import { documentHandlers, getDocumentsStore, resetStore } from './documents.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
@@ -23,12 +24,16 @@ interface Result<T> {
   headers: Record<string, string>
 }
 
-async function call<T>(
-  promise: Promise<{ data: T; status: number; headers: Record<string, string> }>,
-): Promise<Result<T>> {
+// Tipado como AxiosResponse<T> (la forma real que devuelven las llamadas
+// api.get/post envueltas aquí) en vez de un `{ data, status, headers:
+// Record<string,string> }` a mano — AxiosResponse['headers'] es
+// `AxiosResponseHeaders | Partial<RawAxiosHeaders & {...}>`, no
+// Record<string,string>, y mantener el parámetro genérico en T permite que
+// TS siga infiriendo T desde cada call site sin anotar `call<...>` a mano.
+async function call<T>(promise: Promise<AxiosResponse<T>>): Promise<Result<T>> {
   try {
     const res = await promise
-    return { status: res.status, data: res.data, headers: res.headers }
+    return { status: res.status, data: res.data, headers: res.headers as Record<string, string> }
   } catch (error) {
     if (isAxiosError(error) && error.response) {
       return { status: error.response.status, data: error.response.data as T, headers: error.response.headers as Record<string, string> }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QEVerificacionSection } from './QEVerificacionSection'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
 afterEach(() => cleanup())
@@ -70,13 +71,13 @@ beforeEach(() => {
 describe('QEVerificacionSection — asignación de auditor al forzar vencimiento (dev-only)', () => {
   beforeEach(() => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -122,13 +123,13 @@ describe('QEVerificacionSection — asignación de auditor al forzar vencimiento
 describe('QEVerificacionSection — esResponsable real en vez de false hardcodeado', () => {
   it('shows the verification form to the assigned AUDITOR_INTERNO', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-004',
         nombre: 'Ana',
         apellido: 'Torres',
         email: 'ana@shac.internal',
         rol: 'AUDITOR_INTERNO',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -140,13 +141,13 @@ describe('QEVerificacionSection — esResponsable real en vez de false hardcodea
 
   it('hides the verification form from an AUDITOR_INTERNO who is not the assignee', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-006',
         nombre: 'Pedro',
         apellido: 'Quispe',
         email: 'pedro@shac.internal',
         rol: 'AUDITOR_INTERNO',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -158,13 +159,13 @@ describe('QEVerificacionSection — esResponsable real en vez de false hardcodea
 
   it('still shows the verification form to JEFE_CALIDAD_SYST regardless of auditorAsignadoId', () => {
     useAuthStore.setState({
-      user: {
+      user: createMockUser({
         id: 'user-005',
         nombre: 'Luis',
         apellido: 'Paredes',
         email: 'luis@shac.internal',
         rol: 'JEFE_CALIDAD_SYST',
-      },
+      }),
       isAuthenticated: true,
       accessToken: 'token',
     })

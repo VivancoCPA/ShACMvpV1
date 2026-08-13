@@ -132,18 +132,24 @@ function EvidenciasSubBlock({ evidencias, onLightbox }: EvidenciasSubBlockProps)
       <div className="flex flex-wrap gap-2">
         {evidencias.map((ev) =>
           ev.tipo === 'imagen' ? (
-            <button
-              key={ev.id}
-              type="button"
-              onClick={() => onLightbox(ev.url)}
-              className="group relative h-20 w-20 overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
-              aria-label={ev.nombre}
-            >
-              <img src={ev.url} alt={ev.nombre} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
-                <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
-              </div>
-            </button>
+            <div key={ev.id} className="w-20">
+              <button
+                type="button"
+                onClick={() => onLightbox(ev.url)}
+                className="group relative h-20 w-20 overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
+                aria-label={ev.nombre}
+              >
+                <img src={ev.url} alt={ev.nombre} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
+                  <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
+                </div>
+              </button>
+              {ev.descripcion && (
+                <p className="mt-1 line-clamp-2 text-[10px] text-muted dark:text-on-dark-soft">
+                  {ev.descripcion}
+                </p>
+              )}
+            </div>
           ) : (
             <a
               key={ev.id}

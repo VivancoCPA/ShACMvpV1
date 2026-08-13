@@ -8,17 +8,18 @@ import type { QualityEvent, AccionCorrectivaQE } from '../../quality-events/type
 import type { NoConformidad, AccionCorrectiva } from '../../nonconformities/types/nonconformity.types'
 import type { Incidente, AccionCorrectivaIncidente } from '../../incidents/types/incident.types'
 import type { Documento } from '../../../types/documents.types'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { User } from '../../../types/auth.types'
 
 function buildUser(overrides: Partial<User>): User {
-  return {
+  return createMockUser({
     id: 'user-005',
     nombre: 'Luis',
     apellido: 'Paredes',
     email: 'luis@shac.internal',
     rol: 'JEFE_CALIDAD_SYST',
     ...overrides,
-  }
+  })
 }
 
 function buildQE(overrides: Partial<QualityEvent>): QualityEvent {
@@ -103,7 +104,8 @@ function buildDocumento(overrides: Partial<Documento>): Documento {
     tipo: 'PRC',
     version: 'v1.0',
     estado: 'BORRADOR',
-    area: 'Calidad',
+    areaId: 'area-calidad',
+    empresaId: 'empresa-001',
     confidencialidad: 'INTERNO',
     autorId: 'user-005',
     archivoOriginalUrl: null,

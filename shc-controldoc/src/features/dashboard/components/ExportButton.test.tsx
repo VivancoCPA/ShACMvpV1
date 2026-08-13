@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import i18n from '../../../i18n'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import { ExportButton } from './ExportButton'
 import type { DashboardSummaryData } from '../types/dashboardData.types'
 
@@ -72,7 +73,7 @@ function renderButton() {
 describe('ExportButton', () => {
   it('es visible para JEFE_CALIDAD_SYST', () => {
     useAuthStore.setState({
-      user: { id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
+      user: createMockUser({ id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -84,7 +85,7 @@ describe('ExportButton', () => {
   it('no es visible para otros roles (OPERARIO, SUPERVISOR, AUDITOR_INTERNO, JEFE_CONTROL_DOCUMENTARIO)', () => {
     for (const rol of ['OPERARIO', 'SUPERVISOR', 'AUDITOR_INTERNO', 'JEFE_CONTROL_DOCUMENTARIO'] as const) {
       useAuthStore.setState({
-        user: { id: 'u1', nombre: 'A', apellido: 'B', email: 'a@shac.internal', rol },
+        user: createMockUser({ id: 'u1', nombre: 'A', apellido: 'B', email: 'a@shac.internal', rol }),
         isAuthenticated: true,
         accessToken: 'token',
       })
@@ -98,7 +99,7 @@ describe('ExportButton', () => {
 
   it('abre el selector de formato y no genera ningún archivo si se cierra sin confirmar', async () => {
     useAuthStore.setState({
-      user: { id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
+      user: createMockUser({ id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' }),
       isAuthenticated: true,
       accessToken: 'token',
     })
@@ -117,7 +118,7 @@ describe('ExportButton', () => {
 
   it('genera un Excel al confirmar el formato Excel', async () => {
     useAuthStore.setState({
-      user: { id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' },
+      user: createMockUser({ id: 'u1', nombre: 'Luis', apellido: 'Paredes', email: 'luis@shac.internal', rol: 'JEFE_CALIDAD_SYST' }),
       isAuthenticated: true,
       accessToken: 'token',
     })

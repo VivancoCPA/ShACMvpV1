@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import type { User } from '../../../types/auth.types'
 import { useLogin } from './useLogin'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -39,18 +40,18 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 function makeUser(overrides: Partial<User> = {}): User {
-  return {
+  return createMockUser({
     id: 'user-001',
     nombre: 'Test',
     apellido: 'User',
     email: 'test@shac.pe',
     rol: 'JEFE_CALIDAD_SYST',
     ...overrides,
-  }
+  })
 }
 
 describe('useLogin', () => {
-  it('navega a /usuarios tras login exitoso de ADMINISTRADOR_SISTEMA', async () => {
+  it('navega a /admin/locales tras login exitoso de ADMINISTRADOR_SISTEMA', async () => {
     mockLoginResponse = { user: makeUser({ rol: 'ADMINISTRADOR_SISTEMA' }), accessToken: 'token' }
     const { result } = renderHook(() => useLogin(), { wrapper })
 
@@ -58,7 +59,9 @@ describe('useLogin', () => {
       result.current.mutate({ email: 'admin@shac.pe', password: 'Shac2025!' })
     })
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/usuarios', { replace: true }))
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/admin/locales', { replace: true }),
+    )
   })
 
   it('navega a /dashboard tras login exitoso de un rol operativo', async () => {
@@ -103,7 +106,7 @@ describe('useLogin', () => {
     )
   })
 
-  it('ignora un `from` sin permiso RBAC para ADMINISTRADOR_SISTEMA y navega a /usuarios', async () => {
+  it('ignora un `from` sin permiso RBAC para ADMINISTRADOR_SISTEMA y navega a /admin/locales', async () => {
     // ADMINISTRADOR_SISTEMA no tiene acceso a /documentos (módulo operativo).
     mockLoginResponse = { user: makeUser({ rol: 'ADMINISTRADOR_SISTEMA' }), accessToken: 'token' }
     const from = { pathname: '/documentos', search: '', hash: '', state: null, key: 'x' }
@@ -113,6 +116,8 @@ describe('useLogin', () => {
       result.current.mutate({ email: 'admin@shac.pe', password: 'Shac2025!' })
     })
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/usuarios', { replace: true }))
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/admin/locales', { replace: true }),
+    )
   })
 })

@@ -74,6 +74,7 @@ export const ROUTE_ACCESS_TABLE: RouteAccessEntry[] = [
   { path: '/nonconformities/:id', requiredRoles: ROUTE_ROLE_GROUPS.nonconformitiesView },
   { path: '/incidents', requiredRoles: ROUTE_ROLE_GROUPS.incidentsView },
   { path: '/incidents/nuevo', requiredRoles: ROUTE_ROLE_GROUPS.incidentsView },
+  { path: '/m/incidentes/nuevo', requiredRoles: ROUTE_ROLE_GROUPS.incidentsView },
   { path: '/incidents/:id', requiredRoles: ROUTE_ROLE_GROUPS.incidentsView },
   { path: '/incidents/:id/editar', requiredRoles: ROUTE_ROLE_GROUPS.incidentsEdit },
   { path: '/quality-events', requiredRoles: ROUTE_ROLE_GROUPS.qualityEventsView },

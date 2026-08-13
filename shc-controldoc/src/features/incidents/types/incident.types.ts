@@ -72,6 +72,8 @@ export interface IncidentEvidencia {
   tamanioKb: number
   creadoEn: string
   creadoPor: string
+  /** Caption opcional de la foto (máx. 140 caracteres), validado en los schemas Zod de cada formulario. */
+  descripcion?: string
 }
 
 export interface Local {
@@ -101,6 +103,14 @@ export interface Zona {
 export interface IncidenteUbicacion {
   x: number
   y: number
+}
+
+/** Coordenada GPS del dispositivo al reportar (M7-F1, reporte mobile). Distinta de
+ * `IncidenteUbicacion`, que es una posición en pixeles sobre `Local.planoPngUrl`. */
+export interface IncidenteGeoUbicacion {
+  lat: number
+  lng: number
+  capturadoEn: string
 }
 
 export interface Incidente {
@@ -142,4 +152,5 @@ export interface Incidente {
   ubicacion?: IncidenteUbicacion
   localNombre?: string
   zonaNombre?: string
+  geoUbicacion?: IncidenteGeoUbicacion
 }

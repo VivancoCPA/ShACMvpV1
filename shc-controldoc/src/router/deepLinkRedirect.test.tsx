@@ -89,12 +89,12 @@ describe('router — deep link no autenticado se preserva a través del login', 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
   })
 
-  it('ADMINISTRADOR_SISTEMA sin deep link previo aterriza en /usuarios', async () => {
+  it('ADMINISTRADOR_SISTEMA sin deep link previo aterriza en /admin/locales', async () => {
     renderRouterAt('/login')
 
     await submitLogin('admin@shac.pe', 'Shac2025!')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/usuarios'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/locales'))
   })
 
   it('un deep link a /usuarios sin sesión, logueado con un rol sin acceso (JEFE_CALIDAD_SYST), aterriza en el default de ese rol y no en /no-autorizado', async () => {
@@ -107,13 +107,13 @@ describe('router — deep link no autenticado se preserva a través del login', 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
   })
 
-  it('un deep link a /documentos sin sesión, logueado como ADMINISTRADOR_SISTEMA (sin acceso a módulos operativos), aterriza en /usuarios y no en /no-autorizado', async () => {
+  it('un deep link a /documentos sin sesión, logueado como ADMINISTRADOR_SISTEMA (sin acceso a módulos operativos), aterriza en /admin/locales y no en /no-autorizado', async () => {
     renderRouterAt('/documentos')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
 
     await submitLogin('admin@shac.pe', 'Shac2025!')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/usuarios'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/locales'))
   })
 })

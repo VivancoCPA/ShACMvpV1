@@ -57,6 +57,8 @@ const ROLE_EMAILS: Record<UserRole, string> = {
   AUDITOR_INTERNO: 'auditor@shac.pe',
   ALTA_DIRECCION: 'gerencia@shac.pe',
   ADMINISTRADOR_SISTEMA: 'admin@shac.pe',
+  ADMINISTRADOR_EMPRESA: 'admin.empresa@shac.pe',
+  SUPERADMIN: 'superadmin@shac.pe',
 }
 
 describe('router — acceso a /perfil por rol', () => {

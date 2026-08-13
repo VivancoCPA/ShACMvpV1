@@ -40,6 +40,22 @@ export async function createIncident(data: CreateIncidentInput): Promise<Inciden
   return response.data
 }
 
+/**
+ * Excepción documentada exclusiva del flujo de sincronización offline
+ * (m7-f2-offline-sync design.md D8): envía `empresaId` explícito para que el
+ * reporte se registre bajo la empresa activa al momento de *crear* (guardada
+ * en la cola local), no la que esté activa al momento de *sincronizar*. El
+ * mock valida membresía server-side antes de confiar en el valor. Ningún
+ * otro caller de `createIncident` debe enviar este campo.
+ */
+export async function createIncidentOfflineSync(
+  data: CreateIncidentInput,
+  empresaId: string,
+): Promise<Incidente> {
+  const response = await api.post<Incidente>('/api/incidents', { ...data, empresaId })
+  return response.data
+}
+
 export async function updateIncident(
   id: string,
   data: Partial<UpdateIncidentInvestigacionInput>,

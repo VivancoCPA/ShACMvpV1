@@ -18,6 +18,7 @@ The system SHALL export a `createIncidentSchema` Zod object schema from `src/fea
 - `huboLesionados`: `z.boolean()`
 - `numPersonasAfectadas`: `z.number().int().min(1).optional()`
 - `severidad`: `z.enum(['BAJA','MEDIA','ALTA','CRITICA']).optional()` — auto-calculated but user-adjustable
+- `evidencias`: `z.array(z.custom<IncidentEvidencia>()).optional()` — each item is a fully-built `IncidentEvidencia` (from `src/features/incidents/types/incident.types.ts`), constructed client-side before calling `createIncident`; the schema SHALL NOT type this field as `z.array(z.unknown())`, since every caller always supplies the fully-typed shape and the looser type only hid a real type gap without adding validation value.
 
 The schema SHALL include a `.refine()` that fails when `huboLesionados` is `true` and `numPersonasAfectadas` is absent or less than 1, with message `'Indicar número de personas afectadas'` at path `['numPersonasAfectadas']`.
 
@@ -42,6 +43,10 @@ The schema SHALL also export `CreateIncidentInput` as `z.infer<typeof createInci
 #### Scenario: createIncidentSchema rejects invalid tipo value
 - **WHEN** a developer calls `createIncidentSchema.safeParse({ tipo: 'OTRO_TIPO', ... })`
 - **THEN** `success` is `false` and the error path includes `['tipo']`
+
+#### Scenario: evidencias is typed as IncidentEvidencia array, not unknown
+- **WHEN** a developer reads `CreateIncidentInput['evidencias']`
+- **THEN** TypeScript infers the element type as `IncidentEvidencia`, not `unknown`, so property access like `.descripcion` type-checks without a cast
 
 ---
 

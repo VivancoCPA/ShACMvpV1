@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -154,11 +155,18 @@ function AgregarQEACModal({
   const { t } = useTranslation('qualityEvents')
   const { data: users = [] } = useUsers()
 
+  // `prioridad` usa `z.preprocess()` en el schema (normaliza '' a undefined
+  // antes de validar el enum), lo que hace que TFieldValues (input) difiera
+  // de TTransformedValues (output) — se pasan ambos generics explícitos para
+  // que coincidan con lo que infiere `zodResolver()` realmente ("Two
+  // different types with this name exist").
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<CreateQEACInput>({ resolver: zodResolver(createQEAccionSchema) })
+  } = useForm<z.input<typeof createQEAccionSchema>, unknown, CreateQEACInput>({
+    resolver: zodResolver(createQEAccionSchema),
+  })
 
   const inputClass =
     'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink h-10 focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'

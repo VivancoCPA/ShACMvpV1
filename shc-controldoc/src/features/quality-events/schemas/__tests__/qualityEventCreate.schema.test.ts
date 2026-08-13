@@ -54,7 +54,7 @@ const basePayload = {
   descripcion: 'Descripción del evento de calidad',
   areaId: 'Almacén',
   turno: 'DIA' as const,
-  fechaHoraEvento: '2025-06-01T08:00:00Z',
+  fechaHoraEvento: '2025-06-01T08:00',
 }
 
 describe('qualityEventCreateSchema', () => {

@@ -23,9 +23,13 @@ interface Result<T> {
   data: T
 }
 
-async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<Result<T>> {
+// Acepta Promise<unknown> (no solo Promise<{data,status}>) porque varios call
+// sites envuelven funciones de alto nivel como crearLocal()/actualizarLocal()
+// que ya devuelven la entidad desenvuelta (Promise<Local>), no la forma de
+// respuesta axios cruda — el helper solo necesita esa forma en la rama feliz.
+async function call<T>(promise: Promise<unknown>): Promise<Result<T>> {
   try {
-    const res = await promise
+    const res = (await promise) as { data: T; status: number }
     return { status: res.status, data: res.data }
   } catch (error) {
     if (isAxiosError(error) && error.response) {

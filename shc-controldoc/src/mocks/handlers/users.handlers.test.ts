@@ -5,6 +5,8 @@ import api from '../../lib/axios'
 import { userHandlers } from './users.handlers'
 import { authHandlers } from './auth.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
+import { getEmpresasActivasForUsuario, getUsuarioEmpresaStore } from '../fixtures/empresas.fixtures'
+import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
 
 const server = setupServer(...userHandlers, ...authHandlers)
@@ -45,44 +47,72 @@ async function call<T>(promise: Promise<{ data: T; status: number }>) {
   }
 }
 
+// `getSessionUser` resuelve el usuario actuante desde la sesión activa en
+// memoria (no solo del Bearer token) — mismo patrón que
+// documents.handlers.test.ts. Los endpoints de /api/users requieren sesión
+// (RN-USR-*) y una empresaActivaId salvo para SUPERADMIN.
+function authHeaders(email: string) {
+  const mockUser = authFixtures.find((u) => u.email === email)
+  if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
+  const { password: _password, ...user } = mockUser
+  const accessToken = `mock-access-token-${user.id}-${Date.now()}`
+  const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
+  const empresaActivaId = empresasDisponibles[0]?.id ?? null
+  useAuthStore.setState({ user, accessToken, isAuthenticated: true, empresaActivaId, empresasDisponibles })
+  return { headers: { Authorization: `Bearer ${accessToken}` } }
+}
+
 describe('users.handlers — GET /api/users', () => {
   it('retorna todos los usuarios sin filtros, activos e inactivos', async () => {
-    const res = await api.get<User[]>('/api/users')
+    const headers = authHeaders('admin@shac.pe')
+    // GET /api/users está scoped a la empresa activa de la sesión (RN-EMP-*,
+    // me-f3-scoping-modulos) — solo SUPERADMIN ve todas las empresas. Como
+    // admin@shac.pe es ADMINISTRADOR_SISTEMA, el conteo esperado es el de
+    // usuarios asignados a su empresa activa, no el total de authFixtures.
+    const empresaActivaId = getEmpresasActivasForUsuario('user-admin-001')[0]?.id
+    const esperados = new Set(
+      getUsuarioEmpresaStore()
+        .filter((ue) => ue.empresaId === empresaActivaId)
+        .map((ue) => ue.usuarioId),
+    )
+    const res = await api.get<User[]>('/api/users', headers)
     expect(res.status).toBe(200)
-    expect(res.data.length).toBeGreaterThanOrEqual(authFixtures.length)
+    expect(res.data.length).toBe(esperados.size)
   })
 
   it('filtra por rol', async () => {
-    const res = await api.get<User[]>('/api/users', { params: { rol: 'SUPERVISOR' } })
+    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin@shac.pe'), params: { rol: 'SUPERVISOR' } })
     expect(res.data.every((u) => u.rol === 'SUPERVISOR')).toBe(true)
     expect(res.data.length).toBeGreaterThan(0)
   })
 
   it('filtra por estado activo', async () => {
-    const res = await api.get<User[]>('/api/users', { params: { activo: true } })
+    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin@shac.pe'), params: { activo: true } })
     expect(res.data.every((u) => u.activo === true)).toBe(true)
   })
 })
 
 describe('users.handlers — POST /api/users (RN-USR-005)', () => {
   it('crea un usuario y retorna temporaryPassword de 8 caracteres alfanuméricos', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const res = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Test',
       apellido: 'Nuevo',
       email: 'test.nuevo@shac.pe',
       rol: 'OPERARIO',
-    })
+    }, headers)
 
     expect(res.status).toBe(201)
     expect(res.data.temporaryPassword).toMatch(/^[A-Za-z0-9]{8}$/)
     expect(res.data.activo).toBe(true)
 
-    const listado = await api.get<User[]>('/api/users')
+    const listado = await api.get<User[]>('/api/users', headers)
     expect(listado.data.some((u) => u.email === 'test.nuevo@shac.pe')).toBe(true)
   })
 
   it('rechaza alta con email duplicado (usuario activo) con 409 y no agrega usuario', async () => {
-    const before = (await api.get<User[]>('/api/users')).data.length
+    const headers = authHeaders('admin@shac.pe')
+    const before = (await api.get<User[]>('/api/users', headers)).data.length
 
     const result = await call(
       api.post<ErrorBody>('/api/users', {
@@ -90,22 +120,23 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
         apellido: 'Test',
         email: 'operario@shac.pe',
         rol: 'OPERARIO',
-      }),
+      }, headers),
     )
 
     expect(result.status).toBe(409)
-    const after = (await api.get<User[]>('/api/users')).data.length
+    const after = (await api.get<User[]>('/api/users', headers)).data.length
     expect(after).toBe(before)
   })
 
   it('rechaza alta con email duplicado de un usuario inactivo', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Baja',
       apellido: 'Prueba',
       email: 'baja.prueba@shac.pe',
       rol: 'OPERARIO',
-    })
-    await api.patch(`/api/users/${created.data.id}/toggle-active`)
+    }, headers)
+    await api.patch(`/api/users/${created.data.id}/toggle-active`, undefined, headers)
 
     const result = await call(
       api.post<ErrorBody>('/api/users', {
@@ -113,7 +144,7 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
         apellido: 'Usuario',
         email: 'baja.prueba@shac.pe',
         rol: 'OPERARIO',
-      }),
+      }, headers),
     )
 
     expect(result.status).toBe(409)
@@ -122,19 +153,20 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
 
 describe('users.handlers — PATCH /api/users/:id (RN-USR-006)', () => {
   it('actualiza rol y area sin tocar password ni activo', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Editar',
       apellido: 'Yo',
       email: 'editar.yo@shac.pe',
       rol: 'OPERARIO',
-    })
+    }, headers)
 
     const updated = await api.patch<User>(`/api/users/${created.data.id}`, {
       email: 'editar.yo@shac.pe',
       rol: 'SUPERVISOR',
       areaId: 'area-016',
       areaIds: ['area-010'],
-    })
+    }, headers)
 
     expect(updated.data.rol).toBe('SUPERVISOR')
     expect(updated.data.areaId).toBe('area-016')
@@ -151,18 +183,19 @@ describe('users.handlers — PATCH /api/users/:id (RN-USR-006)', () => {
 
 describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-USR-003)', () => {
   it('da de baja sin eliminar el registro, y bloquea el login inmediatamente', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Baja',
       apellido: 'Directa',
       email: 'baja.directa@shac.pe',
       rol: 'OPERARIO',
-    })
+    }, headers)
 
-    const toggled = await api.patch<User>(`/api/users/${created.data.id}/toggle-active`)
+    const toggled = await api.patch<User>(`/api/users/${created.data.id}/toggle-active`, undefined, headers)
     expect(toggled.data.activo).toBe(false)
     expect(toggled.data.id).toBe(created.data.id)
 
-    const listado = await api.get<User[]>('/api/users')
+    const listado = await api.get<User[]>('/api/users', headers)
     expect(listado.data.find((u) => u.id === created.data.id)?.activo).toBe(false)
 
     const loginResult = await call(
@@ -175,14 +208,15 @@ describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-
   })
 
   it('reactivar restaura acceso sin resetear la contraseña', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Reactivar',
       apellido: 'Prueba',
       email: 'reactivar.prueba@shac.pe',
       rol: 'OPERARIO',
-    })
-    await api.patch(`/api/users/${created.data.id}/toggle-active`)
-    const reactivated = await api.patch<User>(`/api/users/${created.data.id}/toggle-active`)
+    }, headers)
+    await api.patch(`/api/users/${created.data.id}/toggle-active`, undefined, headers)
+    const reactivated = await api.patch<User>(`/api/users/${created.data.id}/toggle-active`, undefined, headers)
     expect(reactivated.data.activo).toBe(true)
 
     const loginRes = await api.post<{ accessToken: string }>('/api/auth/login', {
@@ -195,15 +229,18 @@ describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-
 
 describe('users.handlers — POST /api/users/:id/reset-password (RN-USR-004)', () => {
   it('permite login inmediato con la nueva contraseña e invalida la anterior', async () => {
+    const headers = authHeaders('admin@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Reset',
       apellido: 'Password',
       email: 'reset.password@shac.pe',
       rol: 'OPERARIO',
-    })
+    }, headers)
 
     const reset = await api.post<{ temporaryPassword: string }>(
       `/api/users/${created.data.id}/reset-password`,
+      undefined,
+      headers,
     )
     expect(reset.data.temporaryPassword).toMatch(/^[A-Za-z0-9]{8}$/)
     expect(reset.data.temporaryPassword).not.toBe(created.data.temporaryPassword)

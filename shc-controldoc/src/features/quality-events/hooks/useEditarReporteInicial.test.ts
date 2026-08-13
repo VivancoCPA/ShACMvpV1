@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node'
 import { createElement } from 'react'
 import { qualityEventHandlers } from '../../../mocks/handlers/quality-events.handlers'
 import { useAuthStore } from '../../../stores/authStore'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { User } from '../../../types/auth.types'
 import { useEditarReporteInicial } from './useEditarReporteInicial'
 import api from '../../../lib/axios'
@@ -34,8 +35,8 @@ function createWrapper() {
 
 // Los fixtures de QE usados en este archivo pertenecen a empresa-001 — el
 // handler ahora filtra/asigna por empresa activa de sesión (me-f3-scoping-modulos).
-function loginAs(user: User) {
-  useAuthStore.setState({ user, isAuthenticated: true, empresaActivaId: 'empresa-001' })
+function loginAs(overrides: Partial<User>) {
+  useAuthStore.setState({ user: createMockUser(overrides), isAuthenticated: true, empresaActivaId: 'empresa-001' })
 }
 
 async function primeWindow(id: string, overrides: Record<string, unknown> = {}) {
@@ -54,7 +55,7 @@ describe('PATCH /api/quality-events/:id/editar-reporte-inicial', () => {
   })
 
   it('rejects a request outside the RN-QE-014 window', async () => {
-    loginAs({ id: 'user-006', nombre: 'Pedro', apellido: 'Quispe', email: 'p@shac.internal', rol: 'OPERARIO', area: 'Almacén Sur' })
+    loginAs({ id: 'user-006', nombre: 'Pedro', apellido: 'Quispe', email: 'p@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Sur' })
     const { result } = renderHook(() => useEditarReporteInicial(), { wrapper: createWrapper() })
     // qe-2026-006 is ABIERTO but fechaHoraReporte is far in the past
     result.current.mutate({ id: 'qe-2026-006', data: { areaId: 'Almacén Modificado' } })
@@ -63,7 +64,7 @@ describe('PATCH /api/quality-events/:id/editar-reporte-inicial', () => {
 
   it('rejects a request from a user who is neither creator nor area Supervisor', async () => {
     await primeWindow('qe-2026-011', { reportadoPorId: 'user-777', areaId: 'Almacén Test' })
-    loginAs({ id: 'user-999', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', area: 'Otra Área' })
+    loginAs({ id: 'user-999', nombre: 'Ajeno', apellido: 'Uno', email: 'a@shac.internal', rol: 'OPERARIO', areaId: 'Otra Área' })
     const { result } = renderHook(() => useEditarReporteInicial(), { wrapper: createWrapper() })
     result.current.mutate({ id: 'qe-2026-011', data: { areaId: 'Almacén Cambiado' } })
     await waitFor(() => expect(result.current.isError).toBe(true))
@@ -71,7 +72,7 @@ describe('PATCH /api/quality-events/:id/editar-reporte-inicial', () => {
 
   it('rejects a payload containing a protected field even if otherwise valid', async () => {
     await primeWindow('qe-2026-018', { reportadoPorId: 'user-778', areaId: 'Almacén Test' })
-    loginAs({ id: 'user-778', nombre: 'Creador', apellido: 'Dos', email: 'c2@shac.internal', rol: 'OPERARIO', area: 'Almacén Test' })
+    loginAs({ id: 'user-778', nombre: 'Creador', apellido: 'Dos', email: 'c2@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Test' })
     const { result } = renderHook(() => useEditarReporteInicial(), { wrapper: createWrapper() })
     result.current.mutate({
       id: 'qe-2026-018',
@@ -83,7 +84,7 @@ describe('PATCH /api/quality-events/:id/editar-reporte-inicial', () => {
 
   it('updates only changed fields and appends one audit entry per field', async () => {
     await primeWindow('qe-2026-007', { reportadoPorId: 'user-779', areaId: 'Almacén Original' })
-    loginAs({ id: 'user-779', nombre: 'Creador', apellido: 'Tres', email: 'c3@shac.internal', rol: 'OPERARIO', area: 'Almacén Original' })
+    loginAs({ id: 'user-779', nombre: 'Creador', apellido: 'Tres', email: 'c3@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Original' })
     const { result } = renderHook(() => useEditarReporteInicial(), { wrapper: createWrapper() })
     result.current.mutate({ id: 'qe-2026-007', data: { areaId: 'Almacén Sur' } })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

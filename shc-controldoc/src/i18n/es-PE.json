@@ -1073,7 +1073,9 @@
         "removeFile": "Eliminar archivo",
         "cerrarLightbox": "Cerrar imagen",
         "acidenteNota": "Para incidentes de tipo Accidente, la evidencia fotográfica es requerida para el cierre (RN-INC-002)",
-        "existentes": "Evidencias guardadas"
+        "existentes": "Evidencias guardadas",
+        "captionPlaceholder": "Describe la foto (opcional)",
+        "captionAriaLabel": "Descripción de la foto"
       },
       "actions": {
         "submit": "Guardar incidente",
@@ -1179,6 +1181,53 @@
       "verEnQE": "Ver en QE →",
       "toasts": {
         "solicitudEnviada": "Solicitud enviada — pendiente en el QE"
+      }
+    },
+    "mobile": {
+      "form": {
+        "title": "Reporte rápido de incidente",
+        "severidadOpcional": "(opcional)",
+        "submit": "Enviar reporte",
+        "evidencias": {
+          "label": "Fotos",
+          "uploadLabel": "Tomar o adjuntar foto",
+          "errorMaxFiles": "Máximo 5 fotos permitidas",
+          "compressing": "Optimizando foto…",
+          "captionPlaceholder": "Describe la foto (opcional)",
+          "captionAriaLabel": "Descripción de la foto"
+        }
+      },
+      "gps": {
+        "idle": "Ubicación no capturada",
+        "capturing": "Capturando ubicación…",
+        "captured": "Ubicación capturada",
+        "unavailable": "Ubicación no disponible (opcional)"
+      },
+      "success": {
+        "title": "Incidente reportado",
+        "numero": "Folio: {{numero}}",
+        "reportarOtro": "Reportar otro incidente"
+      },
+      "offline": {
+        "queuedTitle": "Reporte guardado",
+        "queuedMessage": "No hay conexión — se enviará automáticamente en cuanto vuelva la señal.",
+        "enqueueError": "No se pudo guardar el reporte sin conexión. El almacenamiento del dispositivo está lleno.",
+        "pendingBadge": "{{count}} pendiente",
+        "pendingBadge_other": "{{count}} pendientes",
+        "syncing": "Sincronizando…",
+        "retry": "Reintentar",
+        "syncErrorToast": "No se pudo sincronizar un reporte pendiente",
+        "retriesExhaustedError": "No se pudo sincronizar tras varios intentos automáticos por falta de señal. Reintenta manualmente cuando tengas mejor conexión.",
+        "badgeAriaLabel": "Ver cola de reportes pendientes de sincronizar",
+        "panel": {
+          "title": "Reportes pendientes",
+          "empty": "No hay reportes pendientes de sincronizar",
+          "status": {
+            "pending": "Pendiente",
+            "syncing": "Sincronizando…",
+            "error": "Error"
+          }
+        }
       }
     }
   },

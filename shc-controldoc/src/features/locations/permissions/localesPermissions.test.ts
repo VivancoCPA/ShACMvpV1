@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { puedeAdministrarLocales, puedeConsultarLocales } from './localesPermissions'
+import { createMockUser } from '../../../mocks/fixtures/mockUser'
 import type { User, UserRole } from '../../../types/auth.types'
 
 function buildUser(rol: UserRole): User {
-  return {
+  return createMockUser({
     id: 'user-1',
     nombre: 'Test',
     apellido: 'User',
     email: 'test@shac.pe',
     rol,
-  }
+  })
 }
 
 describe('puedeAdministrarLocales', () => {

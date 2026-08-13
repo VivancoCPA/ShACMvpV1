@@ -1,17 +1,11 @@
 import { z } from 'zod'
 import { differenceInCalendarDays } from 'date-fns'
 import { DOC_REVISION_MIN_GAP_DAYS } from '../../../config/businessRules.config'
+import { DOCUMENT_AUTHORIZED_ROLES } from '../constants'
 
 const RN_DOC_020_MESSAGE = `La próxima revisión debe ser al menos ${DOC_REVISION_MIN_GAP_DAYS} días después de la fecha de vigencia.`
 
-const userRoleEnum = z.enum([
-  'OPERARIO',
-  'SUPERVISOR',
-  'JEFE_CALIDAD_SYST',
-  'JEFE_CONTROL_DOCUMENTARIO',
-  'AUDITOR_INTERNO',
-  'ALTA_DIRECCION',
-])
+const userRoleEnum = z.enum(DOCUMENT_AUTHORIZED_ROLES)
 
 export const documentFormSchema = z
   .object({
