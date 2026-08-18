@@ -33,7 +33,7 @@ function makeWrapper() {
 }
 
 describe('useZonasByLocal', () => {
-  it('devuelve las zonas del local vía el endpoint real GET /api/zonas?localId=', async () => {
+  it('devuelve las zonas del local vía el endpoint real GET /api/locales/:localId/zonas', async () => {
     const { result } = renderHook(() => useZonasByLocal('loc-001'), { wrapper: makeWrapper() })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

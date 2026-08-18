@@ -115,14 +115,27 @@ export const localesHandlers = [
     return ok(result)
   }),
 
-  http.get('/api/zonas', async ({ request }) => {
+  // GET /api/zonas — todas las zonas de la empresa activa (sin filtro por local), consumido
+  // por listarZonas() (features/locations, CRUD admin de M6). El listado scoped a un local
+  // específico usa GET /api/locales/:localId/zonas (ver handler debajo).
+  http.get('/api/zonas', async () => {
     await delay(LATENCY)
-    const url = new URL(request.url)
-    const localId = url.searchParams.get('localId')
     const activeEmpresaId = getActiveEmpresaId()
 
-    let result = zonas.filter((z) => z.empresaId === activeEmpresaId)
-    if (localId !== null) result = result.filter((z) => z.localId === localId)
+    const result = zonas.filter((z) => z.empresaId === activeEmpresaId)
+
+    return ok(result)
+  }),
+
+  // GET /api/locales/:localId/zonas — ruta real consumida por useZonasByLocal.ts (Incidentes
+  // M3), alineada con docs/SHAC-Contrato-API.md (be-incidentes-catalogos design.md, D6 revisado
+  // 2026-08-18: reemplaza el antiguo GET /api/zonas?localId=).
+  http.get('/api/locales/:localId/zonas', async ({ params }) => {
+    await delay(LATENCY)
+    const { localId } = params
+    const activeEmpresaId = getActiveEmpresaId()
+
+    const result = zonas.filter((z) => z.empresaId === activeEmpresaId && z.localId === localId)
 
     return ok(result)
   }),

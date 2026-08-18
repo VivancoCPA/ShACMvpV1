@@ -185,7 +185,7 @@ describe('locales.handlers — Locales', () => {
 
 describe('locales.handlers — Zonas', () => {
   it('RN-ZON-003: crear zona adicional sin límite', async () => {
-    const before = await api.get<Zona[]>('/api/zonas', { params: { localId: 'loc-001' } })
+    const before = await api.get<Zona[]>('/api/locales/loc-001/zonas')
     const countBefore = before.data.length
 
     for (let i = 0; i < 3; i++) {
@@ -193,7 +193,7 @@ describe('locales.handlers — Zonas', () => {
       expect(result.status).toBe(201)
     }
 
-    const after = await api.get<Zona[]>('/api/zonas', { params: { localId: 'loc-001' } })
+    const after = await api.get<Zona[]>('/api/locales/loc-001/zonas')
     expect(after.data.length).toBe(countBefore + 3)
   })
 
