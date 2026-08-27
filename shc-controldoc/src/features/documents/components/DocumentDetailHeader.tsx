@@ -39,7 +39,7 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
 
       {documento.qeVinculados.length > 0 && (
         <div className="rounded-md border border-amber/30 bg-amber/10 p-3 text-sm text-amber">
-          {t('detail.banners.qeVinculados', { ids: documento.qeVinculados.join(', ') })}
+          {t('detail.banners.qeVinculados', { ids: documento.qeVinculados.map((q) => q.numero).join(', ') })}
         </div>
       )}
 

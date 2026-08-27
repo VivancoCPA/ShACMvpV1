@@ -173,6 +173,8 @@ These types SHALL be defined in or exported from the nonconformity types/schemas
 ### Requirement: NoConformidad interface
 The system SHALL define a `NoConformidad` interface with the following required fields: `id`, `numero` (format `NC-[DOMINIO_ABBR]-YYYY-NNN` where DOMINIO_ABBR is CAL, SST, ADU, OPE, or PRV), `dominio` (NCDominio), `titulo` (string), `origen`, `tipo`, `severidad`, `estado`, `descripcion`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `reportadoPorId`, `fechaDeteccion`, `fechaReporte`, `requiereIPER` (boolean — only meaningful when `dominio === 'NC-SST'`), `accionesCorrectivas` (AccionCorrectiva[]), `documentosVinculados`, `adjuntos`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include the following optional fields: `detectadoPor` (string or undefined), `justificacionAnulacion` (string or undefined), `mineralInvolucrado`, `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `responsableInvestigacionId`, `accionInmediata`, `accionInmediataFecha`, `correccion`, `correccionEvidenciaUrl`, `causaRaiz`, `corregidoPorId`, `verificadoPorId`, `fechaVerificacion`, `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `qeGeneradoId`, `notificacionComercioExterior` (NCNotificacionComercioExterior — only meaningful when `dominio === 'NC-ADU'`). The interface SHALL NOT include an `areaAfectada` field — it is replaced by `areaId`.
 
+`documentosVinculados` SHALL be typed as `DocumentoVinculadoResumen[]` (`{ id: string; codigo: string; titulo: string; estado: DocStatus }`), not `string[]` — a non-conformity's linked documents carry enough summary data to render a badge/label without a second lookup. This is a breaking change from the previous `string[]` (raw id list) shape. `DocumentoVinculadoResumen` SHALL be declared locally in `src/features/nonconformities/types/nonconformity.types.ts` (same pattern as the equivalent local declaration in `qualityEvent.types.ts` — each feature module owns its own copy of this DTO shape, no cross-feature type import).
+
 `empresaId` SHALL NOT appear in any update/edit Zod schema or form payload type for `NoConformidad` — it is set only once, at creation time, by the MSW create handler. No production UI in this phase exposes `empresaId` for editing (multi-company UI is Fase 2-4).
 
 #### Scenario: NoConformidad rejects missing required fields
@@ -222,6 +224,14 @@ The system SHALL define a `NoConformidad` interface with the following required 
 #### Scenario: empresaId is typed as a required string
 - **WHEN** a developer reads `noConformidad.empresaId`
 - **THEN** TypeScript infers the type as `string`, not `string | undefined`
+
+#### Scenario: documentosVinculados is typed as DocumentoVinculadoResumen array, not string array
+- **WHEN** a developer reads `noConformidad.documentosVinculados[0]`
+- **THEN** TypeScript infers a `DocumentoVinculadoResumen` object with `id`, `codigo`, `titulo`, `estado` — not a bare `string`
+
+#### Scenario: documentosVinculados as string[] is a compile error
+- **WHEN** a developer constructs a `NoConformidad` with `documentosVinculados: ['doc-001']`
+- **THEN** TypeScript emits a compile error, since `'doc-001'` is not assignable to `DocumentoVinculadoResumen`
 
 ---
 

@@ -188,6 +188,26 @@ export async function getArchivoDistribucionBlob(id: string): Promise<{ blob: Bl
   return { blob, fileName }
 }
 
+export async function vincularQE(documentId: string, qualityEventId: string): Promise<Documento> {
+  const response = await api.post<Documento>(`/api/documents/${documentId}/qe-vinculados`, { qualityEventId })
+  return response.data
+}
+
+export async function desvincularQE(documentId: string, qualityEventId: string): Promise<Documento> {
+  const response = await api.delete<Documento>(`/api/documents/${documentId}/qe-vinculados/${qualityEventId}`)
+  return response.data
+}
+
+export async function vincularNC(documentId: string, noConformidadId: string): Promise<Documento> {
+  const response = await api.post<Documento>(`/api/documents/${documentId}/nc-vinculadas`, { noConformidadId })
+  return response.data
+}
+
+export async function desvincularNC(documentId: string, noConformidadId: string): Promise<Documento> {
+  const response = await api.delete<Documento>(`/api/documents/${documentId}/nc-vinculadas/${noConformidadId}`)
+  return response.data
+}
+
 export async function replaceArchivoOriginal(
   id: string,
   file: File,

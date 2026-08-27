@@ -17,6 +17,10 @@ import {
   exportarPdfControlado,
   confirmarRevisionPeriodica,
   restaurarDocumento,
+  vincularQE,
+  desvincularQE,
+  vincularNC,
+  desvincularNC,
 } from '../../../api/endpoints/documents.api'
 import type {
   PatchDocumentStatusPayload,
@@ -307,6 +311,70 @@ export function useConfirmarRevisionPeriodica(documentoId: string) {
     },
     onError: () => {
       toast.error(t('toasts.statusChangeError'))
+    },
+  })
+}
+
+export function useVincularQE(documentId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('documents')
+
+  return useMutation({
+    mutationFn: (qualityEventId: string) => vincularQE(documentId, qualityEventId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
+      toast.success(t('qeVinculados.toast.vinculado'))
+    },
+    onError: () => {
+      toast.error(t('qeVinculados.toast.vincularError'))
+    },
+  })
+}
+
+export function useDesvincularQE(documentId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('documents')
+
+  return useMutation({
+    mutationFn: (qualityEventId: string) => desvincularQE(documentId, qualityEventId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
+      toast.success(t('qeVinculados.toast.desvinculado'))
+    },
+    onError: () => {
+      toast.error(t('qeVinculados.toast.desvincularError'))
+    },
+  })
+}
+
+export function useVincularNC(documentId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('documents')
+
+  return useMutation({
+    mutationFn: (noConformidadId: string) => vincularNC(documentId, noConformidadId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
+      toast.success(t('ncVinculados.toast.vinculado'))
+    },
+    onError: () => {
+      toast.error(t('ncVinculados.toast.vincularError'))
+    },
+  })
+}
+
+export function useDesvincularNC(documentId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('documents')
+
+  return useMutation({
+    mutationFn: (noConformidadId: string) => desvincularNC(documentId, noConformidadId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
+      toast.success(t('ncVinculados.toast.desvinculado'))
+    },
+    onError: () => {
+      toast.error(t('ncVinculados.toast.desvincularError'))
     },
   })
 }

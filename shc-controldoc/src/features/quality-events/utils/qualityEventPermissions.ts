@@ -159,6 +159,17 @@ export function resolveRolSegundaFirma(
   return 'SUPERVISOR'
 }
 
+// Gate de vinculación de documentos (fs-vinculacion-documento-qe, design.md D4) — espejo del
+// backend (DocumentoQualityEventLinkService.PuedeVincularDesdeQE): JEFE_CALIDAD_SYST en cualquier
+// estado activo, o el SUPERVISOR responsable de la investigación, mientras el QE no esté CERRADO
+// ni VERIFICADO. Usado solo para ocultar/mostrar el combobox de agregar — la lista de solo-lectura
+// se muestra siempre.
+export function puedeVincularDocumentos(qe: QualityEvent, usuario: Pick<User, 'id' | 'rol'>): boolean {
+  if (qe.estado === 'CERRADO' || qe.estado === 'VERIFICADO') return false
+  if (usuario.rol === 'JEFE_CALIDAD_SYST') return true
+  return usuario.rol === 'SUPERVISOR' && qe.responsableInvestigacionId === usuario.id
+}
+
 export function validateTransitionToEnEjecucion(qe: QualityEvent): {
   valid: boolean
   reason?: string

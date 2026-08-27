@@ -10,6 +10,8 @@ import { DocumentActionPanel } from '../components/DocumentActionPanel'
 import { DocumentHistorial } from '../components/DocumentHistorial'
 import { DocumentAuditTrail } from '../components/DocumentAuditTrail'
 import { DocumentVersionesTab } from '../components/DocumentVersionesTab'
+import { DocumentQEVinculadosList } from '../components/DocumentQEVinculadosList'
+import { DocumentNCVinculadasList } from '../components/DocumentNCVinculadasList'
 import { DocumentReplaceArchivoOriginalModal } from '../components/DocumentReplaceArchivoOriginalModal'
 import { getDocumentPermissions } from '../permissions'
 import { useAuthStore } from '../../../stores/authStore'
@@ -54,6 +56,8 @@ export function DocumentDetailPage() {
 
   const [descripcionOpen, setDescripcionOpen] = useState(true)
   const [historialOpen, setHistorialOpen] = useState(true)
+  const [qeVinculadosOpen, setQeVinculadosOpen] = useState(true)
+  const [ncVinculadasOpen, setNcVinculadasOpen] = useState(true)
   const [auditTrailOpen, setAuditTrailOpen] = useState(true)
   const [showReplaceOriginalModal, setShowReplaceOriginalModal] = useState(false)
 
@@ -266,6 +270,56 @@ export function DocumentDetailPage() {
                 </span>
               </div>
               <DocumentVersionesTab documento={documento} />
+            </div>
+
+            {/* QE vinculados — collapsible, open by default */}
+            <div className="rounded-lg border border-hairline bg-surface-card dark:border-hairline/20 dark:bg-surface-dark-elevated">
+              <button
+                type="button"
+                onClick={() => setQeVinculadosOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-6 py-4 text-left"
+                aria-expanded={qeVinculadosOpen}
+              >
+                <h2 className="text-sm font-semibold text-ink dark:text-on-dark">
+                  {t('detail.sections.qeVinculados')}
+                </h2>
+                {qeVinculadosOpen ? (
+                  <ChevronUp size={16} className="text-muted dark:text-on-dark-soft" />
+                ) : (
+                  <ChevronDown size={16} className="text-muted dark:text-on-dark-soft" />
+                )}
+              </button>
+
+              {qeVinculadosOpen && (
+                <div className="border-t border-hairline px-6 pb-6 pt-4 dark:border-hairline/20">
+                  <DocumentQEVinculadosList documento={documento} canEdit={perms.canEdit} />
+                </div>
+              )}
+            </div>
+
+            {/* NC vinculadas — collapsible, open by default */}
+            <div className="rounded-lg border border-hairline bg-surface-card dark:border-hairline/20 dark:bg-surface-dark-elevated">
+              <button
+                type="button"
+                onClick={() => setNcVinculadasOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-6 py-4 text-left"
+                aria-expanded={ncVinculadasOpen}
+              >
+                <h2 className="text-sm font-semibold text-ink dark:text-on-dark">
+                  {t('detail.sections.ncVinculados')}
+                </h2>
+                {ncVinculadasOpen ? (
+                  <ChevronUp size={16} className="text-muted dark:text-on-dark-soft" />
+                ) : (
+                  <ChevronDown size={16} className="text-muted dark:text-on-dark-soft" />
+                )}
+              </button>
+
+              {ncVinculadasOpen && (
+                <div className="border-t border-hairline px-6 pb-6 pt-4 dark:border-hairline/20">
+                  <DocumentNCVinculadasList documento={documento} canEdit={perms.canEdit} />
+                </div>
+              )}
             </div>
 
             {/* Audit trail — collapsible, open by default, last section */}

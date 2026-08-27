@@ -4,10 +4,13 @@ import { isAxiosError } from 'axios'
 import type { AxiosResponse } from 'axios'
 import api from '../../lib/axios'
 import { documentHandlers, getDocumentsStore, resetStore } from './documents.handlers'
+import { getQeStore, resetStore as resetQeStore } from './quality-events.handlers'
+import { getNonconformitiesStore, resetStore as resetNcStore } from './nonconformities.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
 import { getEmpresasActivasForUsuario } from '../fixtures/empresas.fixtures'
 import { useAuthStore } from '../../stores/authStore'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
+import type { Documento } from '../../types/documents.types'
 
 const server = setupServer(...documentHandlers)
 
@@ -15,6 +18,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterAll(() => server.close())
 beforeEach(() => {
   resetStore()
+  resetQeStore()
+  resetNcStore()
   resetNotificationsStore()
 })
 
@@ -306,5 +311,156 @@ describe('documents.handlers — empresa isolation (me-f3-scoping-modulos)', () 
       api.post('/api/documents', { titulo: 'Documento sin empresa activa', tipo: 'PRC', areaId: 'area-007' }, headers),
     )
     expect(status).toBe(401)
+  })
+})
+
+describe('documents.handlers — POST/DELETE /api/documents/:id/qe-vinculados', () => {
+  it('vincula un QE por primera vez y es visible simétricamente del lado QE', async () => {
+    const { status, data } = await call(
+      api.post<Documento>('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.qeVinculados.some((v) => v.id === 'qe-2026-001')).toBe(true)
+
+    const qe = getQeStore().find((q) => q.id === 'qe-2026-001')!
+    expect(qe.documentosVinculados.some((d) => d.id === 'doc-003')).toBe(true)
+  })
+
+  it('vincular el mismo par dos veces es idempotente', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-001' }, headers))
+    await call(api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-001' }, headers))
+
+    const doc = getDocumentsStore().find((d) => d.id === 'doc-003')!
+    expect(doc.qeVinculados.filter((v) => v.id === 'qe-2026-001')).toHaveLength(1)
+  })
+
+  it('vincular un QE de otra empresa responde 404 y no crea el vínculo', async () => {
+    const { status } = await call(
+      api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-e2-2026-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(404)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.qeVinculados).toHaveLength(0)
+  })
+
+  it('vincular sin permiso de edición (documento PUBLICADO) responde 403', async () => {
+    const { status } = await call(
+      api.post('/api/documents/doc-001/qe-vinculados', { qualityEventId: 'qe-2026-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('desvincula un par existente simétricamente', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-001' }, headers))
+
+    const { status, data } = await call(
+      api.delete('/api/documents/doc-003/qe-vinculados/qe-2026-001', headers),
+    )
+    expect(status).toBe(200)
+    expect(data.qeVinculados).toHaveLength(0)
+    expect(getQeStore().find((q) => q.id === 'qe-2026-001')!.documentosVinculados).toHaveLength(0)
+  })
+
+  it('desvincular un par no vinculado responde 404', async () => {
+    const { status } = await call(
+      api.delete('/api/documents/doc-003/qe-vinculados/qe-2026-001', authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(404)
+  })
+})
+
+describe('documents.handlers — POST/DELETE /api/documents/:id/nc-vinculadas', () => {
+  it('vincula una NC por primera vez y es visible simétricamente del lado NC', async () => {
+    const { status, data } = await call(
+      api.post<Documento>('/api/documents/doc-003/nc-vinculadas', { noConformidadId: 'nc-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.ncVinculados.some((v) => v.id === 'nc-001')).toBe(true)
+
+    const nc = getNonconformitiesStore().find((n) => n.id === 'nc-001')!
+    expect(nc.documentosVinculados.some((d) => d.id === 'doc-003')).toBe(true)
+  })
+
+  it('vincular el mismo par dos veces es idempotente', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/nc-vinculadas', { noConformidadId: 'nc-001' }, headers))
+    await call(api.post('/api/documents/doc-003/nc-vinculadas', { noConformidadId: 'nc-001' }, headers))
+
+    const doc = getDocumentsStore().find((d) => d.id === 'doc-003')!
+    expect(doc.ncVinculados.filter((v) => v.id === 'nc-001')).toHaveLength(1)
+  })
+
+  it('vincular una NC de otra empresa responde 404 y no crea el vínculo', async () => {
+    const { status } = await call(
+      api.post('/api/documents/doc-003/nc-vinculadas', { noConformidadId: 'nc-e2-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(404)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.ncVinculados).toHaveLength(0)
+  })
+
+  it('vincular sin permiso de edición (documento PUBLICADO) responde 403', async () => {
+    const { status } = await call(
+      api.post('/api/documents/doc-001/nc-vinculadas', { noConformidadId: 'nc-001' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('desvincula un par existente simétricamente', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/nc-vinculadas', { noConformidadId: 'nc-001' }, headers))
+
+    const { status, data } = await call(
+      api.delete('/api/documents/doc-003/nc-vinculadas/nc-001', headers),
+    )
+    expect(status).toBe(200)
+    expect(data.ncVinculados).toHaveLength(0)
+    expect(getNonconformitiesStore().find((n) => n.id === 'nc-001')!.documentosVinculados).toHaveLength(0)
+  })
+
+  it('desvincular un par no vinculado responde 404', async () => {
+    const { status } = await call(
+      api.delete('/api/documents/doc-003/nc-vinculadas/nc-001', authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(404)
+  })
+})
+
+describe('documents.handlers — RN-DOC-005 en la auto-obsoletización al publicar', () => {
+  it('bloquea la publicación si la versión previa tiene un QE vinculado activo', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-005' }, headers))
+
+    const docStore = getDocumentsStore()
+    const previa = docStore.find((d) => d.id === 'doc-003')!
+    // Simula que doc-003 ya fue publicado bajo el mismo código que un nuevo documento a publicar.
+    docStore[docStore.indexOf(previa)] = { ...previa, estado: 'PUBLICADO' }
+    const nueva = { ...previa, id: 'doc-003-v2', estado: 'EN_APROBACION' as const, version: 'v2.0' }
+    docStore.push(nueva)
+
+    const { status, data } = await call(
+      api.post('/api/documents/doc-003-v2/status', { nuevoEstado: 'PUBLICADO', firma: '1234' }, authHeaders('jefe.docs@shac.pe')),
+    )
+    expect(status).toBe(409)
+    expect((data as unknown as { message: string }).message).toContain('QE-2026-005')
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.estado).toBe('PUBLICADO')
+  })
+
+  it('permite publicar cuando el QE vinculado a la versión previa está cerrado', async () => {
+    const headers = authHeaders('autor@shac.pe')
+    await call(api.post('/api/documents/doc-003/qe-vinculados', { qualityEventId: 'qe-2026-001' }, headers)) // qe-2026-001 = CERRADO
+
+    const docStore = getDocumentsStore()
+    const previa = docStore.find((d) => d.id === 'doc-003')!
+    docStore[docStore.indexOf(previa)] = { ...previa, estado: 'PUBLICADO' }
+    const nueva = { ...previa, id: 'doc-003-v2', estado: 'EN_APROBACION' as const, version: 'v2.0' }
+    docStore.push(nueva)
+
+    const { status, data } = await call(
+      api.post('/api/documents/doc-003-v2/status', { nuevoEstado: 'PUBLICADO', firma: '1234' }, authHeaders('jefe.docs@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.estado).toBe('PUBLICADO')
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.estado).toBe('OBSOLETO')
   })
 })

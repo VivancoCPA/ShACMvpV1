@@ -15,10 +15,11 @@ import type { DocFilters } from '../../../types/documents.types'
 import type { CreateDocumentInput } from '../schemas/createDocument.schema'
 import type { UpdateDocumentInput } from '../schemas/updateDocument.schema'
 
-export function useDocuments(filters: DocFilters = {}) {
+export function useDocuments(filters: DocFilters = {}, enabled = true) {
   return useQuery({
     queryKey: QUERY_KEYS.documents.list(filters),
     queryFn: () => getDocuments(filters),
+    enabled,
   })
 }
 

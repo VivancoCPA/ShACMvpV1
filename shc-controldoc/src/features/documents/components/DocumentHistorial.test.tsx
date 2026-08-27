@@ -29,6 +29,7 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {

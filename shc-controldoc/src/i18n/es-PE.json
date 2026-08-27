@@ -149,7 +149,9 @@
         "descripcion": "Descripción y detalle",
         "historial": "Historial de estados",
         "auditTrail": "Audit Trail",
-        "versiones": "Versiones"
+        "versiones": "Versiones",
+        "qeVinculados": "QE vinculados",
+        "ncVinculados": "NC vinculadas"
       },
       "banners": {
         "obsoleto": "Este documento está OBSOLETO y no debe ser utilizado.",
@@ -377,6 +379,34 @@
       "sinPendientes": "No tienes documentos pendientes de acción.",
       "sidebar": {
         "badge": "Tienes {{count}} documento(s) pendiente(s) de revisión"
+      }
+    },
+    "qeVinculados": {
+      "vacio": "Este documento no tiene Quality Events vinculados.",
+      "quitar": "Quitar vínculo con {{numero}}",
+      "combobox": {
+        "placeholder": "Buscar Quality Event por número o descripción...",
+        "ariaLabel": "Buscar y vincular Quality Event"
+      },
+      "toast": {
+        "vinculado": "Quality Event vinculado.",
+        "vincularError": "No se pudo vincular el Quality Event.",
+        "desvinculado": "Vínculo eliminado.",
+        "desvincularError": "No se pudo eliminar el vínculo."
+      }
+    },
+    "ncVinculados": {
+      "vacio": "Este documento no tiene No Conformidades vinculadas.",
+      "quitar": "Quitar vínculo con {{numero}}",
+      "combobox": {
+        "placeholder": "Buscar No Conformidad por número o título...",
+        "ariaLabel": "Buscar y vincular No Conformidad"
+      },
+      "toast": {
+        "vinculado": "No Conformidad vinculada.",
+        "vincularError": "No se pudo vincular la No Conformidad.",
+        "desvinculado": "Vínculo eliminado.",
+        "desvincularError": "No se pudo eliminar el vínculo."
       }
     }
   },
@@ -892,6 +922,21 @@
       "reactivated": "QE reactivado correctamente",
       "reactivateError": "Error al reactivar el Quality Event.",
       "edited": "QE actualizado correctamente"
+    },
+    "documentosVinculados": {
+      "titulo": "Documentos vinculados",
+      "vacio": "Este Quality Event no tiene documentos vinculados.",
+      "quitar": "Quitar vínculo con {{codigo}}",
+      "combobox": {
+        "placeholder": "Buscar documento por título o código...",
+        "ariaLabel": "Buscar y vincular documento"
+      },
+      "toast": {
+        "vinculado": "Documento vinculado.",
+        "vincularError": "No se pudo vincular el documento.",
+        "desvinculado": "Vínculo eliminado.",
+        "desvincularError": "No se pudo eliminar el vínculo."
+      }
     }
   },
   "incidents": {
@@ -1355,7 +1400,18 @@
       "deleteError": "Error al eliminar la no conformidad.",
       "restored": "No conformidad restaurada.",
       "restoreError": "Error al restaurar la no conformidad.",
-      "vincularQEError": "El Quality Event se creó, pero no se pudo vincular a la no conformidad. Actualiza la página para verificarlo."
+      "vincularQEError": "El Quality Event se creó, pero no se pudo vincular a la no conformidad. Actualiza la página para verificarlo.",
+      "vincularDocumentoError": "No se pudo vincular el documento.",
+      "desvincularDocumentoError": "No se pudo eliminar el vínculo."
+    },
+    "documentosVinculados": {
+      "titulo": "Documentos vinculados",
+      "vacio": "Esta No Conformidad no tiene documentos vinculados.",
+      "quitar": "Quitar vínculo con {{codigo}}",
+      "combobox": {
+        "placeholder": "Buscar documento por título o código...",
+        "ariaLabel": "Buscar y vincular documento"
+      }
     },
     "form": {
       "fields": {

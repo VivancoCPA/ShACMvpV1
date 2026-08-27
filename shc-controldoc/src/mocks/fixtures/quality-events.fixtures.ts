@@ -552,6 +552,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     fechaHoraReporte: '2026-02-07T08:00:00Z',
     reportadoPorId: 'user-operario-001',
     incidenteId: 'inc-002',
+    responsableInvestigacionId: 'user-005',
     requiereEvaluacionRiesgos: true,
     causaRaizFirmadaEn: '2026-02-14T10:00:00Z',
     fechaCierre: '2026-02-24T10:00:00Z',
@@ -635,7 +636,9 @@ const baseQualityEventFixtures: QualityEvent[] = [
     causaRaizAprobadaPorId: 'user-004',
     causaRaizFirmadaEn: '2025-12-22T10:00:00Z',
     fechaCierre: '2025-12-29T10:00:00Z',
-    documentosVinculados: ['doc-prc-cd-001'],
+    documentosVinculados: [
+      { id: 'doc-002', codigo: 'PRC-CD-001', titulo: 'Procedimiento de Control de Documentos y Registros', estado: 'PUBLICADO' },
+    ],
     solicitudesAC: 0,
     accionesCorrectivas: [],
     auditTrail: [
@@ -716,7 +719,9 @@ const baseQualityEventFixtures: QualityEvent[] = [
     causaRaizFirmadaEn: '2026-04-01T10:00:00Z',
     resultadoCierre: 'Regularización completada ante SUNAT. ACs ejecutadas y evidenciadas.',
     cerradoPorId: 'user-004',
-    documentosVinculados: ['doc-001'],
+    documentosVinculados: [
+      { id: 'doc-001', codigo: 'POL-CD-001', titulo: 'Política de Gestión de Calidad y SST', estado: 'PUBLICADO' },
+    ],
     solicitudesAC: 0,
     accionesCorrectivas: [],
     auditTrail: [
@@ -1101,7 +1106,9 @@ const baseQualityEventFixtures: QualityEvent[] = [
         respuesta: 'Falta de alineación entre el área de Calidad y el área de Contratos durante el diseño del SGC.',
       },
     ],
-    documentosVinculados: ['doc-002'],
+    documentosVinculados: [
+      { id: 'doc-002', codigo: 'PRC-CD-001', titulo: 'Procedimiento de Control de Documentos y Registros', estado: 'PUBLICADO' },
+    ],
     solicitudesAC: 0,
     accionesCorrectivas: [],
     auditTrail: [
@@ -1674,6 +1681,7 @@ const baseQualityEventFixtures: QualityEvent[] = [
     fechaHoraEvento: '2026-04-05T02:00:00Z',
     fechaHoraReporte: '2026-04-05T08:00:00Z',
     reportadoPorId: 'user-002',
+    responsableInvestigacionId: 'user-005',
     requiereEvaluacionRiesgos: false,
     metodoAnalisis: 'ISHIKAWA',
     causaRaizFirmadaEn: '2026-04-12T10:00:00Z',

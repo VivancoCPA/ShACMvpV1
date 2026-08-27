@@ -59,7 +59,11 @@ The system SHALL define `DocumentAuthorizedRole` as a TypeScript string literal 
 - **THEN** TypeScript accepts the assignment without error
 
 ### Requirement: Documento interface
-The system SHALL define a `Documento` interface with all required and optional fields: `id`, `codigo`, `titulo`, `tipo`, `version`, `estado`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `autorId`, `revisorId?`, `aprobadorId?`, `fechaEmision?`, `fechaVigencia?`, `fechaRevisionProxima?`, `archivoUrl?`, `hashArchivo?`, `qeVinculados`, `historialVersiones`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include two required fields from addendum SHAC-PRD-003-ADD-01: `confidencialidad: DocConfidencialidad` (no default at type level — default `'INTERNO'` is enforced by the API) and `rolesAutorizados: DocumentAuthorizedRole[]` (empty array when `confidencialidad !== 'RESTRINGIDO'`). The interface SHALL NOT include an `area` field — it is replaced by `areaId`.
+The system SHALL define a `Documento` interface with all required and optional fields: `id`, `codigo`, `titulo`, `tipo`, `version`, `estado`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `autorId`, `revisorId?`, `aprobadorId?`, `fechaEmision?`, `fechaVigencia?`, `fechaRevisionProxima?`, `archivoUrl?`, `hashArchivo?`, `qeVinculados`, `ncVinculados`, `historialVersiones`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include two required fields from addendum SHAC-PRD-003-ADD-01: `confidencialidad: DocConfidencialidad` (no default at type level — default `'INTERNO'` is enforced by the API) and `rolesAutorizados: DocumentAuthorizedRole[]` (empty array when `confidencialidad !== 'RESTRINGIDO'`). The interface SHALL NOT include an `area` field — it is replaced by `areaId`.
+
+`qeVinculados` SHALL be typed as `QeVinculadoResumen[]` (`{ id: string; numero: string; tipo: QEType; severidad: QESeverity; estado: QEStatus }`), not `string[]` — a document's linked Quality Events carry enough summary data to render a badge/label without a second lookup. This is a breaking change from the previous `string[]` (raw id list) shape.
+
+`ncVinculados` SHALL be typed as `NcVinculadoResumen[]` (`{ id: string; numero: string; tipo: NCTipo; severidad: NCSeveridad; estado: NCStatus }`) — a new required field, not a breaking change of a prior shape since no equivalent field existed before.
 
 `empresaId` SHALL NOT appear in any update/edit Zod schema or form payload type for `Documento` — it is set only once, at creation time, by the MSW create handler. No production UI in this phase exposes `empresaId` for editing (multi-company UI is Fase 2-4).
 
@@ -98,6 +102,36 @@ The system SHALL define a `Documento` interface with all required and optional f
 #### Scenario: empresaId is typed as a required string
 - **WHEN** a developer reads `documento.empresaId`
 - **THEN** TypeScript infers the type as `string`, not `string | undefined`
+
+#### Scenario: qeVinculados is typed as QeVinculadoResumen array, not string array
+- **WHEN** a developer reads `documento.qeVinculados[0]`
+- **THEN** TypeScript infers a `QeVinculadoResumen` object with `id`, `numero`, `tipo`, `severidad`, `estado` — not a bare `string`
+
+#### Scenario: qeVinculados as string[] is a compile error
+- **WHEN** a developer constructs a `Documento` with `qeVinculados: ['qe-001']`
+- **THEN** TypeScript emits a compile error, since `'qe-001'` is not assignable to `QeVinculadoResumen`
+
+#### Scenario: Documento requires ncVinculados field
+- **WHEN** a developer constructs a `Documento` object without `ncVinculados`
+- **THEN** TypeScript emits a compile error for the missing required field
+
+#### Scenario: ncVinculados is typed as NcVinculadoResumen array, not string array
+- **WHEN** a developer reads `documento.ncVinculados[0]`
+- **THEN** TypeScript infers an `NcVinculadoResumen` object with `id`, `numero`, `tipo`, `severidad`, `estado` — not a bare `string`
+
+### Requirement: QeVinculadoResumen interface
+The system SHALL define a `QeVinculadoResumen` interface in `src/types/documents.types.ts` with required fields: `id` (string), `numero` (string), `tipo` (`QEType`), `severidad` (`QESeverity`), `estado` (`QEStatus`). It SHALL be used as the element type of `Documento.qeVinculados`.
+
+#### Scenario: QeVinculadoResumen requires all five fields
+- **WHEN** a developer constructs a `QeVinculadoResumen` without `severidad`
+- **THEN** TypeScript emits a compile error for the missing required field
+
+### Requirement: NcVinculadoResumen interface
+The system SHALL define an `NcVinculadoResumen` interface in `src/types/documents.types.ts` with required fields: `id` (string), `numero` (string), `tipo` (`NCTipo`), `severidad` (`NCSeveridad`), `estado` (`NCStatus`). It SHALL be used as the element type of `Documento.ncVinculados`.
+
+#### Scenario: NcVinculadoResumen requires all five fields
+- **WHEN** a developer constructs an `NcVinculadoResumen` without `severidad`
+- **THEN** TypeScript emits a compile error for the missing required field
 
 ### Requirement: VersionEntry interface
 The system SHALL define a `VersionEntry` interface with fields: `version`, `fechaPublicacion`, `autorId`, `descripcionCambios`, `hashArchivo?`.

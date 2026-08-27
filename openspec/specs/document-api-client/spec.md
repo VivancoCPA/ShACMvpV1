@@ -70,6 +70,34 @@ The system SHALL export a `deleteDocument(id: string)` async function that calls
 - **WHEN** `deleteDocument('doc-publicado-id')` is called on a PUBLICADO document
 - **THEN** the promise rejects with an Axios error whose response status is 409
 
+### Requirement: vincularQE pure function
+The system SHALL export a `vincularQE(documentId: string, qualityEventId: string)` async function from `src/api/endpoints/documents.api.ts` that calls `POST /api/documents/:id/qe-vinculados` with `{ qualityEventId }` and returns `Promise<ApiResponse<Documento>>`.
+
+#### Scenario: vincularQE with valid ids resolves with the updated document
+- **WHEN** `vincularQE('doc-001', 'qe-2026-001')` is called
+- **THEN** it resolves with an `ApiResponse` whose `data.qeVinculados` includes an entry with `id: 'qe-2026-001'`
+
+### Requirement: desvincularQE pure function
+The system SHALL export a `desvincularQE(documentId: string, qualityEventId: string)` async function that calls `DELETE /api/documents/:id/qe-vinculados/:qualityEventId` and returns `Promise<ApiResponse<Documento>>`.
+
+#### Scenario: desvincularQE removes the link
+- **WHEN** `desvincularQE('doc-001', 'qe-2026-001')` is called on a document with that QE linked
+- **THEN** it resolves with an `ApiResponse` whose `data.qeVinculados` no longer includes `qe-2026-001`
+
+### Requirement: vincularNC pure function
+The system SHALL export a `vincularNC(documentId: string, noConformidadId: string)` async function from `src/api/endpoints/documents.api.ts` that calls `POST /api/documents/:id/nc-vinculadas` with `{ noConformidadId }` and returns `Promise<ApiResponse<Documento>>`.
+
+#### Scenario: vincularNC with valid ids resolves with the updated document
+- **WHEN** `vincularNC('doc-001', 'nc-2026-001')` is called
+- **THEN** it resolves with an `ApiResponse` whose `data.ncVinculados` includes an entry with `id: 'nc-2026-001'`
+
+### Requirement: desvincularNC pure function
+The system SHALL export a `desvincularNC(documentId: string, noConformidadId: string)` async function that calls `DELETE /api/documents/:id/nc-vinculadas/:noConformidadId` and returns `Promise<ApiResponse<Documento>>`.
+
+#### Scenario: desvincularNC removes the link
+- **WHEN** `desvincularNC('doc-001', 'nc-2026-001')` is called on a document with that NC linked
+- **THEN** it resolves with an `ApiResponse` whose `data.ncVinculados` no longer includes `nc-2026-001`
+
 ### Requirement: Shared Axios instance
 The API client SHALL import and use the singleton Axios instance from `src/lib/axios.ts`. It SHALL NOT create a new `axios.create()` instance or call `axios.get/post` directly.
 

@@ -672,6 +672,7 @@ function makeDoc(id: string, overrides: Partial<Documento> = {}): Documento {
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [],
     creadoEn: '2031-01-01T00:00:00Z',
@@ -1609,7 +1610,9 @@ describe('dashboard.handlers — AUDITOR: hallazgosPorNorma / hallazgosPorEstado
       origen: 'O1_INCIDENTE_CAMPO',
       estado: 'ABIERTO',
       areaId: 'Área Inexistente Test',
-      documentosVinculados: ['doc-001'],
+      documentosVinculados: [
+        { id: 'doc-001', codigo: 'POL-CD-001', titulo: 'Política de Gestión de Calidad y SST', estado: 'PUBLICADO' },
+      ],
     })
     try {
       qeStore.push(noO3)

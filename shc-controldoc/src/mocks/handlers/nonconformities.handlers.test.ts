@@ -3,6 +3,7 @@ import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { nonconformityHandlers, resetStore, getNonconformitiesStore } from './nonconformities.handlers'
+import { getDocumentsStore, resetStore as resetDocumentsStore } from './documents.handlers'
 import { authFixtures } from '../fixtures/auth.fixtures'
 import { getEmpresasActivasForUsuario } from '../fixtures/empresas.fixtures'
 import { useAuthStore } from '../../stores/authStore'
@@ -15,6 +16,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterAll(() => server.close())
 beforeEach(() => {
   resetStore()
+  resetDocumentsStore()
   resetNotificationsStore()
 })
 
@@ -236,5 +238,76 @@ describe('nonconformities.handlers — empresa isolation (me-f3-scoping-modulos)
       ),
     )
     expect(status).toBe(401)
+  })
+})
+
+describe('nonconformities.handlers — POST/DELETE /api/nonconformities/:id/documentos-vinculados', () => {
+  it('vincula un documento por primera vez y es visible simétricamente del lado documento', async () => {
+    const { status, data } = await call(
+      api.post<NoConformidad>('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.documentosVinculados.some((v) => v.id === 'doc-003')).toBe(true)
+
+    const doc = getDocumentsStore().find((d) => d.id === 'doc-003')!
+    expect(doc.ncVinculados.some((n) => n.id === 'nc-001')).toBe(true)
+  })
+
+  it('vincular el mismo par dos veces es idempotente', async () => {
+    const headers = authHeaders('jefe.calidad@shac.pe')
+    await call(api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, headers))
+    await call(api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, headers))
+
+    const nc = getNonconformitiesStore().find((n) => n.id === 'nc-001')!
+    expect(nc.documentosVinculados.filter((v) => v.id === 'doc-003')).toHaveLength(1)
+  })
+
+  it('vincular un documento de otra empresa responde 404 y no crea el vínculo', async () => {
+    const { status } = await call(
+      api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-e2-001' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(404)
+    expect(getNonconformitiesStore().find((n) => n.id === 'nc-001')!.documentosVinculados).toHaveLength(0)
+  })
+
+  it('SUPERVISOR puede vincular sin ser responsable de investigación', async () => {
+    const { status } = await call(
+      api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, authHeaders('supervisor@shac.pe')),
+    )
+    expect(status).toBe(200)
+  })
+
+  it('OPERARIO no puede vincular — responde 403', async () => {
+    const { status } = await call(
+      api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, authHeaders('operario@shac.pe')),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('vincular sobre una NC CERRADA responde 403', async () => {
+    // nc-004 (NC-SST-2025-002) es fixture CERRADA.
+    const { status } = await call(
+      api.post('/api/nonconformities/nc-004/documentos-vinculados', { documentoId: 'doc-003' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('desvincula un par existente simétricamente', async () => {
+    const headers = authHeaders('jefe.calidad@shac.pe')
+    await call(api.post('/api/nonconformities/nc-001/documentos-vinculados', { documentoId: 'doc-003' }, headers))
+
+    const { status, data } = await call(
+      api.delete<NoConformidad>('/api/nonconformities/nc-001/documentos-vinculados/doc-003', headers),
+    )
+    expect(status).toBe(200)
+    expect(data.documentosVinculados).toHaveLength(0)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.ncVinculados).toHaveLength(0)
+  })
+
+  it('desvincular un par no vinculado responde 404', async () => {
+    const { status } = await call(
+      api.delete('/api/nonconformities/nc-001/documentos-vinculados/doc-003', authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(404)
   })
 })

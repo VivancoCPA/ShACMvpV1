@@ -33,11 +33,34 @@ At least one fixture document SHALL have a `historialVersiones` array with two o
 - **THEN** the first entry has an older `fechaPublicacion` than the second, and the version strings are `v1.0` and `v1.1` (or similar major progression)
 
 ### Requirement: At least one fixture with linked QEs
-At least one fixture document SHALL have a non-empty `qeVinculados` array containing at least one QE ID string, simulating RN-DOC-005 linkage.
+At least one fixture document SHALL have a non-empty `qeVinculados` array containing at least one `QeVinculadoResumen` object (`{ id, numero, tipo, severidad, estado }`, matching an existing QE fixture in `quality-events.fixtures.ts`), simulating RN-DOC-005 linkage. This replaces the previous shape (`string[]` of raw QE ids).
 
 #### Scenario: QE-linked document is identifiable
 - **WHEN** the `documentFixtures` array is filtered for `qeVinculados.length > 0`
 - **THEN** at least one document is returned
+
+#### Scenario: Linked QE resumen matches an existing QE fixture
+- **WHEN** a document fixture has a non-empty `qeVinculados`
+- **THEN** each entry's `id` corresponds to an existing fixture in `quality-events.fixtures.ts`, and that QE fixture's own `documentosVinculados` includes this document's `id` (bidirectional consistency)
+
+#### Scenario: qeVinculados entries are typed objects, not strings
+- **WHEN** a developer reads `documentFixtures[i].qeVinculados[0]`
+- **THEN** TypeScript infers a `QeVinculadoResumen` object, not a bare `string`
+
+### Requirement: Fixture documents carry an ncVinculados field
+Every fixture document SHALL have an `ncVinculados` field (defaulting to `[]` where no linkage is simulated), typed as `NcVinculadoResumen[]`. At least one fixture document SHALL have a non-empty `ncVinculados` array containing at least one `NcVinculadoResumen` object (`{ id, numero, tipo, severidad, estado }`, matching an existing NC fixture in `nonconformities.fixtures.ts`).
+
+#### Scenario: NC-linked document is identifiable
+- **WHEN** the `documentFixtures` array is filtered for `ncVinculados.length > 0`
+- **THEN** at least one document is returned
+
+#### Scenario: Linked NC resumen matches an existing NC fixture
+- **WHEN** a document fixture has a non-empty `ncVinculados`
+- **THEN** each entry's `id` corresponds to an existing fixture in `nonconformities.fixtures.ts`, and that NC fixture's own `documentosVinculados` includes this document's `id` (bidirectional consistency)
+
+#### Scenario: ncVinculados entries are typed objects, not strings
+- **WHEN** a developer reads `documentFixtures[i].ncVinculados[0]`
+- **THEN** TypeScript infers an `NcVinculadoResumen` object, not a bare `string`
 
 ### Requirement: Fixture codes follow M1 naming convention
 Every fixture document's `codigo` field SHALL follow the pattern `<DocType>-CD-<NNN>` (e.g., `POL-CD-001`, `PRC-CD-002`). Codes within the fixture dataset SHALL be unique.

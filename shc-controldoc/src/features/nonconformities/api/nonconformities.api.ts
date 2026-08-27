@@ -47,6 +47,16 @@ export async function vincularQENonconformidad(id: string, qeGeneradoId: string)
   return response.data
 }
 
+export async function vincularDocumento(ncId: string, documentoId: string): Promise<NoConformidad> {
+  const response = await api.post<NoConformidad>(`/api/nonconformities/${ncId}/documentos-vinculados`, { documentoId })
+  return response.data
+}
+
+export async function desvincularDocumento(ncId: string, documentoId: string): Promise<NoConformidad> {
+  const response = await api.delete<NoConformidad>(`/api/nonconformities/${ncId}/documentos-vinculados/${documentoId}`)
+  return response.data
+}
+
 export async function anularNonconformity(
   id: string,
   justificacion: string,

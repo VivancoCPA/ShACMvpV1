@@ -5,6 +5,8 @@ import api from '../../lib/axios'
 import { qualityEventHandlers, getQeStore, resetStore } from './quality-events.handlers'
 import { incidentHandlers, getIncidentsStore, resetStore as resetIncidentsStore } from './incidents.handlers'
 import { nonconformityHandlers, getNonconformitiesStore, resetStore as resetNonconformitiesStore } from './nonconformities.handlers'
+import { getDocumentsStore, resetStore as resetDocumentsStore } from './documents.handlers'
+import type { Documento } from '../../types/documents.types'
 import { useAuthStore } from '../../stores/authStore'
 import { createMockUser } from '../fixtures/mockUser'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
@@ -21,7 +23,35 @@ beforeEach(() => {
   resetIncidentsStore()
   resetNonconformitiesStore()
   resetNotificationsStore()
+  resetDocumentsStore()
 })
+
+function baseDoc(overrides: Partial<Documento>): Documento {
+  const now = '2026-01-01T00:00:00.000Z'
+  return {
+    id: 'doc-test-001',
+    codigo: 'PRC-TEST-001',
+    titulo: 'Documento de prueba',
+    tipo: 'PRC',
+    version: 'v1.0',
+    estado: 'PUBLICADO',
+    areaId: 'area-001',
+    empresaId: 'empresa-001',
+    confidencialidad: 'INTERNO',
+    autorId: 'user-autor-001',
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
+    qeVinculados: [],
+    ncVinculados: [],
+    historialVersiones: [],
+    auditTrail: [],
+    creadoEn: now,
+    actualizadoEn: now,
+    ...overrides,
+  }
+}
 
 function baseIncidente(overrides: Partial<Incidente>): Incidente {
   const now = '2026-01-01T00:00:00Z'
@@ -968,5 +998,124 @@ describe('quality-events.handlers — empresa isolation (me-f3-scoping-modulos)'
       }),
     )
     expect(status).toBe(401)
+  })
+})
+
+describe('quality-events.handlers — GET /api/quality-events?search=', () => {
+  it('filtra por numero', async () => {
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    getQeStore().push(baseQE({ id: 'qe-search-1', numero: 'QE-SEARCH-001' }))
+    getQeStore().push(baseQE({ id: 'qe-search-2', numero: 'QE-SEARCH-002' }))
+
+    const { data } = await call<{ items: QualityEvent[] }>(api.get('/api/quality-events?search=SEARCH-001'))
+
+    expect(data.items.some((q) => q.id === 'qe-search-1')).toBe(true)
+    expect(data.items.some((q) => q.id === 'qe-search-2')).toBe(false)
+  })
+
+  it('filtra por descripcion, sin distinguir mayúsculas', async () => {
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    getQeStore().push(baseQE({ id: 'qe-search-3', descripcion: 'Corrosión en tanque de almacenamiento' }))
+
+    const { data } = await call<{ items: QualityEvent[] }>(api.get('/api/quality-events?search=corrosión'))
+
+    expect(data.items.some((q) => q.id === 'qe-search-3')).toBe(true)
+  })
+})
+
+describe('quality-events.handlers — POST/DELETE /api/quality-events/:id/documentos-vinculados', () => {
+  it('JEFE_CALIDAD_SYST vincula un documento y es visible simétricamente del lado documento', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-1', estado: 'EN_EJECUCION' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-1' }))
+
+    const { status, data } = await call<QualityEvent>(
+      api.post('/api/quality-events/qe-link-1/documentos-vinculados', { documentoId: 'doc-link-1' }),
+    )
+    expect(status).toBe(200)
+    expect(data.documentosVinculados.some((d) => d.id === 'doc-link-1')).toBe(true)
+
+    const doc = getDocumentsStore().find((d) => d.id === 'doc-link-1')!
+    expect(doc.qeVinculados.some((v) => v.id === 'qe-link-1')).toBe(true)
+  })
+
+  it('SUPERVISOR responsable de la investigación puede vincular', async () => {
+    setCurrentUser('user-supervisor-resp', 'SUPERVISOR')
+    getQeStore().push(baseQE({ id: 'qe-link-2', estado: 'EN_INVESTIGACION', responsableInvestigacionId: 'user-supervisor-resp' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-2' }))
+
+    const { status } = await call(
+      api.post('/api/quality-events/qe-link-2/documentos-vinculados', { documentoId: 'doc-link-2' }),
+    )
+    expect(status).toBe(200)
+  })
+
+  it('SUPERVISOR que no es responsable no puede vincular', async () => {
+    setCurrentUser('user-supervisor-otro', 'SUPERVISOR')
+    getQeStore().push(baseQE({ id: 'qe-link-3', estado: 'EN_INVESTIGACION', responsableInvestigacionId: 'user-supervisor-resp' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-3' }))
+
+    const { status } = await call(
+      api.post('/api/quality-events/qe-link-3/documentos-vinculados', { documentoId: 'doc-link-3' }),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('un QE CERRADO rechaza la vinculación incluso para JEFE_CALIDAD_SYST', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-4', estado: 'CERRADO' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-4' }))
+
+    const { status } = await call(
+      api.post('/api/quality-events/qe-link-4/documentos-vinculados', { documentoId: 'doc-link-4' }),
+    )
+    expect(status).toBe(403)
+  })
+
+  it('vincular el mismo par dos veces es idempotente', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-5', estado: 'EN_EJECUCION' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-5' }))
+
+    await call(api.post('/api/quality-events/qe-link-5/documentos-vinculados', { documentoId: 'doc-link-5' }))
+    await call(api.post('/api/quality-events/qe-link-5/documentos-vinculados', { documentoId: 'doc-link-5' }))
+
+    const qe = getQeStore().find((q) => q.id === 'qe-link-5')!
+    expect(qe.documentosVinculados).toHaveLength(1)
+  })
+
+  it('desvincula un par existente simétricamente', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-6', estado: 'EN_EJECUCION' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-link-6' }))
+    await call(api.post('/api/quality-events/qe-link-6/documentos-vinculados', { documentoId: 'doc-link-6' }))
+
+    const { status, data } = await call<QualityEvent>(
+      api.delete('/api/quality-events/qe-link-6/documentos-vinculados/doc-link-6'),
+    )
+    expect(status).toBe(200)
+    expect(data.documentosVinculados).toHaveLength(0)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-link-6')!.qeVinculados).toHaveLength(0)
+  })
+
+  it('desvincular un par no vinculado responde 404', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-7', estado: 'EN_EJECUCION' }))
+
+    const { status } = await call(
+      api.delete('/api/quality-events/qe-link-7/documentos-vinculados/doc-inexistente'),
+    )
+    expect(status).toBe(404)
+  })
+
+  it('vincular un documento de otra empresa responde 404', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getQeStore().push(baseQE({ id: 'qe-link-8', estado: 'EN_EJECUCION' }))
+    getDocumentsStore().push(baseDoc({ id: 'doc-otra-empresa', empresaId: 'empresa-002' }))
+
+    const { status } = await call(
+      api.post('/api/quality-events/qe-link-8/documentos-vinculados', { documentoId: 'doc-otra-empresa' }),
+    )
+    expect(status).toBe(404)
   })
 })

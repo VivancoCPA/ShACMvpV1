@@ -10,6 +10,7 @@ import { SeverityBadge } from '../../../components/shared/SeverityBadge'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { AnularNCModal } from '../components/AnularNCModal'
 import { ACSection } from '../components/ACSection'
+import { NCDocumentosVinculadosSection } from '../components/NCDocumentosVinculadosSection'
 import type { AuditTrailEntry } from '../types/nonconformity.types'
 import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
 import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
@@ -284,6 +285,11 @@ export function NonconformityDetailPage() {
             canCerrarAC={permissions?.canCerrarAC ?? false}
             qeGeneradoId={nc.qeGeneradoId}
           />
+        </div>
+
+        {/* Documentos vinculados */}
+        <div className="mb-6">
+          <NCDocumentosVinculadosSection nc={nc} canEdit={permissions?.canEdit ?? false} />
         </div>
 
         {/* Audit Trail — collapsible, only for canVerAuditTrail */}

@@ -51,7 +51,10 @@ export const documentFixtures: Documento[] = [
     archivoOriginalNombre: 'POL-CD-001-v2.0.docx',
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-001/POL-CD-001-v2.0.pdf',
-    qeVinculados: ['qe-001', 'qe-002'],
+    qeVinculados: [
+      { id: 'qe-2026-003', numero: 'QE-2026-003', tipo: 'ADUANERO', severidad: 'MEDIA', estado: 'PENDIENTE_CIERRE' },
+    ],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -147,7 +150,13 @@ export const documentFixtures: Documento[] = [
     archivoOriginalNombre: 'PRC-CD-001-v1.1.docx',
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-002/PRC-CD-001-v1.1.pdf',
-    qeVinculados: [],
+    qeVinculados: [
+      { id: 'qe-2026-002', numero: 'QE-2026-002', tipo: 'CALIDAD', severidad: 'ALTA', estado: 'CERRADO' },
+      { id: 'qe-2026-007', numero: 'QE-2026-007', tipo: 'CALIDAD', severidad: 'MEDIA', estado: 'ANALISIS_COMPLETADO' },
+    ],
+    ncVinculados: [
+      { id: 'nc-002', numero: 'NC-CAL-2025-002', tipo: 'SISTEMA', severidad: 'ALTA', estado: 'EN_INVESTIGACION' },
+    ],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -234,6 +243,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -297,6 +307,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -359,6 +370,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -438,6 +450,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -517,6 +530,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -554,6 +568,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -591,6 +606,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -648,6 +664,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-010/INS-CD-002-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -735,6 +752,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-011/PLAN-CD-002-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -798,6 +816,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-012/MAT-CD-002-v2.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v2.0',
@@ -861,6 +880,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-013/PRC-CD-003-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -921,6 +941,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-014/REG-CD-003-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -985,6 +1006,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -1083,6 +1105,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v0.9',
@@ -1157,6 +1180,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v0.9',
@@ -1226,6 +1250,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1275,6 +1300,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1326,6 +1352,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-015/INF-CD-002-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -1385,6 +1412,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribuciones/doc-020-rev/PRC-CD-002-v2.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [
       {
         version: 'v1.0',
@@ -1459,6 +1487,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1520,6 +1549,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribucion/doc-e2-001/POL-CD-E2-001-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1554,6 +1584,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1587,6 +1618,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: false,
     archivoDistribucionUrl: null,
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {
@@ -1622,6 +1654,7 @@ export const documentFixtures: Documento[] = [
     archivoOriginalBloqueado: true,
     archivoDistribucionUrl: '/mock/distribucion/doc-e2-004/REG-CD-E2-001-v1.0.pdf',
     qeVinculados: [],
+    ncVinculados: [],
     historialVersiones: [],
     auditTrail: [
       {

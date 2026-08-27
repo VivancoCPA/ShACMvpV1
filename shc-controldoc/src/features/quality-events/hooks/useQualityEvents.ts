@@ -8,9 +8,10 @@ export const QE_QUERY_KEYS = {
   detail: (id: string) => ['quality-events', 'detail', id] as const,
 } as const
 
-export function useQualityEvents(filters: QEListParams) {
+export function useQualityEvents(filters: QEListParams, enabled = true) {
   return useQuery({
     queryKey: QE_QUERY_KEYS.list(filters),
     queryFn: () => getQualityEvents(filters),
+    enabled,
   })
 }

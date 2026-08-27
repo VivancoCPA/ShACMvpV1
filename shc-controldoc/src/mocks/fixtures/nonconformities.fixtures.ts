@@ -31,7 +31,9 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2025-12-10T09:05:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-prc-al-005'],
+    // fs-vinculacion-documento-nc: 'doc-prc-al-005' era un id fantasma, sin ningún fixture de
+    // documento real que lo respalde (no sigue la convención doc-NNN/doc-eN-NNN de documents.fixtures.ts).
+    documentosVinculados: [],
     adjuntos: [],
     auditTrail: [
       {
@@ -94,7 +96,11 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2025-12-16T08:05:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-prc-cd-001'],
+    // fs-vinculacion-documento-nc: vínculo real bidireccional con doc-002 (PRC-CD-001) — reemplaza
+    // el id fantasma 'doc-prc-cd-001' (nunca correspondió a ningún fixture real; construido a
+    // partir del codigo de doc-002, no de su id). Semánticamente coherente: esta NC trata
+    // justamente sobre falta de control de distribución de "PRC-CD-001".
+    documentosVinculados: [{ id: 'doc-002', codigo: 'PRC-CD-001', titulo: 'Procedimiento de Control de Documentos y Registros', estado: 'PUBLICADO' }],
     adjuntos: [],
     auditTrail: [
       {
@@ -272,7 +278,8 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2026-01-28T11:00:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-ins-sst-003'],
+    // fs-vinculacion-documento-nc: 'doc-ins-sst-003' era un id fantasma, sin ningún fixture real.
+    documentosVinculados: [],
     adjuntos: ['cert-recarga-extintores-2026-01.pdf'],
     auditTrail: [
       {
@@ -367,7 +374,8 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2026-03-05T10:00:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-ins-adu-007'],
+    // fs-vinculacion-documento-nc: 'doc-ins-adu-007' era un id fantasma, sin ningún fixture real.
+    documentosVinculados: [],
     adjuntos: ['dua-rectificatoria-236-2026-10045679.pdf'],
     auditTrail: [
       {
@@ -620,7 +628,8 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2026-03-11T08:00:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-prc-lab-002'],
+    // fs-vinculacion-documento-nc: 'doc-prc-lab-002' era un id fantasma, sin ningún fixture real.
+    documentosVinculados: [],
     adjuntos: [],
     auditTrail: [
       {
@@ -1013,7 +1022,8 @@ export const nonconformityFixtures: NoConformidad[] = [
         actualizadoEn: '2026-06-05T14:00:00.000Z',
       },
     ],
-    documentosVinculados: ['doc-ins-lab-011'],
+    // fs-vinculacion-documento-nc: 'doc-ins-lab-011' era un id fantasma, sin ningún fixture real.
+    documentosVinculados: [],
     adjuntos: ['reclamo-exportadora-pacific-2026-05.pdf'],
     auditTrail: [
       {

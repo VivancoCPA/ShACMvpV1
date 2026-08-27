@@ -149,7 +149,9 @@
         "descripcion": "Description and detail",
         "historial": "Status history",
         "auditTrail": "Audit Trail",
-        "versiones": "Versions"
+        "versiones": "Versions",
+        "qeVinculados": "Linked QEs",
+        "ncVinculados": "Linked NCs"
       },
       "banners": {
         "obsoleto": "This document is OBSOLETE and must not be used.",
@@ -377,6 +379,34 @@
       "sinPendientes": "You have no documents pending action.",
       "sidebar": {
         "badge": "You have {{count}} document(s) pending review"
+      }
+    },
+    "qeVinculados": {
+      "vacio": "This document has no linked Quality Events.",
+      "quitar": "Remove link with {{numero}}",
+      "combobox": {
+        "placeholder": "Search Quality Event by number or description...",
+        "ariaLabel": "Search and link Quality Event"
+      },
+      "toast": {
+        "vinculado": "Quality Event linked.",
+        "vincularError": "Could not link the Quality Event.",
+        "desvinculado": "Link removed.",
+        "desvincularError": "Could not remove the link."
+      }
+    },
+    "ncVinculados": {
+      "vacio": "This document has no linked Non-Conformities.",
+      "quitar": "Remove link with {{numero}}",
+      "combobox": {
+        "placeholder": "Search Non-Conformity by number or title...",
+        "ariaLabel": "Search and link Non-Conformity"
+      },
+      "toast": {
+        "vinculado": "Non-Conformity linked.",
+        "vincularError": "Could not link the Non-Conformity.",
+        "desvinculado": "Link removed.",
+        "desvincularError": "Could not remove the link."
       }
     }
   },
@@ -892,6 +922,21 @@
       "reactivated": "QE reactivated successfully",
       "reactivateError": "Error reactivating the Quality Event.",
       "edited": "QE updated successfully"
+    },
+    "documentosVinculados": {
+      "titulo": "Linked documents",
+      "vacio": "This Quality Event has no linked documents.",
+      "quitar": "Remove link with {{codigo}}",
+      "combobox": {
+        "placeholder": "Search document by title or code...",
+        "ariaLabel": "Search and link document"
+      },
+      "toast": {
+        "vinculado": "Document linked.",
+        "vincularError": "Could not link the document.",
+        "desvinculado": "Link removed.",
+        "desvincularError": "Could not remove the link."
+      }
     }
   },
   "incidents": {
@@ -1355,7 +1400,18 @@
       "deleteError": "Error deleting the non-conformity.",
       "restored": "Non-conformity restored.",
       "restoreError": "Error restoring the non-conformity.",
-      "vincularQEError": "The Quality Event was created, but could not be linked to the non-conformity. Refresh the page to check."
+      "vincularQEError": "The Quality Event was created, but could not be linked to the non-conformity. Refresh the page to check.",
+      "vincularDocumentoError": "Could not link the document.",
+      "desvincularDocumentoError": "Could not remove the link."
+    },
+    "documentosVinculados": {
+      "titulo": "Linked documents",
+      "vacio": "This Non-Conformity has no linked documents.",
+      "quitar": "Remove link with {{codigo}}",
+      "combobox": {
+        "placeholder": "Search document by title or code...",
+        "ariaLabel": "Search and link document"
+      }
     },
     "form": {
       "fields": {

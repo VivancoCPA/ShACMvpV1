@@ -1,3 +1,5 @@
+import type { DocStatus } from '../../../types/documents.types'
+
 export type QEOrigin =
   | 'O1_INCIDENTE_CAMPO'
   | 'O2_NC_DETECTADA'
@@ -100,6 +102,13 @@ export interface AccionCorrectivaQE {
   solicitudesAjustePlazo: SolicitudAjustePlazoAC[]
 }
 
+export interface DocumentoVinculadoResumen {
+  id: string
+  codigo: string
+  titulo: string
+  estado: DocStatus
+}
+
 export interface QualityEvent {
   id: string
   numero: string
@@ -115,7 +124,7 @@ export interface QualityEvent {
   fechaHoraEvento: string
   fechaHoraReporte: string
   reportadoPorId: string
-  documentosVinculados: string[]
+  documentosVinculados: DocumentoVinculadoResumen[]
   requiereEvaluacionRiesgos: boolean
   solicitudesAC: number
   accionesCorrectivas: AccionCorrectivaQE[]
@@ -125,6 +134,11 @@ export interface QualityEvent {
   mineralInvolucrado?: string
   ncId?: string
   incidenteId?: string
+  // Responsable de la investigación (backend: QualityEvent.ResponsableInvestigacionId). Antes de
+  // fs-vinculacion-documento-qe solo existía como valor de referencia dentro de entradas de audit
+  // trail (`campoModificado: 'responsableInvestigacionId'`), nunca como campo vivo del tipo — se
+  // agrega aquí porque puedeVincularDocumentos (qualityEventPermissions.ts) lo necesita real.
+  responsableInvestigacionId?: string
   hallazgoCodigo?: string
   normativaVinculada?: NormativaVinculada
   reporteExternoRef?: ReporteExternoRef
@@ -157,6 +171,7 @@ export interface QEListParams {
   tipo?: QEType
   severidad?: QESeverity
   origen?: QEOrigin
+  search?: string
   fechaDesde?: string
   fechaHasta?: string
   ciclo?: number

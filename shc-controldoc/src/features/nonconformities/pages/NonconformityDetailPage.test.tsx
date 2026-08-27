@@ -16,6 +16,10 @@ vi.mock('../components/ACSection', () => ({
   ACSection: () => <div data-testid="ac-section" />,
 }))
 
+vi.mock('../components/NCDocumentosVinculadosSection', () => ({
+  NCDocumentosVinculadosSection: () => <div data-testid="documentos-vinculados-section" />,
+}))
+
 vi.mock('../components/AnularNCModal', () => ({
   AnularNCModal: () => <div data-testid="anular-modal" />,
 }))

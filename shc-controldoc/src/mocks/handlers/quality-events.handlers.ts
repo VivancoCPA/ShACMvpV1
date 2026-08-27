@@ -4,9 +4,10 @@ import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getUsersStore } from '../fixtures/auth.fixtures'
 import { getRolEfectivo } from '../fixtures/empresas.fixtures'
 import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
-import { resolveRolSegundaFirma, resolveQEEditAccess } from '../../features/quality-events/utils/qualityEventPermissions'
+import { resolveRolSegundaFirma, resolveQEEditAccess, puedeVincularDocumentos } from '../../features/quality-events/utils/qualityEventPermissions'
 import { getIncidentsStore } from './incidents.handlers'
 import { getNonconformitiesStore } from './nonconformities.handlers'
+import { getDocumentsStore, makeAuditEntry } from './documents.handlers'
 import { syncOrigenFromQEEstado } from './qeOriginSync'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
@@ -15,6 +16,7 @@ import { getSessionUserUnchecked } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
 import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC } from '../../features/quality-events/types/qualityEvent.types'
+import type { QeVinculadoResumen } from '../../types/documents.types'
 
 const LATENCY = 400
 
@@ -143,6 +145,7 @@ export const qualityEventHandlers = [
     const fechaHasta = url.searchParams.get('fechaHasta')
     const soloReincidencias = url.searchParams.get('soloReincidencias') === 'true'
     const incluirEliminados = url.searchParams.get('incluirEliminados') === 'true'
+    const search = url.searchParams.get('search')
     const page = parseInt(url.searchParams.get('page') ?? '1', 10)
     const pageSize = parseInt(url.searchParams.get('pageSize') ?? '10', 10)
 
@@ -152,6 +155,12 @@ export const qualityEventHandlers = [
     if (tipo) filtered = filtered.filter(qe => qe.tipo === tipo)
     if (severidad) filtered = filtered.filter(qe => qe.severidad === severidad)
     if (origen) filtered = filtered.filter(qe => qe.origen === origen)
+    if (search) {
+      const needle = search.toLowerCase()
+      filtered = filtered.filter(
+        qe => qe.numero.toLowerCase().includes(needle) || qe.descripcion.toLowerCase().includes(needle),
+      )
+    }
     // fechaDesde / fechaHasta compare against fechaHoraEvento (event occurrence date)
     if (fechaDesde) filtered = filtered.filter(qe => qe.fechaHoraEvento >= fechaDesde)
     if (fechaHasta) filtered = filtered.filter(qe => qe.fechaHoraEvento.slice(0, 10) <= fechaHasta)
@@ -1537,6 +1546,143 @@ export const qualityEventHandlers = [
     }
     commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  // POST /api/quality-events/:id/documentos-vinculados — vincular un documento (fs-vinculacion-documento-qe)
+  http.post('/api/quality-events/:id/documentos-vinculados', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = qeStore.findIndex((q) => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json({ success: false, message: 'Quality Event no encontrado' }, { status: 404 })
+    }
+
+    const qe = qeStore[idx]
+    const usuario = getCurrentUserForEditAccess()
+    if (!puedeVincularDocumentos(qe, usuario)) {
+      return HttpResponse.json(
+        { success: false, message: 'No tenés permiso para vincular documentos a este Quality Event' },
+        { status: 403 },
+      )
+    }
+
+    const body = (await request.json()) as { documentoId: string }
+    const docStore = getDocumentsStore()
+    const docIdx = docStore.findIndex((d) => d.id === body.documentoId)
+    if (docIdx === -1 || docStore[docIdx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json({ success: false, message: 'Documento no encontrado' }, { status: 404 })
+    }
+
+    const doc = docStore[docIdx]
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    if (!qe.documentosVinculados.some((v) => v.id === doc.id)) {
+      qeStore[idx] = {
+        ...qe,
+        documentosVinculados: [...qe.documentosVinculados, { id: doc.id, codigo: doc.codigo, titulo: doc.titulo, estado: doc.estado }],
+        actualizadoEn: now,
+        auditTrail: [
+          ...qe.auditTrail,
+          {
+            id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+            entidadTipo: 'QualityEvent',
+            entidadId: qe.id,
+            accion: 'QE_VINCULADO',
+            valorNuevo: doc.id,
+            realizadoPorId: currentUser.id,
+            realizadoPorNombre: currentUser.nombre,
+            timestamp: now,
+            generadoPorIA: false,
+          },
+        ],
+      }
+
+      const qeResumen: QeVinculadoResumen = { id: qe.id, numero: qe.numero, tipo: qe.tipo, severidad: qe.severidad, estado: qe.estado }
+      docStore[docIdx] = {
+        ...doc,
+        qeVinculados: [...doc.qeVinculados, qeResumen],
+        actualizadoEn: now,
+        auditTrail: [
+          ...doc.auditTrail,
+          makeAuditEntry(doc.id, 'DOCUMENTO_VINCULADO', {
+            valorNuevo: qe.id,
+            realizadoPorId: currentUser.id,
+            realizadoPorNombre: currentUser.nombre,
+          }),
+        ],
+      }
+    }
+
+    return HttpResponse.json({ success: true, data: qeStore[idx] })
+  }),
+
+  // DELETE /api/quality-events/:id/documentos-vinculados/:documentoId — desvincular (fs-vinculacion-documento-qe)
+  http.delete('/api/quality-events/:id/documentos-vinculados/:documentoId', async ({ params }) => {
+    await delay(LATENCY)
+
+    const idx = qeStore.findIndex((q) => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json({ success: false, message: 'Quality Event no encontrado' }, { status: 404 })
+    }
+
+    const qe = qeStore[idx]
+    const usuario = getCurrentUserForEditAccess()
+    if (!puedeVincularDocumentos(qe, usuario)) {
+      return HttpResponse.json(
+        { success: false, message: 'No tenés permiso para desvincular documentos de este Quality Event' },
+        { status: 403 },
+      )
+    }
+
+    const documentoId = params.documentoId as string
+    if (!qe.documentosVinculados.some((v) => v.id === documentoId)) {
+      return HttpResponse.json({ success: false, message: 'Vínculo no encontrado' }, { status: 404 })
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+
+    qeStore[idx] = {
+      ...qe,
+      documentosVinculados: qe.documentosVinculados.filter((v) => v.id !== documentoId),
+      actualizadoEn: now,
+      auditTrail: [
+        ...qe.auditTrail,
+        {
+          id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+          entidadTipo: 'QualityEvent',
+          entidadId: qe.id,
+          accion: 'QE_DESVINCULADO',
+          valorAnterior: documentoId,
+          realizadoPorId: currentUser.id,
+          realizadoPorNombre: currentUser.nombre,
+          timestamp: now,
+          generadoPorIA: false,
+        },
+      ],
+    }
+
+    const docStore = getDocumentsStore()
+    const docIdx = docStore.findIndex((d) => d.id === documentoId)
+    if (docIdx !== -1) {
+      const doc = docStore[docIdx]
+      docStore[docIdx] = {
+        ...doc,
+        qeVinculados: doc.qeVinculados.filter((v) => v.id !== qe.id),
+        actualizadoEn: now,
+        auditTrail: [
+          ...doc.auditTrail,
+          makeAuditEntry(doc.id, 'DOCUMENTO_DESVINCULADO', {
+            valorAnterior: qe.id,
+            realizadoPorId: currentUser.id,
+            realizadoPorNombre: currentUser.nombre,
+          }),
+        ],
+      }
+    }
+
+    return HttpResponse.json({ success: true, data: qeStore[idx] })
   }),
 ]
 

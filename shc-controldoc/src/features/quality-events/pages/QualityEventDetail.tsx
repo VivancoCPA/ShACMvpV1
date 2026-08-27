@@ -9,6 +9,7 @@ import { QEInvestigationSection } from '../components/QEInvestigationSection'
 import { QEACSection } from '../components/QEACSection'
 import { QECierreSection } from '../components/QECierreSection'
 import { QEVerificacionSection } from '../components/QEVerificacionSection'
+import { QEDocumentosVinculadosSection } from '../components/QEDocumentosVinculadosSection'
 import { QEAuditTrail } from '../components/QEAuditTrail'
 
 function SectionSkeleton() {
@@ -99,6 +100,7 @@ export function QualityEventDetail() {
         />
         <QECierreSection qe={qe} />
         <QEVerificacionSection qe={qe} />
+        <QEDocumentosVinculadosSection qe={qe} readOnly={isDeleted} />
         <QEAuditTrail qeId={qe.id} />
       </div>
     </div>

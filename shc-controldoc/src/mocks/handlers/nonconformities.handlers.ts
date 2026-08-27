@@ -4,6 +4,8 @@ import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getSessionUser as getUserFromRequest } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
+import { getNCPermissions } from '../../features/nonconformities/utils/ncPermissions'
+import { getDocumentsStore, makeAuditEntry as makeDocumentAuditEntry } from './documents.handlers'
 import type {
   NoConformidad,
   NCStatus,
@@ -12,6 +14,7 @@ import type {
   NCSeveridad,
   AuditTrailEntry,
   AccionCorrectiva,
+  DocumentoVinculadoResumen,
 } from '../../features/nonconformities/types/nonconformity.types'
 
 const LATENCY = 400
@@ -24,7 +27,7 @@ export function getNonconformitiesStore(): NoConformidad[] {
   return nonconformities
 }
 
-function resetStore() {
+export function resetStore() {
   nonconformities = [...nonconformityFixtures]
 }
 
@@ -201,7 +204,10 @@ export const nonconformityHandlers = [
       fechaReporte: now,
       requiereIPER: (body.requiereIPER as boolean) ?? false,
       accionesCorrectivas: [],
-      documentosVinculados: (body.documentosVinculados as string[]) ?? [],
+      // Vinculación solo post-creación (fs-vinculacion-documento-nc design.md, decisión
+      // confirmada) — el payload de creación nunca trae vínculos reales, sin importar lo que
+      // envíe el cliente.
+      documentosVinculados: [],
       adjuntos: [],
       auditTrail: [
         makeAuditEntry(id, 'CREADA', { estadoNuevo: 'ABIERTA' }),
@@ -501,6 +507,94 @@ export const nonconformityHandlers = [
       return ok(closedAC)
     },
   ),
-]
 
-export { resetStore }
+  // POST /api/nonconformities/:id/documentos-vinculados — vincular un documento (fs-vinculacion-documento-nc)
+  http.post('/api/nonconformities/:id/documentos-vinculados', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = nonconformities.findIndex((n) => n.id === params.id)
+    if (idx === -1 || nonconformities[idx].empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
+
+    const nc = nonconformities[idx]
+    const currentUser = getUserFromRequest(request)
+    const permisos = currentUser ? getNCPermissions(nc, currentUser.rol) : null
+    if (!permisos?.canEdit) return err('No tenés permiso para vincular documentos a esta No Conformidad', 403)
+
+    const body = (await request.json()) as { documentoId: string }
+    const docStore = getDocumentsStore()
+    const docIdx = docStore.findIndex((d) => d.id === body.documentoId)
+    if (docIdx === -1 || docStore[docIdx].empresaId !== getActiveEmpresaId()) return err('documents:errors.notFound', 404)
+
+    const doc = docStore[docIdx]
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    if (!nc.documentosVinculados.some((v) => v.id === doc.id)) {
+      const docResumen: DocumentoVinculadoResumen = { id: doc.id, codigo: doc.codigo, titulo: doc.titulo, estado: doc.estado }
+      nonconformities[idx] = {
+        ...nc,
+        documentosVinculados: [...nc.documentosVinculados, docResumen],
+        actualizadoEn: now,
+        auditTrail: [...nc.auditTrail, makeAuditEntry(nc.id, 'NC_VINCULADO', { valorNuevo: doc.id, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+      }
+
+      const ncResumen = { id: nc.id, numero: nc.numero, tipo: nc.tipo, severidad: nc.severidad, estado: nc.estado }
+      docStore[docIdx] = {
+        ...doc,
+        ncVinculados: [...doc.ncVinculados, ncResumen],
+        actualizadoEn: now,
+        auditTrail: [
+          ...doc.auditTrail,
+          makeDocumentAuditEntry(doc.id, 'DOCUMENTO_VINCULADO', { valorNuevo: nc.id, realizadoPorId: actorId, realizadoPorNombre: actorNombre }),
+        ],
+      }
+    }
+
+    return ok(nonconformities[idx])
+  }),
+
+  // DELETE /api/nonconformities/:id/documentos-vinculados/:documentoId — desvincular (fs-vinculacion-documento-nc)
+  http.delete('/api/nonconformities/:id/documentos-vinculados/:documentoId', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = nonconformities.findIndex((n) => n.id === params.id)
+    if (idx === -1 || nonconformities[idx].empresaId !== getActiveEmpresaId()) return err('nonconformities:errors.notFound', 404)
+
+    const nc = nonconformities[idx]
+    const currentUser = getUserFromRequest(request)
+    const permisos = currentUser ? getNCPermissions(nc, currentUser.rol) : null
+    if (!permisos?.canEdit) return err('No tenés permiso para desvincular documentos de esta No Conformidad', 403)
+
+    const documentoId = params.documentoId as string
+    if (!nc.documentosVinculados.some((v) => v.id === documentoId)) return err('nonconformities:errors.linkNotFound', 404)
+
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    nonconformities[idx] = {
+      ...nc,
+      documentosVinculados: nc.documentosVinculados.filter((v) => v.id !== documentoId),
+      actualizadoEn: now,
+      auditTrail: [...nc.auditTrail, makeAuditEntry(nc.id, 'NC_DESVINCULADO', { valorAnterior: documentoId, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+    }
+
+    const docStore = getDocumentsStore()
+    const docIdx = docStore.findIndex((d) => d.id === documentoId)
+    if (docIdx !== -1) {
+      const doc = docStore[docIdx]
+      docStore[docIdx] = {
+        ...doc,
+        ncVinculados: doc.ncVinculados.filter((n) => n.id !== nc.id),
+        actualizadoEn: now,
+        auditTrail: [
+          ...doc.auditTrail,
+          makeDocumentAuditEntry(doc.id, 'DOCUMENTO_DESVINCULADO', { valorAnterior: nc.id, realizadoPorId: actorId, realizadoPorNombre: actorNombre }),
+        ],
+      }
+    }
+
+    return ok(nonconformities[idx])
+  }),
+]

@@ -1,3 +1,6 @@
+import type { QEType, QESeverity, QEStatus } from '../features/quality-events/types/qualityEvent.types'
+import type { NCTipo, NCSeveridad, NCStatus } from '../features/nonconformities/types/nonconformity.types'
+
 export type DocStatus =
   | 'BORRADOR'
   | 'EN_REVISION'
@@ -47,6 +50,22 @@ export interface VersionEntry {
   hashArchivo?: string
 }
 
+export interface QeVinculadoResumen {
+  id: string
+  numero: string
+  tipo: QEType
+  severidad: QESeverity
+  estado: QEStatus
+}
+
+export interface NcVinculadoResumen {
+  id: string
+  numero: string
+  tipo: NCTipo
+  severidad: NCSeveridad
+  estado: NCStatus
+}
+
 export interface AuditTrailEntry {
   id: string
   entidadTipo: 'Documento' | 'NoConformidad'
@@ -93,7 +112,8 @@ export interface Documento {
   archivoDistribucionUrl: string | null
   versionAnteriorId?: string
   deletedAt?: string
-  qeVinculados: string[]
+  qeVinculados: QeVinculadoResumen[]
+  ncVinculados: NcVinculadoResumen[]
   historialVersiones: VersionEntry[]
   auditTrail: AuditTrailEntry[]
   creadoEn: string

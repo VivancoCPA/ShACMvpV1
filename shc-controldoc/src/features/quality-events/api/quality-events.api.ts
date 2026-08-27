@@ -193,6 +193,16 @@ export async function forzarVencimientoVerificacion(
   return response.data
 }
 
+export async function vincularDocumento(qeId: string, documentoId: string): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${qeId}/documentos-vinculados`, { documentoId })
+  return response.data
+}
+
+export async function desvincularDocumento(qeId: string, documentoId: string): Promise<QualityEvent> {
+  const response = await api.delete<QualityEvent>(`/api/quality-events/${qeId}/documentos-vinculados/${documentoId}`)
+  return response.data
+}
+
 export async function registrarVerificacionEficacia(
   id: string,
   data: VerificacionEficaciaInput,

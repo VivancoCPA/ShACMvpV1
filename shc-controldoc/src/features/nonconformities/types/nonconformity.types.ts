@@ -1,4 +1,5 @@
 import type { UserRole } from '../../../types/auth.types'
+import type { DocStatus } from '../../../types/documents.types'
 
 export type NCStatus =
   | 'ABIERTA'
@@ -43,6 +44,16 @@ export interface AccionCorrectiva {
   fechaCierre?: string
   /** Modelo B: referencia al Quality Event que ahora posee la continuación de esta AC */
   qeId?: string
+}
+
+// Declarado localmente (no importado de types/documents.types.ts) — mismo patrón que
+// DocumentoVinculadoResumen en features/quality-events/types/qualityEvent.types.ts: cada feature
+// module es dueño de su propia copia de este DTO, sin import cross-feature.
+export interface DocumentoVinculadoResumen {
+  id: string
+  codigo: string
+  titulo: string
+  estado: DocStatus
 }
 
 export interface NCNotificacionComercioExterior {
@@ -138,7 +149,7 @@ export interface NoConformidad {
   fechaDeteccion: string
   fechaReporte: string
   accionesCorrectivas: AccionCorrectiva[]
-  documentosVinculados: string[]
+  documentosVinculados: DocumentoVinculadoResumen[]
   adjuntos: string[]
   auditTrail: AuditTrailEntry[]
   /** Fecha límite esperada de cierre de la NC (ISO 8601) */

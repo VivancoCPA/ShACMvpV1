@@ -57,16 +57,16 @@ The `DocumentDetailHeader` component SHALL render título, `StatusBadge`, `Docum
 ### Requirement: DocumentDetailHeader contextual banners
 The header SHALL render contextual banners:
 - OBSOLETO banner (bg-error/10 border-error/30) when `estado === 'OBSOLETO'`.
-- QE-vinculados banner (bg-amber/10 border-amber/30) when `qeVinculados.length > 0`, listing the QE IDs.
+- QE-vinculados banner (bg-amber/10 border-amber/30) when `qeVinculados.length > 0`, listing the linked QEs' `numero` (not raw ids — `qeVinculados` is a populated `QeVinculadoResumen[]`, see `document-types`).
 - RESTRINGIDO info banner (bg-teal/10 border-teal/30) listing `rolesAutorizados` when `confidencialidad === 'RESTRINGIDO'`, visible only to users with role `JEFE_CONTROL_DOCUMENTARIO` or `ALTA_DIRECCION`.
 
 #### Scenario: OBSOLETO banner appears for obsolete documents
 - **WHEN** `documento.estado === 'OBSOLETO'`
 - **THEN** a red banner with key `documents:detail.banners.obsoleto` is displayed
 
-#### Scenario: QE-vinculados banner shows QE IDs
-- **WHEN** `documento.qeVinculados` contains at least one ID
-- **THEN** an amber banner lists the QE IDs
+#### Scenario: QE-vinculados banner shows QE numbers
+- **WHEN** `documento.qeVinculados` contains at least one linked QE
+- **THEN** an amber banner lists each linked QE's `numero` (e.g. `QE-2026-014`), not its raw `id`
 
 #### Scenario: RESTRINGIDO banner visible to authorized roles
 - **WHEN** `documento.confidencialidad === 'RESTRINGIDO'` and the user has role `JEFE_CONTROL_DOCUMENTARIO` or `ALTA_DIRECCION`
@@ -180,6 +180,44 @@ The `DocumentVersionesTab` component SHALL render inside a permanently visible, 
 #### Scenario: Versiones card position
 - **WHEN** the document detail page renders
 - **THEN** the Versiones card appears after Historial and before Audit trail
+
+### Requirement: QE vinculados section on DocumentDetailPage
+`DocumentDetailPage` SHALL render a collapsible section (same `useState` + `ChevronDown`/`ChevronUp` pattern as the existing "Historial"/"Audit trail" sections), placed between the "Versiones" and "Audit trail" sections, listing every QE in `documento.qeVinculados` (número, tipo, severidad, estado — using the same `StatusBadge` used elsewhere for QE state) plus the shared linking combobox (`documento-qe-vinculacion`) to add more.
+
+#### Scenario: Section lists linked QEs with their status
+- **WHEN** a document has 2 linked QEs
+- **THEN** the section renders 2 rows, each showing `numero`, `tipo`, `severidad`, and a `StatusBadge` for `estado`
+
+#### Scenario: Section shows an empty state with no linked QEs
+- **WHEN** a document has no linked QEs
+- **THEN** the section renders without error, showing an empty-state message instead of a list
+
+#### Scenario: Combobox to add a QE is visible only with edit permission
+- **WHEN** the current user has `CanEdit` permission on the document (per `documento-qe-vinculacion`)
+- **THEN** the combobox to search and link a new QE is rendered
+
+#### Scenario: Combobox to add a QE is hidden without edit permission
+- **WHEN** the current user lacks `CanEdit` permission on the document (e.g. the document is `PUBLICADO`)
+- **THEN** the combobox is not rendered, but the read-only list of linked QEs still is
+
+### Requirement: NC vinculadas section on DocumentDetailPage
+`DocumentDetailPage` SHALL render a collapsible section (same `useState` + `ChevronDown`/`ChevronUp` pattern as the existing "QE vinculados" section), placed immediately after the "QE vinculados" section and before "Audit trail", listing every NC in `documento.ncVinculados` (número, tipo, severidad, estado — using the same `StatusBadge` used elsewhere for NC state) plus a combobox (`documento-nc-vinculacion`) to add more.
+
+#### Scenario: Section lists linked NCs with their status
+- **WHEN** a document has 2 linked NCs
+- **THEN** the section renders 2 rows, each showing `numero`, `tipo`, `severidad`, and a `StatusBadge` for `estado`
+
+#### Scenario: Section shows an empty state with no linked NCs
+- **WHEN** a document has no linked NCs
+- **THEN** the section renders without error, showing an empty-state message instead of a list
+
+#### Scenario: Combobox to add an NC is visible only with edit permission
+- **WHEN** the current user has `CanEdit` permission on the document (per `documento-nc-vinculacion`)
+- **THEN** the combobox to search and link a new NC is rendered
+
+#### Scenario: Combobox to add an NC is hidden without edit permission
+- **WHEN** the current user lacks `CanEdit` permission on the document (e.g. the document is `PUBLICADO`)
+- **THEN** the combobox is not rendered, but the read-only list of linked NCs still is
 
 ### Requirement: DocumentAuditTrail section
 The `DocumentAuditTrail` component SHALL render inside a collapsible panel, open by default, with a toggle trigger (`aria-expanded`, chevron icon), positioned as the last section on the page. Its content SHALL display `auditTrail` entries in descending order by timestamp, with the same visual pattern as `QEAuditTrail` (`QualityEventDetail` → "Historial de Auditoría"): a `divide-y` list where each entry is icon + text on the left, timestamp on the right, with no numbering or bullet markers beyond that layout. Each entry SHALL show:

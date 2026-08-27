@@ -7,9 +7,14 @@ import { buildMinimalDocxBytes } from '../utils/minimalDocx'
 import { getAreasStore } from './areas.handlers'
 import { getSessionUser as getUserFromRequest } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
-import type { Documento, DocStatus, DocType } from '../../types/documents.types'
+import { getQeStore } from './quality-events.handlers'
+import { getNonconformitiesStore } from './nonconformities.handlers'
+import { getDocumentPermissions } from '../../features/documents/permissions'
+import type { Documento, DocStatus, DocType, QeVinculadoResumen, NcVinculadoResumen } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
+import type { QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
+import type { AuditTrailEntry as NCAuditTrailEntry } from '../../features/nonconformities/types/nonconformity.types'
 
 function buildMinimalDistribucionPdfBytes(doc: Documento): Uint8Array {
   const pdf = new jsPDF()
@@ -121,7 +126,7 @@ function getActiveEmpresaId(): string | null {
   return useAuthStore.getState().empresaActivaId
 }
 
-function makeAuditEntry(
+export function makeAuditEntry(
   entidadId: string,
   accion: string,
   fields: Partial<AuditTrailEntry> = {},
@@ -301,6 +306,7 @@ export const documentHandlers = [
       archivoOriginalBloqueado: false,
       archivoDistribucionUrl: null,
       qeVinculados: [],
+      ncVinculados: [],
       historialVersiones: [],
       auditTrail: [
         makeAuditEntry('', 'DOCUMENTO_CREADO'),
@@ -445,6 +451,22 @@ export const documentHandlers = [
     // RN-DOC-001: si se publica, obsoletizar la versión publicada del mismo código (misma empresa —
     // el código ya no es único entre empresas desde que la numeración es correlativa por empresa, RN-EMP-003)
     if (nuevoEstado === 'PUBLICADO') {
+      // RN-DOC-005 (fs-vinculacion-documento-qe): no se obsoletiza la versión previa si tiene un
+      // vínculo a un QE cuyo estado no es CERRADO ni VERIFICADO. Chequeo previo, sin mutar nada,
+      // para bloquear la transición completa si corresponde — cierra el gap donde este bucle
+      // nunca validaba vínculos (antes de este cambio, el único check de RN-DOC-005 vivía en la
+      // rama de OBSOLETO manual, inalcanzable desde la UI).
+      const vinculoActivo = store
+        .filter((d) => d.codigo === doc.codigo && d.empresaId === doc.empresaId && d.id !== doc.id && d.estado === 'PUBLICADO')
+        .flatMap((d) => d.qeVinculados)
+        .find((v) => v.estado !== 'CERRADO' && v.estado !== 'VERIFICADO')
+      if (vinculoActivo) {
+        return err(
+          `No se puede publicar: la versión anterior tiene un Quality Event vinculado activo (${vinculoActivo.numero}) (RN-DOC-005)`,
+          409,
+        )
+      }
+
       for (let i = 0; i < store.length; i++) {
         if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
           store[i] = {
@@ -555,6 +577,13 @@ export const documentHandlers = [
     if (doc.qeVinculados.length > 0) {
       return err(
         `No se puede eliminar: el documento tiene QEs vinculados (${doc.qeVinculados.join(', ')})`,
+        409,
+      )
+    }
+
+    if (doc.ncVinculados.length > 0) {
+      return err(
+        `No se puede eliminar: el documento tiene No Conformidades vinculadas (${doc.ncVinculados.map((n) => n.numero).join(', ')})`,
         409,
       )
     }
@@ -803,6 +832,7 @@ export const documentHandlers = [
       archivoOriginalBloqueado: false,
       archivoDistribucionUrl: null,
       qeVinculados: [],
+      ncVinculados: [],
       historialVersiones: [],
       auditTrail: [
         makeAuditEntry(newId, 'DOCUMENTO_CREADO', {
@@ -1240,6 +1270,222 @@ export const documentHandlers = [
 
     store[idx] = updated
     return ok(updated)
+  }),
+
+  // POST /api/documents/:id/qe-vinculados — vincular un QE (fs-vinculacion-documento-qe)
+  http.post('/api/documents/:id/qe-vinculados', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const currentUser = getUserFromRequest(request)
+    const docRole = getDocRoleForUser(doc, currentUser)
+    const permisos = getDocumentPermissions(doc.estado, docRole)
+    if (!permisos.canEdit) return err('No tenés permiso para vincular Quality Events a este documento', 403)
+
+    const body = (await request.json()) as { qualityEventId: string }
+    const qeStore = getQeStore()
+    const qeIdx = qeStore.findIndex((q) => q.id === body.qualityEventId)
+    if (qeIdx === -1 || qeStore[qeIdx].empresaId !== getActiveEmpresaId()) return err('Quality Event no encontrado', 404)
+
+    const qe = qeStore[qeIdx]
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    if (!doc.qeVinculados.some((v) => v.id === qe.id)) {
+      const qeResumen: QeVinculadoResumen = { id: qe.id, numero: qe.numero, tipo: qe.tipo, severidad: qe.severidad, estado: qe.estado }
+      store[idx] = {
+        ...doc,
+        qeVinculados: [...doc.qeVinculados, qeResumen],
+        actualizadoEn: now,
+        auditTrail: [...doc.auditTrail, makeAuditEntry(doc.id, 'DOCUMENTO_VINCULADO', { valorNuevo: qe.id, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+      }
+
+      const docResumen = { id: doc.id, codigo: doc.codigo, titulo: doc.titulo, estado: doc.estado }
+      const qeAuditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'QE_VINCULADO',
+        valorNuevo: doc.id,
+        realizadoPorId: actorId,
+        realizadoPorNombre: actorNombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      qeStore[qeIdx] = {
+        ...qe,
+        documentosVinculados: [...qe.documentosVinculados, docResumen],
+        actualizadoEn: now,
+        auditTrail: [...qe.auditTrail, qeAuditEntry],
+      }
+    }
+
+    return ok(store[idx])
+  }),
+
+  // DELETE /api/documents/:id/qe-vinculados/:qualityEventId — desvincular (fs-vinculacion-documento-qe)
+  http.delete('/api/documents/:id/qe-vinculados/:qualityEventId', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const currentUser = getUserFromRequest(request)
+    const docRole = getDocRoleForUser(doc, currentUser)
+    const permisos = getDocumentPermissions(doc.estado, docRole)
+    if (!permisos.canEdit) return err('No tenés permiso para desvincular Quality Events de este documento', 403)
+
+    const qualityEventId = params.qualityEventId as string
+    if (!doc.qeVinculados.some((v) => v.id === qualityEventId)) return err('Vínculo no encontrado', 404)
+
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    store[idx] = {
+      ...doc,
+      qeVinculados: doc.qeVinculados.filter((v) => v.id !== qualityEventId),
+      actualizadoEn: now,
+      auditTrail: [...doc.auditTrail, makeAuditEntry(doc.id, 'DOCUMENTO_DESVINCULADO', { valorAnterior: qualityEventId, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+    }
+
+    const qeStore = getQeStore()
+    const qeIdx = qeStore.findIndex((q) => q.id === qualityEventId)
+    if (qeIdx !== -1) {
+      const qe = qeStore[qeIdx]
+      const qeAuditEntry: QEAuditTrailEntry = {
+        id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+        entidadTipo: 'QualityEvent',
+        entidadId: qe.id,
+        accion: 'QE_DESVINCULADO',
+        valorAnterior: doc.id,
+        realizadoPorId: actorId,
+        realizadoPorNombre: actorNombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      qeStore[qeIdx] = {
+        ...qe,
+        documentosVinculados: qe.documentosVinculados.filter((d) => d.id !== doc.id),
+        actualizadoEn: now,
+        auditTrail: [...qe.auditTrail, qeAuditEntry],
+      }
+    }
+
+    return ok(store[idx])
+  }),
+
+  // POST /api/documents/:id/nc-vinculadas — vincular una NC (fs-vinculacion-documento-nc)
+  http.post('/api/documents/:id/nc-vinculadas', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const currentUser = getUserFromRequest(request)
+    const docRole = getDocRoleForUser(doc, currentUser)
+    const permisos = getDocumentPermissions(doc.estado, docRole)
+    if (!permisos.canEdit) return err('No tenés permiso para vincular No Conformidades a este documento', 403)
+
+    const body = (await request.json()) as { noConformidadId: string }
+    const ncStore = getNonconformitiesStore()
+    const ncIdx = ncStore.findIndex((n) => n.id === body.noConformidadId)
+    if (ncIdx === -1 || ncStore[ncIdx].empresaId !== getActiveEmpresaId()) return err('No Conformidad no encontrada', 404)
+
+    const nc = ncStore[ncIdx]
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    if (!doc.ncVinculados.some((v) => v.id === nc.id)) {
+      const ncResumen: NcVinculadoResumen = { id: nc.id, numero: nc.numero, tipo: nc.tipo, severidad: nc.severidad, estado: nc.estado }
+      store[idx] = {
+        ...doc,
+        ncVinculados: [...doc.ncVinculados, ncResumen],
+        actualizadoEn: now,
+        auditTrail: [...doc.auditTrail, makeAuditEntry(doc.id, 'DOCUMENTO_VINCULADO', { valorNuevo: nc.id, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+      }
+
+      const docResumen = { id: doc.id, codigo: doc.codigo, titulo: doc.titulo, estado: doc.estado }
+      const ncAuditEntry: NCAuditTrailEntry = {
+        id: `aud-${nc.id}-${nc.auditTrail.length + 1}`,
+        entidadTipo: 'NoConformidad',
+        entidadId: nc.id,
+        accion: 'NC_VINCULADO',
+        valorNuevo: doc.id,
+        realizadoPorId: actorId,
+        realizadoPorNombre: actorNombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      ncStore[ncIdx] = {
+        ...nc,
+        documentosVinculados: [...nc.documentosVinculados, docResumen],
+        actualizadoEn: now,
+        auditTrail: [...nc.auditTrail, ncAuditEntry],
+      }
+    }
+
+    return ok(store[idx])
+  }),
+
+  // DELETE /api/documents/:id/nc-vinculadas/:noConformidadId — desvincular (fs-vinculacion-documento-nc)
+  http.delete('/api/documents/:id/nc-vinculadas/:noConformidadId', async ({ params, request }) => {
+    await delay(LATENCY)
+
+    const idx = store.findIndex((d) => d.id === params.id)
+    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+
+    const doc = store[idx]
+    const currentUser = getUserFromRequest(request)
+    const docRole = getDocRoleForUser(doc, currentUser)
+    const permisos = getDocumentPermissions(doc.estado, docRole)
+    if (!permisos.canEdit) return err('No tenés permiso para desvincular No Conformidades de este documento', 403)
+
+    const noConformidadId = params.noConformidadId as string
+    if (!doc.ncVinculados.some((v) => v.id === noConformidadId)) return err('Vínculo no encontrado', 404)
+
+    const now = new Date().toISOString()
+    const actorId = currentUser?.id ?? 'user-mock-001'
+    const actorNombre = currentUser ? `${currentUser.nombre} ${currentUser.apellido}` : 'Usuario Mock'
+
+    store[idx] = {
+      ...doc,
+      ncVinculados: doc.ncVinculados.filter((v) => v.id !== noConformidadId),
+      actualizadoEn: now,
+      auditTrail: [...doc.auditTrail, makeAuditEntry(doc.id, 'DOCUMENTO_DESVINCULADO', { valorAnterior: noConformidadId, realizadoPorId: actorId, realizadoPorNombre: actorNombre })],
+    }
+
+    const ncStore = getNonconformitiesStore()
+    const ncIdx = ncStore.findIndex((n) => n.id === noConformidadId)
+    if (ncIdx !== -1) {
+      const nc = ncStore[ncIdx]
+      const ncAuditEntry: NCAuditTrailEntry = {
+        id: `aud-${nc.id}-${nc.auditTrail.length + 1}`,
+        entidadTipo: 'NoConformidad',
+        entidadId: nc.id,
+        accion: 'NC_DESVINCULADO',
+        valorAnterior: doc.id,
+        realizadoPorId: actorId,
+        realizadoPorNombre: actorNombre,
+        timestamp: now,
+        generadoPorIA: false,
+      }
+      ncStore[ncIdx] = {
+        ...nc,
+        documentosVinculados: nc.documentosVinculados.filter((d) => d.id !== doc.id),
+        actualizadoEn: now,
+        auditTrail: [...nc.auditTrail, ncAuditEntry],
+      }
+    }
+
+    return ok(store[idx])
   }),
 ]
 

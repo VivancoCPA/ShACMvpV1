@@ -8,6 +8,8 @@ import type {
   AuditTrailEntry,
   Documento,
   DocFilters,
+  QeVinculadoResumen,
+  NcVinculadoResumen,
 } from './documents.types'
 
 describe('DocStatus', () => {
@@ -82,7 +84,8 @@ describe('Documento', () => {
     expectTypeOf<Documento>().toHaveProperty('titulo').toBeString()
     expectTypeOf<Documento>().toHaveProperty('tipo').toEqualTypeOf<DocType>()
     expectTypeOf<Documento>().toHaveProperty('estado').toEqualTypeOf<DocStatus>()
-    expectTypeOf<Documento>().toHaveProperty('qeVinculados').toEqualTypeOf<string[]>()
+    expectTypeOf<Documento>().toHaveProperty('qeVinculados').toEqualTypeOf<QeVinculadoResumen[]>()
+    expectTypeOf<Documento>().toHaveProperty('ncVinculados').toEqualTypeOf<NcVinculadoResumen[]>()
     expectTypeOf<Documento>().toHaveProperty('historialVersiones').toEqualTypeOf<VersionEntry[]>()
     expectTypeOf<Documento>().toHaveProperty('auditTrail').toEqualTypeOf<AuditTrailEntry[]>()
   })

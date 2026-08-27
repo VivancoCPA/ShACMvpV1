@@ -18,7 +18,7 @@ All handlers SHALL use `http.*` from `msw`. The `rest.*` API SHALL NOT be used. 
 ---
 
 ### Requirement: GET /api/quality-events with filtering and correct pagination
-The handler SHALL apply in-memory filtering on `qualityEventFixtures` based on the query params `estado`, `tipo`, `severidad`, `origen`, `fechaDesde`, `fechaHasta`, and `soloReincidencias`, then slice the result for pagination. Before any other filter is applied, the handler SHALL restrict the candidate set to quality events whose `empresaId` matches the `empresaActivaId` of the requesting session; quality events belonging to any other `empresaId` SHALL never appear in `data.data` or count toward `pagination.totalItems`, regardless of other filters. The `fechaDesde` and `fechaHasta` params filter on `fechaHoraEvento` of each fixture — not on `fechaVerificacionProgramada` or any other date field. The response SHALL be an `ApiResponse` with a `pagination` object containing `totalItems` (count of filtered items before slicing), `totalPages` (ceil(totalItems / pageSize)), `page` (current page), and `pageSize`. Default `pageSize` is 10.
+The handler SHALL apply in-memory filtering on `qualityEventFixtures` based on the query params `estado`, `tipo`, `severidad`, `origen`, `fechaDesde`, `fechaHasta`, `soloReincidencias`, and `search` (case-insensitive substring match on `numero` and `descripcion`), then slice the result for pagination. Before any other filter is applied, the handler SHALL restrict the candidate set to quality events whose `empresaId` matches the `empresaActivaId` of the requesting session; quality events belonging to any other `empresaId` SHALL never appear in `data.data` or count toward `pagination.totalItems`, regardless of other filters. The `fechaDesde` and `fechaHasta` params filter on `fechaHoraEvento` of each fixture — not on `fechaVerificacionProgramada` or any other date field. The response SHALL be an `ApiResponse` with a `pagination` object containing `totalItems` (count of filtered items before slicing), `totalPages` (ceil(totalItems / pageSize)), `page` (current page), and `pageSize`. Default `pageSize` is 10.
 
 #### Scenario: No params returns first 10 fixtures for the active empresa
 - **WHEN** `GET /api/quality-events` is requested with no query params
@@ -75,6 +75,10 @@ The handler SHALL apply in-memory filtering on `qualityEventFixtures` based on t
 #### Scenario: Listing scope matches selection scope for batch export
 - **WHEN** a user authenticated against `empresa-001` opens `QEList` and selects all visible rows for batch export
 - **THEN** none of the selected QE ids belong to `empresa-002`, because the underlying `GET /api/quality-events` response never included them
+
+#### Scenario: Filter by search substring on numero or descripcion
+- **WHEN** `GET /api/quality-events?search=corros` is requested
+- **THEN** only fixtures whose `numero` or `descripcion` includes 'corros' (case-insensitive) and `empresaId` equal to the session's active empresa are included
 
 ---
 
@@ -433,3 +437,32 @@ The four points in `quality-events.handlers.ts` that build a recipient list by f
 #### Scenario: RN-QE-005 escalation to Gerencia only reaches Gerencia of the QE's own empresa
 - **WHEN** a `CRITICA` QE in `empresa-001` reaches `CERRADO`, and a user has `rol: 'ALTA_DIRECCION'` only in `empresa-002`
 - **THEN** that user does not receive the RN-QE-005 escalation notification for the `empresa-001` QE
+
+### Requirement: POST /api/quality-events/:id/documentos-vinculados link handler
+The system SHALL provide an MSW v2 handler for `POST /api/quality-events/:id/documentos-vinculados` (body `{ documentoId }`) that adds a `DocumentoVinculadoResumen` entry (derived from `getDocumentsStore()`, same cross-domain store pattern already used by `dashboard.handlers.ts`) to the target QE's `documentosVinculados`, and symmetrically adds a `QeVinculadoResumen` entry to the target document's `qeVinculados` in `getDocumentsStore()`. Creation SHALL be idempotent. Both the QE id and the `documentoId` SHALL be scoped to the session's active empresa — a mismatch on either side responds 404. All responses SHALL be delayed by 400 ms.
+
+#### Scenario: Linking a document for the first time
+- **WHEN** `POST /api/quality-events/qe-001/documentos-vinculados` is requested with `{ documentoId: 'doc-002' }` and no prior link exists
+- **THEN** the response status is 200/201, `data.documentosVinculados` includes an entry with `id: 'doc-002'`, and `GET /api/documents/doc-002` now includes `qe-001` in `qeVinculados`
+
+#### Scenario: Linking the same pair twice is idempotent
+- **WHEN** `POST /api/quality-events/qe-001/documentos-vinculados` is requested twice with the same `documentoId`
+- **THEN** both responses are successful and `data.documentosVinculados` contains exactly one entry for that document
+
+### Requirement: DELETE /api/quality-events/:id/documentos-vinculados/:documentoId unlink handler
+The system SHALL provide an MSW v2 handler for `DELETE /api/quality-events/:id/documentos-vinculados/:documentoId` that removes the link symmetrically from both the QE's `documentosVinculados` and the document's `qeVinculados`. The handler SHALL respond 404 if the pair is not currently linked. All responses SHALL be delayed by 400 ms.
+
+#### Scenario: Unlinking an existing pair
+- **WHEN** `DELETE /api/quality-events/qe-001/documentos-vinculados/doc-002` is requested and that pair is linked
+- **THEN** the response status is 200, `data.documentosVinculados` no longer includes `doc-002`, and `GET /api/documents/doc-002` no longer includes `qe-001`
+
+#### Scenario: Unlinking a pair that is not linked
+- **WHEN** `DELETE /api/quality-events/:id/documentos-vinculados/:documentoId` is requested and that pair was never linked
+- **THEN** the response status is 404
+
+### Requirement: Handlers registered in index.ts (documentos-vinculados)
+`qualityEventHandlers` SHALL include the `POST`/`DELETE /api/quality-events/:id/documentos-vinculados[...]` handlers, spread into the `handlers` array in `src/mocks/handlers/index.ts` alongside the existing QE handlers.
+
+#### Scenario: documentos-vinculados handlers are active when MSW starts
+- **WHEN** the MSW worker is started in development
+- **THEN** `POST`/`DELETE /api/quality-events/:id/documentos-vinculados[...]` are intercepted without 'unhandled request' warnings

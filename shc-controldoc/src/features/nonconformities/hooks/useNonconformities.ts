@@ -7,6 +7,8 @@ import {
   createNonconformity,
   updateNonconformity,
   vincularQENonconformidad,
+  vincularDocumento,
+  desvincularDocumento,
   anularNonconformity,
   deleteNonconformity,
   restoreNonconformity,
@@ -26,10 +28,11 @@ export const QUERY_KEYS = {
   },
 } as const
 
-export function useNonconformities(filters?: NCFilters) {
+export function useNonconformities(filters?: NCFilters, enabled = true) {
   return useQuery({
     queryKey: QUERY_KEYS.nonconformities.list(filters ?? {}),
     queryFn: () => getNonconformities(filters),
+    enabled,
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -93,6 +96,38 @@ export function useVincularNC() {
     },
     onError: () => {
       toast.error(t('toasts.vincularQEError'))
+    },
+  })
+}
+
+// Sin toast de éxito — vincular es una acción liviana, ya visible de inmediato en la lista de la
+// sección (mismo criterio que useVincularDocumento/useDesvincularDocumento del lado QE).
+export function useVincularDocumento(ncId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('nonconformities')
+
+  return useMutation({
+    mutationFn: (documentoId: string) => vincularDocumento(ncId, documentoId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.detail(ncId) })
+    },
+    onError: () => {
+      toast.error(t('toasts.vincularDocumentoError'))
+    },
+  })
+}
+
+export function useDesvincularDocumento(ncId: string) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('nonconformities')
+
+  return useMutation({
+    mutationFn: (documentoId: string) => desvincularDocumento(ncId, documentoId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.detail(ncId) })
+    },
+    onError: () => {
+      toast.error(t('toasts.desvincularDocumentoError'))
     },
   })
 }

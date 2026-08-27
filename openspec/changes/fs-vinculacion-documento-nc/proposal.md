@@ -1,0 +1,45 @@
+## Why
+
+`NoConformidad.documentosVinculados` (frontend: `string[]`) es un campo fantasma: existe desde el PRD original con default `[]`, poblado únicamente por el mock al crear una NC, pero ningún handler ni componente lo edita nunca — `NCForm.tsx` no tiene ningún control que lo popule. Verificado contra el código real de `ShcMvpEndPoint` y `shc-controldoc`: el backend real de NC (`be-no-conformidades`) ni siquiera portó el campo (`Domain/Entities/NoConformidad.cs` no tiene ninguna propiedad `DocumentosVinculados`), y el lado `Documento` no tiene absolutamente nada — a diferencia de `qeVinculados` (que ya era un campo fantasma existente antes de `fs-vinculacion-documento-qe`), no existe ningún `ncVinculados` en `Documento.cs` ni en `documents.types.ts`, ni siquiera como campo muerto.
+
+Este es el tercer y último par de "campo fantasma" del patrón Documento↔QE / Documento↔NC identificado durante `fs-vinculacion-documento-qe` (ya archivado). A diferencia de ese cambio, no hay ninguna regla de negocio (`RN-DOC-*`/`RN-NC-*`) ni campo de Dashboard que dependa de este vínculo — confirmado contra `DashboardSummaryBuilder.cs`/`DashboardSummaryDtos.cs` (sin ningún equivalente de `evidenciasHallazgos` para NC) — así que este cambio es más acotado: modela el vínculo (tabla puente + 4 endpoints) y construye la UI que hoy no existe en ningún lado, sin lógica de negocio adicional que dependa de él.
+
+## What Changes
+
+- Nueva tabla puente `DocumentoNoConformidad` (`DocumentoId`, `NoConformidadId`, `EmpresaId`, `CreadoPorId`, `CreadoEn`), clave primaria compuesta — mismo patrón exacto que `DocumentoQualityEvent` (`fs-vinculacion-documento-qe`), sin reemplazar ninguna columna existente (no hay ninguna que reemplazar del lado Documento).
+- 4 endpoints nuevos, simétricos desde ambos dominios sobre la misma tabla: `POST`/`DELETE /api/documents/:id/nc-vinculadas[/:noConformidadId]` y `POST`/`DELETE /api/nonconformities/:id/documentos-vinculados[/:documentoId]`. Creación idempotente (`200` si ya existía), `404` uniforme cross-empresa en ambos ids.
+- `GET /api/documents/:id` y `GET /api/nonconformities/:id` devuelven la lista de vínculos poblada con un resumen suficiente para renderizar sin una segunda llamada (`{ id, numero, tipo, severidad, estado }` por NC vinculada; `{ id, codigo, titulo, estado }` por documento vinculado) — no solo el id crudo.
+- **BREAKING** (interno, sin backend real desplegado todavía): `NoConformidad.documentosVinculados` pasa de `string[]` (ids) a `DocumentoVinculadoResumen[]` (reutilizando el DTO frontend ya creado para QE). `Documento` (backend .NET) gana el campo `NcVinculados` (`[NotMapped]`, poblado manualmente igual que `QeVinculados`), que hoy no existe en absoluto; frontend `Documento` gana `ncVinculados: NcVinculadoResumen[]`.
+- `EliminarDocumentoHandler`: el guard de integridad existente (bloquea `DELETE` si el documento tiene cualquier vínculo — hoy solo evalúa `DocumentoQualityEvent`) se extiende para considerar también un vínculo activo en la nueva tabla `DocumentoNoConformidad`, mismo criterio "cualquier vínculo bloquea, sin distinguir estado" ya usado para QE (ver Decisions en `design.md` — hallazgo no anticipado por la instrucción original, que solo hablaba de reglas *nuevas*, no de extender una ya existente).
+- UI nueva en ambos detalles (no existe hoy en ninguno): combobox de búsqueda con debounce para vincular, sección colapsable de solo-lectura listando los vínculos existentes. Sin cambios de Dashboard (confirmado: no hay ningún sentinel ni campo pendiente que dependa de este vínculo, a diferencia de `evidenciasHallazgos` en el cambio anterior).
+- Dado que `shc-controldoc` sigue corriendo 100% contra MSW en desarrollo, este cambio también agrega los 4 handlers MSW nuevos (mismo contrato que el backend real) y actualiza `nonconformities.fixtures.ts` a la forma de objeto enriquecido para `documentosVinculados`, más los vínculos precargados que corresponda en `documents.fixtures.ts` (`ncVinculados`, campo nuevo).
+
+## Capabilities
+
+### New Capabilities
+- `documento-nc-vinculacion`: mecanismo de vinculación Documento↔NoConformidad — tabla puente, los 4 endpoints simétricos (creación idempotente, eliminación, 404 cross-empresa), el resumen poblado en ambos `GET :id`, y el componente combobox (reutilizando o extendiendo `DocumentoQECombobox`, decisión de implementación libre — ver `design.md`).
+
+### Modified Capabilities
+- `be-documentos-api`: `GET /api/documents/:id` incluye `ncVinculados` poblado desde la tabla puente nueva (campo que hoy no existe). El guard de integridad de `DELETE /api/documents/:id` se extiende para considerar también vínculos a NC.
+- `document-types`: `Documento` gana `ncVinculados: NcVinculadoResumen[]` (campo nuevo).
+- `document-api-client`: nuevas funciones para `POST`/`DELETE .../nc-vinculadas`.
+- `document-detail`: nueva sección colapsable de NCs vinculadas + combobox para agregar.
+- `document-msw-handlers`: nuevos handlers `POST`/`DELETE .../nc-vinculadas`, mismo contrato que el backend real.
+- `document-msw-fixtures`: `ncVinculados` se agrega como campo nuevo (objetos enriquecidos, igual criterio que `qeVinculados`).
+- `be-no-conformidades-api`: `GET /api/nonconformities/:id` incluye `documentosVinculados` poblado desde la tabla puente nueva (reemplaza el campo `string[]` sin consumidor real).
+- `nonconformity-types`: `NoConformidad.documentosVinculados` cambia de `string[]` a `DocumentoVinculadoResumen[]` (**BREAKING**, interno).
+- `nc-api-client`: nuevas funciones para `POST`/`DELETE .../documentos-vinculados`.
+- `nc-query-hooks`: `useNonconformities` gana un segundo parámetro `enabled` (gap no anticipado — hoy no lo soporta, a diferencia de `useDocuments`/`useQualityEvents`); nuevos hooks `useVincularDocumento`/`useDesvincularDocumento`.
+- `nc-detail-page`: nueva sección colapsable de documentos vinculados + combobox para agregar.
+- `nc-msw-handlers`: nuevos handlers `POST`/`DELETE .../documentos-vinculados`, mismo contrato que el backend real.
+- `nc-msw-fixtures`: `documentosVinculados` migra de `string[]` a objetos enriquecidos.
+- `quality-event-detail-page`: sin cambios de requirement (fuera de alcance — este par no toca QE).
+
+> Corrección tras verificar `openspec/specs/`: a diferencia de lo asumido inicialmente, el módulo de No Conformidades **sí** tiene specs formales granulares (`be-no-conformidades-api`, `nonconformity-types`, `nc-api-client`, `nc-detail-page`, `nc-msw-handlers`, `nc-msw-fixtures`, `nc-query-hooks`, `nonconformity-permissions`, etc.) — ya pasaron por el ciclo `/opsx:propose`→`/opsx:archive` en cambios anteriores del módulo M2. La lista de Modified Capabilities de arriba las referencia correctamente por su nombre real (`nc-*`/`nonconformity-*`, no `nonconformity-api-client`/`nonconformity-detail-page` como se había escrito antes de verificar).
+
+## Impact
+
+- Backend (`ShcMvpEndPoint`): nueva entidad `DocumentoNoConformidad` + migración EF Core (tabla puente, sin `DropColumn` — no hay columna previa que eliminar), 4 endpoints nuevos (`Features/VinculacionDocumentoNC/VincularDesdeDocumento/`, `VincularDesdeNC/`, mismo layout que `Features/VinculacionDocumentoQE/`), servicio compartido `DocumentoNoConformidadLinkService` (mismo patrón que `DocumentoQualityEventLinkService`), cambios en `EliminarDocumentoHandler` (extiende el guard existente), `ObtenerDocumentoHandler`/`ObtenerNoConformidadHandler` (resumen poblado), `Domain/Entities/Documento.cs`/`NoConformidad.cs` (campos nuevos), `Extensions/EndpointExtensions.cs` (registro de 4 endpoints), `ShacDbContext` (nuevo `DbSet` + configuración de clave compuesta).
+- Frontend (`shc-controldoc`): extensión o componente hermano del combobox compartido (decisión de implementación, ver `design.md`), `documents.types.ts`, `nonconformity.types.ts`, `DocumentDetailPage.tsx`, `NonconformityDetailPage.tsx`, `documents.api.ts`, `nonconformities.api.ts`, `useNonconformities.ts` (gana parámetro `enabled`, gap no anticipado — hoy no lo soporta a diferencia de `useDocuments`/`useQualityEvents`, necesario para el combobox), nuevos hooks TanStack Query, `documents.handlers.ts`, `nonconformities.handlers.ts`, `documents.fixtures.ts`, `nonconformities.fixtures.ts`, claves i18n nuevas en `es-PE.json`/`en-US.json` (namespaces `documents`/`nonconformities`).
+- Fuera de alcance: cualquier campo o sentinel de Dashboard (confirmado que no hay ninguno pendiente para este par); habilitar la vinculación desde `NCForm.tsx` en creación (decisión a confirmar, ver `design.md` — por defecto se replica el precedente de QE: solo post-creación).
+- Decisiones pendientes de confirmación explícita antes de `/opsx:apply` (documentadas en `design.md`): (1) quién puede vincular/desvincular desde cada lado — del lado NC no hay ningún gate de rol backend existente que replicar (mismo vacío que tenía QE antes del cambio anterior); (2) si la vinculación se habilita también desde el formulario de creación de NC o solo post-creación (hoy `NCForm.tsx` manda `documentosVinculados: []` fijo, sin control de UI).

@@ -117,13 +117,15 @@ The system SHALL define a `QEAuditTrailEntry` interface in `src/features/quality
 ---
 
 ### Requirement: QualityEvent interface
-The system SHALL define a `QualityEvent` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following required fields: `id` (string), `numero` (string, format `QE-YYYY-NNN`), `origen` (QEOrigin), `tipo` (QEType), `severidad` (QESeverity), `estado` (QEStatus), `ciclo` (number), `descripcion` (string), `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO 8601 string), `fechaHoraReporte` (ISO 8601 string), `reportadoPorId` (string), `documentosVinculados` (string[]), `requiereEvaluacionRiesgos` (boolean), `accionesCorrectivas` (AccionCorrectivaQE[]), `auditTrail` (QEAuditTrailEntry[]), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `mineralInvolucrado` (string), `ncId` (string), `incidenteId` (string), `hallazgoCodigo` (string), `normativaVinculada` (`NormativaVinculada`, from `quality-event-normativa-catalog`), `reporteExternoRef` (ReporteExternoRef), `descripcionAmpliada` (string), `metodoAnalisis` (AnalisisCausaRaizMetodo), `cincoPorques` (CincoPorques[]), `ishikawa` (Ishikawa[]), `causaRaizDefinitiva` (string), `causaRaizAprobadaPorId` (string), `causaRaizFirmadaEn` (string), `evaluacionRiesgosRef` (string), `resultadoCierre` (string), `cerradoPorId` (string), `cierreFirmaSupervisorId` (string), `cierreFirmaSupervisorRol` (`'SUPERVISOR' | 'ALTA_DIRECCION'`), `fechaCierre` (ISO 8601 string), `plazoVerificacionDias` (number), `fechaVerificacionProgramada` (string), `fechaVerificacionRealizada` (string), `verificadoPorId` (string), `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `evidenciaVerificacion` (string), `auditorAsignadoId` (string). The interface SHALL NOT include a `hallazgoAuditoriaRef` field — it is replaced by `hallazgoCodigo` and `normativaVinculada`. The interface SHALL NOT include an `areaAfectada` field — it is replaced by `areaId`.
+The system SHALL define a `QualityEvent` interface in `src/features/quality-events/types/qualityEvent.types.ts` with the following required fields: `id` (string), `numero` (string, format `QE-YYYY-NNN`), `origen` (QEOrigin), `tipo` (QEType), `severidad` (QESeverity), `estado` (QEStatus), `ciclo` (number), `descripcion` (string), `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `turno` (`'DIA' | 'TARDE' | 'NOCHE'`), `fechaHoraEvento` (ISO 8601 string), `fechaHoraReporte` (ISO 8601 string), `reportadoPorId` (string), `documentosVinculados` (`DocumentoVinculadoResumen[]`, from `documento-qe-vinculacion`), `requiereEvaluacionRiesgos` (boolean), `accionesCorrectivas` (AccionCorrectivaQE[]), `auditTrail` (QEAuditTrailEntry[]), `creadoEn` (ISO 8601 string), `actualizadoEn` (ISO 8601 string). The interface SHALL include the following optional fields: `mineralInvolucrado` (string), `ncId` (string), `incidenteId` (string), `hallazgoCodigo` (string), `normativaVinculada` (`NormativaVinculada`, from `quality-event-normativa-catalog`), `reporteExternoRef` (ReporteExternoRef), `descripcionAmpliada` (string), `metodoAnalisis` (AnalisisCausaRaizMetodo), `cincoPorques` (CincoPorques[]), `ishikawa` (Ishikawa[]), `causaRaizDefinitiva` (string), `causaRaizAprobadaPorId` (string), `causaRaizFirmadaEn` (string), `evaluacionRiesgosRef` (string), `resultadoCierre` (string), `cerradoPorId` (string), `cierreFirmaSupervisorId` (string), `cierreFirmaSupervisorRol` (`'SUPERVISOR' | 'ALTA_DIRECCION'`), `fechaCierre` (ISO 8601 string), `plazoVerificacionDias` (number), `fechaVerificacionProgramada` (string), `fechaVerificacionRealizada` (string), `verificadoPorId` (string), `resultadoVerificacion` (`'EFECTIVO' | 'NO_EFECTIVO'`), `evidenciaVerificacion` (string), `auditorAsignadoId` (string). The interface SHALL NOT include a `hallazgoAuditoriaRef` field — it is replaced by `hallazgoCodigo` and `normativaVinculada`. The interface SHALL NOT include an `areaAfectada` field — it is replaced by `areaId`.
 
 `hallazgoCodigo` and `normativaVinculada` are only meaningful for `origen === 'O3_HALLAZGO_AUDITORIA'`; they SHALL be absent for QEs of any other origin. Obligatoriedad condicional para origen O3 (RN-QE-010) SHALL be enforced at the Zod schema level (`quality-event-schemas`), not by the TypeScript type itself — both fields remain optional at the interface level so existing non-O3 QEs (and QEs under construction before origin is selected) type-check without them.
 
 `auditorAsignadoId` identifies the `AUDITOR_INTERNO` user responsible for the REG-EFEC-001 effectiveness verification once the QE reaches `EN_VERIFICACION`. It SHALL be absent for QEs that have not yet been assigned an auditor (including all QEs before `CERRADO`), and is set exclusively via the `PATCH /api/quality-events/:id/forzar-vencimiento-verificacion` flow described in `quality-event-verificacion`.
 
 `empresaId` SHALL NOT appear in any update/edit Zod schema or form payload type for `QualityEvent` — it is set only once, at creation time, by the MSW create handler. No production UI in this phase exposes `empresaId` for editing (multi-company UI is Fase 2-4).
+
+`documentosVinculados` SHALL be typed as `DocumentoVinculadoResumen[]` (`{ id: string; codigo: string; titulo: string; estado: DocStatus }`), not `string[]` — this is a breaking change from the previous `string[]` (raw id list) shape, which existed only as an unpopulated fixture field with no real producer or consumer prior to `documento-qe-vinculacion`.
 
 #### Scenario: QualityEvent rejects missing required fields
 - **WHEN** a developer constructs a `QualityEvent` without `numero` or `areaId`
@@ -180,6 +182,21 @@ The system SHALL define a `QualityEvent` interface in `src/features/quality-even
 #### Scenario: empresaId is typed as a required string
 - **WHEN** a developer reads `qe.empresaId` on a QualityEvent
 - **THEN** TypeScript infers the type as `string`, not `string | undefined`
+
+#### Scenario: documentosVinculados is typed as DocumentoVinculadoResumen array, not string array
+- **WHEN** a developer reads `qe.documentosVinculados[0]`
+- **THEN** TypeScript infers a `DocumentoVinculadoResumen` object with `id`, `codigo`, `titulo`, `estado` — not a bare `string`
+
+#### Scenario: documentosVinculados as string[] is a compile error
+- **WHEN** a developer constructs a `QualityEvent` with `documentosVinculados: ['doc-001']`
+- **THEN** TypeScript emits a compile error, since `'doc-001'` is not assignable to `DocumentoVinculadoResumen`
+
+### Requirement: DocumentoVinculadoResumen interface
+The system SHALL define a `DocumentoVinculadoResumen` interface in `src/features/quality-events/types/qualityEvent.types.ts` with required fields: `id` (string), `codigo` (string), `titulo` (string), `estado` (`DocStatus`). It SHALL be used as the element type of `QualityEvent.documentosVinculados`.
+
+#### Scenario: DocumentoVinculadoResumen requires all four fields
+- **WHEN** a developer constructs a `DocumentoVinculadoResumen` without `estado`
+- **THEN** TypeScript emits a compile error for the missing required field
 
 ---
 
