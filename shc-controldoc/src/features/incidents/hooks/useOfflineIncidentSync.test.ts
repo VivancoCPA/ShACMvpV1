@@ -41,6 +41,13 @@ vi.mock('./useIncidents', () => ({
   useCreateIncidentOfflineSync: () => ({ mutateAsync: mutateAsyncMock }),
 }))
 
+// subirEvidencia() ahora se llama directo desde useOfflineIncidentSync (uploadEvidenciasFromBlobs)
+// antes de createIncidentOfflineSync — resuelve con una URL real "servida" por defecto;
+// clearAllMocks() (afterEach) limpia calls/results pero no esta implementación default.
+vi.mock('../api/incidents.api', () => ({
+  subirEvidencia: vi.fn().mockResolvedValue({ url: '/uploads/incidentes/mock/foto.jpg', nombre: 'foto.jpg', tamanioKb: 10 }),
+}))
+
 function buildEnqueueInput(overrides: Partial<EnqueueInput> = {}): EnqueueInput {
   return {
     payload: {

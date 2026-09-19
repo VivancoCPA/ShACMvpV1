@@ -1,0 +1,31 @@
+## Why
+
+`cutover-auth` y `cutover-catalogos` (Areas/Empresas/Locales/Zonas) ya verificaron y cerraron los dos primeros módulos del roadmap contra el backend .NET real. Incidentes SyST (M3) es el tercero. A diferencia de los dos anteriores, este no es solo "apuntar y verificar": el flujo mobile/offline de Incidentes (M7) nunca terminó de modelarse en el backend — el propio código lo documenta (`ActualizarInvestigacionCommand.cs`: "testigos, personalInvolucrado, atencionMedica\*, evidencias, geoUbicacion, ... quedan para una extensión futura") — y, verificado en esta investigación, el frontend tampoco transmite hoy los bytes reales de las fotos de evidencia a ningún backend, ni online ni offline. Antes de dar Incidentes por cutover-eado hay que cerrar esa brecha de modelo de datos y de transporte de archivos, no solo cambiar un `.env`.
+
+## What Changes
+
+- Extender `Incidente` (backend) y `CrearIncidenteCommand`/`ActualizarInvestigacionCommand` con los campos del reporte mobile que hoy existen en el frontend (`incident.types.ts`) pero no en el backend: `testigos`, `personalInvolucrado`, `equiposInvolucrados`, `atencionMedicaRequerida`, `atencionMedicaDescripcion`, `notificacionAmbientalRequerida` (van en la investigación, `PATCH /api/incidents/:id`), y `geoUbicacion`, `evidencias` (van en la creación, `POST /api/incidents`) — continuación directa de la capability `be-incidentes-api`, no una regla de negocio nueva (mismo criterio ya usado con `ListarZonasHandler` en `cutover-catalogos`).
+- Agregar un endpoint real de upload de fotos de evidencia (mismo patrón dev-only que `PlanoStorageService`/`DocumentoStorageService`: disco local bajo `wwwroot`, servido estático, explícitamente no-producción) y cambiar `IncidentQuickReportForm.tsx`/`useOfflineIncidentSync.ts` para subir el blob real y usar la URL servida por el backend, en vez de embeber una `blob:` URL local (hallazgo nuevo de esta investigación: hoy ningún flujo, online u offline, envía bytes reales de foto al servidor — MSW simplemente guarda la `blob:` URL sin validarla).
+- Agregar `EmpresaId` opcional a `CrearIncidenteCommand` para preservar la excepción ya documentada de sincronización offline (`m7-f2-offline-sync design.md D8`: el reporte se registra bajo la empresa activa al momento de encolarlo, no al sincronizar) — el backend SHALL validar membresía del actor en esa empresa antes de confiarla, 403 si no es miembro; sin el campo, comportamiento sin cambios (`empresaId` de la sesión). Decisión de producto ya confirmada por el usuario.
+- Agregar un endpoint delgado `PATCH /api/incidents/{incidenteId}/acciones/{acId}/cerrar` que delega a `ActualizarAccionCorrectivaHandler` (mismo command, `Estado: CERRADA`) — la ruta que el frontend ya llama (`cerrarAC()`) no existe hoy; esta opción mantiene el contrato de cliente intacto sin tocar `incidents.api.ts` ni `cerrarAC.schema.ts`.
+- Apuntar `shc-controldoc` en desarrollo (`.env.development`, `VITE_ENABLE_MSW=false`) al backend .NET real y verificar en navegador: CRUD de incidente completo, cambio de estado, ACs (crear/actualizar/cerrar), vinculación con Quality Event, y el ciclo offline completo (encolar sin conexión → reconectar → sync automático vía Background Sync API) con fotos y geolocalización reales — en un entorno donde el Service Worker realmente controle la página, no solo con el modo "offline" simulado de DevTools.
+- Como en los cutovers anteriores: inspeccionar los tests de Incidentes antes de asumir que dependen de MSW; documentar en `design.md` si "hay que migrar todo" no aplica.
+- Al cerrar: revertir `.env.development` a `VITE_ENABLE_MSW=true` (los módulos restantes siguen dependiendo de MSW hasta su propio cutover). No se toca `.env.production` — sigue pendiente el Open Question de hosting heredado de `cutover-auth`.
+
+## Capabilities
+
+### New Capabilities
+
+- `frontend-incidentes-cutover-verification`: escenarios de verificación manual en navegador para Incidentes SyST contra el backend .NET real + Postgres real, sin MSW — CRUD completo, cambio de estado, ACs, vinculación con QE, y el ciclo offline end-to-end con Service Worker real. Equivalente de Incidentes a `frontend-auth-cutover-verification`/`frontend-catalogos-cutover-verification`.
+
+### Modified Capabilities
+
+- `be-incidentes-api`: agrega requirements nuevos — campos de investigación mobile faltantes en `ActualizarInvestigacionCommand` (`testigos`, `personalInvolucrado`, `equiposInvolucrados`, `atencionMedicaRequerida`, `atencionMedicaDescripcion`, `notificacionAmbientalRequerida`), campos de creación faltantes en `CrearIncidenteCommand` (`geoUbicacion`, `evidencias`), endpoint de upload real de fotos de evidencia, `EmpresaId` opcional validado en creación (excepción offline), y el endpoint delgado de cierre de AC.
+
+## Impact
+
+- **Afectado (backend)**: `ShcMvpEndPoint.Domain.Entities.Incidente`, `Features/Incidentes/CrearIncidente/*`, `Features/Incidentes/ActualizarInvestigacion/*`, `Features/Incidentes/ActualizarAccionCorrectiva/*` (nuevo endpoint `/cerrar`), nueva migración EF Core, nuevo `IncidenteEvidenciaStorageService` (o nombre equivalente) bajo `Features/Incidentes/Shared/`, `openspec/specs/be-incidentes-api/spec.md`.
+- **Afectado (frontend)**: `shc-controldoc/.env.development` (ventana de verificación), `IncidentQuickReportForm.tsx`, `useOfflineIncidentSync.ts` (subir foto real en vez de `blob:` URL local), tests de Incidentes que resulten depender de MSW tras inspección.
+- **No afectado**: `incidents.api.ts` (`createIncident`, `updateIncident`, `cerrarAC`, etc. mantienen su firma — solo cambia qué URL de evidencia terminan enviando), `cerrarAC.schema.ts`, handlers MSW de Incidentes (se mantienen intactos para módulos aún no cutover-eados), el resto de `features/incidents/**`.
+- **Pendiente explícito, no se resuelve en este change**: `informeMedicoAdjunto` (campo de `Incidente` sin flujo de escritura identificado en ningún schema) — se documenta como hallazgo informativo, no se modela hasta confirmar un consumidor real; el Open Question de hosting/dominio de producción heredado de `cutover-auth`.
+- **Fuera de alcance**: los 6 módulos de dominio restantes del roadmap (NoConformidades, QualityEvents, Documentos, Notifications, Dashboard, Users) — cada uno su propio change `cutover-<modulo>`.

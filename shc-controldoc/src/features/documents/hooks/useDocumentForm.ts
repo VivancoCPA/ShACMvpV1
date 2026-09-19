@@ -31,7 +31,6 @@ const CREATE_DEFAULTS: DocumentFormInput = {
   fechaVigencia: '',
   fechaRevisionProxima: '',
   descripcion: '',
-  archivo: null,
   archivoOriginalFile: null,
   archivoOriginalUrl: null,
   archivoDistribucionUrl: null,
@@ -52,7 +51,6 @@ function docToFormValues(doc: Documento): DocumentFormInput {
       ? doc.fechaRevisionProxima.slice(0, 10)
       : '',
     descripcion: doc.descripcion ?? '',
-    archivo: null,
     archivoOriginalFile: null,
     archivoOriginalUrl: doc.archivoOriginalUrl ?? null,
     archivoDistribucionUrl: doc.archivoDistribucionUrl ?? null,
@@ -114,7 +112,6 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         ...data,
         revisorId: data.revisorId || undefined,
         aprobadorId: data.aprobadorId || undefined,
-        archivo: undefined,
         archivoOriginalFile: undefined,
         archivoOriginalUrl: undefined,
         archivoDistribucionUrl: undefined,
@@ -123,14 +120,6 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
       if (mode === 'create') {
         const response = await api.post<Documento>('/api/documents', payload)
         const created = response.data
-
-        if (data.archivo) {
-          const formData = new FormData()
-          formData.append('archivo', data.archivo)
-          await api.post(`/api/documents/${created.id}/upload`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
-        }
 
         if (data.archivoOriginalFile) {
           const formData = new FormData()
@@ -145,14 +134,6 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         navigate('/documents')
       } else {
         await api.put<Documento>(`/api/documents/${documentId}`, payload)
-
-        if (data.archivo) {
-          const formData = new FormData()
-          formData.append('archivo', data.archivo)
-          await api.post(`/api/documents/${documentId}/upload`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
-        }
 
         if (data.archivoOriginalFile) {
           const formData = new FormData()

@@ -1,30 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
-import { http, HttpResponse } from 'msw'
 import React from 'react'
 import { documentHandlers } from '../../../../mocks/handlers/documents.handlers'
 import { documentFixtures } from '../../../../mocks/fixtures/documents.fixtures'
 import { useAuthStore } from '../../../../stores/authStore'
-import {
-  useDocuments,
-  useDocument,
-  useCreateDocument,
-  useChangeDocumentStatus,
-} from '../useDocuments'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}))
+import { useDocuments, useDocument } from '../useDocuments'
 
 const server = setupServer(...documentHandlers)
 
@@ -83,63 +66,6 @@ describe('useDocument', () => {
 
     expect(result.current.status).toBe('pending')
     expect(result.current.fetchStatus).toBe('idle')
-  })
-})
-
-// Test 5.4 — useCreateDocument invalidates cache on success
-describe('useCreateDocument', () => {
-  it('invalidates documents.all cache after successful mutation', async () => {
-    const qc = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    })
-    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
-
-    const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: qc }, children)
-
-    const { result } = renderHook(() => useCreateDocument(), { wrapper })
-
-    await act(async () => {
-      result.current.mutate({
-        titulo: 'Procedimiento de Prueba para Test',
-        tipo: 'PRC',
-        areaId: 'Calidad',
-        confidencialidad: 'INTERNO',
-        revisorId: '11111111-1111-1111-1111-111111111111',
-        aprobadorId: '22222222-2222-2222-2222-222222222222',
-      })
-    })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: ['documents'] }),
-    )
-  })
-})
-
-// Test 5.5 — useChangeDocumentStatus shows error toast on 422
-describe('useChangeDocumentStatus', () => {
-  it('calls toast.error with statusChangeError key when transition is invalid', async () => {
-    server.use(
-      http.post('/api/documents/:id/status', () =>
-        HttpResponse.json({ success: false, data: null, message: 'Invalid transition' }, { status: 422 }),
-      ),
-    )
-
-    const { result } = renderHook(() => useChangeDocumentStatus(), { wrapper: makeWrapper() })
-
-    await act(async () => {
-      result.current.mutate({
-        id: 'doc-001',
-        payload: { nuevoEstado: 'PUBLICADO', firma: '1234' },
-      })
-    })
-
-    await waitFor(() => expect(result.current.isError).toBe(true))
-
-    const { toast } = await import('sonner')
-    expect(toast.error).toHaveBeenCalledWith('toasts.statusChangeError')
   })
 })
 

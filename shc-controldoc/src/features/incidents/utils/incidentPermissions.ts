@@ -36,7 +36,12 @@ export function getIncidentPermissions(
   }
 
   const { estado, deletedAt, qeId } = incidente
-  const isDeleted = deletedAt !== undefined
+  // != null (no !== undefined): el backend real serializa deletedAt como `null` explícito cuando
+  // no está eliminado (nunca omite la clave, a diferencia de los fixtures MSW) — `null !==
+  // undefined` es `true` en JS, así que la comparación estricta marcaba TODO incidente como
+  // eliminado contra el backend real, bloqueando canEdit/canDelete/canRestore por completo.
+  // Hallazgo real de cutover-incidentes, ver design.md.
+  const isDeleted = deletedAt != null
   const isActive = ACTIVE_STATES.includes(estado)
   const canCrearQE = !isDeleted && isActive && !qeId
 

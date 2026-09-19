@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Camera, MapPin, X, CheckCircle2, CloudOff, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
 import { enqueue, OfflineQueueError, type QueuedIncidentPayload } from '../../../lib/offlineQueue'
-import { createIncident } from '../api/incidents.api'
+import { createIncident, subirEvidencia } from '../api/incidents.api'
 import { INCIDENT_QUERY_KEYS } from '../hooks/useIncidents'
 import { useAreas } from '../../areas/hooks/useAreas'
 import { useGeolocationCapture } from '../hooks/useGeolocationCapture'
@@ -109,17 +109,6 @@ export function IncidentQuickReportForm() {
   }
 
   const onSubmit = async (data: MobileIncidentReportInput) => {
-    const evidencias: IncidentEvidencia[] = photos.map((p, i) => ({
-      id: `ev-mobile-${Date.now()}-${i}`,
-      url: p.previewUrl,
-      nombre: p.file.name,
-      tipo: 'imagen',
-      tamanioKb: Math.round(p.file.size / 1024),
-      creadoEn: new Date().toISOString(),
-      creadoPor: user?.id ?? 'user-mock',
-      ...(p.caption ? { descripcion: p.caption } : {}),
-    }))
-
     const queuedPayload: QueuedIncidentPayload = {
       tipo: data.tipo,
       descripcion: data.descripcion,
@@ -131,17 +120,13 @@ export function IncidentQuickReportForm() {
       ...(data.severidad ? { severidad: data.severidad } : {}),
     }
 
-    const payload: CreateIncidentInput = {
-      ...queuedPayload,
-      ...(evidencias.length > 0 ? { evidencias } : {}),
-      ...(geoUbicacion ? { geoUbicacion } : {}),
-    }
-
     // Sin conexión (o sin empresa activa resuelta) no se intenta el request:
     // se encola directo. Ver design.md D6 — este submit NO reutiliza
     // `useCreateIncident` a propósito, para no heredar su `onError` de nivel
     // de hook (compartido con `IncidentNewPage` de escritorio, que siempre
-    // muestra `toast.error`).
+    // muestra `toast.error`). Las fotos se encolan como Blob crudo — el upload
+    // real ocurre recién durante el sync (`useOfflineIncidentSync`, no hay red
+    // acá para subirlas ahora), nunca como blob: URL (design.md D3).
     const queueLocally = async () => {
       if (!empresaActivaId) {
         toast.error(t('toasts.createError'))
@@ -168,6 +153,31 @@ export function IncidentQuickReportForm() {
     }
 
     try {
+      // Cada foto se sube primero a POST /api/incidents/evidencias — el Incidente se crea con
+      // evidencias[].url apuntando a la URL real devuelta por el backend, nunca a la blob: URL
+      // local de la preview (design.md D2/D3). Un fallo acá (de red) cae al mismo `catch` de
+      // abajo y encola el reporte completo, igual que un fallo de `createIncident`.
+      const evidencias: IncidentEvidencia[] = []
+      for (const p of photos) {
+        const uploaded = await subirEvidencia(p.file)
+        evidencias.push({
+          id: `ev-mobile-${Date.now()}-${evidencias.length}`,
+          url: uploaded.url,
+          nombre: uploaded.nombre,
+          tipo: 'imagen',
+          tamanioKb: uploaded.tamanioKb,
+          creadoEn: new Date().toISOString(),
+          creadoPor: user?.id ?? 'user-mock',
+          ...(p.caption ? { descripcion: p.caption } : {}),
+        })
+      }
+
+      const payload: CreateIncidentInput = {
+        ...queuedPayload,
+        ...(evidencias.length > 0 ? { evidencias } : {}),
+        ...(geoUbicacion ? { geoUbicacion } : {}),
+      }
+
       const result = await createIncident(payload)
       void queryClient.invalidateQueries({ queryKey: INCIDENT_QUERY_KEYS.all })
       toast.success(t('toasts.created'))

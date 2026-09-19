@@ -36,6 +36,12 @@ vi.mock('../hooks/useIncidents', () => ({
   useUpdateIncident: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
+// subirEvidencia() se llama directo desde IncidentForm.tsx (no vía un hook) antes de armar el
+// payload de creación/edición — resuelve con una URL real "servida" por defecto.
+vi.mock('../api/incidents.api', () => ({
+  subirEvidencia: vi.fn().mockResolvedValue({ url: '/uploads/incidentes/mock/foto.jpg', nombre: 'foto.jpg', tamanioKb: 10 }),
+}))
+
 vi.mock('../../areas/hooks/useAreas', () => ({
   useAreas: () => ({ data: [{ id: 'area-syst', nombre: 'SyST', activo: true }] }),
 }))

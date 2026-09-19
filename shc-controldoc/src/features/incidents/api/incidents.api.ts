@@ -40,6 +40,26 @@ export async function createIncident(data: CreateIncidentInput): Promise<Inciden
   return response.data
 }
 
+export interface SubirEvidenciaResponse {
+  url: string
+  nombre: string
+  tamanioKb: number
+}
+
+// El header Content-Type se elimina explícitamente (no se fija a 'multipart/form-data') para que
+// axios/el navegador calculen el boundary real del FormData — mismo patrón que buildLocalFormData
+// en locales.api.ts. Sube un archivo real y devuelve su URL servida por el backend; el caller arma
+// el resto del objeto IncidentEvidencia (id, tipo, creadoEn, creadoPor, descripcion opcional)
+// usando esta URL en vez de una blob: URL local (cutover-incidentes design.md D2/D3).
+export async function subirEvidencia(file: File | Blob): Promise<SubirEvidenciaResponse> {
+  const formData = new FormData()
+  formData.append('evidencia', file, file instanceof File ? file.name : 'foto.jpg')
+  const response = await api.post<SubirEvidenciaResponse>('/api/incidents/evidencias', formData, {
+    headers: { 'Content-Type': undefined },
+  })
+  return response.data
+}
+
 /**
  * Excepción documentada exclusiva del flujo de sincronización offline
  * (m7-f2-offline-sync design.md D8): envía `empresaId` explícito para que el

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const signatureSchema = z.object({
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  pin: z.string().regex(/^\d{4}$/, 'El PIN debe tener 4 dígitos'),
 })
 
 export type SignatureInput = z.infer<typeof signatureSchema>

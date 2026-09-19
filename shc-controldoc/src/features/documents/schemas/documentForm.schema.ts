@@ -20,7 +20,6 @@ export const documentFormSchema = z
     fechaVigencia: z.string().optional(),
     fechaRevisionProxima: z.string().optional(),
     descripcion: z.string().max(1000).optional(),
-    archivo: z.instanceof(File).nullable().optional(),
     archivoOriginalFile: z.instanceof(File).nullable().optional(),
     archivoOriginalUrl: z.string().nullable().optional(),
     archivoDistribucionUrl: z.string().nullable().optional(),

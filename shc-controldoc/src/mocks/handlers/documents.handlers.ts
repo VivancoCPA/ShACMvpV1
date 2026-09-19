@@ -703,9 +703,9 @@ export const documentHandlers = [
     if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const body = await request.json() as Record<string, unknown>
-    const password = body.password as string
+    const pin = body.pin as string
 
-    if (password !== MOCK_PIN) {
+    if (pin !== MOCK_PIN) {
       return HttpResponse.json(
         { success: false, data: null, message: 'Credenciales inválidas' },
         { status: 401 },

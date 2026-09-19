@@ -59,3 +59,31 @@ describe('getIncidentPermissions — canCrearQE', () => {
     expect(getIncidentPermissions(incidente, 'OPERARIO').canCrearQE).toBe(false)
   })
 })
+
+describe('getIncidentPermissions — deletedAt: null (backend real, cutover-incidentes)', () => {
+  // El backend .NET real siempre serializa deletedAt como `null` explícito cuando el incidente
+  // no está eliminado (nunca omite la clave, a diferencia de los fixtures MSW) — `deletedAt !==
+  // undefined` trataba esto como "eliminado" y bloqueaba canEdit/canDelete/canCrearQE por completo
+  // contra el backend real. Regresión encontrada y corregida durante la verificación de
+  // cutover-incidentes (design.md).
+  it('treats deletedAt: null as not deleted — canEdit/canCrearQE stay available for JEFE_CALIDAD_SYST', () => {
+    const incidente = makeIncidente({
+      estado: 'ABIERTO',
+      deletedAt: null as unknown as undefined,
+      qeId: undefined,
+    })
+    const permissions = getIncidentPermissions(incidente, 'JEFE_CALIDAD_SYST')
+    expect(permissions.canEdit).toBe(true)
+    expect(permissions.canCrearQE).toBe(true)
+    expect(permissions.canDelete).toBe(true)
+  })
+
+  it('treats deletedAt: null as not deleted — canEdit stays available for SUPERVISOR', () => {
+    const incidente = makeIncidente({
+      estado: 'ABIERTO',
+      deletedAt: null as unknown as undefined,
+      qeId: undefined,
+    })
+    expect(getIncidentPermissions(incidente, 'SUPERVISOR').canEdit).toBe(true)
+  })
+})

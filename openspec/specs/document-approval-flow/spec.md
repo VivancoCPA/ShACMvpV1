@@ -94,32 +94,36 @@ In state `EN_REVISION_PERIODICA`, `JEFE_CALIDAD_SYST` SHALL see:
 ### Requirement: DocumentSignatureModal
 The `DocumentSignatureModal` SHALL render a modal with:
 - An accessible overlay (`aria-modal='true'`, `aria-labelledby`, focus trap, Escape closes).
-- A password input (type=password) with label `documents:signature.passwordLabel` and visible legal text `documents:signature.legalText`.
-- A Zod schema enforcing: password required, min 6 characters.
-- On submit: POST `/documents/:id/sign` with `{ password, timestamp: new Date().toISOString() }`.
-- On 401 response: error message displayed inline below the password field — modal stays open, no toast.
+- A PIN input (type=password) with label `documents:signature.passwordLabel` and visible legal text `documents:signature.legalText`.
+- A Zod schema enforcing: `pin` required, exactly 4 numeric digits (`^\d{4}$`) — matching the format enforced server-side when the PIN is configured (`SetPinValidator`, `POST /api/auth/set-pin`).
+- On submit: POST `/documents/:id/sign` with `{ pin }` — the payload SHALL NOT include a client-supplied `timestamp`; the backend records its own `Timestamp = DateTime.UtcNow` server-side on every resulting audit trail entry.
+- On 401 response: error message displayed inline below the PIN field — modal stays open, no toast.
 - On success: modal closes + `toast.success` + query invalidation for `['document', id]` and `['documents']`.
 - Form managed via React Hook Form + Zod resolver (no useState for fields).
 
 #### Scenario: Modal is accessible with focus trap and Escape
 - **WHEN** `DocumentSignatureModal` opens
-- **THEN** focus moves to the password input, tabbing is trapped within the modal, and pressing Escape closes it without submitting
+- **THEN** focus moves to the PIN input, tabbing is trapped within the modal, and pressing Escape closes it without submitting
 
-#### Scenario: Short password shows inline validation error
-- **WHEN** user submits with a password shorter than 6 characters
+#### Scenario: Malformed PIN shows inline validation error
+- **WHEN** user submits with a PIN that is not exactly 4 numeric digits (e.g. shorter, longer, or containing non-digit characters)
 - **THEN** the Zod error message appears inline below the input field (no toast)
 
-#### Scenario: Wrong password shows inline error without closing modal
-- **WHEN** MSW returns 401 for invalid password
+#### Scenario: Wrong PIN shows inline error without closing modal
+- **WHEN** the backend returns 401 for an invalid PIN
 - **THEN** an error message appears inline below the input field; the modal remains open
 
-#### Scenario: Valid password signs, publishes, and closes modal
-- **WHEN** MSW validates the password successfully
+#### Scenario: Valid PIN signs, publishes, and closes modal
+- **WHEN** the backend validates the PIN successfully
 - **THEN** the document state transitions to PUBLICADO, the modal closes, a success toast fires, and queries are invalidated
 
 #### Scenario: No useState for form fields
 - **WHEN** the modal form is implemented
-- **THEN** field values are controlled by React Hook Form (no `useState` managing password value)
+- **THEN** field values are controlled by React Hook Form (no `useState` managing the PIN value)
+
+#### Scenario: Signed payload matches the backend command contract
+- **WHEN** the form is submitted with a valid PIN
+- **THEN** the request body sent to `POST /documents/:id/sign` is exactly `{ pin: <value> }` — no `password` key and no `timestamp` key, matching `FirmarPublicarDocumentoCommand(string Pin)`
 
 ### Requirement: DocumentRejectModal
 The `DocumentRejectModal` SHALL render a modal with:
@@ -150,9 +154,10 @@ The MSW handler for `PATCH /documents/:id/status` SHALL:
 - Return the updated document wrapped in `ApiResponse<Documento>`.
 
 The MSW handler for `POST /documents/:id/sign` SHALL:
-- Validate the password against the fixture for the logged-in user.
+- Accept a request body of `{ pin: string }` — the handler SHALL NOT expect or read a `password` or `timestamp` key, matching the real backend's `FirmarPublicarDocumentoCommand`.
+- Validate the `pin` against the fixture for the logged-in user.
 - On success: set `estado → PUBLICADO`, set `hashArchivo → 'sha256-mock-' + id`, apply RN-DOC-001 (obsolete previous version).
-- On invalid password: return 401 `{ success: false, message: 'Credenciales inválidas' }`.
+- On invalid PIN: return 401 `{ success: false, message: 'Credenciales inválidas' }`.
 
 The MSW handler for `DELETE /documents/:id` SHALL:
 - Allow deletion only if `estado === 'BORRADOR'` or `estado === 'EN_REVISION'`.
@@ -167,11 +172,11 @@ The MSW handler for `DELETE /documents/:id` SHALL:
 - **THEN** the document's auditTrail array gains one new entry with the correct accion, userId, and timestamp
 
 #### Scenario: POST sign applies RN-DOC-001 — previous PUBLICADO version becomes OBSOLETO
-- **WHEN** POST /documents/:id/sign is called with a valid password and another document with the same `codigo` is already in estado `PUBLICADO`
+- **WHEN** POST /documents/:id/sign is called with `{ pin }` valid and another document with the same `codigo` is already in estado `PUBLICADO`
 - **THEN** that previous document's estado is set to `OBSOLETO` before returning, and only the newly signed document has estado `PUBLICADO`
 
-#### Scenario: POST sign with invalid password returns 401
-- **WHEN** POST /documents/:id/sign is called with an incorrect password
+#### Scenario: POST sign with invalid PIN returns 401
+- **WHEN** POST /documents/:id/sign is called with an incorrect `pin`
 - **THEN** MSW returns HTTP 401 with `{ success: false, message: 'Credenciales inválidas' }`
 
 #### Scenario: DELETE rejected for PUBLICADO document

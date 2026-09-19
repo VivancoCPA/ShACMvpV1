@@ -40,6 +40,10 @@ vi.mock('../hooks/useGeolocationCapture', () => ({
 
 vi.mock('../api/incidents.api', () => ({
   createIncident: vi.fn(),
+  // Resuelve con una URL real "servida" por defecto — clearAllMocks() (afterEach) limpia
+  // calls/results pero no esta implementación default, así que no hace falta repetirla en
+  // cada test que adjunta una foto.
+  subirEvidencia: vi.fn().mockResolvedValue({ url: '/uploads/incidentes/mock/foto.jpg', nombre: 'foto.jpg', tamanioKb: 10 }),
 }))
 
 vi.mock('../../../lib/offlineQueue', async () => {

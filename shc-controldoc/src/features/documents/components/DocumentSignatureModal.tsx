@@ -53,15 +53,12 @@ export function DocumentSignatureModal({ documentId, onClose }: DocumentSignatur
 
   async function onSubmit(data: SignatureInput) {
     try {
-      await signMutation.mutateAsync({
-        password: data.password,
-        timestamp: new Date().toISOString(),
-      })
+      await signMutation.mutateAsync({ pin: data.pin })
       onClose()
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 401) {
-        setError('password', { message: t('signature.errorInvalid') })
+        setError('pin', { message: t('signature.errorInvalid') })
       }
     }
   }
@@ -92,22 +89,24 @@ export function DocumentSignatureModal({ documentId, onClose }: DocumentSignatur
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="mb-5">
             <label
-              htmlFor="sig-password"
+              htmlFor="sig-pin"
               className="mb-1.5 block text-sm font-medium text-body dark:text-on-dark"
             >
               {t('signature.passwordLabel')}
             </label>
             <input
-              id="sig-password"
+              id="sig-pin"
               type="password"
-              autoComplete="current-password"
+              inputMode="numeric"
+              maxLength={4}
+              autoComplete="off"
               className="h-10 w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder:text-muted-soft focus:border-coral focus:outline-none focus:ring-1 focus:ring-coral dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
               placeholder={t('signature.passwordPlaceholder')}
-              {...register('password')}
+              {...register('pin')}
             />
-            {errors.password && (
+            {errors.pin && (
               <p className="mt-1.5 text-xs text-error" role="alert">
-                {errors.password.message}
+                {errors.pin.message}
               </p>
             )}
           </div>

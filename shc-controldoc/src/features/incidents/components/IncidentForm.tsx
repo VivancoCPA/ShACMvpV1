@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCreateIncident, useUpdateIncident } from '../hooks/useIncidents'
+import { subirEvidencia } from '../api/incidents.api'
 import { useLocales } from '../hooks/useLocales'
 import { useZonasByLocal } from '../hooks/useZonasByLocal'
 import { getAutoSeveridad } from '../utils/incidentSeveridad'
@@ -52,6 +53,24 @@ interface EvidenciaPreviewItem {
   file: File
   previewUrl: string | null
   caption?: string
+}
+
+// Hallazgo real durante la verificación de cutover-incidentes, preexistente y no causado por
+// este change (nunca se había probado la creación de escritorio contra Postgres real): un
+// <input type="datetime-local"> siempre opera en hora LOCAL sin offset — enviar ese string tal
+// cual como `fechaEvento` hace que .NET lo deserialice con DateTimeKind.Unspecified, y Npgsql
+// rechaza escribirlo en una columna `timestamp with time zone` (falla dura, 500). Estas dos
+// funciones son el fix correcto (no un relabeling server-side): convertir explícitamente
+// hora-local <-> UTC en el límite del formulario, igual que ya se hace en IncidentQuickReportForm
+// (`new Date().toISOString()`).
+function toDatetimeLocalValue(isoUtc: string): string {
+  const d = new Date(isoUtc)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function fromDatetimeLocalValue(local: string): string {
+  return new Date(local).toISOString()
 }
 
 function buildPreview(file: File): EvidenciaPreviewItem {
@@ -264,7 +283,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
         descripcion: incident.descripcion,
         areaId: incident.areaId,
         turno: incident.turno as 'DIA' | 'TARDE' | 'NOCHE',
-        fechaEvento: incident.fechaEvento.slice(0, 16),
+        fechaEvento: toDatetimeLocalValue(incident.fechaEvento),
         huboLesionados: incident.huboLesionados,
         numPersonasAfectadas: incident.numPersonasAfectadas,
         severidad: incident.severidad,
@@ -328,16 +347,29 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   }
 
   const onSubmit = async (data: UpdateIncidentFormInput) => {
-    const mockEvidencias: IncidentEvidencia[] = newEvidencias.map((f, i) => ({
-      id: `ev-new-${Date.now()}-${i}`,
-      url: URL.createObjectURL(f),
-      nombre: f.name,
-      tipo: f.type === 'application/pdf' ? 'pdf' : 'imagen',
-      tamanioKb: Math.round(f.size / 1024),
-      creadoEn: new Date().toISOString(),
-      creadoPor: user?.id ?? 'user-mock',
-      ...(newEvidenciaCaptions[i] ? { descripcion: newEvidenciaCaptions[i] } : {}),
-    }))
+    // fechaEvento viaja siempre en UTC real (nunca la hora local cruda del <input>) — ver
+    // toDatetimeLocalValue/fromDatetimeLocalValue arriba.
+    data = { ...data, fechaEvento: fromDatetimeLocalValue(data.fechaEvento) }
+
+    // Cada archivo se sube primero a POST /api/incidents/evidencias — evidencias[].url termina
+    // apuntando a la URL real devuelta por el backend, nunca a una blob: URL local (mismo defecto
+    // ya corregido en el reporte mobile, ver design.md D2/D3 — acá se extiende al formulario de
+    // escritorio, que tiene el mismo patrón de URL.createObjectURL()).
+    const evidenciasSubidas: IncidentEvidencia[] = []
+    for (const f of newEvidencias) {
+      const uploaded = await subirEvidencia(f)
+      const i = evidenciasSubidas.length
+      evidenciasSubidas.push({
+        id: `ev-new-${Date.now()}-${i}`,
+        url: uploaded.url,
+        nombre: uploaded.nombre,
+        tipo: f.type === 'application/pdf' ? 'pdf' : 'imagen',
+        tamanioKb: uploaded.tamanioKb,
+        creadoEn: new Date().toISOString(),
+        creadoPor: user?.id ?? 'user-mock',
+        ...(newEvidenciaCaptions[i] ? { descripcion: newEvidenciaCaptions[i] } : {}),
+      })
+    }
 
     if (isEdit && incident) {
       await updateMutation.mutateAsync({
@@ -353,14 +385,16 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
           equiposInvolucrados: data.equiposInvolucrados
             ? data.equiposInvolucrados.split('\n').filter(Boolean)
             : undefined,
-          ...(mockEvidencias.length > 0 ? { evidencias: [...(incident.evidencias ?? []), ...mockEvidencias] } : {}),
+          ...(evidenciasSubidas.length > 0
+            ? { evidencias: [...(incident.evidencias ?? []), ...evidenciasSubidas] }
+            : {}),
         },
       })
       navigate(`/incidents/${incident.id}`)
     } else {
       const result = await createMutation.mutateAsync({
         ...data,
-        ...(mockEvidencias.length > 0 ? { evidencias: mockEvidencias } : {}),
+        ...(evidenciasSubidas.length > 0 ? { evidencias: evidenciasSubidas } : {}),
       } as Parameters<typeof createMutation.mutateAsync>[0])
       navigate(`/incidents/${(result as Incidente).id}`)
     }

@@ -14,6 +14,7 @@ import { SYNC_MESSAGE_TYPE } from '../../../lib/offlineSyncMessage'
 import { useAuthStore } from '../../../stores/authStore'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
 import { useCreateIncidentOfflineSync } from './useIncidents'
+import { subirEvidencia } from '../api/incidents.api'
 import { classifySubmitError } from '../utils/classifySubmitError'
 import type { CreateIncidentInput } from '../schemas/createIncident.schema'
 import type { IncidentEvidencia } from '../types/incident.types'
@@ -25,24 +26,33 @@ import type { IncidentEvidencia } from '../types/incident.types'
 // del usuario.
 const MAX_SYNC_RETRIES = 3
 
-function buildEvidenciasFromBlobs(
+// Sube cada Blob real a POST /api/incidents/evidencias durante el sync (no hay red disponible al
+// momento de encolar, así que el upload no puede ocurrir antes) y arma evidencias con la URL real
+// devuelta por el backend — nunca una blob: URL local (design.md D2/D3). Un upload fallido a mitad
+// de la subida de varias fotos propaga el error hacia `syncOne`, que lo trata como fallo de red
+// de la entrada completa (mismo `MAX_SYNC_RETRIES` ya existente) sin sincronizar con evidencias
+// parciales.
+async function uploadEvidenciasFromBlobs(
   blobs: Blob[],
   captions: (string | undefined)[] | undefined,
   creadoPorId: string,
-): IncidentEvidencia[] {
-  return blobs.map((blob, i) => {
+): Promise<IncidentEvidencia[]> {
+  const evidencias: IncidentEvidencia[] = []
+  for (let i = 0; i < blobs.length; i++) {
+    const uploaded = await subirEvidencia(blobs[i])
     const caption = captions?.[i]
-    return {
+    evidencias.push({
       id: `ev-offline-${Date.now()}-${i}`,
-      url: URL.createObjectURL(blob),
-      nombre: `foto-${i + 1}.jpg`,
+      url: uploaded.url,
+      nombre: uploaded.nombre,
       tipo: 'imagen',
-      tamanioKb: Math.round(blob.size / 1024),
+      tamanioKb: uploaded.tamanioKb,
       creadoEn: new Date().toISOString(),
       creadoPor: creadoPorId,
       ...(caption ? { descripcion: caption } : {}),
-    }
-  })
+    })
+  }
+  return evidencias
 }
 
 /**
@@ -100,7 +110,7 @@ export function useOfflineIncidentSync() {
     await markSyncing(entry.localId)
     await useOfflineQueueStore.getState().refresh()
     try {
-      const evidencias = buildEvidenciasFromBlobs(
+      const evidencias = await uploadEvidenciasFromBlobs(
         entry.photoBlobs,
         entry.photoCaptions,
         userIdRef.current ?? 'user-mock',

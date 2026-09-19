@@ -46,6 +46,9 @@ export const updateIncidentInvestigacionSchema = z.object({
   localId: z.string().optional(),
   zonaId: z.string().optional(),
   ubicacion: z.object({ x: z.number(), y: z.number() }).optional(),
+  // Evidencia agregada durante la edición (IncidentForm.tsx, EvidenciasZona) — se envía junto
+  // con las ya existentes del incidente, el backend solo agrega las nuevas (nunca reemplaza).
+  evidencias: z.array(z.custom<IncidentEvidencia>()).optional(),
 })
 
 export type UpdateIncidentInvestigacionInput = z.infer<typeof updateIncidentInvestigacionSchema>
