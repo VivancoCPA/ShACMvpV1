@@ -112,8 +112,8 @@ export async function solicitarAjustePlazoAC(
   qeId: string,
   acId: string,
   data: SolicitarAjustePlazoACInput,
-): Promise<QualityEvent> {
-  const response = await api.post<QualityEvent>(
+): Promise<AccionCorrectivaQE> {
+  const response = await api.post<AccionCorrectivaQE>(
     `/api/quality-events/${qeId}/acciones-correctivas/${acId}/solicitud-plazo`,
     data,
   )
@@ -125,10 +125,11 @@ export async function revisarAjustePlazoAC(
   acId: string,
   solicitudId: string,
   data: { accion: 'APROBAR' | 'RECHAZAR'; comentarioRevision?: string },
-): Promise<QualityEvent> {
-  const response = await api.patch<QualityEvent>(
+): Promise<AccionCorrectivaQE> {
+  const estado = data.accion === 'APROBAR' ? 'APROBADA' : 'RECHAZADA'
+  const response = await api.patch<AccionCorrectivaQE>(
     `/api/quality-events/${qeId}/acciones-correctivas/${acId}/solicitud-plazo/${solicitudId}`,
-    data,
+    { estado, comentarioRevision: data.comentarioRevision },
   )
   return response.data
 }
@@ -157,9 +158,10 @@ export async function editarMineral(
   return response.data
 }
 
-export async function exportQualityEventPdf(id: string): Promise<QualityEvent> {
-  const response = await api.post<QualityEvent>(`/api/quality-events/${id}/export-pdf`)
-  return response.data
+export async function exportQualityEventPdf(id: string): Promise<void> {
+  // El backend real responde 204 No Content (solo registra auditoría, ExportarPdfQEHandler no
+  // genera ni devuelve el QE) — ver design.md Hallazgo 6. Nunca devolver response.data acá.
+  await api.post(`/api/quality-events/${id}/export-pdf`)
 }
 
 export async function getQEAuditTrail(qeId: string): Promise<QEAuditTrailEntry[]> {

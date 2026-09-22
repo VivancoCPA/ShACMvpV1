@@ -9,7 +9,7 @@ Batch PDF export from `QEList`: exports each selected Quality Event through the 
 ## Requirements
 
 ### Requirement: Batch export produces one PDF per selected QE, packaged into a single zip
-When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selected QEs (1 ≤ N ≤ 50), the system SHALL, for each selected QE sequentially: invoke the `useExportQualityEventPdf` mutation (same endpoint used by the individual export, registering its own `EXPORTACION_PDF` audit trail entry), then call `buildQualityEventPdf` with the mutation's response QE and `meta = { exportadoPorNombre: <current user's full name>, generadoEn: new Date() }`, convert the resulting document to a `Blob` via `doc.output('blob')`, and add it to a `JSZip` instance under the filename `${qe.numero}.pdf`. Once all N QEs are processed, the system SHALL generate the zip via `zip.generateAsync({ type: 'blob' })` and trigger a single browser download named `quality-events-export-<YYYYMMDD-HHmm>.zip`, using the project's established Blob-download pattern (`<a download>` + `URL.createObjectURL`/`revokeObjectURL`).
+When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selected QEs (1 ≤ N ≤ 50), the system SHALL, for each selected QE sequentially: invoke the `useExportQualityEventPdf`-equivalent call (`exportQualityEventPdf`, same endpoint used by the individual export, registering its own `EXPORTACION_PDF` audit trail entry — the backend responds `204 No Content`, with no `QualityEvent` in the body) together with `getQualityEvent(qeId)` (`GET /api/quality-events/:id`) to obtain the QE's current data, then call `buildQualityEventPdf` with the QE returned by `getQualityEvent` — never with the export call's result — and `meta = { exportadoPorNombre: <current user's full name>, generadoEn: new Date() }`, convert the resulting document to a `Blob` via `doc.output('blob')`, and add it to a `JSZip` instance under the filename `${qe.numero}.pdf`. Once all N QEs are processed, the system SHALL generate the zip via `zip.generateAsync({ type: 'blob' })` and trigger a single browser download named `quality-events-export-<YYYYMMDD-HHmm>.zip`, using the project's established Blob-download pattern (`<a download>` + `URL.createObjectURL`/`revokeObjectURL`).
 
 #### Scenario: Batch export of 3 QEs produces a zip with 3 correctly-named PDFs
 - **WHEN** a user selects `QE-2026-001`, `QE-2026-002`, and `QE-2026-003` in `QEList` and clicks "Exportar seleccionados"
@@ -21,7 +21,11 @@ When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selec
 
 #### Scenario: PDFs are generated sequentially, not concurrently
 - **WHEN** a batch export of 5 QEs is triggered
-- **THEN** the `useExportQualityEventPdf` mutation for QE #2 is not dispatched until QE #1's mutation has resolved and its PDF has been added to the zip
+- **THEN** the `exportQualityEventPdf`/`getQualityEvent` pair for QE #2 is not dispatched until QE #1's pair has resolved and its PDF has been added to the zip
+
+#### Scenario: Batch export does not crash when the export-pdf call returns no body
+- **WHEN** the batch export processes a selected QE and `exportQualityEventPdf` resolves against the real backend (`204 No Content`)
+- **THEN** the PDF for that QE is still built and added to the zip, using the `QualityEvent` obtained from the separate `getQualityEvent` call — no `TypeError` on `undefined`
 
 ---
 

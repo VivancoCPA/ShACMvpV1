@@ -1,6 +1,13 @@
 import type { ApiResponse } from './api.types'
 
-export type NotificacionTipo = 'CAMBIO_ESTADO' | 'ASIGNACION' | 'VENCIMIENTO'
+export type NotificacionTipo =
+  | 'CAMBIO_ESTADO'
+  | 'ASIGNACION'
+  | 'VENCIMIENTO'
+  | 'SEVERIDAD_CRITICA'
+  | 'CIERRE'
+  | 'VERIFICACION_EFICAZ'
+  | 'COMERCIO_EXTERIOR'
 
 export type NotificacionEntidadTipo = 'QE' | 'NC' | 'INCIDENTE' | 'DOCUMENTO' | 'AC'
 

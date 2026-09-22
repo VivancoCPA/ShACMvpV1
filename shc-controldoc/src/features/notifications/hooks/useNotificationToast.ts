@@ -3,16 +3,21 @@ import { toast } from 'sonner'
 import { useAuthStore } from '../../../stores/authStore'
 import { useNotifications } from './useNotifications'
 
-// Limitación conocida (mock-only, ver design.md "Non-Goals" / decisión de
-// diseño de esta spec): esto SOLO dispara un toast para notificaciones creadas
-// dentro de la MISMA pestaña/sesión del navegador (p.ej. una mutación propia
-// que además generó una notificación para el propio usuario actual, como un
-// firmante de QE que también es responsable de una AC). No existe WebSocket/SSE
-// en el entorno MSW, así que una notificación creada para OTRO usuario en OTRA
-// sesión nunca dispara un toast aquí — esa persona solo la ve en su campana/
-// bandeja la próxima vez que su propio `useNotifications()` haga fetch (p.ej.
-// el refetch periódico normal de TanStack Query). Esto queda resuelto recién
-// cuando exista un backend .NET real con push entre sesiones.
+// Limitación conocida y vigente (confirmada contra el backend .NET real en
+// cutover-notificaciones, no solo contra MSW): esto SOLO dispara un toast para
+// notificaciones creadas dentro de la MISMA pestaña/sesión del navegador (p.ej.
+// una mutación propia que además generó una notificación para el propio
+// usuario actual, como un firmante de QE que también es responsable de una AC).
+// El backend real (Features/Notifications/*) son 3 endpoints REST simples, sin
+// WebSocket/SSE/SignalR, así que una notificación creada para OTRO usuario en
+// OTRA sesión nunca dispara un toast aquí — esa persona solo la ve en su
+// campana/bandeja la próxima vez que su propio `useNotifications()` haga fetch.
+// No hay `refetchInterval` configurado (confirmado por grep en todo el
+// frontend), así que ese fetch depende de una acción manual del usuario
+// (navegar, recargar), no de polling. Push entre sesiones sigue siendo una
+// decisión de producto pendiente (¿agregar polling, o construir SignalR/SSE?),
+// no algo que se resuelva solo por tener un backend real — ver design.md de
+// cutover-notificaciones, Open Questions.
 export function useNotificationToast(): void {
   const { data: notifications } = useNotifications()
   const user = useAuthStore((s) => s.user)

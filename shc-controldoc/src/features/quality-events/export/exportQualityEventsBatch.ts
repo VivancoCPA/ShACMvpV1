@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { exportQualityEventPdf } from '../api/quality-events.api'
+import { exportQualityEventPdf, getQualityEvent } from '../api/quality-events.api'
 import { buildQualityEventPdf } from './buildQualityEventPdf'
 
 export interface BatchExportProgress {
@@ -16,9 +16,11 @@ export async function exportQualityEventsBatch(
   const total = qeIds.length
 
   for (let i = 0; i < qeIds.length; i++) {
-    const updatedQe = await exportQualityEventPdf(qeIds[i])
-    const doc = buildQualityEventPdf(updatedQe, { exportadoPorNombre, generadoEn: new Date() })
-    zip.file(`${updatedQe.numero}.pdf`, doc.output('blob'))
+    // export-pdf solo registra auditoría (204 sin cuerpo) — el QE real se obtiene por separado
+    // vía GET, no del resultado de export-pdf (ver design.md Hallazgo 6).
+    const [qe] = await Promise.all([getQualityEvent(qeIds[i]), exportQualityEventPdf(qeIds[i])])
+    const doc = buildQualityEventPdf(qe, { exportadoPorNombre, generadoEn: new Date() })
+    zip.file(`${qe.numero}.pdf`, doc.output('blob'))
     onProgress?.({ completed: i + 1, total })
   }
 

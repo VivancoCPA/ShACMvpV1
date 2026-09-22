@@ -30,20 +30,23 @@ function makeQE(id: string, numero: string): QualityEvent {
 }
 
 const callOrder: string[] = []
+// El backend real solo registra auditoría (204 sin cuerpo) — el QE real se obtiene por
+// separado vía getQualityEvent (ver design.md Hallazgo 6, cutover-quality-events).
 const exportQualityEventPdfMock = vi.fn(async (id: string) => {
   callOrder.push(`export-start:${id}`)
-  const qe = makeQE(id, `QE-2026-${id}`)
   callOrder.push(`export-end:${id}`)
-  return qe
 })
+const getQualityEventMock = vi.fn(async (id: string) => makeQE(id, `QE-2026-${id}`))
 
 vi.mock('../api/quality-events.api', () => ({
   exportQualityEventPdf: (id: string) => exportQualityEventPdfMock(id),
+  getQualityEvent: (id: string) => getQualityEventMock(id),
 }))
 
 beforeEach(() => {
   callOrder.length = 0
   exportQualityEventPdfMock.mockClear()
+  getQualityEventMock.mockClear()
 })
 
 describe('exportQualityEventsBatch', () => {

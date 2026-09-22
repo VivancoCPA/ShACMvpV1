@@ -37,7 +37,7 @@ function PinModal({
   const [error, setError] = useState(false)
 
   const handleSubmit = () => {
-    if (pin !== '1234') {
+    if (!/^\d{4}$/.test(pin)) {
       setError(true)
       return
     }

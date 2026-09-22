@@ -43,12 +43,14 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
 
   const handleExportPdf = () => {
     exportPdf.mutate(undefined, {
-      onSuccess: (updatedQe) => {
-        const doc = buildQualityEventPdf(updatedQe, {
+      onSuccess: () => {
+        // El backend solo confirma el registro de auditoría (204 sin cuerpo) — el PDF se arma
+        // con el QE ya disponible como prop, no con el resultado de la mutación (Hallazgo 6).
+        const doc = buildQualityEventPdf(qe, {
           exportadoPorNombre: user ? `${user.nombre} ${user.apellido}` : '',
           generadoEn: new Date(),
         })
-        downloadBlob(doc.output('blob'), `${updatedQe.numero}.pdf`)
+        downloadBlob(doc.output('blob'), `${qe.numero}.pdf`)
       },
       onError: () => {
         toast.error(t('detail.header.exportarPDFError'))

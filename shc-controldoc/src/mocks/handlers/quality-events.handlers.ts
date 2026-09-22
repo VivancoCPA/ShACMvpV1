@@ -788,7 +788,10 @@ export const qualityEventHandlers = [
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
-    return HttpResponse.json({ success: true, data: updated }, { status: 201 })
+    // Responde con la AC actualizada, no el QE completo — coincide con el backend real
+    // (SolicitarAjustePlazoACHandler retorna Task<AccionCorrectivaQE>) y con la spec vigente
+    // de este handler (ver design.md Hallazgo 4 / D5).
+    return HttpResponse.json({ success: true, data: updatedAC }, { status: 201 })
   }),
 
   http.patch('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo/:solicitudId', async ({ params, request }) => {
@@ -820,9 +823,11 @@ export const qualityEventHandlers = [
     }
 
     const solicitud = ac.solicitudesAjustePlazo[solIdx]
-    const body = await request.json() as { accion: 'APROBAR' | 'RECHAZAR'; comentarioRevision?: string }
+    // Coincide con el body real que envía el cliente ({ estado, comentarioRevision }, ver
+    // RevisarAjustePlazoACCommand en el backend) — no `{ accion }` (ver design.md Hallazgo 4 / D5).
+    const body = await request.json() as { estado: 'APROBADA' | 'RECHAZADA'; comentarioRevision?: string }
 
-    if (body.accion === 'RECHAZAR' && (!body.comentarioRevision || body.comentarioRevision.trim() === '')) {
+    if (body.estado === 'RECHAZADA' && (!body.comentarioRevision || body.comentarioRevision.trim() === '')) {
       return HttpResponse.json(
         { success: false, message: 'El comentario de revisión es obligatorio para rechazar la solicitud' },
         { status: 422 }
@@ -842,7 +847,7 @@ export const qualityEventHandlers = [
     const currentUser = getCurrentUser()
     const solicitudesAjustePlazo = [...ac.solicitudesAjustePlazo]
 
-    if (body.accion === 'APROBAR') {
+    if (body.estado === 'APROBADA') {
       const plazoAnterior = ac.plazoFecha
       solicitudesAjustePlazo[solIdx] = {
         ...solicitud,
@@ -881,7 +886,9 @@ export const qualityEventHandlers = [
         actualizadoEn: now,
       }
       commitQE(idx, qe, updated)
-      return HttpResponse.json({ success: true, data: updated })
+      // Responde con la AC actualizada, no el QE completo — coincide con el backend real
+      // (RevisarAjustePlazoACHandler retorna Task<AccionCorrectivaQE>) (design.md Hallazgo 4 / D5).
+      return HttpResponse.json({ success: true, data: updatedAC })
     }
 
     solicitudesAjustePlazo[solIdx] = {
@@ -921,7 +928,9 @@ export const qualityEventHandlers = [
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
-    return HttpResponse.json({ success: true, data: updated })
+    // Responde con la AC actualizada, no el QE completo — mismo criterio que la rama APROBADA
+    // arriba (design.md Hallazgo 4 / D5).
+    return HttpResponse.json({ success: true, data: updatedAC })
   }),
 
   http.patch('/api/quality-events/:id/cerrar', async ({ params, request }) => {

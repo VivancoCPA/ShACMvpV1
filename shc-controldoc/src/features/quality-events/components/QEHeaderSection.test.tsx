@@ -103,12 +103,14 @@ describe('QEHeaderSection — export PDF button', () => {
     expect(exportMutate).toHaveBeenCalledTimes(1)
   })
 
-  it('generates the PDF and downloads it once the mutation succeeds', () => {
+  it('generates the PDF from the qe prop (not the mutation result) once the mutation succeeds', () => {
+    // El backend real responde 204 sin cuerpo a export-pdf (solo registra auditoría) — la
+    // mutación ya no devuelve un QE, así que el PDF se arma con el prop `qe` (ver design.md
+    // Hallazgo 6, cutover-quality-events).
     currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
     const qe = makeQE({})
-    const updatedQe = { ...qe, auditTrail: [{ id: 'a1' } as never] }
     exportMutate.mockImplementation((_vars, opts) => {
-      opts.onSuccess(updatedQe)
+      opts.onSuccess()
     })
 
     render(<QEHeaderSection qe={qe} />)
@@ -116,7 +118,7 @@ describe('QEHeaderSection — export PDF button', () => {
     fireEvent.click(button!)
 
     expect(buildQualityEventPdfMock).toHaveBeenCalledWith(
-      updatedQe,
+      qe,
       expect.objectContaining({ exportadoPorNombre: 'Ana Torres' }),
     )
     expect(downloadBlobMock).toHaveBeenCalledWith(expect.anything(), 'QE-2026-010.pdf')
