@@ -1,12 +1,4 @@
-# Spec: notification-toast
-
-## Purpose
-
-Same-session Sonner toast for newly-created notifications belonging to the current user, real-time cross-session delivery for `SEVERIDAD_CRITICA`/`CIERRE` via the SignalR hub, and the documented limitation that cross-session/cross-user real-time delivery for the 5 non-urgent `NotificacionTipo` values still relies on polling.
-
----
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Same-session toast fires when a new notification appears for the current user
 When `useNotifications()`'s data changes to include a notification for the current user with `createdAt` newer than the last-seen notification timestamp (tracked client-side, e.g. via `useRef`, not via `useEffect`-derived state that duplicates query state), the system SHALL fire a Sonner `toast()` with the notification's `mensaje`, without mutating any store. This heuristic SHALL remain the toast source for the 5 non-urgent `NotificacionTipo` values (`CAMBIO_ESTADO`, `ASIGNACION`, `VENCIMIENTO`, `VERIFICACION_EFICAZ`, `COMERCIO_EXTERIOR`), for same-tab events, and as a fallback for `SEVERIDAD_CRITICA`/`CIERRE` notifications the SignalR hub (`notifications-realtime-client`) did not already surface (e.g. the hub was disconnected when they were created). It SHALL NOT re-toast a notification the hub has already surfaced (see "Hub-sourced notifications are marked as seen").
@@ -29,6 +21,8 @@ The system SHALL document, in code comments on the toast-triggering hook and in 
 #### Scenario: Recipient in a different session sees an urgent notification immediately
 - **WHEN** user A's action creates a `SEVERIDAD_CRITICA` or `CIERRE` notification for user B, in a separate browser session with an active hub connection
 - **THEN** user B sees a toast at the moment of creation, delivered via the SignalR hub, not via polling
+
+## ADDED Requirements
 
 ### Requirement: Hub-sourced notifications are marked as seen to prevent a duplicate toast on next poll
 When the SignalR hub (`notifications-realtime-client`) fires a toast for a `SEVERIDAD_CRITICA`/`CIERRE` notification, the system SHALL record that notification's `createdAt`/`id` in the same "last seen" reference the same-session polling heuristic uses, so that the next `useNotifications()` refetch does not treat it as new and re-toast it.

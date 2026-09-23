@@ -7,7 +7,7 @@ import React from 'react'
 import { notificationHandlers, resetStore } from '../../../mocks/handlers/notifications.handlers'
 import { authFixtures } from '../../../mocks/fixtures/auth.fixtures'
 import { useAuthStore } from '../../../stores/authStore'
-import { useNotifications } from './useNotifications'
+import { useNotifications, QUERY_KEYS } from './useNotifications'
 import { useMarkNotificationRead } from './useMarkNotificationRead'
 import { useMarkAllNotificationsRead } from './useMarkAllNotificationsRead'
 
@@ -47,6 +47,18 @@ describe('useNotifications', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.every((n) => n.usuarioId === 'user-operario-001')).toBe(true)
+  })
+
+  it('polls every 60 seconds (notificaciones-real-time fallback for non-urgent types and hub disconnects)', async () => {
+    loginAs('operario@shac.pe')
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useNotifications(), { wrapper: makeWrapper(qc) })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const query = qc.getQueryCache().find({ queryKey: QUERY_KEYS.notifications.all })
+    const refetchInterval = (query?.options as { refetchInterval?: unknown } | undefined)?.refetchInterval
+    expect(refetchInterval).toBe(60_000)
   })
 })
 

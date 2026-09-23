@@ -78,4 +78,44 @@ describe('useNotificationToast', () => {
 
     expect(toastMock).not.toHaveBeenCalled()
   })
+
+  it('does not re-toast a notification already marked as seen (e.g. delivered by the realtime hub)', () => {
+    mockNotifications = [makeNotificacion({ id: 'n1', createdAt: '2026-01-01T00:00:00.000Z' })]
+    const { result, rerender } = renderHook(() => useNotificationToast())
+
+    // Simulates useNotificationsHub() receiving "notificacionNueva" and marking it
+    // seen before the next useNotifications() poll brings it into this hook's data.
+    result.current.markSeen('2026-01-01T00:05:00.000Z')
+
+    mockNotifications = [
+      ...mockNotifications,
+      makeNotificacion({
+        id: 'n2',
+        createdAt: '2026-01-01T00:05:00.000Z',
+        mensaje: 'Ya mostrada por el hub.',
+      }),
+    ]
+    rerender()
+
+    expect(toastMock).not.toHaveBeenCalled()
+  })
+
+  it('still toasts a notification newer than the last one marked as seen', () => {
+    mockNotifications = [makeNotificacion({ id: 'n1', createdAt: '2026-01-01T00:00:00.000Z' })]
+    const { result, rerender } = renderHook(() => useNotificationToast())
+
+    result.current.markSeen('2026-01-01T00:05:00.000Z')
+
+    mockNotifications = [
+      ...mockNotifications,
+      makeNotificacion({
+        id: 'n2',
+        createdAt: '2026-01-01T00:10:00.000Z',
+        mensaje: 'Notificación posterior a la marcada como vista.',
+      }),
+    ]
+    rerender()
+
+    expect(toastMock).toHaveBeenCalledWith('Notificación posterior a la marcada como vista.')
+  })
 })

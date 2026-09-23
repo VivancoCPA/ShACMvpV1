@@ -4,13 +4,15 @@ import { Bell } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead'
 import { useNotificationToast } from '../hooks/useNotificationToast'
+import { useNotificationsHub } from '../hooks/useNotificationsHub'
 import { NotificationList } from './NotificationList'
 
 export function NotificationBell() {
   const { t } = useTranslation('notifications')
   const { data: notifications = [] } = useNotifications()
   const markAllRead = useMarkAllNotificationsRead()
-  useNotificationToast()
+  const toastHandle = useNotificationToast()
+  useNotificationsHub(toastHandle)
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 

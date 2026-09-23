@@ -1,28 +1,42 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../../../stores/authStore'
 import { useNotifications } from './useNotifications'
 
-// Limitación conocida y vigente (confirmada contra el backend .NET real en
-// cutover-notificaciones, no solo contra MSW): esto SOLO dispara un toast para
-// notificaciones creadas dentro de la MISMA pestaña/sesión del navegador (p.ej.
-// una mutación propia que además generó una notificación para el propio
-// usuario actual, como un firmante de QE que también es responsable de una AC).
-// El backend real (Features/Notifications/*) son 3 endpoints REST simples, sin
-// WebSocket/SSE/SignalR, así que una notificación creada para OTRO usuario en
-// OTRA sesión nunca dispara un toast aquí — esa persona solo la ve en su
-// campana/bandeja la próxima vez que su propio `useNotifications()` haga fetch.
-// No hay `refetchInterval` configurado (confirmado por grep en todo el
-// frontend), así que ese fetch depende de una acción manual del usuario
-// (navegar, recargar), no de polling. Push entre sesiones sigue siendo una
-// decisión de producto pendiente (¿agregar polling, o construir SignalR/SSE?),
-// no algo que se resuelva solo por tener un backend real — ver design.md de
-// cutover-notificaciones, Open Questions.
-export function useNotificationToast(): void {
+export interface NotificationToastHandle {
+  /** Marca un `createdAt` como ya visto (ya toasteado por otro canal — hoy solo
+   *  `useNotificationsHub()`, para SEVERIDAD_CRITICA/CIERRE) para que el próximo
+   *  refetch de `useNotifications()` no lo vuelva a toastear por acá. */
+  markSeen(createdAt: string): void
+}
+
+// Estado final (notificaciones-real-time, cierra el Open Question dejado por
+// cutover-notificaciones): este heurístico de diffing same-session sigue siendo
+// la única fuente de toast para los 5 tipos no urgentes (CAMBIO_ESTADO,
+// ASIGNACION, VENCIMIENTO, VERIFICACION_EFICAZ, COMERCIO_EXTERIOR) — para esos,
+// una notificación creada para OTRO usuario en OTRA sesión solo se ve en su
+// campana/bandeja en el próximo poll de `useNotifications()` (refetchInterval de
+// 60s, ver notification-query-hooks), no instantáneamente.
+//
+// Para SEVERIDAD_CRITICA/CIERRE sí existe push real entre sesiones — vía
+// `NotificationsHub` (SignalR), consumido por `useNotificationsHub()`. Ese hook
+// es la fuente única de toast para esos 2 tipos y llama `markSeen()` (el handle
+// que este hook devuelve) apenas los recibe, para que este heurístico de polling
+// no los vuelva a toastear cuando el próximo refetch los traiga. Este heurístico
+// sigue actuando como red de respaldo para esos 2 tipos si la conexión del hub
+// estuvo caída al momento de crearse la notificación.
+export function useNotificationToast(): NotificationToastHandle {
   const { data: notifications } = useNotifications()
   const user = useAuthStore((s) => s.user)
   const lastSeenCreatedAtRef = useRef<string | null>(null)
   const initializedRef = useRef(false)
+
+  const markSeen = useCallback((createdAt: string) => {
+    const current = lastSeenCreatedAtRef.current
+    if (!current || createdAt > current) {
+      lastSeenCreatedAtRef.current = createdAt
+    }
+  }, [])
 
   useEffect(() => {
     if (!notifications || !user) return
@@ -50,4 +64,6 @@ export function useNotificationToast(): void {
       baseline,
     )
   }, [notifications, user])
+
+  return useMemo(() => ({ markSeen }), [markSeen])
 }
