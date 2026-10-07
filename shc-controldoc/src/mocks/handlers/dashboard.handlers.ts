@@ -448,7 +448,7 @@ function toDocumentoResumen(doc: Documento): DocumentoResumen {
     tipo: doc.tipo,
     estado: doc.estado,
     areaId: doc.areaId,
-    fechaRevisionProxima: doc.fechaRevisionProxima,
+    fechaRevisionProxima: doc.fechaRevisionProxima ?? undefined,
   }
 }
 

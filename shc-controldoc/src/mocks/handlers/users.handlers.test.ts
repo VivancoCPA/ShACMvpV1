@@ -260,3 +260,66 @@ describe('users.handlers — POST /api/users/:id/reset-password (RN-USR-004)', (
     expect(oldLoginResult.status).toBe(401)
   })
 })
+
+interface NombreDto {
+  id: string
+  nombreCompleto: string
+}
+
+describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', () => {
+  it('resuelve un usuario inactivo de la empresa activa', async () => {
+    const headers = authHeaders('admin@shac.pe')
+    const jefeDocs = authFixtures.find((u) => u.id === 'user-jefedocs-001')!
+    jefeDocs.activo = false
+    try {
+      const res = await api.get<NombreDto[]>('/api/users/nombres', { ...headers, params: { ids: 'user-jefedocs-001' } })
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual([{ id: 'user-jefedocs-001', nombreCompleto: expect.any(String) }])
+    } finally {
+      jefeDocs.activo = true
+    }
+  })
+
+  it('resuelve un usuario con asignación inactiva (estado ≠ ACTIVO)', async () => {
+    const headers = authHeaders('admin@shac.pe')
+    const empresaActivaId = getEmpresasActivasForUsuario('user-admin-001')[0]!.id
+    const asignacion = getUsuarioEmpresaStore().find(
+      (ue) => ue.usuarioId === 'user-jefedocs-001' && ue.empresaId === empresaActivaId,
+    )!
+    const estadoOriginal = asignacion.estado
+    asignacion.estado = 'INACTIVO'
+    try {
+      const res = await api.get<NombreDto[]>('/api/users/nombres', { ...headers, params: { ids: 'user-jefedocs-001' } })
+      expect(res.data.some((n) => n.id === 'user-jefedocs-001')).toBe(true)
+    } finally {
+      asignacion.estado = estadoOriginal
+    }
+  })
+
+  it('omite un id de otra empresa, sin error', async () => {
+    const headers = authHeaders('admin@shac.pe') // empresa-001
+    const res = await api.get<NombreDto[]>('/api/users/nombres', {
+      ...headers,
+      params: { ids: 'user-operario-101' }, // solo asignado a empresa-002
+    })
+    expect(res.status).toBe(200)
+    expect(res.data).toEqual([])
+  })
+
+  it('400 con un id de formato inválido', async () => {
+    const headers = authHeaders('admin@shac.pe')
+    const result = await call(
+      api.get<ErrorBody>('/api/users/nombres', { ...headers, params: { ids: '???' } }),
+    )
+    expect(result.status).toBe(400)
+  })
+
+  it('400 al superar el límite de 100 ids', async () => {
+    const headers = authHeaders('admin@shac.pe')
+    const ids = Array.from({ length: 101 }, (_, i) => `user-${i}`).join(',')
+    const result = await call(
+      api.get<ErrorBody>('/api/users/nombres', { ...headers, params: { ids } }),
+    )
+    expect(result.status).toBe(400)
+  })
+})

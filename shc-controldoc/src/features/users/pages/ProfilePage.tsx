@@ -12,6 +12,9 @@ import { formatShortDate, formatDateTime } from '../../../utils/date.utils'
 import { useChangePassword } from '../../auth/hooks/useChangePassword'
 import { changePasswordSchema } from '../../auth/schemas/changePassword.schema'
 import type { ChangePasswordInput } from '../../auth/schemas/changePassword.schema'
+import { useSetPin } from '../../auth/hooks/useSetPin'
+import { setPinSchema } from '../../auth/schemas/setPin.schema'
+import type { SetPinInput } from '../../auth/schemas/setPin.schema'
 import { useAreas } from '../../areas/hooks/useAreas'
 
 export function ProfilePage() {
@@ -27,6 +30,15 @@ export function ProfilePage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const { mutate: doChangePassword, isPending } = useChangePassword()
 
+  const { mutate: doSetPin, isPending: isSettingPin } = useSetPin()
+  const {
+    register: registerPin,
+    handleSubmit: handleSubmitPin,
+    reset: resetPin,
+    setError: setPinError,
+    formState: { errors: pinErrors },
+  } = useForm<SetPinInput>({ resolver: zodResolver(setPinSchema) })
+
   const {
     register,
     handleSubmit,
@@ -40,6 +52,21 @@ export function ProfilePage() {
     doChangePassword(
       { currentPassword: data.currentPassword, newPassword: data.newPassword },
       { onSuccess: () => reset() },
+    )
+  }
+
+  const onSubmitPin = (data: SetPinInput) => {
+    doSetPin(
+      { password: data.password, pin: data.pin },
+      {
+        onSuccess: () => resetPin(),
+        onError: (error: unknown) => {
+          const status = (error as { response?: { status?: number } })?.response?.status
+          if (status === 401) {
+            setPinError('password', { message: t('changePassword.errors.incorrectCurrentPassword') })
+          }
+        },
+      },
     )
   }
 
@@ -214,6 +241,97 @@ export function ProfilePage() {
             >
               {isPending && <Loader2 size={15} className="animate-spin" />}
               {t('changePassword.submit')}
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-lg bg-surface-card p-6 dark:bg-surface-dark-elevated">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">
+              {t('profile.pinSection.title')}
+            </h2>
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                user.tienePinFirma
+                  ? 'bg-success/20 text-success'
+                  : 'bg-muted-soft/20 text-muted dark:text-on-dark-soft'
+              }`}
+            >
+              {user.tienePinFirma ? t('profile.pinSection.configured') : t('profile.pinSection.notConfigured')}
+            </span>
+          </div>
+
+          <form onSubmit={handleSubmitPin(onSubmitPin)} noValidate className="space-y-4">
+            <div>
+              <label
+                htmlFor="pinPassword"
+                className="mb-1 block text-sm font-medium text-body-strong dark:text-on-dark"
+              >
+                {t('profile.pinSection.currentPassword')}
+              </label>
+              <input
+                id="pinPassword"
+                type="password"
+                autoComplete="current-password"
+                {...registerPin('password')}
+                className="h-10 w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+              />
+              {pinErrors.password && (
+                <p className="mt-1 text-xs text-error">{tAuth(pinErrors.password.message ?? '')}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="pinNew"
+                  className="mb-1 block text-sm font-medium text-body-strong dark:text-on-dark"
+                >
+                  {t('profile.pinSection.newPin')}
+                </label>
+                <input
+                  id="pinNew"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  autoComplete="off"
+                  {...registerPin('pin')}
+                  className="h-10 w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-center text-sm tracking-widest text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+                />
+                {pinErrors.pin && (
+                  <p className="mt-1 text-xs text-error">{tAuth(pinErrors.pin.message ?? '')}</p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="pinConfirm"
+                  className="mb-1 block text-sm font-medium text-body-strong dark:text-on-dark"
+                >
+                  {t('profile.pinSection.confirmPin')}
+                </label>
+                <input
+                  id="pinConfirm"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  autoComplete="off"
+                  {...registerPin('confirmPin')}
+                  className="h-10 w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-center text-sm tracking-widest text-ink focus:outline-none focus:ring-2 focus:ring-coral/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+                />
+                {pinErrors.confirmPin && (
+                  <p className="mt-1 text-xs text-error">{tAuth(pinErrors.confirmPin.message ?? '')}</p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSettingPin}
+              className="flex h-10 items-center justify-center gap-2 rounded-md bg-coral px-5 text-sm font-medium text-white transition-colors hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSettingPin && <Loader2 size={15} className="animate-spin" />}
+              {t('profile.pinSection.submit')}
             </button>
           </form>
         </section>

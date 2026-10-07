@@ -673,7 +673,6 @@ function makeDoc(id: string, overrides: Partial<Documento> = {}): Documento {
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
     auditTrail: [],
     creadoEn: '2031-01-01T00:00:00Z',
     actualizadoEn: '2031-01-01T00:00:00Z',

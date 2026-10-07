@@ -141,12 +141,20 @@ Only users with roles `JEFE_CONTROL_DOCUMENTARIO` or `ALTA_DIRECCION` SHALL be a
 - **WHEN** a user with role `ALTA_DIRECCION` views the form
 - **THEN** the `confidencialidad` select is enabled and all four options are selectable
 
-### Requirement: revisorId and aprobadorId selects are populated from user fixtures
-The `revisorId` and `aprobadorId` fields SHALL render as `<select>` elements populated with mock users from the document fixtures. Each option SHALL display the user's full name.
+### Requirement: revisorId and aprobadorId selects are populated from real candidates
+`DocumentForm` SHALL NOT recibir ni importar usuarios de `mocks/fixtures`. Cada `<select>` (`revisorId`, `aprobadorId`) SHALL poblarse con su propia lista obtenida de `useCandidatosAsignacion` (revisores y aprobadores pueden diferir), mostrando `nombreCompleto`. En modo edición SHALL enviarse el `documentoId` para excluir al autor. Si el valor guardado no figura entre los candidatos, el select SHALL mostrarlo como opción marcada "(no disponible)" y permitir cambiarlo, nunca quedar en blanco en silencio. Mientras carga, el select SHALL indicar el estado de carga. La regla RN-DOC-019 (superRefine) se mantiene.
 
-#### Scenario: Revisor select shows mock users
-- **WHEN** the form renders
-- **THEN** the `revisorId` select contains at least 4 options (empty + 3–4 named users)
+#### Scenario: Selects independientes
+- **WHEN** el formulario renderiza con candidatos distintos para revisor y aprobador
+- **THEN** cada select lista únicamente los candidatos de su tipo
+
+#### Scenario: Valor guardado ya no elegible
+- **WHEN** se edita un BORRADOR cuyo `revisorId` guardado no está entre los candidatos
+- **THEN** el select muestra esa opción con la marca "(no disponible)" seleccionada y permite elegir otro
+
+#### Scenario: Sin uso de fixtures
+- **WHEN** se inspeccionan los imports de `DocumentFormPage` y `DocumentForm`
+- **THEN** no importan nada desde `mocks/`
 
 ### Requirement: fechaRevisionProxima auto-fills from fechaVigencia
 When `fechaRevisionProxima` is empty on submit and `fechaVigencia` is set, the system SHALL calculate `fechaRevisionProxima` as `fechaVigencia + 365 calendar days` before sending the request. When `fechaVigencia` changes in the form, the system SHALL reset `fechaRevisionProxima` to empty if it was previously auto-filled.

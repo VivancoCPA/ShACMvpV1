@@ -12,7 +12,7 @@ import { NCStatusBadge } from '../../../components/shared/NCStatusBadge'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { Pagination } from '../../../components/shared/Pagination'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
-import { formatShortDate } from '../../../utils/date.utils'
+import { formatCalendarDate } from '../../../utils/date.utils'
 import type { NoConformidad } from '../types/nonconformity.types'
 
 const COLUMN_COUNT = 9
@@ -257,7 +257,8 @@ export function NCList() {
                 const isDeleted = !!nc.deletedAt
                 const showOverdueAlert = hasOverdueACs(nc)
                 const responsable = nc.accionesCorrectivas[0]?.responsableId ?? '—'
-                const fechaDeteccion = formatShortDate(nc.fechaDeteccion, i18n.language)
+                // fechaDeteccion es una fecha de calendario (fix-fechas-utc) — sin desfase de zona horaria.
+                const fechaDeteccion = formatCalendarDate(nc.fechaDeteccion, i18n.language)
 
                 const perms = user?.rol
                   ? getNCPermissions(nc, user.rol)

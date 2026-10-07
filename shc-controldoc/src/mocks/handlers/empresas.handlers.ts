@@ -68,7 +68,7 @@ export const empresasHandlers = [
       razonSocial: parsed.data.razonSocial,
       ruc: parsed.data.ruc,
       estado: parsed.data.estado ?? 'ACTIVA',
-      logoUrl: parsed.data.logoBase64 ?? '',
+      logoUrl: parsed.data.logoBase64 || '',
       fechaAlta: new Date().toISOString(),
     }
     store.push(nueva)
@@ -105,6 +105,7 @@ export const empresasHandlers = [
       ...(parsed.data.razonSocial !== undefined ? { razonSocial: parsed.data.razonSocial } : {}),
       ...(parsed.data.ruc !== undefined ? { ruc: parsed.data.ruc } : {}),
       ...(parsed.data.estado !== undefined ? { estado: parsed.data.estado } : {}),
+      // Contrato de logo: omitido = no cambiar; '' = quitar; data URI = reemplazar
       ...(parsed.data.logoBase64 !== undefined ? { logoUrl: parsed.data.logoBase64 } : {}),
     }
     store[idx] = updated
@@ -201,5 +202,24 @@ export const empresasHandlers = [
     asignacion.estado = body.estado
 
     return ok(asignacion)
+  }),
+
+  // PATCH /api/empresas/:id/usuarios/:usuarioId/reset-pin — limpia el PIN de firma, solo
+  // SUPERADMIN (ver be-firma-pin). No define un PIN nuevo: el usuario configura uno propio
+  // desde /perfil la próxima vez que lo necesite.
+  http.patch('/api/empresas/:id/usuarios/:usuarioId/reset-pin', async ({ params, request }) => {
+    await delay(LATENCY)
+    const auth = requireSuperadmin(request)
+    if ('error' in auth) return auth.error
+
+    const asignacion = getUsuarioEmpresaStore().find(
+      (ue) => ue.empresaId === params.id && ue.usuarioId === params.usuarioId,
+    )
+    if (!asignacion) return err('Asignación no encontrada', 404)
+
+    const usuario = getUsersStore().find((u) => u.id === params.usuarioId)
+    if (usuario) usuario.pin = undefined
+
+    return ok(null)
   }),
 ]

@@ -13,9 +13,9 @@ import { DocumentVersionesTab } from '../components/DocumentVersionesTab'
 import { DocumentQEVinculadosList } from '../components/DocumentQEVinculadosList'
 import { DocumentNCVinculadasList } from '../components/DocumentNCVinculadasList'
 import { DocumentReplaceArchivoOriginalModal } from '../components/DocumentReplaceArchivoOriginalModal'
-import { getDocumentPermissions } from '../permissions'
+import { getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
 import { useAuthStore } from '../../../stores/authStore'
-import type { DocRole } from '../../../types/documents.types'
+import { useUserNames } from '../../users/hooks/useUserNames'
 
 function getFileTypeInfo(archivoUrl?: string, tipoArchivo?: string): { icon: JSX.Element; label: string } | null {
   const ext = archivoUrl?.split('.').pop()?.toLowerCase() ?? ''
@@ -65,6 +65,11 @@ export function DocumentDetailPage() {
   const { abrirArchivoOriginal, isLoading: isLoadingOriginal } = useGetArchivoOriginalUrl()
   const { descargarArchivoDistribucion, isLoading: isLoadingDistribucion } = useGetArchivoDistribucionUrl()
 
+  // Una sola llamada a useUserNames por pantalla (nombres-usuarios-reales D4): el header
+  // necesita autor/revisor/aprobador y el action panel necesita aprobador (preview de PDF) —
+  // ambos comparten este mismo getName en vez de llamar el hook cada uno por su cuenta.
+  const { getName } = useUserNames([documento?.autorId, documento?.revisorId, documento?.aprobadorId])
+
   const initialAction = searchParams.get('action') === 'iniciar-revision'
     ? ('revision-periodica' as const)
     : undefined
@@ -91,18 +96,7 @@ export function DocumentDetailPage() {
       )}
 
       {documento && (() => {
-        // Derive DocRole from authenticated user + document assignment
-        let docRole: DocRole = 'OPERARIO'
-        if (user) {
-          const isJefeCalidad = user.rol === 'JEFE_CALIDAD_SYST' || user.rol === 'JEFE_CONTROL_DOCUMENTARIO'
-          const isAutor = documento.autorId === user.id
-          const isRevisor = documento.revisorId === user.id
-          const isAprobador = documento.aprobadorId === user.id
-          if (isAutor) docRole = 'AUTOR'
-          else if (isRevisor) docRole = 'REVISOR'
-          else if (isAprobador) docRole = 'APROBADOR'
-          else if (isJefeCalidad) docRole = 'JEFE_CALIDAD'
-        }
+        const docRole = resolveDocRoleForUser(documento, user)
 
         const perms = getDocumentPermissions(documento.estado, docRole, {
           isAssignedAuthor: docRole === 'AUTOR',
@@ -121,10 +115,10 @@ export function DocumentDetailPage() {
 
         return (
           <div className="mx-auto max-w-3xl space-y-6 px-6 py-8">
-            <DocumentDetailHeader documento={documento} />
+            <DocumentDetailHeader documento={documento} getName={getName} />
 
             <div className="flex flex-wrap items-center gap-2">
-              <DocumentActionPanel documento={documento} initialAction={initialAction} />
+              <DocumentActionPanel documento={documento} initialAction={initialAction} getName={getName} />
             </div>
 
             {/* Descripción y detalle — collapsible, open by default */}
@@ -178,7 +172,7 @@ export function DocumentDetailPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => void abrirArchivoOriginal(documento.id)}
+                              onClick={() => void abrirArchivoOriginal(documento.id, documento.archivoOriginalNombre ?? undefined)}
                               disabled={isLoadingOriginal}
                               className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
                             >

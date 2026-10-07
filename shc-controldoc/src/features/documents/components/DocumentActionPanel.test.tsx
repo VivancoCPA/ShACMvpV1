@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '../../../stores/authStore'
@@ -40,7 +40,6 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
     auditTrail: [],
     creadoEn: '2026-01-01T08:00:00.000Z',
     actualizadoEn: '2026-01-01T08:00:00.000Z',
@@ -48,12 +47,12 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
   }
 }
 
-function renderPanel(documento: Documento) {
+function renderPanel(documento: Documento, getName: (id?: string | null) => string = (id) => id ?? '') {
   const queryClient = new QueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <DocumentActionPanel documento={documento} />
+        <DocumentActionPanel documento={documento} getName={getName} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -130,5 +129,144 @@ describe('DocumentActionPanel — EN_APROBACION firmar/rechazar scoped to aproba
 
     expect(screen.getByText('detail.actions.sign')).toBeInTheDocument()
     expect(screen.getByText('detail.actions.reject')).toBeInTheDocument()
+  })
+})
+
+describe('DocumentActionPanel — preview de PDF muestra el nombre del aprobador (nombres-usuarios-reales)', () => {
+  function makePublicadoDocumento(aprobadorId: string) {
+    return makeDocumento({
+      estado: 'PUBLICADO',
+      archivoUrl: 'https://example.com/doc.pdf',
+      aprobadorId,
+    })
+  }
+
+  it('muestra el nombre resuelto por getName en "Aprobado por"', () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never,
+    })
+    renderPanel(makePublicadoDocumento('user-aprobador-001'), (id) =>
+      id === 'user-aprobador-001' ? 'Luis Paredes' : (id ?? ''),
+    )
+
+    fireEvent.click(screen.getByText('actions.exportarPdfControlado'))
+
+    expect(screen.getByText('Luis Paredes')).toBeInTheDocument()
+  })
+
+  it('muestra el texto genérico cuando getName no resuelve al aprobador', () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never,
+    })
+    renderPanel(makePublicadoDocumento('user-desconocido'), () => 'common:userNames.noDisponible')
+
+    fireEvent.click(screen.getByText('actions.exportarPdfControlado'))
+
+    expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
+    expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
+  })
+})
+
+// nueva-version-autor-permisos: mismo bug class que arriba, pero en BORRADOR — "Enviar a
+// revisión"/"Eliminar" se gatean por el flag global isJefeCalidad antes de este fix, sin
+// considerar si ese mismo usuario es el revisor/aprobador asignado de ESTE documento (en cuyo
+// caso el backend resuelve docRole REVISOR/APROBADOR, de solo lectura en BORRADOR, y responde 403).
+describe('DocumentActionPanel — BORRADOR enviar a revisión/eliminar según precedencia de docRole', () => {
+  function makeBorrador(overrides: Partial<Documento> = {}) {
+    return makeDocumento({
+      estado: 'BORRADOR',
+      revisorId: 'user-revisor-001',
+      aprobadorId: 'user-aprobador-001',
+      ...overrides,
+    })
+  }
+
+  it('JEFE_CALIDAD_SYST que es el revisor asignado de este BORRADOR no ve Enviar a revisión ni Eliminar', () => {
+    const documento = makeBorrador({ revisorId: 'user-jca-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jca-001', rol: 'JEFE_CALIDAD_SYST' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('detail.actions.sendToReview')).not.toBeInTheDocument()
+    expect(screen.queryByText('detail.actions.delete')).not.toBeInTheDocument()
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO que es el aprobador asignado de este BORRADOR no ve Enviar a revisión ni Eliminar', () => {
+    const documento = makeBorrador({ aprobadorId: 'user-jcd-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jcd-001', rol: 'JEFE_CONTROL_DOCUMENTARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('detail.actions.sendToReview')).not.toBeInTheDocument()
+    expect(screen.queryByText('detail.actions.delete')).not.toBeInTheDocument()
+  })
+
+  it('JEFE_CALIDAD_SYST que NO es revisor/aprobador de este documento sí ve Enviar a revisión y Eliminar', () => {
+    const documento = makeBorrador()
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jca-ajeno', rol: 'JEFE_CALIDAD_SYST' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('detail.actions.sendToReview')).toBeInTheDocument()
+    expect(screen.getByText('detail.actions.delete')).toBeInTheDocument()
+  })
+
+  it('el AUTOR sí ve Enviar a revisión y Eliminar cuando hay revisor y aprobador asignados', () => {
+    const documento = makeBorrador({ autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('detail.actions.sendToReview')).toBeInTheDocument()
+    expect(screen.getByText('detail.actions.delete')).toBeInTheDocument()
+  })
+})
+
+describe('DocumentActionPanel — aviso cuando falta revisor o aprobador en BORRADOR', () => {
+  it('el AUTOR ve "Enviar a revisión" deshabilitado si falta revisorId', () => {
+    const documento = makeDocumento({
+      estado: 'BORRADOR',
+      autorId: 'user-autor-001',
+      aprobadorId: 'user-aprobador-001',
+      revisorId: undefined,
+    })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    const boton = screen.getByText('detail.actions.sendToReview').closest('button')
+    expect(boton).toBeDisabled()
+  })
+
+  it('el AUTOR ve "Enviar a revisión" deshabilitado si falta aprobadorId', () => {
+    const documento = makeDocumento({
+      estado: 'BORRADOR',
+      autorId: 'user-autor-001',
+      revisorId: 'user-revisor-001',
+      aprobadorId: undefined,
+    })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    const boton = screen.getByText('detail.actions.sendToReview').closest('button')
+    expect(boton).toBeDisabled()
+  })
+
+  it('el AUTOR ve "Enviar a revisión" habilitado cuando hay revisor y aprobador asignados', () => {
+    const documento = makeDocumento({
+      estado: 'BORRADOR',
+      autorId: 'user-autor-001',
+      revisorId: 'user-revisor-001',
+      aprobadorId: 'user-aprobador-001',
+    })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    const boton = screen.getByText('detail.actions.sendToReview').closest('button')
+    expect(boton).not.toBeDisabled()
   })
 })

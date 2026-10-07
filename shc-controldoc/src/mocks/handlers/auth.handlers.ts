@@ -25,6 +25,13 @@ function issueRefreshToken(userId: string): string {
   return `mock-refresh-token-${userId}-${Date.now()}`
 }
 
+// Nunca expone `password` ni `pin` crudos — `tienePinFirma` es la única señal que el frontend
+// recibe sobre el PIN (ver pin-firma-ui/design.md D7).
+function toUserDto(user: MockUser): Omit<MockUser, 'password' | 'pin'> & { tienePinFirma: boolean } {
+  const { password: _pw, pin, ...rest } = user
+  return { ...rest, tienePinFirma: pin !== undefined }
+}
+
 function readRefreshUserId(request: Request): string | undefined {
   const token = request.headers.get(REFRESH_HEADER)
   const match = token ? /^mock-refresh-token-(.+)-\d{13}$/.exec(token) : null
@@ -61,9 +68,8 @@ function resolveSession(
   empresaId?: string,
 ): ResolvedSession | SelectionRequired | { error: string } {
   if (user.esSuperadminMultiempresa) {
-    const { password: _pw, ...userWithoutPassword } = user
     return {
-      user: { ...userWithoutPassword, rol: 'SUPERADMIN' },
+      user: { ...toUserDto(user), rol: 'SUPERADMIN' },
       empresaActivaId: null,
       empresasDisponibles: [],
     }
@@ -85,9 +91,8 @@ function resolveSession(
     return { error: 'La empresa indicada no está asignada a este usuario' }
   }
 
-  const { password: _pw, ...userWithoutPassword } = user
   return {
-    user: { ...userWithoutPassword, rol },
+    user: { ...toUserDto(user), rol },
     empresaActivaId: resolvedEmpresaId,
     empresasDisponibles,
   }
@@ -143,11 +148,10 @@ export const authHandlers = [
     }
 
     if (user.esSuperadminMultiempresa) {
-      const { password: _pw, ...userWithoutPassword } = user
       return ok({
         accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
         mockRefreshToken: issueRefreshToken(user.id),
-        user: { ...userWithoutPassword, rol: 'SUPERADMIN' },
+        user: { ...toUserDto(user), rol: 'SUPERADMIN' },
         empresaActivaId: null,
         empresasDisponibles: [],
       })
@@ -167,11 +171,10 @@ export const authHandlers = [
       return err('Sesión expirada', 401)
     }
 
-    const { password: _pw, ...userWithoutPassword } = user
     return ok({
       accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
       mockRefreshToken: issueRefreshToken(user.id),
-      user: { ...userWithoutPassword, rol },
+      user: { ...toUserDto(user), rol },
       empresaActivaId,
       empresasDisponibles,
     })
@@ -238,6 +241,26 @@ export const authHandlers = [
       return err('Contraseña actual incorrecta', 401)
     }
     user.password = body.newPassword ?? user.password
+    return ok(null)
+  }),
+
+  // Mismo patrón que change-password: valida la contraseña actual contra el store mutable,
+  // luego guarda el PIN (también en texto plano, mismo patrón que `password`) — ver be-firma-pin.
+  http.post('/api/auth/set-pin', async ({ request }) => {
+    await delay(LATENCY)
+    const userId = readAccessUserId(request)
+    const user = userId ? getUsersStore().find((u) => u.id === userId) : undefined
+    if (!user) {
+      return err('Sesión expirada', 401)
+    }
+    const body = (await request.json()) as { password?: string; pin?: string }
+    if (body.password !== user.password) {
+      return err('Contraseña actual incorrecta', 401)
+    }
+    if (!body.pin || !/^\d{4}$/.test(body.pin)) {
+      return err('El PIN debe tener exactamente 4 dígitos numéricos', 400)
+    }
+    user.pin = body.pin
     return ok(null)
   }),
 ]

@@ -12,8 +12,7 @@ import { AnularNCModal } from '../components/AnularNCModal'
 import { ACSection } from '../components/ACSection'
 import { NCDocumentosVinculadosSection } from '../components/NCDocumentosVinculadosSection'
 import type { AuditTrailEntry } from '../types/nonconformity.types'
-import { getUsersStore } from '../../../mocks/fixtures/auth.fixtures'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { useArea } from '../../areas/hooks/useAreas'
 
 function SkeletonRow() {
@@ -72,6 +71,7 @@ export function NonconformityDetailPage() {
   const { data: nc, isLoading, isError, refetch } = useNonconformity(id ?? '')
   const { data: area } = useArea(nc?.areaId ?? '')
   const anularMutation = useAnularNonconformity()
+  const { getName } = useUserNames([nc?.detectadoPorId])
 
   const [showAnularModal, setShowAnularModal] = useState(false)
   const [auditOpen, setAuditOpen] = useState(false)
@@ -230,16 +230,11 @@ export function NonconformityDetailPage() {
                 <DeadlineBadge fechaCierre={nc.fechaCierre} estado={nc.estado} />
               </FieldRow>
             )}
-            {(() => {
-              const detectadoPorId = nc.detectadoPorId
-              if (!detectadoPorId) return null
-              const u = getUsersStore().find((x) => x.id === detectadoPorId)
-              return (
-                <FieldRow label={t('detail.fields.detectadoPor')}>
-                  {u ? `${u.nombre} ${u.apellido} (${u.rol})` : resolveUserDisplayName(detectadoPorId)}
-                </FieldRow>
-              )
-            })()}
+            {nc.detectadoPorId && (
+              <FieldRow label={t('detail.fields.detectadoPor')}>
+                {getName(nc.detectadoPorId)}
+              </FieldRow>
+            )}
             {nc.turno && (
               <FieldRow label={t('detail.fields.turno')}>
                 {t(`form.turno.${nc.turno}`)}

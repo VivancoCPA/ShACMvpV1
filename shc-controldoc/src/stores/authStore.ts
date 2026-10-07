@@ -42,6 +42,9 @@ interface AuthActions {
   setAccessToken(token: string | null): void
   refreshToken(): Promise<void>
   bootstrap(): Promise<void>
+  /** Actualiza `user.tienePinFirma` localmente tras un `set-pin` exitoso, sin requerir un
+   *  refresh de sesión completo (ver pin-firma-ui/design.md D4). No-op si no hay sesión. */
+  setTienePinFirma(value: boolean): void
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()((set) => ({
@@ -77,6 +80,10 @@ export const useAuthStore = create<AuthState & AuthActions>()((set) => ({
 
   setAccessToken: (token: string | null) => {
     set({ accessToken: token, isAuthenticated: token !== null })
+  },
+
+  setTienePinFirma: (value: boolean) => {
+    set((state) => (state.user ? { user: { ...state.user, tienePinFirma: value } } : state))
   },
 
   refreshToken: async () => {

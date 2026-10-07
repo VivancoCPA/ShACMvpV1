@@ -28,7 +28,10 @@ export function useFirmarCierre() {
       }
     },
     onError: (error: unknown) => {
-      const axiosError = error as AxiosError<{ message?: string }>
+      const axiosError = error as AxiosError<{ message?: string; errorCode?: string }>
+      // 'PIN_NO_CONFIGURADO' se muestra como aviso con link a /perfil dentro del propio
+      // PinModal (ver QECierreSection), no como toast genérico — ver pin-firma-ui/design.md D6.
+      if (axiosError.response?.data?.errorCode === 'PIN_NO_CONFIGURADO') return
       const message = axiosError.response?.data?.message ?? 'Error al registrar la firma'
       toast.error(message)
     },

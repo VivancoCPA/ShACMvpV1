@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Ban, RotateCcw } from 'lucide-react'
+import { ArrowLeft, UserPlus, Ban, RotateCcw, KeyRound } from 'lucide-react'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { ErrorBoundary } from '../../../components/shared/ErrorBoundary'
 import { NotFoundPage } from '../../../pages/NotFoundPage'
 import { Pagination } from '../../../components/shared/Pagination'
 import { UserAvatar } from '../../../components/ui/UserAvatar'
 import { useEmpresas } from '../hooks/useEmpresas'
-import { useUsuarioEmpresaPorEmpresa, useToggleUsuarioEmpresa } from '../hooks/useUsuarioEmpresa'
+import {
+  useUsuarioEmpresaPorEmpresa,
+  useToggleUsuarioEmpresa,
+  useResetPinUsuarioEmpresa,
+} from '../hooks/useUsuarioEmpresa'
 import { AsignarUsuarioModal } from '../components/AsignarUsuarioModal'
 import { ConfirmModal } from '../components/ConfirmModal'
 import type { UsuarioEmpresaConDatos } from '../api/empresas.api'
@@ -24,9 +28,11 @@ export function EmpresaUsuariosPage() {
 
   const { data: asignaciones, isLoading: loadingAsignaciones } = useUsuarioEmpresaPorEmpresa(id ?? '')
   const toggleMutation = useToggleUsuarioEmpresa(id ?? '')
+  const resetPinMutation = useResetPinUsuarioEmpresa(id ?? '')
 
   const [showAsignar, setShowAsignar] = useState(false)
   const [toggleTarget, setToggleTarget] = useState<UsuarioEmpresaConDatos | null>(null)
+  const [resetPinTarget, setResetPinTarget] = useState<UsuarioEmpresaConDatos | null>(null)
   const [page, setPage] = useState(1)
 
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' })
@@ -51,6 +57,11 @@ export function EmpresaUsuariosPage() {
     )
   }
 
+  function handleConfirmResetPin() {
+    if (!resetPinTarget) return
+    resetPinMutation.mutate(resetPinTarget.usuarioId, { onSuccess: () => setResetPinTarget(null) })
+  }
+
   const actions = (
     <button
       type="button"
@@ -65,6 +76,13 @@ export function EmpresaUsuariosPage() {
   return (
     <PageWrapper title={empresa ? t('asignacion.header.title', { empresa: empresa.razonSocial }) : ''} actions={actions}>
       <ErrorBoundary>
+        <Link
+          to="/admin/empresas"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          {t('asignacion.header.volver')}
+        </Link>
         {loadingAsignaciones ? (
           <p className="text-sm text-muted dark:text-on-dark-soft">{t('asignacion.cargando')}</p>
         ) : !asignaciones || asignaciones.length === 0 ? (
@@ -121,7 +139,16 @@ export function EmpresaUsuariosPage() {
                       {dateFormatter.format(new Date(a.fechaAsignacion))}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setResetPinTarget(a)}
+                          aria-label={t('asignacion.actions.resetearPin')}
+                          title={t('asignacion.actions.resetearPin')}
+                          className="rounded p-1.5 text-muted hover:bg-hairline hover:text-ink dark:text-on-dark-soft dark:hover:bg-surface-dark-soft dark:hover:text-on-dark"
+                        >
+                          <KeyRound size={16} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => setToggleTarget(a)}
@@ -183,6 +210,21 @@ export function EmpresaUsuariosPage() {
           danger={toggleTarget.estado === 'ACTIVO'}
           onConfirm={handleConfirmToggle}
           onClose={() => setToggleTarget(null)}
+        />
+      )}
+
+      {resetPinTarget && (
+        <ConfirmModal
+          titulo={t('asignacion.confirmarResetPin.titulo')}
+          mensaje={t('asignacion.confirmarResetPin.mensaje', {
+            nombre: `${resetPinTarget.usuarioNombre} ${resetPinTarget.usuarioApellido}`,
+          })}
+          cancelarLabel={t('asignacion.confirmarResetPin.cancelar')}
+          confirmarLabel={t('asignacion.confirmarResetPin.confirmar')}
+          isPending={resetPinMutation.isPending}
+          danger={false}
+          onConfirm={handleConfirmResetPin}
+          onClose={() => setResetPinTarget(null)}
         />
       )}
     </PageWrapper>

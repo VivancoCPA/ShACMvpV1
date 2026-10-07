@@ -52,3 +52,9 @@ export async function toggleUsuarioEmpresa(
   )
   return response.data
 }
+
+/** Limpia el PIN de firma del usuario — solo SUPERADMIN (ver be-firma-pin). El usuario
+ *  configura uno nuevo desde /perfil la próxima vez que necesite firmar. */
+export async function resetPinUsuarioEmpresa(empresaId: string, usuarioId: string): Promise<void> {
+  await api.patch(`/api/empresas/${empresaId}/usuarios/${usuarioId}/reset-pin`)
+}

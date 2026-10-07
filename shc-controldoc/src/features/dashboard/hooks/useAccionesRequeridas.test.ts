@@ -114,7 +114,6 @@ function buildDocumento(overrides: Partial<Documento>): Documento {
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
     auditTrail: [],
     creadoEn: '2026-01-01T00:00:00Z',
     actualizadoEn: '2026-01-01T00:00:00Z',

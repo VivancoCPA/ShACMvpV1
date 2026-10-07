@@ -14,6 +14,10 @@ export interface MockUser {
   lastLogin?: string
   activo: boolean
   esSuperadminMultiempresa?: boolean
+  /** PIN de firma en texto plano (mismo patrón que `password` — es mock, no hay hashing real).
+   *  `undefined` = sin PIN configurado (`tienePinFirma: false`). Ningún usuario semilla arranca
+   *  con un valor aquí — ver pin-firma-ui/design.md D8 (nunca semillar un PIN fijo tipo '1234'). */
+  pin?: string
 }
 
 export const MOCK_RESET_TOKEN = 'mock-reset-token'

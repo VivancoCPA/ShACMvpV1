@@ -11,7 +11,6 @@ import { useAreas } from '../../areas/hooks/useAreas'
 import type { UserRole } from '../../../types/auth.types'
 
 const CAN_SEE_DELETED: Set<UserRole> = new Set(['JEFE_CALIDAD_SYST', 'ALTA_DIRECCION'])
-const CAN_SEE_PENDIENTES: Set<UserRole> = new Set(['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO'])
 
 const SELECT_CLASSES =
   'h-10 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral/50 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
@@ -31,7 +30,10 @@ export function DocumentListFilters() {
   const pendientesActive = searchParams.get('pendientes') === 'true'
 
   const showDeletedToggle = userRole !== undefined && CAN_SEE_DELETED.has(userRole)
-  const showPendientes = userRole !== undefined && CAN_SEE_PENDIENTES.has(userRole)
+  // documentos-notificaciones-pendientes (D1/D7): "pendiente" depende de la asignación del actor,
+  // no de su rol — cualquier rol con acceso al módulo (ya filtrado por el router, ROUTE_ROLE_GROUPS.
+  // documentsView) puede tener algo pendiente, así que el filtro no se oculta por rol.
+  const showPendientes = userRole !== undefined
 
   const { data: pendientesData } = useDocumentosPendientesCount()
   const pendientesCount = pendientesData?.count ?? 0

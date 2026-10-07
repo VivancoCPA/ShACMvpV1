@@ -80,6 +80,11 @@ vi.mock('../hooks/useQualityEvent', () => ({
   useQualityEvent: () => ({ data: mockQE, isLoading: mockQELoading }),
 }))
 
+let getNameMock = (_id?: string | null) => 'Creador Uno'
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => getNameMock(id), isLoading: false }),
+}))
+
 const baseQE: QualityEvent = {
   id: 'qe-2026-100',
   numero: 'QE-2026-100',
@@ -127,6 +132,7 @@ describe('QualityEventForm — edit mode', () => {
     vi.clearAllMocks()
     mockQE = { ...baseQE }
     mockQELoading = false
+    getNameMock = () => 'Creador Uno'
   })
 
   afterEach(() => cleanup())
@@ -224,6 +230,31 @@ describe('QualityEventForm — edit mode', () => {
     await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
 
     expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
+  })
+
+  it('reportadoPor muestra el nombre resuelto por useUserNames, no el id crudo (nombres-usuarios-reales)', () => {
+    getNameMock = () => 'Creador Uno'
+    useAuthStore.setState({
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+    renderEditRoute()
+
+    expect(screen.getByText('Creador Uno')).toBeInTheDocument()
+    expect(screen.queryByText('user-creator')).not.toBeInTheDocument()
+  })
+
+  it('reportadoPor muestra el texto genérico cuando el id no se resuelve', () => {
+    getNameMock = () => 'common:userNames.noDisponible'
+    useAuthStore.setState({
+      user: createMockUser({ id: 'user-creator', nombre: 'Creador', apellido: 'Uno', email: 'c@shac.internal', rol: 'OPERARIO', areaId: 'Almacén Norte' }),
+      isAuthenticated: true,
+      accessToken: 'token',
+    })
+    renderEditRoute()
+
+    expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
   })
 })
 

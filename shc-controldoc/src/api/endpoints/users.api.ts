@@ -5,6 +5,7 @@ import type {
   UpdateUserRequest,
   ResetPasswordResponse,
   UserFilters,
+  UserNombre,
 } from '../../features/users/types/userManagement.types'
 
 export async function listUsers(filters: UserFilters = {}): Promise<User[]> {
@@ -35,5 +36,14 @@ export async function toggleUserActive(id: string): Promise<User> {
 
 export async function resetUserPassword(id: string): Promise<ResetPasswordResponse> {
   const response = await api.post<ResetPasswordResponse>(`/api/users/${id}/reset-password`)
+  return response.data
+}
+
+// Accesible a cualquier usuario autenticado con empresa activa (sin restricción de rol) —
+// alimenta texto de display en Documentos/QE/NC, nunca un selector de asignación.
+export async function getUserNames(ids: string[]): Promise<UserNombre[]> {
+  const response = await api.get<UserNombre[]>('/api/users/nombres', {
+    params: { ids: ids.join(',') },
+  })
   return response.data
 }

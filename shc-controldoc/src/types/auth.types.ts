@@ -28,6 +28,8 @@ export interface User {
   activo: boolean
   /** Flag global independiente de `UsuarioEmpresa` (me-f4-admin-empresas). `true` resuelve la sesión con `rol: 'SUPERADMIN'` y `empresaActivaId: null`, sin importar las asignaciones `UsuarioEmpresa` que tenga el usuario. */
   esSuperadminMultiempresa?: boolean
+  /** Calculado desde `PinHash` en el backend (`pin` en el mock) — nunca expone el valor del PIN. `false`/`undefined` indica que el usuario debe configurar su PIN antes de poder firmar documentos o cierres de QE (ver `user-profile-pin-firma`). */
+  tienePinFirma?: boolean
 }
 
 export interface LoginCredentials {

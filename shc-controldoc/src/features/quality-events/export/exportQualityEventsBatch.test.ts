@@ -49,16 +49,18 @@ beforeEach(() => {
   getQualityEventMock.mockClear()
 })
 
+const noNombres = {}
+
 describe('exportQualityEventsBatch', () => {
   it('produces a zip with one correctly-named PDF per selected QE', async () => {
-    const blob = await exportQualityEventsBatch(['001', '002', '003'], 'Ana Torres')
+    const blob = await exportQualityEventsBatch(['001', '002', '003'], 'Ana Torres', noNombres)
     const zip = await JSZip.loadAsync(blob)
     const names = Object.keys(zip.files).sort()
     expect(names).toEqual(['QE-2026-001.pdf', 'QE-2026-002.pdf', 'QE-2026-003.pdf'])
   })
 
   it('processes QEs sequentially, not concurrently', async () => {
-    await exportQualityEventsBatch(['001', '002'], 'Ana Torres')
+    await exportQualityEventsBatch(['001', '002'], 'Ana Torres', noNombres)
     expect(callOrder).toEqual([
       'export-start:001',
       'export-end:001',
@@ -69,10 +71,22 @@ describe('exportQualityEventsBatch', () => {
 
   it('reports progress after each QE completes', async () => {
     const onProgress = vi.fn()
-    await exportQualityEventsBatch(['001', '002', '003'], 'Ana Torres', onProgress)
+    await exportQualityEventsBatch(['001', '002', '003'], 'Ana Torres', noNombres, onProgress)
     expect(onProgress).toHaveBeenNthCalledWith(1, { completed: 1, total: 3 })
     expect(onProgress).toHaveBeenNthCalledWith(2, { completed: 2, total: 3 })
     expect(onProgress).toHaveBeenNthCalledWith(3, { completed: 3, total: 3 })
+  })
+
+  it('passes each QE its own pre-resolved reportadoPorNombre (nombres-usuarios-reales)', async () => {
+    const blob = await exportQualityEventsBatch(['001', '002'], 'Ana Torres', {
+      '001': { reportadoPorNombre: 'Nombre Uno' },
+      '002': { reportadoPorNombre: 'Nombre Dos' },
+    })
+    const zip = await JSZip.loadAsync(blob)
+    const pdf1 = await zip.files['QE-2026-001.pdf'].async('string')
+    const pdf2 = await zip.files['QE-2026-002.pdf'].async('string')
+    expect(pdf1).toContain('Nombre Uno')
+    expect(pdf2).toContain('Nombre Dos')
   })
 })
 

@@ -993,6 +993,30 @@ export const qualityEventHandlers = [
       pin: string
     }
 
+    // Valida el PIN del firmante contra el store mutable cross-dominio (getUsersStore(),
+    // nunca un valor fijo) ANTES de cualquier chequeo de orden de firma — este endpoint no
+    // validaba el PIN en absoluto, bug real que permitía cerrar un QE con cualquier PIN de
+    // 4 dígitos (ver pin-firma-ui).
+    const currentUser = getCurrentUser()
+    const signer = getUsersStore().find((u) => u.id === currentUser.id)
+    if (!signer?.pin) {
+      return HttpResponse.json(
+        {
+          success: false,
+          data: null,
+          message: 'PIN_NO_CONFIGURADO: Debés configurar tu PIN de firma antes de firmar un cierre (POST /api/auth/set-pin)',
+          errorCode: 'PIN_NO_CONFIGURADO',
+        },
+        { status: 422 },
+      )
+    }
+    if (body.pin !== signer.pin) {
+      return HttpResponse.json(
+        { success: false, data: null, message: 'PIN incorrecto' },
+        { status: 401 },
+      )
+    }
+
     if (!qe.resultadoCierre) {
       return HttpResponse.json(
         { success: false, message: 'QE-AC-006: debe registrarse el cierre antes de firmar' },
@@ -1001,7 +1025,6 @@ export const qualityEventHandlers = [
     }
 
     const now = new Date().toISOString()
-    const currentUser = getCurrentUser()
 
     if (body.rol === 'JEFE_CALIDAD_SYST') {
       if (qe.cerradoPorId) {

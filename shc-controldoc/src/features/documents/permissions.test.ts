@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { getDocumentPermissions } from './permissions'
-import type { DocumentPermissions } from '../../types/documents.types'
+import { getDocumentPermissions, resolveDocRoleForUser } from './permissions'
+import type { DocumentPermissions, Documento } from '../../types/documents.types'
+
+function doc(overrides: Partial<Pick<Documento, 'autorId' | 'revisorId' | 'aprobadorId'>> = {}) {
+  return { autorId: 'autor-1', revisorId: 'revisor-1', aprobadorId: 'aprobador-1', ...overrides }
+}
 
 function deny(overrides: Partial<DocumentPermissions> = {}): DocumentPermissions {
   return {
@@ -19,6 +23,46 @@ function deny(overrides: Partial<DocumentPermissions> = {}): DocumentPermissions
     ...overrides,
   }
 }
+
+describe('resolveDocRoleForUser — precedencia AUTOR → REVISOR → APROBADOR → JEFE_CALIDAD → OPERARIO', () => {
+  // nueva-version-autor-permisos: misma precedencia que DocumentPermissionResolver.ResolveDocRole
+  // (backend real) — single source of truth compartida con DocumentDetailPage/DocumentActionPanel.
+  it('AUTOR gana sobre cualquier otro rol', () => {
+    const d = doc({ autorId: 'u1' })
+    expect(resolveDocRoleForUser(d, { id: 'u1', rol: 'OPERARIO' })).toBe('AUTOR')
+  })
+
+  it('REVISOR cuando no es autor', () => {
+    const d = doc({ revisorId: 'u1' })
+    expect(resolveDocRoleForUser(d, { id: 'u1', rol: 'SUPERVISOR' })).toBe('REVISOR')
+  })
+
+  it('APROBADOR cuando no es autor ni revisor', () => {
+    const d = doc({ aprobadorId: 'u1' })
+    expect(resolveDocRoleForUser(d, { id: 'u1', rol: 'ALTA_DIRECCION' })).toBe('APROBADOR')
+  })
+
+  it('JEFE_CALIDAD (rol global JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO) solo si no es autor/revisor/aprobador de este documento', () => {
+    const d = doc()
+    expect(resolveDocRoleForUser(d, { id: 'otro', rol: 'JEFE_CALIDAD_SYST' })).toBe('JEFE_CALIDAD')
+    expect(resolveDocRoleForUser(d, { id: 'otro', rol: 'JEFE_CONTROL_DOCUMENTARIO' })).toBe('JEFE_CALIDAD')
+  })
+
+  it('un JCA/JCD que es revisor o aprobador de ESTE documento resuelve a REVISOR/APROBADOR, no a JEFE_CALIDAD', () => {
+    expect(resolveDocRoleForUser(doc({ revisorId: 'u1' }), { id: 'u1', rol: 'JEFE_CALIDAD_SYST' })).toBe('REVISOR')
+    expect(resolveDocRoleForUser(doc({ aprobadorId: 'u1' }), { id: 'u1', rol: 'JEFE_CONTROL_DOCUMENTARIO' })).toBe('APROBADOR')
+  })
+
+  it('OPERARIO cuando no tiene ninguna relación con el documento', () => {
+    const d = doc()
+    expect(resolveDocRoleForUser(d, { id: 'otro', rol: 'OPERARIO' })).toBe('OPERARIO')
+  })
+
+  it('OPERARIO cuando no hay usuario autenticado', () => {
+    expect(resolveDocRoleForUser(doc(), null)).toBe('OPERARIO')
+    expect(resolveDocRoleForUser(doc(), undefined)).toBe('OPERARIO')
+  })
+})
 
 describe('getDocumentPermissions — BORRADOR', () => {
   it('AUTOR: canRead, canEdit, canDelete, canViewArchivoOriginal, canReplaceArchivoOriginal', () => {

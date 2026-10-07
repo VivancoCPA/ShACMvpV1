@@ -1,5 +1,4 @@
-export { documentFixtures, mockUsers } from './documents.fixtures'
-export type { MockUser } from './documents.fixtures'
+export { documentFixtures } from './documents.fixtures'
 export { nonconformityFixtures } from './nonconformities.fixtures'
 export { resolveUserDisplayName } from './userIdentity.fixtures'
 export { seedLegacyNames } from './seedLegacyNames.fixtures'

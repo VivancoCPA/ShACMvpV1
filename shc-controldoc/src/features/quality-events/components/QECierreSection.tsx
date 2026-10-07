@@ -3,8 +3,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
 import type { z } from 'zod'
+import type { AxiosError } from 'axios'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCerrarQE } from '../hooks/useCerrarQE'
 import { useFirmarCierre } from '../hooks/useFirmarCierre'
@@ -26,15 +28,22 @@ function PinModal({
   onConfirm,
   onClose,
   isPending,
+  tienePinFirma,
+  pinResetMidSession,
 }: {
   titleKey: string
   onConfirm: (pin: string) => void
   onClose: () => void
   isPending: boolean
+  tienePinFirma: boolean | undefined
+  /** El backend respondió errorCode: 'PIN_NO_CONFIGURADO' aunque tienePinFirma fuera true al
+   *  abrir el modal (el PIN se reseteó entre medio) — ver design.md D6. */
+  pinResetMidSession: boolean
 }) {
   const { t } = useTranslation('qualityEvents')
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
+  const noPinConfigured = tienePinFirma === false || pinResetMidSession
 
   const handleSubmit = () => {
     if (!/^\d{4}$/.test(pin)) {
@@ -57,21 +66,34 @@ function PinModal({
           <X size={18} />
         </button>
         <h2 className="mb-1 font-medium text-ink dark:text-on-dark">{t(titleKey)}</h2>
-        <p className="mb-4 text-sm text-muted dark:text-on-dark-soft">{t('detail.cierre.pinModal.body')}</p>
-        <label htmlFor="qe-cierre-pin-input" className="sr-only">
-          {t('detail.cierre.pinModal.placeholder')}
-        </label>
-        <input
-          id="qe-cierre-pin-input"
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          placeholder={t('detail.cierre.pinModal.placeholder')}
-          className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:border-coral focus:outline-none focus:ring-2 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
-        />
-        {error && <p className="mt-1 text-xs text-error">{t('detail.cierre.pinModal.error')}</p>}
+
+        {noPinConfigured ? (
+          <div className="mb-4 rounded-md border border-hairline bg-surface-card px-3.5 py-2.5 text-sm text-body dark:border-hairline/20 dark:bg-surface-dark-elevated dark:text-on-dark">
+            <p className="mb-1.5">{t('detail.cierre.pinModal.noPinConfigured')}</p>
+            <Link to="/perfil" className="font-medium text-coral hover:underline">
+              {t('detail.cierre.pinModal.configurePinLink')}
+            </Link>
+          </div>
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-muted dark:text-on-dark-soft">{t('detail.cierre.pinModal.body')}</p>
+            <label htmlFor="qe-cierre-pin-input" className="sr-only">
+              {t('detail.cierre.pinModal.placeholder')}
+            </label>
+            <input
+              id="qe-cierre-pin-input"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder={t('detail.cierre.pinModal.placeholder')}
+              className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:border-coral focus:outline-none focus:ring-2 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+            />
+            {error && <p className="mt-1 text-xs text-error">{t('detail.cierre.pinModal.error')}</p>}
+          </>
+        )}
+
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -80,14 +102,16 @@ function PinModal({
           >
             {t('detail.cierre.pinModal.cancel')}
           </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-60"
-          >
-            {t('detail.cierre.pinModal.confirm')}
-          </button>
+          {!noPinConfigured && (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending}
+              className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-60"
+            >
+              {t('detail.cierre.pinModal.confirm')}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -100,6 +124,7 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
   const cerrarQE = useCerrarQE()
   const firmarCierre = useFirmarCierre()
   const [pinModalRole, setPinModalRole] = useState<'JEFE_CALIDAD_SYST' | 'SUPERVISOR' | 'ALTA_DIRECCION' | null>(null)
+  const [pinResetMidSession, setPinResetMidSession] = useState(false)
   const [plazoOption, setPlazoOption] = useState<number | 'CUSTOM'>(60)
 
   const {
@@ -159,6 +184,7 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
   // acción propia de quien firma, sin afirmar que otras personas fueron notificadas
   // (su sesión no tiene forma de confirmar una entrega entre sesiones distintas).
   const onPinConfirm = (rol: 'JEFE_CALIDAD_SYST' | 'SUPERVISOR' | 'ALTA_DIRECCION', pin: string) => {
+    setPinResetMidSession(false)
     firmarCierre.mutate(
       { id: qe.id, data: { rol, pin } },
       {
@@ -167,6 +193,10 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
           if (updated.estado === 'CERRADO') {
             toast.success(t('detail.cierre.toasts.closed'))
           }
+        },
+        onError: (error: unknown) => {
+          const errorCode = (error as AxiosError<{ errorCode?: string }>)?.response?.data?.errorCode
+          if (errorCode === 'PIN_NO_CONFIGURADO') setPinResetMidSession(true)
         },
       },
     )
@@ -187,8 +217,13 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
                 : 'detail.cierre.pinModal.titleAltaDireccion'
           }
           onConfirm={(pin) => onPinConfirm(pinModalRole, pin)}
-          onClose={() => setPinModalRole(null)}
+          onClose={() => {
+            setPinModalRole(null)
+            setPinResetMidSession(false)
+          }}
           isPending={firmarCierre.isPending}
+          tienePinFirma={user?.tienePinFirma}
+          pinResetMidSession={pinResetMidSession}
         />
       )}
 

@@ -6,6 +6,10 @@
     "deadline": {
       "vencida": "Vencida"
     },
+    "userNames": {
+      "cargando": "…",
+      "noDisponible": "Usuario no disponible"
+    },
     "statuses": {
       "BORRADOR": "Borrador",
       "EN_REVISION": "En Revisión",
@@ -101,6 +105,10 @@
       "field_version": "Versión",
       "field_revisor": "Revisor",
       "field_aprobador": "Aprobador",
+      "asignacion_cargando": "Cargando…",
+      "asignacion_no_disponible": "Usuario asignado (no disponible)",
+      "asignacion_sin_candidatos": "No hay candidatos disponibles con un rol apto.",
+      "asignacion_error": "No se pudo cargar la lista de candidatos.",
       "field_vigencia": "Fecha de Vigencia",
       "field_revision": "Próxima Revisión",
       "field_archivo": "Archivo",
@@ -139,7 +147,11 @@
     "semaforo": {
       "proximo": "Próximo",
       "vencido": "Vencido",
-      "diasRestantes": "{{dias}} día(s) restante(s)"
+      "hoy": "Hoy",
+      "enDias_one": "en {{count}} día",
+      "enDias_other": "en {{count}} días",
+      "haceDias_one": "hace {{count}} día",
+      "haceDias_other": "hace {{count}} días"
     },
     "detail": {
       "title": "Detalle del Documento",
@@ -156,10 +168,15 @@
       "banners": {
         "obsoleto": "Este documento está OBSOLETO y no debe ser utilizado.",
         "qeVinculados": "Vinculado a Quality Events activos: {{ids}}",
-        "restringido": "Acceso restringido a roles: {{roles}}"
+        "restringido": "Acceso restringido a roles: {{roles}}",
+        "rechazadoEnRevision": "Rechazado en revisión por {{nombre}} el {{fecha}}. Motivo: {{motivo}}",
+        "rechazadoEnAprobacion": "Rechazado en aprobación por {{nombre}} el {{fecha}}. Motivo: {{motivo}}",
+        "faltaAsignacion": "Asigna un revisor y un aprobador para poder enviar este documento a revisión.",
+        "faltaAsignacionEditar": "Editar"
       },
       "actions": {
         "sendToReview": "Enviar a revisión",
+        "sendToReviewDisabledTooltip": "Falta asignar revisor y/o aprobador antes de poder enviar a revisión.",
         "approveReview": "Aprobar revisión",
         "reject": "Rechazar",
         "sign": "Firmar y publicar",
@@ -182,11 +199,14 @@
     "signature": {
       "title": "Firmar y Publicar Documento",
       "legalText": "Al firmar este documento, confirmo que he revisado y apruebo su contenido. Esta firma electrónica tiene validez legal equivalente a una firma manuscrita según la política RN-DOC-004.",
-      "passwordLabel": "Contraseña (PIN de firma)",
-      "passwordPlaceholder": "Ingresa tu contraseña",
+      "pinLabel": "PIN de firma (4 dígitos)",
+      "pinPlaceholder": "••••",
       "submit": "Firmar y publicar",
       "cancel": "Cancelar",
-      "errorInvalid": "Credenciales inválidas. Verifica tu contraseña.",
+      "errorInvalid": "PIN incorrecto.",
+      "errorGeneric": "No se pudo registrar la firma. Inténtalo de nuevo.",
+      "noPinConfigured": "Aún no configuraste tu PIN de firma.",
+      "configurePinLink": "Configurar PIN en Mi Perfil",
       "successMessage": "Documento firmado y publicado exitosamente."
     },
     "reject": {
@@ -207,11 +227,15 @@
     "auditTrail": {
       "showMore": "Ver más",
       "noEntries": "Sin entradas en el audit trail.",
+      "motivo": "Motivo: {{motivo}}",
       "actions": {
         "DESCARGA": "Descarga de PDF",
         "DESCARGA_ARCHIVO_ORIGINAL": "Descarga de archivo original",
         "VISUALIZACION": "Visualización de archivo",
         "ESTADO_CAMBIADO": "Cambio de estado",
+        "RECHAZADO_EN_REVISION": "Rechazado en revisión",
+        "RECHAZADO_EN_APROBACION": "Rechazado en aprobación",
+        "REVISION_CANCELADA": "Revisión cancelada",
         "CAMPO_EDITADO": "Campo editado",
         "FIRMA_REGISTRADA": "Firma registrada",
         "DOCUMENTO_CREADO": "Documento creado",
@@ -309,7 +333,8 @@
       },
       "toast": {
         "success": "Nueva versión {{version}} creada en borrador",
-        "error": "Error al crear la nueva versión del documento."
+        "error": "Error al crear la nueva versión del documento.",
+        "faltaAsignacion": "Nueva versión {{version}} creada. Asigna revisor y/o aprobador antes de enviarla a revisión."
       },
       "tooltipYaExiste": "Ya existe una versión en proceso ({{estado}}). Publícala o cancélala antes de crear una nueva."
     },
@@ -458,7 +483,9 @@
       "passwordLowercase": "Debe incluir al menos una minúscula.",
       "passwordDigit": "Debe incluir al menos un número.",
       "passwordSpecial": "Debe incluir al menos un carácter especial.",
-      "passwordMismatch": "Las contraseñas no coinciden."
+      "passwordMismatch": "Las contraseñas no coinciden.",
+      "pinFormat": "El PIN debe tener exactamente 4 dígitos.",
+      "pinMismatch": "Los PIN no coinciden."
     },
     "errors": {
       "invalidCredentials": "Credenciales inválidas. Verifica tu correo y contraseña.",
@@ -859,7 +886,9 @@
           "placeholder": "PIN",
           "confirm": "Confirmar",
           "cancel": "Cancelar",
-          "error": "PIN incorrecto."
+          "error": "PIN incorrecto.",
+          "noPinConfigured": "Aún no configuraste tu PIN de firma.",
+          "configurePinLink": "Configurar PIN en Mi Perfil"
         },
         "summary": {
           "resultado": "Resultado del cierre",
@@ -2045,6 +2074,16 @@
         "areasAsignadas": "Áreas asignadas",
         "createdAt": "Cuenta creada",
         "lastLogin": "Último acceso"
+      },
+      "pinSection": {
+        "title": "PIN de firma",
+        "configured": "Configurado",
+        "notConfigured": "No configurado",
+        "currentPassword": "Confirma tu contraseña actual",
+        "newPin": "PIN nuevo",
+        "confirmPin": "Confirmar PIN",
+        "submit": "Guardar PIN",
+        "success": "PIN de firma configurado correctamente"
       }
     },
     "changePassword": {
@@ -2292,6 +2331,15 @@
         "titulo": "Reactivar empresa",
         "mensaje": "¿Confirma que desea reactivar \"{{nombre}}\"? Las asignaciones de usuario no se restauran automáticamente — deberá reactivarlas manualmente si corresponde.",
         "confirmar": "Reactivar"
+      },
+      "sinResultados": "Ninguna empresa coincide con los filtros",
+      "filters": {
+        "buscar": "Buscar",
+        "buscarPlaceholder": "Razón social o RUC",
+        "estado": "Estado",
+        "todas": "Todas",
+        "activas": "Activas",
+        "inactivas": "Inactivas"
       }
     },
     "estado": {
@@ -2325,7 +2373,8 @@
         "rucInvalido": "El RUC debe tener 11 dígitos numéricos"
       },
       "errors": {
-        "rucDuplicado": "Ya existe una empresa con ese RUC"
+        "rucDuplicado": "Ya existe una empresa con ese RUC",
+        "generico": "No se pudo guardar la empresa. Intente nuevamente."
       },
       "logoPreviewAlt": "Logo de la empresa",
       "dragHintLogo": "Seleccionar imagen (JPG o PNG, máx. 2MB)"
@@ -2337,12 +2386,15 @@
       "empresaActualizarError": "No se pudo actualizar la empresa",
       "asignacionCreada": "Usuario asignado correctamente",
       "asignacionActualizada": "Asignación actualizada correctamente",
-      "asignacionError": "No se pudo completar la operación"
+      "asignacionError": "No se pudo completar la operación",
+      "resetPinExitoso": "PIN reseteado. El usuario deberá configurar un PIN nuevo antes de poder firmar.",
+      "resetPinError": "No se pudo resetear el PIN"
     },
     "asignacion": {
       "header": {
         "title": "Usuarios de {{empresa}}",
-        "asignarUsuario": "Asignar usuario"
+        "asignarUsuario": "Asignar usuario",
+        "volver": "Volver a empresas"
       },
       "cargando": "Cargando asignaciones...",
       "vacio": "No hay usuarios asignados a esta empresa",
@@ -2360,7 +2412,8 @@
       },
       "actions": {
         "desactivar": "Desactivar",
-        "reactivar": "Reactivar"
+        "reactivar": "Reactivar",
+        "resetearPin": "Resetear PIN de firma"
       },
       "confirmarDesactivar": {
         "titulo": "Desactivar asignación",
@@ -2371,6 +2424,12 @@
       "confirmarReactivar": {
         "titulo": "Reactivar asignación",
         "confirmar": "Reactivar"
+      },
+      "confirmarResetPin": {
+        "titulo": "Resetear PIN de firma",
+        "mensaje": "¿Confirma que desea resetear el PIN de firma de \"{{nombre}}\"? Deberá configurar uno nuevo antes de poder firmar documentos o cierres de QE.",
+        "cancelar": "Cancelar",
+        "confirmar": "Resetear PIN"
       },
       "modal": {
         "titulo": "Asignar usuario existente",

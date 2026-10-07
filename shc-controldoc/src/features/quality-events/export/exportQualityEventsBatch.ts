@@ -7,9 +7,19 @@ export interface BatchExportProgress {
   total: number
 }
 
+export interface BatchExportNombres {
+  reportadoPorNombre: string
+  causaRaizAprobadaPorNombre?: string
+}
+
 export async function exportQualityEventsBatch(
   qeIds: string[],
   exportadoPorNombre: string,
+  // Nombres ya resueltos por el caller (QEList) vía un único useUserNames cubriendo todas
+  // las QEs seleccionadas — esta función no es un componente, no puede resolver nombres por
+  // su cuenta (nombres-usuarios-reales D5), keyed por qeId porque cada QE tiene su propio
+  // reportadoPorId/causaRaizAprobadaPorId.
+  nombresPorQE: Record<string, BatchExportNombres>,
   onProgress?: (progress: BatchExportProgress) => void,
 ): Promise<Blob> {
   const zip = new JSZip()
@@ -19,7 +29,13 @@ export async function exportQualityEventsBatch(
     // export-pdf solo registra auditoría (204 sin cuerpo) — el QE real se obtiene por separado
     // vía GET, no del resultado de export-pdf (ver design.md Hallazgo 6).
     const [qe] = await Promise.all([getQualityEvent(qeIds[i]), exportQualityEventPdf(qeIds[i])])
-    const doc = buildQualityEventPdf(qe, { exportadoPorNombre, generadoEn: new Date() })
+    const nombres = nombresPorQE[qeIds[i]]
+    const doc = buildQualityEventPdf(qe, {
+      exportadoPorNombre,
+      generadoEn: new Date(),
+      reportadoPorNombre: nombres?.reportadoPorNombre ?? '',
+      causaRaizAprobadaPorNombre: nombres?.causaRaizAprobadaPorNombre,
+    })
     zip.file(`${qe.numero}.pdf`, doc.output('blob'))
     onProgress?.({ completed: i + 1, total })
   }

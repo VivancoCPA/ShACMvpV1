@@ -38,6 +38,11 @@ vi.mock('../../areas/hooks/useAreas', () => ({
   useArea: () => ({ data: undefined }),
 }))
 
+let getNameMock = (_id?: string | null) => 'María Castro'
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => getNameMock(id), isLoading: false }),
+}))
+
 vi.mock('../../../stores/authStore', () => ({
   useAuthStore: (sel: (s: { user: { rol: UserRole } | null }) => unknown) =>
     sel({ user: mockRole ? { rol: mockRole } : null }),
@@ -119,5 +124,35 @@ describe('NonconformityDetailPage — botón Crear QE', () => {
     expect(navigateMock).toHaveBeenCalledWith(
       '/quality-events/nuevo?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-CAL-2026-014&ncArea=Almac%C3%A9n%20Norte',
     )
+  })
+})
+
+describe('NonconformityDetailPage — detectadoPor muestra el nombre real (nombres-usuarios-reales)', () => {
+  it('no renderiza el campo cuando detectadoPorId está ausente', () => {
+    mockNC = makeNC({ detectadoPorId: undefined })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+    expect(screen.queryByText('detail.fields.detectadoPor')).not.toBeInTheDocument()
+  })
+
+  it('muestra el nombre resuelto por useUserNames, no el id crudo ni el rol', () => {
+    getNameMock = () => 'María Castro'
+    mockNC = makeNC({ detectadoPorId: 'user-003' })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+
+    expect(screen.getByText('María Castro')).toBeInTheDocument()
+    expect(screen.queryByText('user-003', { exact: false })).not.toBeInTheDocument()
+    expect(screen.queryByText(/SUPERVISOR/)).not.toBeInTheDocument()
+  })
+
+  it('muestra el texto genérico cuando el id no se resuelve', () => {
+    getNameMock = () => 'common:userNames.noDisponible'
+    mockNC = makeNC({ detectadoPorId: 'user-desconocido' })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+
+    expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
+    expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
   })
 })

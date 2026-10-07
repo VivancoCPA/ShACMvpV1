@@ -172,6 +172,14 @@ export function useCreateNuevaVersion(documentoId: string) {
     mutationFn: (payload: NuevaVersionPayload) => createNuevaVersion(documentoId, payload),
     onSuccess: (newDoc) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
+      // nueva-version-autor-permisos: si el backend dejó revisorId/aprobadorId vacíos (el
+      // heredado era el nuevo autor, o ya no era candidato válido), avisar y llevar directo a
+      // editar en vez del detalle — ahí es donde se reasigna.
+      if (!newDoc.revisorId || !newDoc.aprobadorId) {
+        toast.success(t('nuevaVersion.toast.faltaAsignacion', { version: newDoc.version }))
+        navigate(`/documents/${newDoc.id}/edit`)
+        return
+      }
       toast.success(t('nuevaVersion.toast.success', { version: newDoc.version }))
       navigate(`/documentos/${newDoc.id}`)
     },
@@ -207,8 +215,9 @@ export function useGetArchivoOriginalUrl() {
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
-    mutationFn: (documentoId: string) => getArchivoOriginalUrl(documentoId),
-    onSuccess: ({ blob, fileName }, documentoId) => {
+    mutationFn: ({ documentoId, fallbackNombre }: { documentoId: string; fallbackNombre?: string }) =>
+      getArchivoOriginalUrl(documentoId, fallbackNombre),
+    onSuccess: ({ blob, fileName }, { documentoId }) => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -229,9 +238,11 @@ export function useGetArchivoOriginalUrl() {
   })
 
   return {
-    abrirArchivoOriginal: async (documentoId: string): Promise<void> => {
+    // fallbackNombre: documento.archivoOriginalNombre ya conocido por el caller — usado cuando el
+    // header Content-Disposition no trae nombre (fix-descarga-archivos-nombre).
+    abrirArchivoOriginal: async (documentoId: string, fallbackNombre?: string): Promise<void> => {
       try {
-        await mutation.mutateAsync(documentoId)
+        await mutation.mutateAsync({ documentoId, fallbackNombre })
       } catch {
         // handled by onError
       }

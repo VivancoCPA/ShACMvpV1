@@ -2,7 +2,9 @@
 import { jsPDF } from 'jspdf'
 import { documentFixtures } from '../fixtures/documents.fixtures'
 import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
-import { DOC_STATUS_TRANSITIONS } from '../../features/documents/constants'
+import { DOC_STATUS_TRANSITIONS, DOCUMENT_ASIGNACION_ELIGIBLE_ROLES } from '../../features/documents/constants'
+import { getUsersStore } from '../fixtures/auth.fixtures'
+import { getEmpresasActivasForUsuario } from '../fixtures/empresas.fixtures'
 import { buildMinimalDocxBytes } from '../utils/minimalDocx'
 import { getAreasStore } from './areas.handlers'
 import { getSessionUser as getUserFromRequest } from './shared/session'
@@ -10,7 +12,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { getQeStore } from './quality-events.handlers'
 import { getNonconformitiesStore } from './nonconformities.handlers'
 import { getDocumentPermissions } from '../../features/documents/permissions'
-import type { Documento, DocStatus, DocType, QeVinculadoResumen, NcVinculadoResumen } from '../../types/documents.types'
+import type { Documento, DocStatus, DocType, QeVinculadoResumen, NcVinculadoResumen, TipoAsignacion } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
 import type { QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
@@ -30,8 +32,6 @@ function nombreArea(areaId: string): string {
   return getAreasStore().find((a) => a.id === areaId)?.nombre ?? areaId
 }
 
-const MOCK_PIN = '123456'
-
 const IN_PROCESS_STATUSES = new Set<DocStatus>(['BORRADOR', 'EN_REVISION', 'EN_APROBACION'])
 
 function calcularNuevaVersion(versionActual: string, tipoCambio: 'MENOR' | 'MAYOR'): string {
@@ -49,8 +49,6 @@ const CONFIDENCIAL_ROLES = new Set([
   'ALTA_DIRECCION',
 ])
 
-const NON_PENDING_ROLES = new Set<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])
-
 // Document-relative role, mirrors features/documents/permissions.ts + DocumentDetailPage's
 // derivation: access to the original file depends on the caller's assignment on THIS document
 // (or being Jefe Calidad), never on their raw global UserRole (RN-DOC-013/016).
@@ -66,34 +64,38 @@ function getDocRoleForUser(
   return 'OPERARIO'
 }
 
+// nueva-version-autor-permisos: misma regla de elegibilidad que GET /candidatos-asignacion
+// (activo, rol elegible para el tipo, asignación activa en la empresa, distinto del autor),
+// factorizada para reusarla también al heredar revisor/aprobador en una nueva versión.
+function esCandidatoAsignacionValido(
+  usuarioId: string,
+  tipo: TipoAsignacion,
+  autorId: string | undefined,
+  empresaId: string | undefined,
+): boolean {
+  if (usuarioId === autorId) return false
+  const elegibles = DOCUMENT_ASIGNACION_ELIGIBLE_ROLES[tipo]
+  const usuario = getUsersStore().find((u) => u.id === usuarioId)
+  if (!usuario || !usuario.activo || !elegibles.includes(usuario.rol)) return false
+  return getEmpresasActivasForUsuario(usuarioId).some((e) => e.id === empresaId)
+}
+
+// documentos-notificaciones-pendientes (D1/D4): "pendiente" depende únicamente de la asignación
+// directa del actor sobre CADA documento, igual para todos los roles — salvo EN_REVISION_PERIODICA,
+// la única etapa sin un asignado individual (solo JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO).
+// Reemplaza las reglas anteriores a documentos-revisor-aprobador-reales D1 (SUPERVISOR como único
+// revisor, AUDITOR_INTERNO/ALTA_DIRECCION excluidos de aprobador, JEFE_CALIDAD_SYST viendo todo
+// EN_REVISION sin ser el asignado, autor sin ver su propio BORRADOR sin enviar).
 function filterPendientes(docs: Documento[], userId: string, userRole: UserRole): Documento[] {
-  const ids = new Set<string>()
+  const esJefeCalidadORevisionPeriodica = userRole === 'JEFE_CALIDAD_SYST' || userRole === 'JEFE_CONTROL_DOCUMENTARIO'
 
-  if (userRole === 'SUPERVISOR') {
-    docs
-      .filter((d) => d.estado === 'EN_REVISION' && d.revisorId === userId)
-      .forEach((d) => ids.add(d.id))
-  }
-
-  if (!NON_PENDING_ROLES.has(userRole)) {
-    docs
-      .filter((d) => d.estado === 'EN_APROBACION' && d.aprobadorId === userId)
-      .forEach((d) => ids.add(d.id))
-  }
-
-  if (userRole === 'JEFE_CALIDAD_SYST') {
-    docs
-      .filter((d) => d.estado === 'EN_REVISION' || d.estado === 'EN_REVISION_PERIODICA')
-      .forEach((d) => ids.add(d.id))
-  }
-
-  if (userRole === 'JEFE_CONTROL_DOCUMENTARIO') {
-    docs
-      .filter((d) => d.estado === 'EN_REVISION_PERIODICA')
-      .forEach((d) => ids.add(d.id))
-  }
-
-  return docs.filter((d) => ids.has(d.id))
+  return docs.filter(
+    (d) =>
+      (d.estado === 'BORRADOR' && d.autorId === userId) ||
+      (d.estado === 'EN_REVISION' && d.revisorId === userId) ||
+      (d.estado === 'EN_APROBACION' && d.aprobadorId === userId) ||
+      (d.estado === 'EN_REVISION_PERIODICA' && esJefeCalidadORevisionPeriodica),
+  )
 }
 
 const LATENCY = 400
@@ -144,6 +146,15 @@ export function makeAuditEntry(
   }
 }
 
+// documentos-rechazo-visible: espejo de CambiarEstadoDocumentoHandler.cs — las 3 transiciones
+// hacia BORRADOR ganan su propia acción en vez de ESTADO_CAMBIADO.
+function getAccionTransicionABorrador(estadoAnterior: DocStatus, estadoNuevo: DocStatus, motivo: string | undefined): string {
+  if (estadoNuevo !== 'BORRADOR') return 'ESTADO_CAMBIADO'
+  if (estadoAnterior === 'EN_REVISION') return motivo ? 'RECHAZADO_EN_REVISION' : 'REVISION_CANCELADA'
+  if (estadoAnterior === 'EN_APROBACION') return 'RECHAZADO_EN_APROBACION'
+  return 'ESTADO_CAMBIADO'
+}
+
 function ok<T>(data: T, status = 200) {
   return HttpResponse.json(
     { success: true, data },
@@ -151,10 +162,24 @@ function ok<T>(data: T, status = 200) {
   )
 }
 
-function err(message: string, status: number) {
+function err(message: string, status: number, errorCode?: string) {
   return HttpResponse.json(
-    { success: false, data: null, message },
+    { success: false, data: null, message, errorCode },
     { status },
+  )
+}
+
+// nueva-version-autor-permisos: mismo contrato que FieldValidationException del backend real —
+// 400 con `errors: ["campo: mensaje", ...]`, no un mensaje genérico.
+function fieldErr(fieldErrors: Record<string, string>) {
+  return HttpResponse.json(
+    {
+      success: false,
+      data: null,
+      message: 'Error de validación.',
+      errors: Object.entries(fieldErrors).map(([campo, mensaje]) => `${campo}: ${mensaje}`),
+    },
+    { status: 400 },
   )
 }
 
@@ -219,19 +244,58 @@ export const documentHandlers = [
     return ok({ items, pagination: { page, pageSize, totalItems, totalPages } })
   }),
 
-  // GET /api/documents/pendientes/count — count pending docs for current user
+  // GET /api/documents/pendientes/count — count pending docs for current user.
+  // documentos-notificaciones-pendientes (D5): sin corte temprano por rol — todo rol se evalúa por
+  // la misma regla de asignación (filterPendientes). Aplica además la misma cláusula de
+  // confidencialidad que GET /api/documents, para que el badge nunca cuente un documento que el
+  // listado filtrado (?pendientes=true) no mostraría.
   http.get('/api/documents/pendientes/count', async ({ request }) => {
     await delay(LATENCY)
 
     const requestUser = getUserFromRequest(request)
-    if (!requestUser || NON_PENDING_ROLES.has(requestUser.rol)) {
+    if (!requestUser) {
       return ok({ count: 0 })
     }
 
     const activeEmpresaId = getActiveEmpresaId()
-    const activeDocs = store.filter((d) => !d.deletedAt && d.empresaId === activeEmpresaId)
-    const pendientesDocs = filterPendientes(activeDocs, requestUser.id, requestUser.rol)
+    const visibleDocs = store.filter((d) => {
+      if (d.empresaId !== activeEmpresaId || d.deletedAt) return false
+      if (d.confidencialidad === 'PUBLICO' || d.confidencialidad === 'INTERNO') return true
+      if (d.confidencialidad === 'CONFIDENCIAL') return CONFIDENCIAL_ROLES.has(requestUser.rol)
+      // RESTRINGIDO
+      return ((d.rolesAutorizados as string[] | undefined) ?? []).includes(requestUser.rol)
+    })
+    const pendientesDocs = filterPendientes(visibleDocs, requestUser.id, requestUser.rol)
     return ok({ count: pendientesDocs.length })
+  }),
+
+  // GET /api/documents/candidatos-asignacion — mismo contrato y regla D1/D2 que el backend real:
+  // usuarios activos con rol elegible, sin el autor (sesión, o autor del documento si viene documentoId).
+  // Debe registrarse antes de /api/documents/:id para que ese comodín no lo capture.
+  http.get('/api/documents/candidatos-asignacion', async ({ request }) => {
+    await delay(LATENCY)
+
+    const url = new URL(request.url)
+    const tipo = url.searchParams.get('tipo') as TipoAsignacion | null
+    if (tipo !== 'REVISOR' && tipo !== 'APROBADOR') {
+      return err('El parámetro tipo debe ser REVISOR o APROBADOR.', 400)
+    }
+
+    let autorId = getUserFromRequest(request)?.id
+    const documentoId = url.searchParams.get('documentoId')
+    if (documentoId) {
+      const doc = store.find((d) => d.id === documentoId)
+      if (!doc || doc.empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+      autorId = doc.autorId
+    }
+
+    const activeEmpresaId = getActiveEmpresaId()
+    const candidatos = getUsersStore()
+      .filter((u) => esCandidatoAsignacionValido(u.id, tipo, autorId, activeEmpresaId))
+      .map((u) => ({ id: u.id, nombreCompleto: `${u.nombre} ${u.apellido}`.trim(), rol: u.rol }))
+      .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto))
+
+    return ok(candidatos)
   }),
 
   // GET /api/documents/:id — detail
@@ -307,7 +371,6 @@ export const documentHandlers = [
       archivoDistribucionUrl: null,
       qeVinculados: [],
       ncVinculados: [],
-      historialVersiones: [],
       auditTrail: [
         makeAuditEntry('', 'DOCUMENTO_CREADO'),
       ],
@@ -622,6 +685,16 @@ export const documentHandlers = [
       return err(`Transición inválida: ${doc.estado} → ${nuevoEstado}`, 422)
     }
 
+    // nueva-version-autor-permisos (D3): un documento sin revisor/aprobador asignado no puede
+    // enviarse a revisión — error de validación por campo, no un 403/422 genérico. Espejo de
+    // CambiarEstadoDocumentoHandler (backend real).
+    if (doc.estado === 'BORRADOR' && nuevoEstado === 'EN_REVISION') {
+      const camposFaltantes: Record<string, string> = {}
+      if (!doc.revisorId) camposFaltantes.revisorId = 'Asigná un revisor antes de enviar a revisión.'
+      if (!doc.aprobadorId) camposFaltantes.aprobadorId = 'Asigná un aprobador antes de enviar a revisión.'
+      if (Object.keys(camposFaltantes).length > 0) return fieldErr(camposFaltantes)
+    }
+
     if (nuevoEstado === 'OBSOLETO' && doc.qeVinculados.length > 0) {
       return err(
         `No se puede obsoletizar: QEs vinculados activos (${doc.qeVinculados.join(', ')}) (RN-DOC-005)`,
@@ -663,10 +736,10 @@ export const documentHandlers = [
       }),
       auditTrail: [
         ...doc.auditTrail,
-        makeAuditEntry(doc.id, 'ESTADO_CAMBIADO', {
+        makeAuditEntry(doc.id, getAccionTransicionABorrador(doc.estado, nuevoEstado, motivo), {
           estadoAnterior: doc.estado,
           estadoNuevo: nuevoEstado,
-          valorAnterior: motivo,
+          motivo,
         }),
         ...(nuevoEstado === 'PUBLICADO' ? [
           makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
@@ -677,8 +750,11 @@ export const documentHandlers = [
 
     store[idx] = updated
 
+    const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+    const link = `/documentos/${doc.id}`
+
     if (nuevoEstado === 'BORRADOR' && doc.estado === 'EN_REVISION' && notificarAutor === true) {
-      const actorId = getUserFromRequest(request)?.id ?? 'user-mock-001'
+      // Rechazo formal (con motivo, DocumentRejectModal) — ya existente.
       createCambioEstadoNotification({
         entidadTipo: 'DOCUMENTO',
         entidadId: doc.id,
@@ -688,7 +764,61 @@ export const documentHandlers = [
         reportadoPorId: doc.autorId,
         responsablesACActivas: [],
         actorId,
-        link: `/documentos/${doc.id}`,
+        link,
+      })
+    } else if (nuevoEstado === 'BORRADOR' && doc.estado === 'EN_REVISION' && !motivo) {
+      // Cancelar revisión (sin motivo, docRole JEFE_CALIDAD) — notifica a autor y revisor
+      // (documentos-notificaciones-pendientes, design.md D2).
+      createCambioEstadoNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
+        estadoNuevo: nuevoEstado,
+        reportadoPorId: doc.autorId,
+        responsablesACActivas: doc.revisorId ? [doc.revisorId] : [],
+        actorId,
+        link,
+      })
+    }
+
+    if (nuevoEstado === 'EN_REVISION' && doc.estado === 'BORRADOR' && doc.revisorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
+        asignadoId: doc.revisorId,
+        actorId,
+        link,
+        mensaje: `${doc.codigo} está listo para tu revisión.`,
+      })
+    }
+
+    if (nuevoEstado === 'EN_APROBACION' && doc.estado === 'EN_REVISION' && doc.aprobadorId) {
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
+        asignadoId: doc.aprobadorId,
+        actorId,
+        link,
+        mensaje: `${doc.codigo} está listo para tu aprobación.`,
+      })
+    }
+
+    if (nuevoEstado === 'EN_REVISION_PERIODICA' && doc.estado === 'PUBLICADO') {
+      createCambioEstadoNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: doc.id,
+        entidadCodigo: doc.codigo,
+        empresaId: doc.empresaId,
+        estadoNuevo: nuevoEstado,
+        reportadoPorId: doc.autorId,
+        responsablesACActivas: [],
+        actorId,
+        link,
       })
     }
 
@@ -705,16 +835,37 @@ export const documentHandlers = [
     const body = await request.json() as Record<string, unknown>
     const pin = body.pin as string
 
-    if (pin !== MOCK_PIN) {
-      return HttpResponse.json(
-        { success: false, data: null, message: 'Credenciales inválidas' },
-        { status: 401 },
+    // Valida contra el PIN configurado por el propio firmante (getUsersStore(), store mutable
+    // cross-dominio — nunca un valor fijo), no un MOCK_PIN agnóstico de identidad.
+    const sessionUser = getUserFromRequest(request)
+    if (!sessionUser) return err('Sesión expirada', 401)
+    const signer = getUsersStore().find((u) => u.id === sessionUser.id)
+    if (!signer) return err('Sesión expirada', 401)
+    if (!signer.pin) {
+      return err(
+        'Debés configurar tu PIN de firma antes de firmar (POST /api/auth/set-pin)',
+        422,
+        'PIN_NO_CONFIGURADO',
       )
+    }
+    if (pin !== signer.pin) {
+      return err('PIN incorrecto', 401)
     }
 
     const doc = store[idx]
     if (doc.estado !== 'EN_APROBACION') {
       return err('Solo se puede firmar un documento en estado EN_APROBACION', 409)
+    }
+
+    // pdf-distribucion-real: RN-DOC-017 permite documentos sin archivo original, pero sin él no
+    // hay nada que convertir a PDF real — simula el mismo bloqueo que el backend real
+    // (FirmarPublicarDocumentoHandler) en vez de generar una portada dummy como sustituto.
+    if (!doc.archivoOriginalUrl) {
+      return err(
+        'El documento no tiene archivo original; súbelo antes de enviarlo a aprobación',
+        422,
+        'SIN_ARCHIVO_ORIGINAL',
+      )
     }
 
     // RN-DOC-001: obsoletizar versión publicada del mismo código (misma empresa)
@@ -760,6 +911,22 @@ export const documentHandlers = [
     }
 
     store[idx] = updated
+
+    // Publicación — notifica a autor y revisor (informativo), nunca al propio firmante
+    // (documentos-notificaciones-pendientes, design.md D2).
+    const actorIdSign = getUserFromRequest(request)?.id ?? 'user-mock-001'
+    createCambioEstadoNotification({
+      entidadTipo: 'DOCUMENTO',
+      entidadId: doc.id,
+      entidadCodigo: doc.codigo,
+      empresaId: doc.empresaId,
+      estadoNuevo: 'PUBLICADO',
+      reportadoPorId: doc.autorId,
+      responsablesACActivas: doc.revisorId ? [doc.revisorId] : [],
+      actorId: actorIdSign,
+      link: `/documentos/${doc.id}`,
+    })
+
     return ok(updated)
   }),
 
@@ -803,6 +970,16 @@ export const documentHandlers = [
 
     const doc = store[idx]
 
+    // nueva-version-autor-permisos: solo el autor del documento origen o un Jefe de
+    // Calidad/Control Documentario (rol global) puede iniciar una nueva versión — espejo de
+    // NuevaVersionDocumentoEndpoint (backend real). Antes cualquier usuario autenticado podía.
+    const actor = getUserFromRequest(request)
+    const puedeCrearVersion = actor?.id === doc.autorId
+      || actor?.rol === 'JEFE_CALIDAD_SYST' || actor?.rol === 'JEFE_CONTROL_DOCUMENTARIO'
+    if (!puedeCrearVersion) {
+      return err('No tenés permiso para crear una nueva versión de este documento', 403)
+    }
+
     const versionEnProceso = store.find(
       (d) => !d.deletedAt && d.codigo === doc.codigo && d.empresaId === doc.empresaId && d.id !== doc.id && IN_PROCESS_STATUSES.has(d.estado),
     )
@@ -817,6 +994,18 @@ export const documentHandlers = [
     const nuevaVersion = calcularNuevaVersion(doc.version, body.tipoCambio)
     const now = new Date().toISOString()
     const newId = generateId()
+    const activeEmpresaId = getActiveEmpresaId()
+
+    // nueva-version-autor-permisos (D1): el autor de la nueva versión es quien la crea, nunca el
+    // autor del origen. Revisor/aprobador se heredan solo si son distintos del nuevo autor y
+    // siguen siendo candidatos elegibles para él — misma regla que GET /candidatos-asignacion.
+    const nuevoAutorId = actor!.id
+    const revisorHeredado = doc.revisorId && esCandidatoAsignacionValido(doc.revisorId, 'REVISOR', nuevoAutorId, activeEmpresaId)
+      ? doc.revisorId
+      : undefined
+    const aprobadorHeredado = doc.aprobadorId && esCandidatoAsignacionValido(doc.aprobadorId, 'APROBADOR', nuevoAutorId, activeEmpresaId)
+      ? doc.aprobadorId
+      : undefined
 
     const newDoc = {
       ...doc,
@@ -827,13 +1016,13 @@ export const documentHandlers = [
       archivoUrl: undefined,
       hashArchivo: undefined,
       fechaEmision: undefined,
-      revisorId: undefined,
-      aprobadorId: undefined,
+      autorId: nuevoAutorId,
+      revisorId: revisorHeredado,
+      aprobadorId: aprobadorHeredado,
       archivoOriginalBloqueado: false,
       archivoDistribucionUrl: null,
       qeVinculados: [],
       ncVinculados: [],
-      historialVersiones: [],
       auditTrail: [
         makeAuditEntry(newId, 'DOCUMENTO_CREADO', {
           valorNuevo: `Nueva versión ${nuevaVersion} iniciada. Motivo: ${body.motivo}`,
@@ -858,6 +1047,23 @@ export const documentHandlers = [
     }
 
     store.push(newDoc)
+
+    const actorIdNuevaVersion = getUserFromRequest(request)?.id ?? 'user-mock-001'
+    const linkNuevaVersion = `/documentos/${newDoc.id}`
+    for (const destinatarioId of [newDoc.revisorId, newDoc.aprobadorId]) {
+      if (!destinatarioId) continue
+      createAsignacionNotification({
+        entidadTipo: 'DOCUMENTO',
+        entidadId: newDoc.id,
+        entidadCodigo: newDoc.codigo,
+        empresaId: newDoc.empresaId,
+        asignadoId: destinatarioId,
+        actorId: actorIdNuevaVersion,
+        link: linkNuevaVersion,
+        mensaje: `Fuiste designado para la revisión/aprobación de la nueva versión de ${newDoc.codigo} (${newDoc.version}).`,
+      })
+    }
+
     return ok(newDoc, 201)
   }),
 
@@ -1016,12 +1222,20 @@ export const documentHandlers = [
     return ok(updated)
   }),
 
-  // PATCH /api/documents/:id/restaurar — restore a soft-deleted document
-  http.patch('/api/documents/:id/restaurar', async ({ params }) => {
+  // PATCH /api/documents/:id/restaurar — restore a soft-deleted document.
+  // documentos-notificaciones-pendientes (D2): solo JEFE_CALIDAD_SYST y ALTA_DIRECCION — mismo
+  // criterio que ya exigía el frontend (DocumentActionPanel.tsx canRestore), ahora también en el
+  // backend real (RestaurarDocumentoEndpoint).
+  http.patch('/api/documents/:id/restaurar', async ({ params, request }) => {
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
     if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
+
+    const requestUser = getUserFromRequest(request)
+    if (!requestUser || (requestUser.rol !== 'JEFE_CALIDAD_SYST' && requestUser.rol !== 'ALTA_DIRECCION')) {
+      return err('No tenés permiso para restaurar este documento', 403)
+    }
 
     const doc = store[idx]
     if (!doc.deletedAt) {
@@ -1201,75 +1415,6 @@ export const documentHandlers = [
         'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     })
-  }),
-
-  // POST /api/documents/:id/publicar — freeze original + generate distribution PDF (ADD-02)
-  http.post('/api/documents/:id/publicar', async ({ params, request }) => {
-    await delay(LATENCY)
-
-    const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
-
-    const body = await request.json() as Record<string, unknown>
-    const password = body.password as string | undefined
-
-    if (password !== MOCK_PIN) {
-      return HttpResponse.json(
-        { success: false, data: null, message: 'Credenciales inválidas (RN-DOC-004)' },
-        { status: 401 },
-      )
-    }
-
-    const doc = store[idx]
-    if (doc.estado !== 'EN_APROBACION') {
-      return err('Solo se puede publicar un documento en estado EN_APROBACION', 409)
-    }
-
-    // RN-DOC-001: obsoletizar versión publicada del mismo código (misma empresa)
-    for (let i = 0; i < store.length; i++) {
-      if (store[i].codigo === doc.codigo && store[i].empresaId === doc.empresaId && store[i].id !== doc.id && store[i].estado === 'PUBLICADO') {
-        store[i] = {
-          ...store[i],
-          estado: 'OBSOLETO',
-          actualizadoEn: new Date().toISOString(),
-          auditTrail: [
-            ...store[i].auditTrail,
-            makeAuditEntry(store[i].id, 'ESTADO_CAMBIADO', {
-              estadoAnterior: 'PUBLICADO',
-              estadoNuevo: 'OBSOLETO',
-            }),
-          ],
-        }
-      }
-    }
-
-    const now = new Date().toISOString()
-    const mockHash = `sha256-mock-${doc.id}`
-    const mockDistribucionUrl = `/mock/distribuciones/${doc.id}/${doc.codigo}-${doc.version}.pdf`
-
-    const updated: Documento = {
-      ...doc,
-      estado: 'PUBLICADO',
-      hashArchivo: mockHash,
-      archivoOriginalBloqueado: true,
-      archivoDistribucionUrl: mockDistribucionUrl,
-      actualizadoEn: now,
-      auditTrail: [
-        ...doc.auditTrail,
-        makeAuditEntry(doc.id, 'FIRMA_REGISTRADA', {
-          estadoAnterior: 'EN_APROBACION',
-          estadoNuevo: 'PUBLICADO',
-          valorNuevo: mockHash,
-        }),
-        makeAuditEntry(doc.id, 'ARCHIVO_ORIGINAL_CONGELADO'),
-        makeAuditEntry(doc.id, 'ARCHIVO_DISTRIBUCION_GENERADO', {
-          valorNuevo: mockDistribucionUrl,
-        }),
-      ],
-    }
-
-    store[idx] = updated
-    return ok(updated)
   }),
 
   // POST /api/documents/:id/qe-vinculados — vincular un QE (fs-vinculacion-documento-qe)

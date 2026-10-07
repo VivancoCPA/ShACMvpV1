@@ -194,7 +194,7 @@ export function extraerAccionesDocumento(documentos: Documento[], user: User): A
         tipo: 'DOC_REVISION_PERIODICA',
         codigo: doc.codigo,
         descripcion: doc.titulo,
-        fechaLimite: doc.fechaRevisionProxima,
+        fechaLimite: doc.fechaRevisionProxima ?? undefined,
         prioridad: vencida ? 'alta' : 'normal',
         ruta,
       })

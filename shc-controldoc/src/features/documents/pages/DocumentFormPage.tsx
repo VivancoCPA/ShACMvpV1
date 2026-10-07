@@ -6,7 +6,6 @@ import { ErrorBoundary } from '../../../components/shared/ErrorBoundary'
 import { DocumentForm } from '../components/DocumentForm'
 import { useDocumentForm } from '../hooks/useDocumentForm'
 import { useAuthStore } from '../../../stores/authStore'
-import { mockUsers } from '../../../mocks/fixtures/documents.fixtures'
 import { getDocumentPermissions } from '../permissions'
 import type { DocRole } from '../../../types/documents.types'
 
@@ -92,7 +91,9 @@ export function DocumentFormPage() {
             <DocumentForm
               mode={mode}
               isLoading={isSubmitting}
-              mockUsers={mockUsers}
+              documentId={id}
+              savedRevisorId={documento?.revisorId ?? null}
+              savedAprobadorId={documento?.aprobadorId ?? null}
               descriptionLocked={descriptionLocked}
               userRole={userRole}
               isUploading={isSubmitting}

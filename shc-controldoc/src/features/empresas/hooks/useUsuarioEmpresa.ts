@@ -6,6 +6,7 @@ import {
   listarUsuariosDeEmpresa,
   asignarUsuarioEmpresa,
   toggleUsuarioEmpresa,
+  resetPinUsuarioEmpresa,
 } from '../api/empresas.api'
 import type { AsignarUsuarioEmpresaInput } from '../schemas/asignarUsuarioEmpresa.schema'
 
@@ -57,6 +58,20 @@ export function useToggleUsuarioEmpresa(empresaId: string) {
     },
     onError: (error) => {
       toast.error(getServerErrorMessage(error) ?? t('toasts.asignacionError'))
+    },
+  })
+}
+
+export function useResetPinUsuarioEmpresa(empresaId: string) {
+  const { t } = useTranslation('empresas')
+
+  return useMutation({
+    mutationFn: (usuarioId: string) => resetPinUsuarioEmpresa(empresaId, usuarioId),
+    onSuccess: () => {
+      toast.success(t('toasts.resetPinExitoso'))
+    },
+    onError: (error) => {
+      toast.error(getServerErrorMessage(error) ?? t('toasts.resetPinError'))
     },
   })
 }

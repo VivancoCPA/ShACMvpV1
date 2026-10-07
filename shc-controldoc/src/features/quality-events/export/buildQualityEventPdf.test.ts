@@ -5,6 +5,7 @@ import type { QualityEvent, AccionCorrectivaQE, QEAuditTrailEntry } from '../typ
 const baseMeta: QEExportMeta = {
   exportadoPorNombre: 'Ana Torres',
   generadoEn: new Date('2026-07-18T15:32:00Z'),
+  reportadoPorNombre: 'Ricardo Flores',
 }
 
 function makeAuditEntry(overrides: Partial<QEAuditTrailEntry>): QEAuditTrailEntry {
@@ -132,6 +133,38 @@ describe('buildQualityEventPdf', () => {
     const out = doc.output()
     expect(out).toContain('Ciclo 2')
     expect(out).toContain('Reabierto')
+  })
+
+  it('cabecera shows the caller-supplied reportadoPorNombre (nombres-usuarios-reales)', () => {
+    const qe = baseQE({})
+    const doc = buildQualityEventPdf(qe, { ...baseMeta, reportadoPorNombre: 'Ana Pérez' })
+    const out = doc.output()
+
+    expect(out).toContain('Reportado por: Ana Pérez')
+  })
+
+  it('causa raíz section shows the caller-supplied causaRaizAprobadaPorNombre', () => {
+    const qe = baseQE({
+      causaRaizDefinitiva: 'Falta de mantenimiento preventivo',
+      auditTrail: [makeAuditEntry({ accion: 'CAUSA_RAIZ_APROBADA', generadoPorIA: true, realizadoPorNombre: 'Fallback Nombre' })],
+    })
+    const doc = buildQualityEventPdf(qe, { ...baseMeta, causaRaizAprobadaPorNombre: 'Luis Paredes' })
+    const out = doc.output()
+
+    // 'Fallback Nombre' legítimamente aparece en la tabla de audit trail (columna Usuario,
+    // ver drawAuditTrail) — solo importa que la línea de validación use el nombre del caller.
+    expect(out).toContain('validado por Luis Paredes')
+  })
+
+  it('causa raíz section falls back to the audit entry name when causaRaizAprobadaPorNombre is absent', () => {
+    const qe = baseQE({
+      causaRaizDefinitiva: 'Falta de mantenimiento preventivo',
+      auditTrail: [makeAuditEntry({ accion: 'CAUSA_RAIZ_APROBADA', generadoPorIA: true, realizadoPorNombre: 'Fallback Nombre' })],
+    })
+    const doc = buildQualityEventPdf(qe, baseMeta)
+    const out = doc.output()
+
+    expect(out).toContain('validado por Fallback Nombre')
   })
 
   it('renders a footer with numero, page count, timestamp, and exporting user on every page', () => {

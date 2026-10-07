@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { formatShortDate } from '../../utils/date.utils'
+import { formatCalendarDate, calendarDaysUntil } from '../../utils/date.utils'
 
 interface DeadlineBadgeProps {
   fechaCierre: string | null
@@ -15,15 +15,17 @@ export function DeadlineBadge({ fechaCierre, estado }: DeadlineBadgeProps) {
     return <span className="text-xs text-muted dark:text-on-dark-soft">—</span>
   }
 
-  const formatted = formatShortDate(fechaCierre, i18n.language)
+  // fechaCierre (plazo de una Acción Correctiva de Incidente/NC/QE) es una fecha de calendario
+  // (fix-fechas-utc) — se usa el par de helpers "sin zona" para que este badge, compartido por
+  // los 3 dominios, no muestre un día de menos ni cuente un día de más/menos en zonas horarias
+  // negativas (p.ej. Perú, UTC-5).
+  const formatted = formatCalendarDate(fechaCierre, i18n.language)
 
   if (CLOSED_STATES.has(estado)) {
     return <span className="text-xs text-muted dark:text-on-dark-soft">{formatted}</span>
   }
 
-  const daysRemaining = Math.floor(
-    (new Date(fechaCierre).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-  )
+  const daysRemaining = calendarDaysUntil(fechaCierre)
 
   let colorClass: string
   if (daysRemaining > 14) {

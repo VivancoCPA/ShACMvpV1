@@ -23,7 +23,7 @@ import { useVincularNC } from '../../nonconformities/hooks/useNonconformities'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
 import { useAuthStore } from '../../../stores/authStore'
 import { resolveQEEditAccess } from '../utils/qualityEventPermissions'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { useAreas } from '../../areas/hooks/useAreas'
 import {
   QE_ORIGIN_LABELS,
@@ -90,6 +90,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const [mineralFreeText, setMineralFreeText] = useState(() =>
     Boolean(qe?.mineralInvolucrado) && !MINERALES.includes(qe?.mineralInvolucrado as typeof MINERALES[number]),
   )
+  const { getName } = useUserNames([qe?.reportadoPorId])
 
   const origenParam = searchParams.get('origen') as QEOrigin | null
   const initialOrigen = origenParam && QE_ORIGINS.includes(origenParam) ? origenParam : ''
@@ -403,7 +404,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
             </div>
             <div className="sm:col-span-2">
               <p className={labelClass}>{t('form.fields.reportadoPor')}</p>
-              <p className={readOnlyValueClass}>{resolveUserDisplayName(qe.reportadoPorId)}</p>
+              <p className={readOnlyValueClass}>{getName(qe.reportadoPorId)}</p>
             </div>
           </div>
         )}

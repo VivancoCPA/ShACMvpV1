@@ -1,5 +1,6 @@
 import type { QEType, QESeverity, QEStatus } from '../features/quality-events/types/qualityEvent.types'
 import type { NCTipo, NCSeveridad, NCStatus } from '../features/nonconformities/types/nonconformity.types'
+import type { UserRole } from './auth.types'
 
 export type DocStatus =
   | 'BORRADOR'
@@ -42,14 +43,6 @@ export interface DocumentPermissions {
   canViewArchivoDistribucion: boolean
 }
 
-export interface VersionEntry {
-  version: string
-  fechaPublicacion: string
-  autorId: string
-  descripcionCambios: string
-  hashArchivo?: string
-}
-
 export interface QeVinculadoResumen {
   id: string
   numero: string
@@ -66,16 +59,19 @@ export interface NcVinculadoResumen {
   estado: NCStatus
 }
 
+// entidadTipo/entidadId/ipOrigen son opcionales (no eliminados): DocumentoAuditTrail.cs no tiene
+// columnas equivalentes y el backend real nunca los envía — fix-detalle-documento-historial-audit.
 export interface AuditTrailEntry {
   id: string
-  entidadTipo: 'Documento' | 'NoConformidad'
-  entidadId: string
+  entidadTipo?: 'Documento' | 'NoConformidad'
+  entidadId?: string
   accion: string
   estadoAnterior?: string
   estadoNuevo?: string
   campoModificado?: string
   valorAnterior?: string
   valorNuevo?: string
+  motivo?: string
   realizadoPorId: string
   realizadoPorNombre: string
   timestamp: string
@@ -95,11 +91,16 @@ export interface Documento {
   confidencialidad: DocConfidencialidad
   rolesAutorizados?: DocumentAuthorizedRole[]
   autorId: string
-  revisorId?: string
-  aprobadorId?: string
-  fechaEmision?: string
-  fechaVigencia?: string
-  fechaRevisionProxima?: string
+  // string | null (no solo string | undefined): el backend real serializa un Guid? vacío como
+  // JSON null explícito — nueva-version-autor-permisos (herencia condicionada en nueva versión
+  // deja estos campos en null cuando el heredado ya no es válido para el nuevo autor).
+  revisorId?: string | null
+  aprobadorId?: string | null
+  // string | null (no solo string | undefined): el backend real serializa un DateTime? vacío
+  // como JSON null explícito, nunca como clave ausente (fix-fechas-utc).
+  fechaEmision?: string | null
+  fechaVigencia?: string | null
+  fechaRevisionProxima?: string | null
   fechaObsolescencia?: string
   motivoVersion?: string
   descripcion?: string
@@ -114,7 +115,6 @@ export interface Documento {
   deletedAt?: string
   qeVinculados: QeVinculadoResumen[]
   ncVinculados: NcVinculadoResumen[]
-  historialVersiones: VersionEntry[]
   auditTrail: AuditTrailEntry[]
   creadoEn: string
   actualizadoEn: string
@@ -131,4 +131,14 @@ export interface DocFilters {
   pageSize?: number
   includeDeleted?: boolean
   pendientes?: boolean
+}
+
+// Candidato a Revisor/Aprobador (GET /api/documents/candidatos-asignacion). Solo lo necesario
+// para poblar un <select> — el backend no expone email ni avatar.
+export type TipoAsignacion = 'REVISOR' | 'APROBADOR'
+
+export interface CandidatoAsignacion {
+  id: string
+  nombreCompleto: string
+  rol: UserRole
 }

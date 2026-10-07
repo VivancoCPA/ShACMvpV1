@@ -1,4 +1,5 @@
-import type { DocStatus, DocFilters, DocType, DocumentAuthorizedRole } from '../../types/documents.types'
+import type { DocStatus, DocFilters, DocType, DocumentAuthorizedRole, TipoAsignacion } from '../../types/documents.types'
+import type { UserRole } from '../../types/auth.types'
 
 // Única fuente de la lista de roles elegibles como lector autorizado de un
 // documento RESTRINGIDO/CONFIDENCIAL — antes duplicada como `userRoleEnum`
@@ -14,6 +15,14 @@ export const DOCUMENT_AUTHORIZED_ROLES: readonly DocumentAuthorizedRole[] = [
   'ALTA_DIRECCION',
 ]
 
+// Única fuente de los roles elegibles como Revisor/Aprobador (D1, documentos-revisor-aprobador-reales).
+// Espejo de DocumentoAsignacionRoles.cs en el backend: el servidor es quien la aplica de verdad;
+// esta lista solo la usa el handler MSW para que el modo mock siga la misma regla.
+export const DOCUMENT_ASIGNACION_ELIGIBLE_ROLES: Record<TipoAsignacion, readonly UserRole[]> = {
+  REVISOR: ['JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
+  APROBADOR: ['JEFE_CONTROL_DOCUMENTARIO', 'ALTA_DIRECCION'],
+}
+
 export const QUERY_KEYS = {
   documents: {
     all: ['documents'] as const,
@@ -21,6 +30,8 @@ export const QUERY_KEYS = {
     detail: (id: string) => ['documents', 'detail', id] as const,
     versionesByCodigo: (codigo: string) => ['documents', 'versiones', codigo] as const,
     pendientesCount: (userId: string) => ['documents', 'pendientesCount', userId] as const,
+    candidatosAsignacion: (tipo: TipoAsignacion, documentoId?: string) =>
+      ['documents', 'candidatos-asignacion', tipo, documentoId ?? null] as const,
   },
 } as const
 

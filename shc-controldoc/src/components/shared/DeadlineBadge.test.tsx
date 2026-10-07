@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../i18n'
@@ -14,7 +14,10 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 )
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe('DeadlineBadge', () => {
   it('renders green badge when more than 14 days remain', () => {
@@ -72,5 +75,24 @@ describe('DeadlineBadge', () => {
   it('renders dash when fechaCierre is null', () => {
     render(<DeadlineBadge fechaCierre={null} estado="ABIERTA" />, { wrapper })
     expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  // fix-fechas-utc: fechaCierre es una fecha de calendario ("YYYY-MM-DDT00:00:00Z"), no un
+  // instante. Antes del fix, tanto el texto como los días restantes se calculaban con `new
+  // Date(fechaCierre)` en la zona horaria del navegador — en UTC-5 eso mostraba un día menos y
+  // podía colorear el badge un día antes/después de lo real.
+  it('no muestra vencido cuando fechaCierre es exactamente hoy (fecha de calendario)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 29, 22, 0, 0)) // 29 sept 2026, 22:00 hora local
+
+    const { container } = render(
+      <DeadlineBadge fechaCierre="2026-09-29T00:00:00Z" estado="ABIERTA" />,
+      { wrapper },
+    )
+
+    const badge = container.querySelector('span')
+    expect(badge?.className).not.toContain('bg-error')
+    expect(badge?.textContent).toContain('29')
+    expect(badge?.textContent).not.toContain('28')
   })
 })

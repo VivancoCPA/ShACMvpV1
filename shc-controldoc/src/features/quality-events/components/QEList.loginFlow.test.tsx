@@ -24,6 +24,13 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+// No relacionado con RN-QE-014: evita que QEList dispare un GET /api/users/nombres real
+// que quede en vuelo más allá del final del test (dos QueryClients nuevos por test, sin
+// cancelación en el unmount) y acabe resolviendo durante el test siguiente.
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => id ?? '', isLoading: false }),
+}))
+
 const server = setupServer(...authHandlers, ...qualityEventHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))

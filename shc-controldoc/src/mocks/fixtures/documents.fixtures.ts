@@ -11,22 +11,8 @@ const APROBADOR_ID = 'user-jefedocs-001'
 const JEFE_ID = 'user-jefecalidad-001'
 const SUPERVISOR_ID = 'user-supervisor-001'
 
-export interface MockUser {
-  id: string
-  nombre: string
-  apellido: string
-  nombreCompleto: string
-}
-
-export const mockUsers: MockUser[] = [
-  { id: AUTOR_ID, nombre: 'Carlos', apellido: 'Autor', nombreCompleto: 'Carlos Autor' },
-  { id: REVISOR_ID, nombre: 'Carmen', apellido: 'Torres', nombreCompleto: 'Carmen Torres' },
-  { id: APROBADOR_ID, nombre: 'Sofía', apellido: 'Vargas', nombreCompleto: 'Sofía Vargas' },
-  { id: JEFE_ID, nombre: 'Juan', apellido: 'Mendoza', nombreCompleto: 'Juan Mendoza' },
-]
-
 export const documentFixtures: Documento[] = [
-  // 1 — POL / PUBLICADO — has 2 historialVersiones + qeVinculados
+  // 1 — POL / PUBLICADO — has qeVinculados
   {
     id: 'doc-001',
     codigo: 'POL-CD-001',
@@ -55,23 +41,7 @@ export const documentFixtures: Documento[] = [
       { id: 'qe-2026-003', numero: 'QE-2026-003', tipo: 'ADUANERO', severidad: 'MEDIA', estado: 'PENDIENTE_CIERRE' },
     ],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2024-01-15T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial aprobada',
-        hashArchivo: 'old1hash000000000000000000000000000000000000000000000000000000001',
-      },
-      {
-        version: 'v2.0',
-        fechaPublicacion: '2025-01-15T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Actualización por cambio sustancial de alcance ISO 9001:2015',
-        hashArchivo: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-001-a',
         entidadTipo: 'Documento',
@@ -157,21 +127,7 @@ export const documentFixtures: Documento[] = [
     ncVinculados: [
       { id: 'nc-002', numero: 'NC-CAL-2025-002', tipo: 'SISTEMA', severidad: 'ALTA', estado: 'EN_INVESTIGACION' },
     ],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2024-06-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial del procedimiento de control documentario',
-      },
-      {
-        version: 'v1.1',
-        fechaPublicacion: '2025-03-15T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Corrección de formato y actualización de responsabilidades',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-002-a',
         entidadTipo: 'Documento',
@@ -244,8 +200,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-003-a',
         entidadTipo: 'Documento',
@@ -282,9 +237,36 @@ export const documentFixtures: Documento[] = [
         timestamp: '2025-04-11T09:15:00.000Z',
         generadoPorIA: false,
       },
+      {
+        id: 'audit-003-d',
+        entidadTipo: 'Documento',
+        entidadId: 'doc-003',
+        accion: 'ESTADO_CAMBIADO',
+        estadoAnterior: 'BORRADOR',
+        estadoNuevo: 'EN_REVISION',
+        realizadoPorId: AUTOR_ID,
+        realizadoPorNombre: 'Carlos Autor',
+        timestamp: '2025-04-12T10:00:00.000Z',
+        generadoPorIA: false,
+      },
+      // documentos-rechazo-visible: fixture de ejemplo para probar el banner de rechazo y el
+      // audit trail sin tener que ejecutar el flujo completo a mano.
+      {
+        id: 'audit-003-e',
+        entidadTipo: 'Documento',
+        entidadId: 'doc-003',
+        accion: 'RECHAZADO_EN_REVISION',
+        estadoAnterior: 'EN_REVISION',
+        estadoNuevo: 'BORRADOR',
+        motivo: 'Falta la firma de conformidad del supervisor de patio en el anexo 2.',
+        realizadoPorId: REVISOR_ID,
+        realizadoPorNombre: 'Carmen Torres',
+        timestamp: '2025-04-13T16:45:00.000Z',
+        generadoPorIA: false,
+      },
     ],
     creadoEn: '2025-04-08T11:00:00.000Z',
-    actualizadoEn: '2025-04-11T09:15:00.000Z',
+    actualizadoEn: '2025-04-13T16:45:00.000Z',
   },
 
   // 4 — REG / EN_REVISION
@@ -308,8 +290,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-004-a',
         entidadTipo: 'Documento',
@@ -371,8 +352,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-005-a',
         entidadTipo: 'Documento',
@@ -451,16 +431,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2024-03-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-        hashArchivo: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-006-a',
         entidadTipo: 'Documento',
@@ -531,8 +502,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-007-a',
         entidadTipo: 'Documento',
@@ -569,8 +539,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-008-a',
         entidadTipo: 'Documento',
@@ -607,8 +576,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-009-a',
         entidadTipo: 'Documento',
@@ -665,16 +633,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-010/INS-CD-002-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2025-03-15T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-        hashArchivo: 'd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-010-a',
         entidadTipo: 'Documento',
@@ -753,16 +712,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-011/PLAN-CD-002-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2025-04-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial aprobada',
-        hashArchivo: 'e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-011-a',
         entidadTipo: 'Documento',
@@ -817,16 +767,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-012/MAT-CD-002-v2.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v2.0',
-        fechaPublicacion: '2025-06-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Actualización por cambio de normativa interna de seguridad',
-        hashArchivo: 'f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-012-a',
         entidadTipo: 'Documento',
@@ -881,16 +822,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-013/PRC-CD-003-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2025-07-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-        hashArchivo: 'a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3c4d5e6f7a2b3',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-013-a',
         entidadTipo: 'Documento',
@@ -942,15 +874,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-014/REG-CD-003-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2025-08-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-014-a',
         entidadTipo: 'Documento',
@@ -1007,15 +931,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2024-06-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial del procedimiento de control documentario',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-016-a',
         entidadTipo: 'Documento',
@@ -1106,15 +1022,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v0.9',
-        fechaPublicacion: '2024-01-15T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión piloto para revisión pre-certificación',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-017-a',
         entidadTipo: 'Documento',
@@ -1181,15 +1089,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v0.9',
-        fechaPublicacion: '2024-08-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial de instrucción de despacho',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-018-a',
         entidadTipo: 'Documento',
@@ -1251,8 +1151,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-del1-a',
         entidadTipo: 'Documento',
@@ -1301,8 +1200,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-del2-a',
         entidadTipo: 'Documento',
@@ -1353,15 +1251,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-015/INF-CD-002-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2025-09-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-015-a',
         entidadTipo: 'Documento',
@@ -1413,21 +1303,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribuciones/doc-020-rev/PRC-CD-002-v2.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [
-      {
-        version: 'v1.0',
-        fechaPublicacion: '2023-03-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Versión inicial',
-      },
-      {
-        version: 'v2.0',
-        fechaPublicacion: '2024-03-01T08:00:00.000Z',
-        autorId: AUTOR_ID,
-        descripcionCambios: 'Actualización de responsabilidades y flujo de aprobación de cambios',
-      },
-    ],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-020-a',
         entidadTipo: 'Documento',
@@ -1488,8 +1364,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-019-a',
         entidadTipo: 'Documento',
@@ -1550,8 +1425,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribucion/doc-e2-001/POL-CD-E2-001-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-e2-001-a',
         entidadTipo: 'Documento',
@@ -1585,8 +1459,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-e2-002-a',
         entidadTipo: 'Documento',
@@ -1619,8 +1492,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-e2-003-a',
         entidadTipo: 'Documento',
@@ -1655,8 +1527,7 @@ export const documentFixtures: Documento[] = [
     archivoDistribucionUrl: '/mock/distribucion/doc-e2-004/REG-CD-E2-001-v1.0.pdf',
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
-    auditTrail: [
+        auditTrail: [
       {
         id: 'audit-e2-004-a',
         entidadTipo: 'Documento',

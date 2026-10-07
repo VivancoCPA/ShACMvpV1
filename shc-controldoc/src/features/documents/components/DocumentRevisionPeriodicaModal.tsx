@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, RefreshCw, Loader2 } from 'lucide-react'
 import { useConfirmarRevisionPeriodica } from '../hooks/useDocumentActions'
+import { formatCalendarDateMedium } from '../../../utils/date.utils'
 import type { Documento } from '../../../types/documents.types'
 
 interface DocumentRevisionPeriodicaModalProps {
@@ -21,9 +22,11 @@ export function DocumentRevisionPeriodicaModal({
 
   const confirmar = useConfirmarRevisionPeriodica(documento.id)
 
+  // fechaRevisionProxima es una fecha de calendario (sin hora significativa) — se lee en UTC
+  // para no desfasarla un día en zonas horarias negativas (fix-fechas-utc).
   function formatDate(iso: string | undefined): string {
     if (!iso) return '—'
-    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
+    return formatCalendarDateMedium(iso, locale)
   }
 
   async function handleOpcionA() {

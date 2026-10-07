@@ -8,7 +8,8 @@ import { useDeleteQualityEvent } from '../hooks/useDeleteQualityEvent'
 import { useReactivateQualityEvent } from '../hooks/useReactivateQualityEvent'
 import { resolveQEEditAccess, puedeExportarPDF } from '../utils/qualityEventPermissions'
 import { useAuthStore } from '../../../stores/authStore'
-import { exportQualityEventsBatch, buildBatchExportFilename } from '../export/exportQualityEventsBatch'
+import { exportQualityEventsBatch, buildBatchExportFilename, type BatchExportNombres } from '../export/exportQualityEventsBatch'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { downloadBlob } from '../../../utils/downloadBlob'
 import { QEStatusBadge } from './QEStatusBadge'
 import { QETypeBadge } from './QETypeBadge'
@@ -178,6 +179,12 @@ export function QEList() {
   const user = useAuthStore((s) => s.user)
 
   const { qualityEvents, isLoading, isError, pagination, refetch } = useQEList()
+  // Una sola llamada cubre reportadoPorId/causaRaizAprobadaPorId de todas las QEs visibles en
+  // la página actual (superconjunto de las seleccionadas) — el export masivo nunca llama
+  // useUserNames por QE (nombres-usuarios-reales D4/D5).
+  const { getName } = useUserNames(
+    qualityEvents.flatMap((qe) => [qe.reportadoPorId, qe.causaRaizAprobadaPorId]),
+  )
   const { data: areas } = useAreas()
   const nombreArea = (id: string) => areas?.find((a) => a.id === id)?.nombre ?? id
   const deleteQE = useDeleteQualityEvent()
@@ -231,10 +238,19 @@ export function QEList() {
     if (!user || selectedCount === 0 || overBatchLimit) return
     const ids = Array.from(selectedIds)
     const total = ids.length
+    const nombresPorQE: Record<string, BatchExportNombres> = {}
+    qualityEvents
+      .filter((qe) => selectedIds.has(qe.id))
+      .forEach((qe) => {
+        nombresPorQE[qe.id] = {
+          reportadoPorNombre: getName(qe.reportadoPorId),
+          causaRaizAprobadaPorNombre: qe.causaRaizAprobadaPorId ? getName(qe.causaRaizAprobadaPorId) : undefined,
+        }
+      })
     const toastId = toast.loading(t('list.batchExport.progreso', { completed: 0, total }))
     setIsBatchExporting(true)
     try {
-      const zipBlob = await exportQualityEventsBatch(ids, `${user.nombre} ${user.apellido}`, (progress) => {
+      const zipBlob = await exportQualityEventsBatch(ids, `${user.nombre} ${user.apellido}`, nombresPorQE, (progress) => {
         toast.loading(t('list.batchExport.progreso', { completed: progress.completed, total: progress.total }), {
           id: toastId,
         })

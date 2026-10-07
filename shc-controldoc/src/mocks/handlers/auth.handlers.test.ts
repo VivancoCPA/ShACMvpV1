@@ -213,3 +213,99 @@ describe('auth.handlers — POST /api/auth/switch-empresa', () => {
     expect(caught.response?.status).toBe(401)
   })
 })
+
+describe('auth.handlers — tienePinFirma (pin-firma-ui)', () => {
+  afterEach(() => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (fixture) fixture.pin = undefined
+  })
+
+  it('login expone tienePinFirma: false para un usuario sin PIN configurado', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: operario@shac.pe')
+    fixture.pin = undefined
+
+    const res = await api.post<LoginResponse>('/api/auth/login', {
+      email: fixture.email,
+      password: fixture.password,
+    })
+
+    expect(res.data.user.tienePinFirma).toBe(false)
+  })
+
+  it('login expone tienePinFirma: true para un usuario con PIN configurado', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: operario@shac.pe')
+    fixture.pin = '1234'
+
+    const res = await api.post<LoginResponse>('/api/auth/login', {
+      email: fixture.email,
+      password: fixture.password,
+    })
+
+    expect(res.data.user.tienePinFirma).toBe(true)
+  })
+})
+
+describe('auth.handlers — POST /api/auth/set-pin', () => {
+  afterEach(() => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (fixture) fixture.pin = undefined
+  })
+
+  it('configura el PIN con la contraseña actual correcta', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: operario@shac.pe')
+    const accessToken = `mock-access-token-${fixture.id}-${Date.now()}`
+
+    const res = await api.post(
+      '/api/auth/set-pin',
+      { password: fixture.password, pin: '4821' },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+
+    expect(res.status).toBe(200)
+    expect(fixture.pin).toBe('4821')
+  })
+
+  it('rechaza con 401 si la contraseña actual no coincide', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: operario@shac.pe')
+    const accessToken = `mock-access-token-${fixture.id}-${Date.now()}`
+
+    let caught: unknown
+    try {
+      await api.post(
+        '/api/auth/set-pin',
+        { password: 'ContraseñaIncorrecta!1', pin: '4821' },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      )
+    } catch (error) {
+      caught = error
+    }
+
+    if (!isAxiosError(caught)) throw new Error('Se esperaba un AxiosError')
+    expect(caught.response?.status).toBe(401)
+    expect(fixture.pin).toBeUndefined()
+  })
+
+  it('rechaza con 400 un PIN que no son exactamente 4 dígitos', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'operario@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: operario@shac.pe')
+    const accessToken = `mock-access-token-${fixture.id}-${Date.now()}`
+
+    let caught: unknown
+    try {
+      await api.post(
+        '/api/auth/set-pin',
+        { password: fixture.password, pin: '12a4' },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      )
+    } catch (error) {
+      caught = error
+    }
+
+    if (!isAxiosError(caught)) throw new Error('Se esperaba un AxiosError')
+    expect(caught.response?.status).toBe(400)
+  })
+})

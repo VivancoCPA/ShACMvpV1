@@ -24,6 +24,7 @@ export function EmpresaForm({ mode, empresa, onCancel, onSuccess }: EmpresaFormP
 
   const [rucServerError, setRucServerError] = useState<string | null>(null)
   const [logoError, setLogoError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const defaultValues: EmpresaFormInput =
     isEdit && empresa
@@ -45,20 +46,39 @@ export function EmpresaForm({ mode, empresa, onCancel, onSuccess }: EmpresaFormP
     defaultValues,
   })
 
+  // Contrato de logo (design D3): omitido = no cambiar, '' = quitar, data URI = reemplazar.
+  // En edición solo se envían los campos que cambiaron; el logo idéntico al original no se reenvía.
+  function buildUpdatePayload(data: EmpresaFormInput, original: Empresa): Partial<EmpresaFormInput> {
+    const payload: Partial<EmpresaFormInput> = {}
+    if (data.razonSocial !== original.razonSocial) payload.razonSocial = data.razonSocial
+    if (data.ruc !== original.ruc) payload.ruc = data.ruc
+    if (data.estado !== original.estado) payload.estado = data.estado
+    const originalLogo = original.logoUrl || ''
+    const nextLogo = data.logoBase64 || ''
+    if (nextLogo !== originalLogo) payload.logoBase64 = nextLogo
+    return payload
+  }
+
   const onSubmit = async (data: EmpresaFormInput) => {
     setRucServerError(null)
+    setSubmitError(null)
     try {
       if (isEdit && empresa) {
-        await updateMutation.mutateAsync({ id: empresa.id, data })
+        await updateMutation.mutateAsync({ id: empresa.id, data: buildUpdatePayload(data, empresa) })
       } else {
-        await createMutation.mutateAsync(data)
+        await createMutation.mutateAsync({ ...data, logoBase64: data.logoBase64 || undefined })
       }
       onSuccess()
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 409) {
         const message = (error.response.data as { message?: string } | null)?.message
         setRucServerError(message ?? t('form.errors.rucDuplicado'))
+        return
       }
+      const serverMessage = isAxiosError(error)
+        ? (error.response?.data as { message?: string } | null)?.message
+        : undefined
+      setSubmitError(serverMessage ?? t('form.errors.generico'))
     }
   }
 
@@ -117,6 +137,12 @@ export function EmpresaForm({ mode, empresa, onCancel, onSuccess }: EmpresaFormP
           )}
         />
       </div>
+
+      {submitError && (
+        <p role="alert" className="rounded-md border border-error/40 bg-error/10 px-3 py-2 text-sm text-error">
+          {submitError}
+        </p>
+      )}
 
       <div className="flex items-center justify-end gap-3">
         <button

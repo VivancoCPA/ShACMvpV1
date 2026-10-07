@@ -112,6 +112,10 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         ...data,
         revisorId: data.revisorId || undefined,
         aprobadorId: data.aprobadorId || undefined,
+        // fix-fechas-utc: '' no se puede deserializar como DateTime? en el backend — se omite
+        // en vez de enviarse, igual que revisorId/aprobadorId arriba.
+        fechaVigencia: data.fechaVigencia || undefined,
+        fechaRevisionProxima: data.fechaRevisionProxima || undefined,
         archivoOriginalFile: undefined,
         archivoOriginalUrl: undefined,
         archivoDistribucionUrl: undefined,

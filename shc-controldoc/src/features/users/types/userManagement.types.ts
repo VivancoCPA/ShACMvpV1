@@ -33,6 +33,13 @@ export interface UserFilters {
   activo?: boolean
 }
 
+/** GET /api/users/nombres — superficie mínima a propósito (nombres-usuarios-reales):
+ * solo id/nombreCompleto, sin email/rol/avatar. Alimenta únicamente texto de display. */
+export interface UserNombre {
+  id: string
+  nombreCompleto: string
+}
+
 /** entidadTipo propio del dominio de usuarios — CLAUDE.md restringe AuditTrailEntry a
  * 'QualityEvent' | 'Documento' | 'AccionCorrectiva'; este dominio nuevo usa 'Usuario'. */
 export interface UserAuditTrailEntry {

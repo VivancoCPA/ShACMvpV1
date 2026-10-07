@@ -5,10 +5,11 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar } from 'lucide-react'
 import { FileUploadField } from './FileUploadField'
 import type { DocumentFormInput } from '../schemas/documentForm.schema'
-import type { MockUser } from '../../../mocks/fixtures/documents.fixtures'
 import type { UserRole } from '../../../types/auth.types'
 import { DOC_TYPES } from '../constants'
 import { useAreas } from '../../areas/hooks/useAreas'
+import { useCandidatosAsignacion } from '../hooks/useCandidatosAsignacion'
+import type { TipoAsignacion } from '../../../types/documents.types'
 
 function fileNameFromUrl(url: string): string {
   return url.split('/').pop() ?? url
@@ -132,7 +133,9 @@ function LocaleDateInput({
 interface DocumentFormProps {
   mode: 'create' | 'edit'
   isLoading: boolean
-  mockUsers: MockUser[]
+  documentId?: string
+  savedRevisorId?: string | null
+  savedAprobadorId?: string | null
   descriptionLocked: boolean
   userRole: UserRole
   isUploading?: boolean
@@ -161,6 +164,62 @@ function Label({ htmlFor, children }: { htmlFor: string; children: React.ReactNo
   )
 }
 
+// Select de Revisor/Aprobador alimentado por candidatos reales del backend (nunca fixtures). Mientras
+// carga se muestra un select deshabilitado SIN registrar: así, cuando llega la lista, el select
+// registrado se monta con las opciones ya presentes y RHF le aplica el valor guardado (si se
+// registrara antes, el valor de un documento existente se perdería al no existir aún su <option>).
+function AsignacionSelect({
+  name,
+  tipo,
+  label,
+  documentId,
+  savedId,
+}: {
+  name: 'revisorId' | 'aprobadorId'
+  tipo: TipoAsignacion
+  label: string
+  documentId?: string
+  savedId?: string | null
+}) {
+  const { t } = useTranslation('documents')
+  const { register } = useFormContext<DocumentFormInput>()
+  const { data: candidatos, isLoading, isError } = useCandidatosAsignacion(tipo, documentId)
+
+  if (isLoading) {
+    return (
+      <div>
+        <Label htmlFor={name}>{label}</Label>
+        <select id={name} className={selectCls} disabled aria-busy="true">
+          <option value="">{t('form.asignacion_cargando')}</option>
+        </select>
+      </div>
+    )
+  }
+
+  const lista = candidatos ?? []
+  // Valor guardado que ya no es candidato (se desactivó, cambió de rol…): se muestra explícito en
+  // vez de dejar el select en blanco en silencio, y el usuario puede cambiarlo.
+  const noDisponible = !!savedId && !lista.some((c) => c.id === savedId)
+
+  return (
+    <div>
+      <Label htmlFor={name}>{label}</Label>
+      <select id={name} className={selectCls} {...register(name)}>
+        <option value="">—</option>
+        {noDisponible && <option value={savedId}>{t('form.asignacion_no_disponible')}</option>}
+        {lista.map((c) => (
+          <option key={c.id} value={c.id}>{c.nombreCompleto}</option>
+        ))}
+      </select>
+      {isError && <p role="alert" className="mt-1 text-xs text-error">{t('form.asignacion_error')}</p>}
+      {!isError && lista.length === 0 && (
+        <p className="mt-1 text-xs text-muted dark:text-on-dark-soft">{t('form.asignacion_sin_candidatos')}</p>
+      )}
+      <FieldError name={name} />
+    </div>
+  )
+}
+
 const inputCls =
   'h-10 w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-muted-soft focus:outline-none focus:ring-2 focus:ring-coral/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:placeholder-on-dark-soft'
 
@@ -175,7 +234,9 @@ const textareaCls =
 export function DocumentForm({
   mode: _mode,
   isLoading,
-  mockUsers,
+  documentId,
+  savedRevisorId,
+  savedAprobadorId,
   descriptionLocked,
   userRole,
   isUploading = false,
@@ -308,27 +369,20 @@ export function DocumentForm({
 
       {/* Row: Revisor + Aprobador */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="revisorId">{t('form.field_revisor')}</Label>
-          <select id="revisorId" className={selectCls} {...register('revisorId')}>
-            <option value="">—</option>
-            {mockUsers.map((u) => (
-              <option key={u.id} value={u.id}>{u.nombreCompleto}</option>
-            ))}
-          </select>
-          <FieldError name="revisorId" />
-        </div>
-
-        <div>
-          <Label htmlFor="aprobadorId">{t('form.field_aprobador')}</Label>
-          <select id="aprobadorId" className={selectCls} {...register('aprobadorId')}>
-            <option value="">—</option>
-            {mockUsers.map((u) => (
-              <option key={u.id} value={u.id}>{u.nombreCompleto}</option>
-            ))}
-          </select>
-          <FieldError name="aprobadorId" />
-        </div>
+        <AsignacionSelect
+          name="revisorId"
+          tipo="REVISOR"
+          label={t('form.field_revisor')}
+          documentId={documentId}
+          savedId={savedRevisorId}
+        />
+        <AsignacionSelect
+          name="aprobadorId"
+          tipo="APROBADOR"
+          label={t('form.field_aprobador')}
+          documentId={documentId}
+          savedId={savedAprobadorId}
+        />
       </div>
 
       {/* Row: Fecha Vigencia + Fecha Revisión Próxima */}

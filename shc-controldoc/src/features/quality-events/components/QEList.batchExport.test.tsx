@@ -47,6 +47,9 @@ vi.mock('../export/exportQualityEventsBatch', () => ({
   exportQualityEventsBatch: vi.fn(),
   buildBatchExportFilename: vi.fn(() => 'quality-events-export-test.zip'),
 }))
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => id ?? '', isLoading: false }),
+}))
 vi.mock('../../../utils/downloadBlob', () => ({
   downloadBlob: vi.fn(),
 }))

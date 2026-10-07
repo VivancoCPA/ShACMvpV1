@@ -6,6 +6,10 @@
     "deadline": {
       "vencida": "Overdue"
     },
+    "userNames": {
+      "cargando": "…",
+      "noDisponible": "User unavailable"
+    },
     "statuses": {
       "BORRADOR": "Draft",
       "EN_REVISION": "In Review",
@@ -101,6 +105,10 @@
       "field_version": "Version",
       "field_revisor": "Reviewer",
       "field_aprobador": "Approver",
+      "asignacion_cargando": "Loading…",
+      "asignacion_no_disponible": "Assigned user (unavailable)",
+      "asignacion_sin_candidatos": "No eligible candidates available.",
+      "asignacion_error": "Could not load the candidate list.",
       "field_vigencia": "Validity Date",
       "field_revision": "Next Review",
       "field_archivo": "File",
@@ -139,7 +147,11 @@
     "semaforo": {
       "proximo": "Due soon",
       "vencido": "Overdue",
-      "diasRestantes": "{{dias}} day(s) remaining"
+      "hoy": "Today",
+      "enDias_one": "in {{count}} day",
+      "enDias_other": "in {{count}} days",
+      "haceDias_one": "{{count}} day ago",
+      "haceDias_other": "{{count}} days ago"
     },
     "detail": {
       "title": "Document Detail",
@@ -156,10 +168,15 @@
       "banners": {
         "obsoleto": "This document is OBSOLETE and must not be used.",
         "qeVinculados": "Linked to active Quality Events: {{ids}}",
-        "restringido": "Access restricted to roles: {{roles}}"
+        "restringido": "Access restricted to roles: {{roles}}",
+        "rechazadoEnRevision": "Rejected in review by {{nombre}} on {{fecha}}. Reason: {{motivo}}",
+        "rechazadoEnAprobacion": "Rejected in approval by {{nombre}} on {{fecha}}. Reason: {{motivo}}",
+        "faltaAsignacion": "Assign a reviewer and an approver before you can send this document to review.",
+        "faltaAsignacionEditar": "Edit"
       },
       "actions": {
         "sendToReview": "Send to review",
+        "sendToReviewDisabledTooltip": "A reviewer and/or approver must be assigned before sending to review.",
         "approveReview": "Approve review",
         "reject": "Reject",
         "sign": "Sign and publish",
@@ -182,11 +199,14 @@
     "signature": {
       "title": "Sign and Publish Document",
       "legalText": "By signing this document, I confirm that I have reviewed and approve its content. This electronic signature has the same legal validity as a handwritten signature per policy RN-DOC-004.",
-      "passwordLabel": "Password (signature PIN)",
-      "passwordPlaceholder": "Enter your password",
+      "pinLabel": "Signing PIN (4 digits)",
+      "pinPlaceholder": "••••",
       "submit": "Sign and publish",
       "cancel": "Cancel",
-      "errorInvalid": "Invalid credentials. Check your password.",
+      "errorInvalid": "Incorrect PIN.",
+      "errorGeneric": "Could not register the signature. Please try again.",
+      "noPinConfigured": "You haven't set up your signing PIN yet.",
+      "configurePinLink": "Set up PIN in My Profile",
       "successMessage": "Document signed and published successfully."
     },
     "reject": {
@@ -207,11 +227,15 @@
     "auditTrail": {
       "showMore": "Show more",
       "noEntries": "No audit trail entries.",
+      "motivo": "Reason: {{motivo}}",
       "actions": {
         "DESCARGA": "PDF download",
         "DESCARGA_ARCHIVO_ORIGINAL": "Original file download",
         "VISUALIZACION": "File view",
         "ESTADO_CAMBIADO": "Status changed",
+        "RECHAZADO_EN_REVISION": "Rejected in review",
+        "RECHAZADO_EN_APROBACION": "Rejected in approval",
+        "REVISION_CANCELADA": "Review cancelled",
         "CAMPO_EDITADO": "Field edited",
         "FIRMA_REGISTRADA": "Signature recorded",
         "DOCUMENTO_CREADO": "Document created",
@@ -309,7 +333,8 @@
       },
       "toast": {
         "success": "New version {{version}} created as draft",
-        "error": "Failed to create the new document version."
+        "error": "Failed to create the new document version.",
+        "faltaAsignacion": "New version {{version}} created. Assign a reviewer and/or approver before sending it to review."
       },
       "tooltipYaExiste": "A version in {{estado}} is already in progress. Publish or cancel it before creating a new one."
     },
@@ -458,7 +483,9 @@
       "passwordLowercase": "Must include at least one lowercase letter.",
       "passwordDigit": "Must include at least one number.",
       "passwordSpecial": "Must include at least one special character.",
-      "passwordMismatch": "Passwords do not match."
+      "passwordMismatch": "Passwords do not match.",
+      "pinFormat": "The PIN must be exactly 4 digits.",
+      "pinMismatch": "The PINs do not match."
     },
     "errors": {
       "invalidCredentials": "Invalid credentials. Check your email and password.",
@@ -859,7 +886,9 @@
           "placeholder": "PIN",
           "confirm": "Confirm",
           "cancel": "Cancel",
-          "error": "Incorrect PIN."
+          "error": "Incorrect PIN.",
+          "noPinConfigured": "You haven't set up your signing PIN yet.",
+          "configurePinLink": "Set up PIN in My Profile"
         },
         "summary": {
           "resultado": "Closure result",
@@ -2045,6 +2074,16 @@
         "areasAsignadas": "Assigned areas",
         "createdAt": "Account created",
         "lastLogin": "Last login"
+      },
+      "pinSection": {
+        "title": "Signing PIN",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "currentPassword": "Confirm your current password",
+        "newPin": "New PIN",
+        "confirmPin": "Confirm PIN",
+        "submit": "Save PIN",
+        "success": "Signing PIN configured successfully"
       }
     },
     "changePassword": {
@@ -2292,6 +2331,15 @@
         "titulo": "Reactivate company",
         "mensaje": "Are you sure you want to reactivate \"{{nombre}}\"? User assignments are not restored automatically — reactivate them manually if needed.",
         "confirmar": "Reactivate"
+      },
+      "sinResultados": "No companies match the filters",
+      "filters": {
+        "buscar": "Search",
+        "buscarPlaceholder": "Company name or Tax ID",
+        "estado": "Status",
+        "todas": "All",
+        "activas": "Active",
+        "inactivas": "Inactive"
       }
     },
     "estado": {
@@ -2325,7 +2373,8 @@
         "rucInvalido": "Tax ID must be 11 digits"
       },
       "errors": {
-        "rucDuplicado": "A company with that Tax ID already exists"
+        "rucDuplicado": "A company with that Tax ID already exists",
+        "generico": "The company could not be saved. Please try again."
       },
       "logoPreviewAlt": "Company logo",
       "dragHintLogo": "Select image (JPG or PNG, max 2MB)"
@@ -2337,12 +2386,15 @@
       "empresaActualizarError": "Could not update the company",
       "asignacionCreada": "User assigned successfully",
       "asignacionActualizada": "Assignment updated successfully",
-      "asignacionError": "Could not complete the operation"
+      "asignacionError": "Could not complete the operation",
+      "resetPinExitoso": "PIN reset. The user will need to set up a new PIN before they can sign.",
+      "resetPinError": "Could not reset the PIN"
     },
     "asignacion": {
       "header": {
         "title": "Users of {{empresa}}",
-        "asignarUsuario": "Assign user"
+        "asignarUsuario": "Assign user",
+        "volver": "Back to companies"
       },
       "cargando": "Loading assignments...",
       "vacio": "No users assigned to this company",
@@ -2360,7 +2412,8 @@
       },
       "actions": {
         "desactivar": "Deactivate",
-        "reactivar": "Reactivate"
+        "reactivar": "Reactivate",
+        "resetearPin": "Reset signing PIN"
       },
       "confirmarDesactivar": {
         "titulo": "Deactivate assignment",
@@ -2371,6 +2424,12 @@
       "confirmarReactivar": {
         "titulo": "Reactivate assignment",
         "confirmar": "Reactivate"
+      },
+      "confirmarResetPin": {
+        "titulo": "Reset signing PIN",
+        "mensaje": "Are you sure you want to reset \"{{nombre}}\"'s signing PIN? They will need to set up a new one before signing documents or QE closures.",
+        "cancelar": "Cancel",
+        "confirmar": "Reset PIN"
       },
       "modal": {
         "titulo": "Assign existing user",

@@ -124,6 +124,42 @@ export const userHandlers = [
     return ok(result)
   }),
 
+  // GET /api/users/nombres — lookup liviano de nombres (user-names-lookup), sin
+  // restricción de rol (a diferencia de GET /api/users). A diferencia de
+  // documentos-candidatos-asignacion, NO filtra por u.activo ni por el estado de la
+  // asignación — solo exige alguna fila usuarios_empresa (activa o inactiva) para la
+  // empresa activa (D2): un documento firmado por alguien que ya se fue debe seguir
+  // mostrando su nombre. Debe registrarse antes que cualquier comodín /api/users/:id.
+  http.get('/api/users/nombres', async ({ request }) => {
+    await delay(LATENCY)
+    const sessionUser = getSessionUser(request)
+    if (!sessionUser) return err('Sesión expirada', 401)
+    const empresaActivaId = useAuthStore.getState().empresaActivaId
+    if (!empresaActivaId) return err('Sesión sin empresa activa', 401)
+
+    const url = new URL(request.url)
+    const idsParam = url.searchParams.get('ids') ?? ''
+    const ids = idsParam.split(',').map((id) => id.trim()).filter(Boolean)
+
+    if (ids.length > 100) return err('No se pueden solicitar más de 100 ids.', 400)
+    // Los ids del mock no son GUIDs reales (p.ej. 'user-supervisor-002'), así que aquí solo
+    // se rechaza un id con caracteres claramente inválidos — el backend real sí exige GUID.
+    const idPattern = /^[\w-]+$/
+    if (ids.some((id) => !idPattern.test(id))) return err('Id con formato inválido.', 400)
+
+    const idsAsignadosAEmpresa = new Set(
+      getUsuarioEmpresaStore()
+        .filter((ue) => ue.empresaId === empresaActivaId)
+        .map((ue) => ue.usuarioId),
+    )
+
+    const nombres = getUsersStore()
+      .filter((u) => ids.includes(u.id) && idsAsignadosAEmpresa.has(u.id))
+      .map((u) => ({ id: u.id, nombreCompleto: `${u.nombre} ${u.apellido}`.trim() }))
+
+    return ok(nombres)
+  }),
+
   // POST /api/users — alta (RN-USR-005), asignada a la empresa activa de quien crea
   http.post('/api/users', async ({ request }) => {
     await delay(LATENCY)

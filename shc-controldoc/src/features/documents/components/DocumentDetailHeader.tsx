@@ -1,22 +1,40 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { DocumentConfidencialidadBadge } from './DocumentConfidencialidadBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { useAuthStore } from '../../../stores/authStore'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { useArea } from '../../areas/hooks/useAreas'
-import type { Documento } from '../../../types/documents.types'
+import { formatCalendarDateMedium } from '../../../utils/date.utils'
+import { getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
+import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
+
+// documentos-rechazo-visible: la última entrada entre estas 3 acciones determina si corresponde
+// mostrar el banner de rechazo — nunca para REVISION_CANCELADA. Derivado de auditTrail ya
+// cargado, sin useEffect ni fetch adicional.
+const ACCIONES_RECHAZO_O_CANCELACION = new Set(['RECHAZADO_EN_REVISION', 'RECHAZADO_EN_APROBACION', 'REVISION_CANCELADA'])
+
+function getUltimaEntradaDeRechazo(auditTrail: AuditTrailEntry[]): AuditTrailEntry | undefined {
+  return [...auditTrail]
+    .filter((e) => ACCIONES_RECHAZO_O_CANCELACION.has(e.accion))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+}
 
 interface DocumentDetailHeaderProps {
   documento: Documento
+  /** Resuelve autorId/revisorId/aprobadorId a nombre real — ver DocumentDetailPage (D4). */
+  getName: (id?: string | null) => string
 }
 
+// fechaEmision/fechaVigencia/fechaRevisionProxima son fechas de calendario (sin hora
+// significativa) — formatCalendarDateMedium las lee en UTC para no desfasarlas un día en
+// zonas horarias negativas (fix-fechas-utc).
 function formatDate(iso: string | undefined, locale: string): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
+  return formatCalendarDateMedium(iso, locale)
 }
 
-export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
+export function DocumentDetailHeader({ documento, getName }: DocumentDetailHeaderProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
   const user = useAuthStore((s) => s.user)
@@ -27,6 +45,18 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
 
   const showPeriodicReviewSemaforo =
     documento.estado === 'PUBLICADO' || documento.estado === 'EN_REVISION_PERIODICA'
+
+  const ultimaEntradaRechazo = getUltimaEntradaDeRechazo(documento.auditTrail ?? [])
+  const showRechazoBanner =
+    documento.estado === 'BORRADOR' &&
+    (ultimaEntradaRechazo?.accion === 'RECHAZADO_EN_REVISION' || ultimaEntradaRechazo?.accion === 'RECHAZADO_EN_APROBACION')
+
+  // nueva-version-autor-permisos: solo relevante para quien podría enviarlo a revisión
+  // (AUTOR/JEFE_CALIDAD para este documento) — a un REVISOR/APROBADOR/OPERARIO no le sirve un
+  // enlace a "Editar" que no puede usar.
+  const docRole = resolveDocRoleForUser(documento, user)
+  const puedeEditarEnBorrador = documento.estado === 'BORRADOR' && getDocumentPermissions(documento.estado, docRole).canEdit
+  const showFaltaAsignacionBanner = puedeEditarEnBorrador && (!documento.revisorId || !documento.aprobadorId)
 
   return (
     <div className="space-y-4">
@@ -48,6 +78,35 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
           {t('detail.banners.restringido', {
             roles: (documento.rolesAutorizados ?? []).join(', '),
           })}
+        </div>
+      )}
+
+      {showFaltaAsignacionBanner && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          <span>{t('detail.banners.faltaAsignacion')}</span>
+          <Link
+            to={`/documents/${documento.id}/edit`}
+            className="shrink-0 font-medium underline hover:no-underline"
+          >
+            {t('detail.banners.faltaAsignacionEditar')}
+          </Link>
+        </div>
+      )}
+
+      {showRechazoBanner && ultimaEntradaRechazo && (
+        <div className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
+          {t(
+            ultimaEntradaRechazo.accion === 'RECHAZADO_EN_REVISION'
+              ? 'detail.banners.rechazadoEnRevision'
+              : 'detail.banners.rechazadoEnAprobacion',
+            {
+              nombre: ultimaEntradaRechazo.realizadoPorNombre,
+              fecha: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
+                new Date(ultimaEntradaRechazo.timestamp),
+              ),
+              motivo: ultimaEntradaRechazo.motivo ?? '',
+            },
+          )}
         </div>
       )}
 
@@ -86,18 +145,18 @@ export function DocumentDetailHeader({ documento }: DocumentDetailHeaderProps) {
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Autor</dt>
-            <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{resolveUserDisplayName(documento.autorId)}</dd>
+            <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.autorId)}</dd>
           </div>
           {documento.revisorId && (
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Revisor</dt>
-              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{resolveUserDisplayName(documento.revisorId)}</dd>
+              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.revisorId)}</dd>
             </div>
           )}
           {documento.aprobadorId && (
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Aprobador</dt>
-              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{resolveUserDisplayName(documento.aprobadorId)}</dd>
+              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.aprobadorId)}</dd>
             </div>
           )}
           {documento.fechaEmision && (

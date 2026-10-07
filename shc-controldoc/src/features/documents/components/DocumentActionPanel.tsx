@@ -1,17 +1,18 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FileText, FileDown, Loader2, Info, RotateCcw } from 'lucide-react'
 
 import { useAuthStore } from '../../../stores/authStore'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
 import { useDocumentsByCode } from '../hooks/useDocuments'
-import { canAccessDocument } from '../permissions'
+import { canAccessDocument, getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
 import { useArea } from '../../areas/hooks/useAreas'
 import { DocumentSignatureModal } from './DocumentSignatureModal'
 import { DocumentRejectModal } from './DocumentRejectModal'
 import { DocumentNuevaVersionModal } from './DocumentNuevaVersionModal'
 import { DocumentRevisionPeriodicaModal } from './DocumentRevisionPeriodicaModal'
+import { formatCalendarDateMedium } from '../../../utils/date.utils'
 import type { Documento, DocStatus } from '../../../types/documents.types'
 
 type ModalState =
@@ -28,6 +29,8 @@ type ModalState =
 interface DocumentActionPanelProps {
   documento: Documento
   initialAction?: 'revision-periodica'
+  /** Resuelve aprobadorId a nombre real en el preview de PDF — ver DocumentDetailPage (D4). */
+  getName: (id?: string | null) => string
 }
 
 function formatDate(iso: string | undefined, locale: string): string {
@@ -35,7 +38,7 @@ function formatDate(iso: string | undefined, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
 }
 
-export function DocumentActionPanel({ documento, initialAction }: DocumentActionPanelProps) {
+export function DocumentActionPanel({ documento, initialAction, getName }: DocumentActionPanelProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
   const user = useAuthStore((s) => s.user)
@@ -131,21 +134,33 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
   const canVerArchivo = hasFileAccess && !!documento.archivoUrl
   const canExportarPdf = documento.estado === 'PUBLICADO' && hasFileAccess && !!documento.archivoUrl
 
+  // nueva-version-autor-permisos: docRole resuelto con la misma precedencia que el backend
+  // (AUTOR → REVISOR → APROBADOR → JEFE_CALIDAD → OPERARIO), no un flag `isJefeCalidad` suelto
+  // por rol global — un JCA/JCD que es revisor/aprobador asignado de ESTE documento resuelve a
+  // REVISOR/APROBADOR, igual que DocumentPermissionResolver.ResolveDocRole (design.md D4/D5).
   const isJefeCalidad = user.rol === 'JEFE_CALIDAD_SYST' || user.rol === 'JEFE_CONTROL_DOCUMENTARIO'
   const isAutor = documento.autorId === user.id
   const isRevisor = documento.revisorId === user.id
   const isAprobador = documento.aprobadorId === user.id
-  const canSendToReview = documento.estado === 'BORRADOR' && (isAutor || isJefeCalidad)
-  const canDelete = documento.estado === 'BORRADOR' && (isAutor || isJefeCalidad)
+  const docRole = resolveDocRoleForUser(documento, user)
+  const perms = getDocumentPermissions(documento.estado, docRole, { isAssignedAuthor: docRole === 'AUTOR' })
+  const faltaAsignacion = documento.estado === 'BORRADOR' && (!documento.revisorId || !documento.aprobadorId)
+  const puedeEditarEnBorrador = documento.estado === 'BORRADOR' && perms.canEdit
+  const canSendToReview = puedeEditarEnBorrador && !faltaAsignacion
+  const canSendToReviewBloqueadoPorAsignacion = puedeEditarEnBorrador && faltaAsignacion
+  const canDelete = documento.estado === 'BORRADOR' && perms.canDelete
   // RN: aprobar/rechazar están reservados al revisorId/aprobadorId específico
   // asignado al documento — JEFE_CALIDAD tiene editar/comentar en EN_REVISION,
   // pero no firma ni aprueba/rechaza por otro (ver permissions.ts).
   const canApproveReview = documento.estado === 'EN_REVISION' && isRevisor
   const canRejectReview = documento.estado === 'EN_REVISION' && isRevisor
-  const canCancelReview = documento.estado === 'EN_REVISION' && isJefeCalidad
+  const canCancelReview = documento.estado === 'EN_REVISION' && perms.canEdit
   const canSign = documento.estado === 'EN_APROBACION' && isAprobador
   const canRejectAprobacion = documento.estado === 'EN_APROBACION' && isAprobador
-  const canStartPeriodic = documento.estado === 'PUBLICADO' && isJefeCalidad
+  const canStartPeriodic = documento.estado === 'PUBLICADO' && perms.canStartReview
+  // canCreateVersion/canStartNewVersion NO usan el docRole/matriz de arriba: la regla real del
+  // backend (NuevaVersionDocumentoEndpoint) es "autor del origen o rol global JCA/JCD", punto —
+  // independiente de si ese JCA/JCD es también revisor/aprobador de ESTE documento (design.md D2).
   const canCreateVersion = documento.estado === 'PUBLICADO' && (isAutor || isJefeCalidad)
   const canStartNewVersion = documento.estado === 'EN_REVISION_PERIODICA' && (isAutor || isJefeCalidad)
 
@@ -160,7 +175,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
 
   const hasAnyAction =
     canVerArchivo || canExportarPdf ||
-    canSendToReview || canDelete || canApproveReview || canRejectReview ||
+    canSendToReview || canSendToReviewBloqueadoPorAsignacion || canDelete || canApproveReview || canRejectReview ||
     canCancelReview || canSign || canRejectAprobacion || canStartPeriodic ||
     canCreateVersion || canStartNewVersion
 
@@ -206,7 +221,7 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
           </button>
         )}
 
-        {(canVerArchivo || canExportarPdf) && (canSendToReview || canApproveReview || canRejectReview || canCancelReview || canSign || canRejectAprobacion || canStartPeriodic || canCreateVersion || canStartNewVersion || canDelete) && (
+        {(canVerArchivo || canExportarPdf) && (canSendToReview || canSendToReviewBloqueadoPorAsignacion || canApproveReview || canRejectReview || canCancelReview || canSign || canRejectAprobacion || canStartPeriodic || canCreateVersion || canStartNewVersion || canDelete) && (
           <div className="h-6 w-px bg-hairline dark:bg-hairline/20" aria-hidden="true" />
         )}
 
@@ -217,6 +232,18 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
           >
             {t('detail.actions.sendToReview')}
           </button>
+        )}
+
+        {canSendToReviewBloqueadoPorAsignacion && (
+          <span title={t('detail.actions.sendToReviewDisabledTooltip')}>
+            <button
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-md bg-coral/40 px-4 py-2.5 text-sm font-medium text-white opacity-60"
+            >
+              {t('detail.actions.sendToReview')}
+            </button>
+          </span>
         )}
 
         {canApproveReview && (
@@ -406,14 +433,18 @@ export function DocumentActionPanel({ documento, initialAction }: DocumentAction
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                     {locale === 'es-PE' ? 'Vigencia' : 'Valid until'}
                   </dt>
-                  <dd className="mt-0.5">{formatDate(documento.fechaVigencia, locale)}</dd>
+                  {/* fechaVigencia es una fecha de calendario, no un timestamp (deletedAt sí lo
+                      es y sigue usando el formatDate local de arriba) — fix-fechas-utc. */}
+                  <dd className="mt-0.5">
+                    {documento.fechaVigencia ? formatCalendarDateMedium(documento.fechaVigencia, locale) : '—'}
+                  </dd>
                 </div>
                 {documento.aprobadorId && (
                   <div className="col-span-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                       {locale === 'es-PE' ? 'Aprobado por' : 'Approved by'}
                     </dt>
-                    <dd className="mt-0.5 text-xs text-gray-600">{resolveUserDisplayName(documento.aprobadorId)}</dd>
+                    <dd className="mt-0.5 text-xs text-gray-600">{getName(documento.aprobadorId)}</dd>
                   </div>
                 )}
               </dl>

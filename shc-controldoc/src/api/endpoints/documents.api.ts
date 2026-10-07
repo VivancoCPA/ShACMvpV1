@@ -1,6 +1,7 @@
 import api from '../../lib/axios'
-import type { Documento, DocFilters, DocStatus } from '../../types/documents.types'
+import type { Documento, DocFilters, DocStatus, CandidatoAsignacion, TipoAsignacion } from '../../types/documents.types'
 import type { PaginationMeta } from '../../types/api.types'
+import { getFileNameFromContentDisposition } from '../../utils/contentDisposition'
 
 export interface DocumentListResponse {
   items: Documento[]
@@ -30,6 +31,16 @@ export interface PendientesCountResponse {
 
 export async function getPendientesCount(): Promise<PendientesCountResponse> {
   const response = await api.get<PendientesCountResponse>('/api/documents/pendientes/count')
+  return response.data
+}
+
+export async function getCandidatosAsignacion(
+  tipo: TipoAsignacion,
+  documentoId?: string,
+): Promise<CandidatoAsignacion[]> {
+  const params: Record<string, string> = { tipo }
+  if (documentoId) params.documentoId = documentoId
+  const response = await api.get<CandidatoAsignacion[]>('/api/documents/candidatos-asignacion', { params })
   return response.data
 }
 
@@ -126,9 +137,8 @@ export async function exportarPdfControlado(
     { responseType: 'blob' },
   )
   const blob = response.data as Blob
-  const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? ''
-  const match = /filename="([^"]+)"/.exec(disposition)
-  const fileName = match?.[1] ?? `documento-${id}-controlado.pdf`
+  const disposition = (response.headers as Record<string, string>)['content-disposition']
+  const fileName = getFileNameFromContentDisposition(disposition, `documento-${id}-controlado.pdf`)
   return { blob, fileName }
 }
 
@@ -142,21 +152,24 @@ export async function restaurarDocumento(id: string): Promise<Documento> {
   return response.data
 }
 
-export async function getArchivoOriginalUrl(id: string): Promise<{ blob: Blob; fileName: string }> {
+export async function getArchivoOriginalUrl(
+  id: string,
+  fallbackNombre?: string,
+): Promise<{ blob: Blob; fileName: string }> {
   const response = await api.get(`/api/documents/${id}/archivo-original`, { responseType: 'blob' })
   const blob = response.data as Blob
-  const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? ''
-  const match = /filename="([^"]+)"/.exec(disposition)
-  const fileName = match?.[1] ?? `documento-${id}-original`
+  const disposition = (response.headers as Record<string, string>)['content-disposition']
+  // El fallback final SIEMPRE incluye extensión (nunca un nombre pelado): se prioriza el nombre
+  // real ya conocido por el caller (documento.archivoOriginalNombre) sobre el genérico .bin.
+  const fileName = getFileNameFromContentDisposition(disposition, fallbackNombre ?? `documento-${id}-original.bin`)
   return { blob, fileName }
 }
 
 export async function getArchivoDistribucionBlob(id: string): Promise<{ blob: Blob; fileName: string }> {
   const response = await api.get(`/api/documents/${id}/archivo-distribucion`, { responseType: 'blob' })
   const blob = response.data as Blob
-  const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? ''
-  const match = /filename="([^"]+)"/.exec(disposition)
-  const fileName = match?.[1] ?? `documento-${id}-distribucion.pdf`
+  const disposition = (response.headers as Record<string, string>)['content-disposition']
+  const fileName = getFileNameFromContentDisposition(disposition, `documento-${id}-distribucion.pdf`)
   return { blob, fileName }
 }
 

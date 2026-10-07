@@ -42,6 +42,10 @@ vi.mock('../../areas/hooks/useAreas', () => ({
   useAreas: () => ({ data: [{ id: 'Almacén Norte', nombre: 'Almacén Norte', activo: true, creadoEn: '2026-01-01T00:00:00Z' }] }),
 }))
 
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => id ?? '', isLoading: false }),
+}))
+
 const baseQE: QualityEvent = {
   id: 'qe-2026-300',
   numero: 'QE-2026-300',

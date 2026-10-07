@@ -179,6 +179,59 @@ describe('documents.handlers — GET /api/documents/:id/archivo-distribucion', (
   })
 })
 
+// nueva-version-autor-permisos (D3): enviar a revisión sin revisor/aprobador asignado es un
+// error de validación por campo (400), no un 200 silencioso ni un 403/422 genérico — espejo del
+// backend real (FieldValidationException).
+describe('documents.handlers — PATCH /api/documents/:id/status valida revisor/aprobador asignados', () => {
+  it('responde 400 con el campo revisorId cuando falta', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-003')
+    if (idx === -1) throw new Error('Fixture no encontrada: doc-003')
+    store[idx] = { ...store[idx], revisorId: undefined }
+
+    const { status, data } = await call(
+      api.patch<{ errors?: string[] }>(
+        '/api/documents/doc-003/status',
+        { estado: 'EN_REVISION' },
+        authHeaders('autor@shac.pe'),
+      ),
+    )
+
+    expect(status).toBe(400)
+    expect(data.errors?.some((e) => e.startsWith('revisorId:'))).toBe(true)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')?.estado).toBe('BORRADOR')
+  })
+
+  it('responde 400 con el campo aprobadorId cuando falta', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-003')
+    if (idx === -1) throw new Error('Fixture no encontrada: doc-003')
+    store[idx] = { ...store[idx], aprobadorId: undefined }
+
+    const { status, data } = await call(
+      api.patch<{ errors?: string[] }>(
+        '/api/documents/doc-003/status',
+        { estado: 'EN_REVISION' },
+        authHeaders('autor@shac.pe'),
+      ),
+    )
+
+    expect(status).toBe(400)
+    expect(data.errors?.some((e) => e.startsWith('aprobadorId:'))).toBe(true)
+  })
+
+  it('con revisor y aprobador asignados, envía a revisión normalmente (200)', async () => {
+    const { status } = await call(
+      api.patch(
+        '/api/documents/doc-003/status',
+        { estado: 'EN_REVISION' },
+        authHeaders('autor@shac.pe'),
+      ),
+    )
+    expect(status).toBe(200)
+  })
+})
+
 describe('documents.handlers — notificarAutor on rejection (PATCH /api/documents/:id/status)', () => {
   it('creates a CAMBIO_ESTADO notification for the author when notificarAutor is true', async () => {
     const { status } = await call(
@@ -462,5 +515,408 @@ describe('documents.handlers — RN-DOC-005 en la auto-obsoletización al public
     expect(status).toBe(200)
     expect(data.estado).toBe('PUBLICADO')
     expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.estado).toBe('OBSOLETO')
+  })
+})
+
+interface CandidatoDto {
+  id: string
+  nombreCompleto: string
+  rol: string
+}
+
+describe('documents.handlers — GET /api/documents/candidatos-asignacion (D1/D2)', () => {
+  const get = (params: Record<string, string>) =>
+    call(
+      api.get<CandidatoDto[]>('/api/documents/candidatos-asignacion', {
+        params,
+        ...authHeaders('jefe.docs@shac.pe'),
+      }),
+    )
+
+  it('APROBADOR solo incluye JEFE_CONTROL_DOCUMENTARIO y ALTA_DIRECCION y excluye al usuario de la sesión', async () => {
+    const { status, data } = await get({ tipo: 'APROBADOR' })
+
+    expect(status).toBe(200)
+    expect(data.length).toBeGreaterThan(0)
+    expect(data.every((c) => c.rol === 'JEFE_CONTROL_DOCUMENTARIO' || c.rol === 'ALTA_DIRECCION')).toBe(true)
+    expect(data.map((c) => c.id)).not.toContain('user-jefedocs-001')
+  })
+
+  it('REVISOR incluye AUDITOR_INTERNO pero no SUPERVISOR ni OPERARIO', async () => {
+    const { data } = await get({ tipo: 'REVISOR' })
+
+    const roles = new Set(data.map((c) => c.rol))
+    expect(roles.has('AUDITOR_INTERNO')).toBe(true)
+    expect(roles.has('SUPERVISOR')).toBe(false)
+    expect(roles.has('OPERARIO')).toBe(false)
+  })
+
+  it('con documentoId excluye al autor del documento, no al usuario de la sesión', async () => {
+    const autorId = getDocumentsStore().find((d) => d.id === 'doc-003')!.autorId
+    const { data } = await get({ tipo: 'REVISOR', documentoId: 'doc-003' })
+
+    expect(data.map((c) => c.id)).not.toContain(autorId)
+    expect(data.map((c) => c.id)).toContain('user-jefedocs-001')
+  })
+
+  it('no incluye usuarios de otra empresa', async () => {
+    const { data } = await get({ tipo: 'REVISOR' })
+
+    const empresaActiva = useAuthStore.getState().empresaActivaId
+    expect(data.length).toBeGreaterThan(0)
+    for (const c of data) {
+      expect(getEmpresasActivasForUsuario(c.id).some((e) => e.id === empresaActiva)).toBe(true)
+    }
+  })
+
+  it('responde 400 con tipo inválido', async () => {
+    const { status } = await get({ tipo: 'OTRO' })
+
+    expect(status).toBe(400)
+  })
+})
+
+// documentos-notificaciones-pendientes (H1): antes solo la creación/edición (asignación) y el
+// rechazo notificaban — ninguna otra transición avisaba a quien le tocaba actuar.
+describe('documents.handlers — transition notifications (documentos-notificaciones-pendientes)', () => {
+  it('sending to review notifies the assigned revisor', async () => {
+    // doc-003: BORRADOR, revisorId = user-supervisor-001
+    const { status } = await call(
+      api.patch('/api/documents/doc-003/status', { estado: 'EN_REVISION' }, authHeaders('autor@shac.pe')),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === 'doc-003' && n.tipo === 'ASIGNACION',
+    )
+    expect(notif).toBeDefined()
+  })
+
+  it('approving review notifies the assigned aprobador', async () => {
+    // doc-004: EN_REVISION, aprobadorId = user-jefedocs-001
+    const { status } = await call(
+      api.patch('/api/documents/doc-004/status', { estado: 'EN_APROBACION' }, authHeaders('supervisor@shac.pe')),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-jefedocs-001' && n.entidadId === 'doc-004' && n.tipo === 'ASIGNACION',
+    )
+    expect(notif).toBeDefined()
+  })
+
+  it('cancelling review without motivo notifies author and reviewer', async () => {
+    // doc-004: EN_REVISION, autorId = user-autor-001, revisorId = user-supervisor-001
+    const { status } = await call(
+      api.patch('/api/documents/doc-004/status', { estado: 'BORRADOR' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+
+    const notifAutor = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-autor-001' && n.entidadId === 'doc-004' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    const notifRevisor = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === 'doc-004' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    expect(notifAutor).toBeDefined()
+    expect(notifRevisor).toBeDefined()
+  })
+
+  it('starting periodic review notifies the author', async () => {
+    // doc-001: PUBLICADO, autorId = user-autor-001
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/status', { estado: 'EN_REVISION_PERIODICA' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-autor-001' && n.entidadId === 'doc-001' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    expect(notif).toBeDefined()
+  })
+
+  it('does not notify the acting user when they are also the recipient', async () => {
+    // Actor = supervisor@shac.pe, who is also doc-003's revisorId.
+    const { status } = await call(
+      api.patch('/api/documents/doc-003/status', { estado: 'EN_REVISION' }, authHeaders('supervisor@shac.pe')),
+    )
+    expect(status).toBe(200)
+
+    const notif = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === 'doc-003' && n.tipo === 'ASIGNACION',
+    )
+    expect(notif).toBeUndefined()
+  })
+})
+
+describe('documents.handlers — POST /api/documents/:id/sign notifies on publish', () => {
+  it('notifies author and reviewer, never the signing approver', async () => {
+    // doc-005: EN_APROBACION, autorId = user-autor-001, revisorId = user-supervisor-001, aprobadorId = user-jefedocs-001
+    const headers = authHeaders('jefe.docs@shac.pe')
+    // El handler valida el PIN enviado contra el PIN configurado del firmante
+    // (pin-firma-ui) — sin esto, ningún usuario de authFixtures tiene PIN configurado.
+    authFixtures.find((u) => u.email === 'jefe.docs@shac.pe')!.pin = '1234'
+    const { status, data } = await call(
+      api.post<{ estado: string }>('/api/documents/doc-005/sign', { pin: '1234' }, headers),
+    )
+    expect(status).toBe(200)
+    expect(data.estado).toBe('PUBLICADO')
+
+    const notifAutor = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-autor-001' && n.entidadId === 'doc-005' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    const notifRevisor = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === 'doc-005' && n.tipo === 'CAMBIO_ESTADO',
+    )
+    const notifAprobador = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-jefedocs-001' && n.entidadId === 'doc-005',
+    )
+    expect(notifAutor).toBeDefined()
+    expect(notifRevisor).toBeDefined()
+    expect(notifAprobador).toBeUndefined()
+  })
+})
+
+describe('documents.handlers — POST /api/documents/:id/sign valida el PIN por usuario (pin-firma-ui)', () => {
+  it('responde 422 con errorCode PIN_NO_CONFIGURADO cuando el firmante no tiene PIN configurado', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'jefe.docs@shac.pe')
+    if (fixture) fixture.pin = undefined
+    const headers = authHeaders('jefe.docs@shac.pe')
+
+    let caught: unknown
+    try {
+      await api.post('/api/documents/doc-005/sign', { pin: '1234' }, headers)
+    } catch (error) {
+      caught = error
+    }
+
+    if (!isAxiosError(caught)) throw new Error('Se esperaba un AxiosError')
+    expect(caught.response?.status).toBe(422)
+    expect((caught.response?.data as { errorCode?: string }).errorCode).toBe('PIN_NO_CONFIGURADO')
+  })
+
+  it('responde 401 cuando el PIN enviado no coincide con el configurado', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'jefe.docs@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: jefe.docs@shac.pe')
+    fixture.pin = '4821'
+    const headers = authHeaders('jefe.docs@shac.pe')
+
+    let caught: unknown
+    try {
+      await api.post('/api/documents/doc-005/sign', { pin: '0000' }, headers)
+    } catch (error) {
+      caught = error
+    }
+
+    if (!isAxiosError(caught)) throw new Error('Se esperaba un AxiosError')
+    expect(caught.response?.status).toBe(401)
+  })
+})
+
+describe('documents.handlers — POST /api/documents/:id/sign bloquea sin archivo original (pdf-distribucion-real)', () => {
+  it('responde 422 con errorCode SIN_ARCHIVO_ORIGINAL cuando el documento no tiene archivo original', async () => {
+    const fixture = authFixtures.find((u) => u.email === 'jefe.docs@shac.pe')
+    if (!fixture) throw new Error('Fixture no encontrado: jefe.docs@shac.pe')
+    fixture.pin = '1234'
+
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-005')
+    if (idx === -1) throw new Error('Fixture no encontrada: doc-005')
+    store[idx] = { ...store[idx], archivoOriginalUrl: null, archivoOriginalNombre: null }
+
+    const headers = authHeaders('jefe.docs@shac.pe')
+    let caught: unknown
+    try {
+      await api.post('/api/documents/doc-005/sign', { pin: '1234' }, headers)
+    } catch (error) {
+      caught = error
+    }
+
+    if (!isAxiosError(caught)) throw new Error('Se esperaba un AxiosError')
+    expect(caught.response?.status).toBe(422)
+    expect((caught.response?.data as { errorCode?: string }).errorCode).toBe('SIN_ARCHIVO_ORIGINAL')
+    expect(getDocumentsStore().find((d) => d.id === 'doc-005')?.estado).toBe('EN_APROBACION')
+  })
+})
+
+describe('documents.handlers — POST /api/documents/:id/nueva-version hereda revisor/aprobador y notifica', () => {
+  // nueva-version-autor-permisos (D1): autorId = quien crea la versión (jefe.calidad@shac.pe),
+  // nunca el autor del origen. revisorId se hereda solo si sigue siendo un candidato elegible
+  // para ESE nuevo autor — doc-001.revisorId (user-supervisor-001, rol SUPERVISOR) ya no lo es
+  // desde documentos-revisor-aprobador-reales (SUPERVISOR no está en los roles elegibles de
+  // REVISOR), así que queda vacío; aprobadorId (user-jefedocs-001, JEFE_CONTROL_DOCUMENTARIO) sí
+  // sigue siendo elegible y se hereda.
+  it('sets autorId to the creator, drops a no-longer-eligible revisor, and keeps an eligible aprobador', async () => {
+    // doc-001: PUBLICADO, revisorId = user-supervisor-001, aprobadorId = user-jefedocs-001
+    const { status, data } = await call(
+      api.post<{ id: string; autorId: string; revisorId?: string | null; aprobadorId?: string | null }>(
+        '/api/documents/doc-001/nueva-version',
+        { tipoCambio: 'MENOR', motivo: 'Corrección de forma menor en el contenido.' },
+        authHeaders('jefe.calidad@shac.pe'),
+      ),
+    )
+    expect(status).toBe(201)
+    expect(data.autorId).toBe('user-jefecalidad-001')
+    expect(data.revisorId).toBeFalsy()
+    expect(data.aprobadorId).toBe('user-jefedocs-001')
+
+    const notifRevisor = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === data.id && n.tipo === 'ASIGNACION',
+    )
+    const notifAprobador = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-jefedocs-001' && n.entidadId === data.id && n.tipo === 'ASIGNACION',
+    )
+    expect(notifRevisor).toBeUndefined()
+    expect(notifAprobador).toBeDefined()
+  })
+
+  it('rejects creation from a user who is neither the origin author nor JCA/JCD', async () => {
+    // doc-001 autor = user-autor-001; supervisor@shac.pe (SUPERVISOR) no es autor ni JCA/JCD.
+    const { status } = await call(
+      api.post(
+        '/api/documents/doc-001/nueva-version',
+        { tipoCambio: 'MENOR', motivo: 'No debería poder crear una nueva versión.' },
+        authHeaders('supervisor@shac.pe'),
+      ),
+    )
+    expect(status).toBe(403)
+  })
+})
+
+// documentos-notificaciones-pendientes (H2/D1): "pendiente" depende solo de la asignación directa
+// del actor sobre cada documento, igual para todos los roles — ya no de reglas por rol global
+// anteriores a documentos-revisor-aprobador-reales D1.
+describe('documents.handlers — pendientes por asignación, no por rol (documentos-notificaciones-pendientes)', () => {
+  function listPendientes(email: string) {
+    return call(
+      api.get<{ items: { id: string }[] }>('/api/documents', {
+        params: { pendientes: 'true', pageSize: '50' },
+        ...authHeaders(email),
+      }),
+    )
+  }
+
+  function countPendientes(email: string) {
+    return call(api.get<{ count: number }>('/api/documents/pendientes/count', authHeaders(email)))
+  }
+
+  it('author sees their own BORRADOR without being revisor/aprobador of anything', async () => {
+    // doc-003: BORRADOR, autorId = user-autor-001
+    const { data } = await listPendientes('autor@shac.pe')
+
+    expect(data.items.map((d) => d.id)).toContain('doc-003')
+  })
+
+  it('AUDITOR_INTERNO revisor sees their assigned EN_REVISION', async () => {
+    const docStore = getDocumentsStore()
+    const doc = docStore.find((d) => d.id === 'doc-004')!
+    docStore[docStore.indexOf(doc)] = { ...doc, revisorId: 'user-auditor-001' }
+
+    const { data } = await listPendientes('auditor@shac.pe')
+
+    expect(data.items.map((d) => d.id)).toContain('doc-004')
+  })
+
+  it('ALTA_DIRECCION aprobadora sees their assigned EN_APROBACION', async () => {
+    const docStore = getDocumentsStore()
+    const doc = docStore.find((d) => d.id === 'doc-005')!
+    docStore[docStore.indexOf(doc)] = { ...doc, aprobadorId: 'user-gerencia-001' }
+
+    const { data } = await listPendientes('gerencia@shac.pe')
+
+    expect(data.items.map((d) => d.id)).toContain('doc-005')
+  })
+
+  it('JEFE_CALIDAD_SYST who is not the assigned revisor no longer sees every EN_REVISION', async () => {
+    // doc-004: EN_REVISION, revisorId = user-supervisor-001 (not jefe.calidad)
+    const { data } = await listPendientes('jefe.calidad@shac.pe')
+
+    expect(data.items.map((d) => d.id)).not.toContain('doc-004')
+  })
+
+  it('JEFE_CALIDAD_SYST and JEFE_CONTROL_DOCUMENTARIO see EN_REVISION_PERIODICA', async () => {
+    const docStore = getDocumentsStore()
+    const doc = docStore.find((d) => d.id === 'doc-001')!
+    docStore[docStore.indexOf(doc)] = { ...doc, estado: 'EN_REVISION_PERIODICA' }
+
+    const resultJCA = await listPendientes('jefe.calidad@shac.pe')
+    const resultJCD = await listPendientes('jefe.docs@shac.pe')
+
+    expect(resultJCA.data.items.map((d) => d.id)).toContain('doc-001')
+    expect(resultJCD.data.items.map((d) => d.id)).toContain('doc-001')
+  })
+
+  it('count matches the filtered list for the same actor', async () => {
+    const list = await listPendientes('autor@shac.pe')
+    const count = await countPendientes('autor@shac.pe')
+
+    expect(count.data.count).toBe(list.data.items.length)
+  })
+
+  it('a role with no assignments has zero pendientes — not a role-based cutoff', async () => {
+    // user-operario-001 is not autor/revisor/aprobador of any fixture document.
+    const { data } = await countPendientes('operario@shac.pe')
+
+    expect(data.count).toBe(0)
+  })
+
+  it('confidencialidad hides a RESTRINGIDO document from the count even for its own author', async () => {
+    const docStore = getDocumentsStore()
+    const doc = docStore.find((d) => d.id === 'doc-007')! // BORRADOR, autorId = user-autor-001
+    docStore[docStore.indexOf(doc)] = {
+      ...doc,
+      confidencialidad: 'RESTRINGIDO',
+      rolesAutorizados: ['ALTA_DIRECCION'],
+    }
+
+    const { data } = await listPendientes('autor@shac.pe') // autor@shac.pe is SUPERVISOR, not in rolesAutorizados
+
+    expect(data.items.map((d) => d.id)).not.toContain('doc-007')
+  })
+})
+
+describe('documents.handlers — PATCH /api/documents/:id/restaurar restringido por rol (documentos-notificaciones-pendientes)', () => {
+  function markDeleted(id: string) {
+    const docStore = getDocumentsStore()
+    const doc = docStore.find((d) => d.id === id)!
+    docStore[docStore.indexOf(doc)] = { ...doc, deletedAt: new Date().toISOString() }
+  }
+
+  it('JEFE_CALIDAD_SYST can restore', async () => {
+    markDeleted('doc-003')
+
+    const { status, data } = await call(
+      api.patch<{ deletedAt?: string }>('/api/documents/doc-003/restaurar', {}, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.deletedAt).toBeUndefined()
+  })
+
+  it('ALTA_DIRECCION can restore', async () => {
+    markDeleted('doc-003')
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-003/restaurar', {}, authHeaders('gerencia@shac.pe')),
+    )
+    expect(status).toBe(200)
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO cannot restore', async () => {
+    markDeleted('doc-003')
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-003/restaurar', {}, authHeaders('jefe.docs@shac.pe')),
+    )
+    expect(status).toBe(403)
+    expect(getDocumentsStore().find((d) => d.id === 'doc-003')!.deletedAt).toBeDefined()
+  })
+
+  it('OPERARIO cannot restore', async () => {
+    markDeleted('doc-003')
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-003/restaurar', {}, authHeaders('operario@shac.pe')),
+    )
+    expect(status).toBe(403)
   })
 })

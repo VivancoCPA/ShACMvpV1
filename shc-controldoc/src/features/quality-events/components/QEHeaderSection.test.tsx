@@ -18,8 +18,9 @@ vi.mock('../../areas/hooks/useAreas', () => ({
   useArea: () => ({ data: { id: 'area-001', nombre: 'Almacén Norte' } }),
 }))
 
-vi.mock('../../../mocks/fixtures/userIdentity.fixtures', () => ({
-  resolveUserDisplayName: () => 'Ricardo Flores',
+let getNameMock = (_id?: string | null) => 'Ricardo Flores'
+vi.mock('../../users/hooks/useUserNames', () => ({
+  useUserNames: () => ({ getName: (id?: string | null) => getNameMock(id), isLoading: false }),
 }))
 
 let currentUser: User | null = null
@@ -88,6 +89,7 @@ beforeEach(() => {
   exportIsPending = false
   buildQualityEventPdfMock.mockClear()
   downloadBlobMock.mockClear()
+  getNameMock = () => 'Ricardo Flores'
 })
 
 describe('QEHeaderSection — export PDF button', () => {
@@ -119,7 +121,7 @@ describe('QEHeaderSection — export PDF button', () => {
 
     expect(buildQualityEventPdfMock).toHaveBeenCalledWith(
       qe,
-      expect.objectContaining({ exportadoPorNombre: 'Ana Torres' }),
+      expect.objectContaining({ exportadoPorNombre: 'Ana Torres', reportadoPorNombre: 'Ricardo Flores' }),
     )
     expect(downloadBlobMock).toHaveBeenCalledWith(expect.anything(), 'QE-2026-010.pdf')
   })
@@ -136,5 +138,27 @@ describe('QEHeaderSection — export PDF button', () => {
     const qe = makeQE({})
     render(<QEHeaderSection qe={qe} />)
     expect(screen.queryByText('detail.header.exportarPDF')).not.toBeInTheDocument()
+  })
+})
+
+describe('QEHeaderSection — reportadoPor muestra el nombre resuelto (nombres-usuarios-reales)', () => {
+  it('muestra el nombre resuelto por useUserNames, no el id crudo', () => {
+    getNameMock = () => 'Ricardo Flores'
+    currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
+    const qe = makeQE({ reportadoPorId: 'user-reportante-001' })
+    render(<QEHeaderSection qe={qe} />)
+
+    expect(screen.getByText('Ricardo Flores')).toBeInTheDocument()
+    expect(screen.queryByText('user-reportante-001')).not.toBeInTheDocument()
+  })
+
+  it('muestra el texto genérico cuando el id no se resuelve', () => {
+    getNameMock = () => 'common:userNames.noDisponible'
+    currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
+    const qe = makeQE({ reportadoPorId: 'user-desconocido' })
+    render(<QEHeaderSection qe={qe} />)
+
+    expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
+    expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
   })
 })

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { AlertTriangle, Download } from 'lucide-react'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { contarDiasHabiles, formatNormativaVinculada } from '../utils/qualityEventHelpers'
 import { useArea } from '../../areas/hooks/useAreas'
 import { useAuthStore } from '../../../stores/authStore'
@@ -37,7 +37,10 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
   const exportPdf = useExportQualityEventPdf(qe.id)
 
   const { data: area } = useArea(qe.areaId)
-  const reportedByName = resolveUserDisplayName(qe.reportadoPorId)
+  // Una sola llamada cubre "Reportado por" y, si aplica, el nombre de quien aprobó la causa
+  // raíz que necesita el PDF al exportar (nombres-usuarios-reales).
+  const { getName } = useUserNames([qe.reportadoPorId, qe.causaRaizAprobadaPorId])
+  const reportedByName = getName(qe.reportadoPorId)
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
   const dateOnlyFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short' })
 
@@ -49,6 +52,8 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
         const doc = buildQualityEventPdf(qe, {
           exportadoPorNombre: user ? `${user.nombre} ${user.apellido}` : '',
           generadoEn: new Date(),
+          reportadoPorNombre: reportedByName,
+          causaRaizAprobadaPorNombre: qe.causaRaizAprobadaPorId ? getName(qe.causaRaizAprobadaPorId) : undefined,
         })
         downloadBlob(doc.output('blob'), `${qe.numero}.pdf`)
       },

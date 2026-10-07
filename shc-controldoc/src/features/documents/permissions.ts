@@ -1,4 +1,5 @@
-import type { DocStatus, DocRole, DocumentPermissions, DocConfidencialidad } from '../../types/documents.types'
+import type { DocStatus, DocRole, DocumentPermissions, DocConfidencialidad, Documento } from '../../types/documents.types'
+import type { User } from '../../types/auth.types'
 
 const CONFIDENCIAL_ROLES = new Set([
   'JEFE_CALIDAD_SYST',
@@ -6,6 +7,22 @@ const CONFIDENCIAL_ROLES = new Set([
   'AUDITOR_INTERNO',
   'ALTA_DIRECCION',
 ])
+
+// nueva-version-autor-permisos: resolver único de docRole, misma precedencia que
+// DocumentPermissionResolver.ResolveDocRole (backend real) — AUTOR → REVISOR → APROBADOR →
+// JEFE_CALIDAD (rol global) → OPERARIO. Antes vivía duplicado inline en DocumentDetailPage.tsx y
+// como un flag `isJefeCalidad` suelto (sin precedencia) en DocumentActionPanel.tsx.
+export function resolveDocRoleForUser(
+  documento: Pick<Documento, 'autorId' | 'revisorId' | 'aprobadorId'>,
+  user: Pick<User, 'id' | 'rol'> | null | undefined,
+): DocRole {
+  if (!user) return 'OPERARIO'
+  if (documento.autorId === user.id) return 'AUTOR'
+  if (documento.revisorId === user.id) return 'REVISOR'
+  if (documento.aprobadorId === user.id) return 'APROBADOR'
+  if (user.rol === 'JEFE_CALIDAD_SYST' || user.rol === 'JEFE_CONTROL_DOCUMENTARIO') return 'JEFE_CALIDAD'
+  return 'OPERARIO'
+}
 
 export function canAccessDocument(
   confidencialidad: DocConfidencialidad,

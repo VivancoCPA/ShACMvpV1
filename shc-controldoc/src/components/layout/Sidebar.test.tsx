@@ -17,8 +17,9 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+const mockUseDocumentosPendientesCount = vi.fn(() => ({ data: { count: 0 } }))
 vi.mock('../../features/documents/hooks/useDocumentosPendientesCount', () => ({
-  useDocumentosPendientesCount: () => ({ data: { count: 0 } }),
+  useDocumentosPendientesCount: () => mockUseDocumentosPendientesCount(),
 }))
 
 function renderSidebarAs(rol: UserRole) {
@@ -97,5 +98,33 @@ describe('Sidebar — visibilidad del ítem Usuarios (me-f4-admin-empresas)', ()
   ])('NO muestra el ítem Usuarios para %s', (rol) => {
     renderSidebarAs(rol)
     expect(screen.queryByText('users')).not.toBeInTheDocument()
+  })
+})
+
+// documentos-notificaciones-pendientes (D1/D7): el badge de pendientes de Documentos ya no se
+// oculta para roles que SÍ pueden tener pendientes bajo la nueva regla de asignación
+// (AUDITOR_INTERNO revisor, ALTA_DIRECCION aprobador, el propio autor con un BORRADOR sin enviar).
+// Antes de este fix, PENDIENTES_BADGE_ROLES solo incluía SUPERVISOR/JEFE_CALIDAD_SYST/
+// JEFE_CONTROL_DOCUMENTARIO y ocultaba el badge para los demás sin importar su conteo real.
+describe('Sidebar — badge de pendientes de Documentos (documentos-notificaciones-pendientes)', () => {
+  afterEach(() => {
+    cleanup()
+    useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
+    mockUseDocumentosPendientesCount.mockReturnValue({ data: { count: 0 } })
+  })
+
+  it.each<UserRole>(['OPERARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'])(
+    'muestra el badge de pendientes para %s cuando tiene pendientes asignados',
+    (rol) => {
+      mockUseDocumentosPendientesCount.mockReturnValue({ data: { count: 3 } })
+      renderSidebarAs(rol)
+      expect(screen.getByText('3')).toBeInTheDocument()
+    },
+  )
+
+  it('no muestra badge cuando el conteo es cero', () => {
+    mockUseDocumentosPendientesCount.mockReturnValue({ data: { count: 0 } })
+    renderSidebarAs('AUDITOR_INTERNO')
+    expect(screen.queryByText('3')).not.toBeInTheDocument()
   })
 })

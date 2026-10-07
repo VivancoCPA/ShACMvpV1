@@ -18,8 +18,6 @@ import { useDocumentosPendientesCount } from '../../features/documents/hooks/use
 import { UserAvatar } from '../ui/UserAvatar'
 import type { UserRole } from '../../types/auth.types'
 
-const PENDIENTES_BADGE_ROLES = new Set<UserRole>(['SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO'])
-
 interface NavItem {
   key: string
   path: string
@@ -91,7 +89,10 @@ export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const user = useAuthStore((s) => s.user)
 
-  const showBadge = user?.rol !== undefined && PENDIENTES_BADGE_ROLES.has(user.rol)
+  // documentos-notificaciones-pendientes (D1/D7): "pendiente" depende de la asignación del actor,
+  // no de su rol — el ítem "documents" del nav ya filtra por los 6 roles con acceso al módulo
+  // (ver NAV_ITEMS arriba), así que el badge no necesita un segundo recorte de roles.
+  const showBadge = user?.rol !== undefined
   const { data: pendientesData } = useDocumentosPendientesCount()
   const pendientesCount = showBadge ? (pendientesData?.count ?? 0) : 0
 

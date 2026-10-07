@@ -4,7 +4,6 @@ import type {
   DocType,
   DocRole,
   DocumentPermissions,
-  VersionEntry,
   AuditTrailEntry,
   Documento,
   DocFilters,
@@ -55,19 +54,9 @@ describe('DocumentPermissions', () => {
   })
 })
 
-describe('VersionEntry', () => {
-  it('has required fields and optional hashArchivo', () => {
-    expectTypeOf<VersionEntry>().toHaveProperty('version').toBeString()
-    expectTypeOf<VersionEntry>().toHaveProperty('fechaPublicacion').toBeString()
-    expectTypeOf<VersionEntry>().toHaveProperty('autorId').toBeString()
-    expectTypeOf<VersionEntry>().toHaveProperty('descripcionCambios').toBeString()
-    expectTypeOf<VersionEntry>().toHaveProperty('hashArchivo').toEqualTypeOf<string | undefined>()
-  })
-})
-
 describe('AuditTrailEntry', () => {
-  it('narrows entidadTipo to the Documento | NoConformidad union', () => {
-    expectTypeOf<AuditTrailEntry['entidadTipo']>().toEqualTypeOf<'Documento' | 'NoConformidad'>()
+  it('narrows entidadTipo to the Documento | NoConformidad union (optional)', () => {
+    expectTypeOf<AuditTrailEntry['entidadTipo']>().toEqualTypeOf<'Documento' | 'NoConformidad' | undefined>()
   })
 
   it('has required and optional fields', () => {
@@ -86,7 +75,6 @@ describe('Documento', () => {
     expectTypeOf<Documento>().toHaveProperty('estado').toEqualTypeOf<DocStatus>()
     expectTypeOf<Documento>().toHaveProperty('qeVinculados').toEqualTypeOf<QeVinculadoResumen[]>()
     expectTypeOf<Documento>().toHaveProperty('ncVinculados').toEqualTypeOf<NcVinculadoResumen[]>()
-    expectTypeOf<Documento>().toHaveProperty('historialVersiones').toEqualTypeOf<VersionEntry[]>()
     expectTypeOf<Documento>().toHaveProperty('auditTrail').toEqualTypeOf<AuditTrailEntry[]>()
   })
 

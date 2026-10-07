@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { X, Sparkles } from 'lucide-react'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { useAuthStore } from '../../../stores/authStore'
 import { useUpdateQualityEvent } from '../hooks/useUpdateQualityEvent'
 import type {
@@ -204,8 +204,9 @@ export function QEInvestigationSection({ qe }: QEInvestigationSectionProps) {
     )
   }
 
+  const { getName } = useUserNames([qe.causaRaizAprobadaPorId])
   const aprobadorNombre = qe.causaRaizAprobadaPorId
-    ? resolveUserDisplayName(qe.causaRaizAprobadaPorId)
+    ? getName(qe.causaRaizAprobadaPorId)
     : undefined
 
   const inputClass =

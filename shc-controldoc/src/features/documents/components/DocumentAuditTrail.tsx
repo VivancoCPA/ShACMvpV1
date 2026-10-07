@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FileText,
+  XCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
@@ -22,6 +23,11 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   DESCARGA: Download,
   DESCARGA_ARCHIVO_ORIGINAL: Download,
   VISUALIZACION: Eye,
+  // documentos-rechazo-visible: ícono propio, distinto de ESTADO_CAMBIADO, para las 3 acciones
+  // que reemplazan a ESTADO_CAMBIADO en las transiciones _ -> BORRADOR.
+  RECHAZADO_EN_REVISION: XCircle,
+  RECHAZADO_EN_APROBACION: XCircle,
+  REVISION_CANCELADA: XCircle,
 }
 
 interface DocumentAuditTrailProps {
@@ -91,6 +97,11 @@ export function DocumentAuditTrail({ documento }: DocumentAuditTrailProps) {
               <p className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">
                 {entry.realizadoPorNombre}
               </p>
+              {entry.motivo && (
+                <p className="mt-1 text-xs text-body dark:text-on-dark">
+                  {t('auditTrail.motivo', { motivo: entry.motivo })}
+                </p>
+              )}
             </div>
           </li>
         ))}

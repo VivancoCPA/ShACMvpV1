@@ -59,3 +59,9 @@ export async function changePassword(data: {
 }): Promise<void> {
   await api.post('/api/auth/change-password', data)
 }
+
+/** Configura o cambia el PIN de firma propio — mismo endpoint para la primera configuración
+ *  y para un cambio posterior (ver be-firma-pin). */
+export async function setPin(data: { password: string; pin: string }): Promise<void> {
+  await api.post('/api/auth/set-pin', data)
+}

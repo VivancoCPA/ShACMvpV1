@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { resolveUserDisplayName } from '../../../mocks/fixtures/userIdentity.fixtures'
 import { formatNormativaVinculada } from '../utils/qualityEventHelpers'
 import {
   QE_ORIGIN_LABELS,
@@ -12,6 +11,11 @@ import type { QualityEvent, IshikawaCategoria } from '../types/qualityEvent.type
 export interface QEExportMeta {
   exportadoPorNombre: string
   generadoEn: Date
+  /** Nombre resuelto por el caller vía useUserNames — no es un componente React, no puede
+   * resolver nombres por su cuenta (nombres-usuarios-reales D5). */
+  reportadoPorNombre: string
+  /** Solo presente cuando qe.causaRaizAprobadaPorId está seteado. */
+  causaRaizAprobadaPorNombre?: string
 }
 
 const MARGIN = 14
@@ -63,7 +67,7 @@ function drawParagraph(doc: jsPDF, text: string, x: number, y: number, maxWidth:
   return y + lines.length * lineHeight
 }
 
-function drawCabecera(doc: jsPDF, qe: QualityEvent, y: number): number {
+function drawCabecera(doc: jsPDF, qe: QualityEvent, meta: QEExportMeta, y: number): number {
   y = drawSectionTitle(doc, 'Cabecera', y)
 
   const lines = [
@@ -76,7 +80,7 @@ function drawCabecera(doc: jsPDF, qe: QualityEvent, y: number): number {
     `Turno: ${TURNO_LABELS[qe.turno]}`,
     `Fecha y hora del evento: ${formatFechaHora(qe.fechaHoraEvento)}`,
     `Fecha y hora del reporte: ${formatFechaHora(qe.fechaHoraReporte)}`,
-    `Reportado por: ${resolveUserDisplayName(qe.reportadoPorId)}`,
+    `Reportado por: ${meta.reportadoPorNombre}`,
   ]
   if (qe.ciclo > 1) lines.push(`Ciclo ${qe.ciclo} — Reabierto`)
 
@@ -114,7 +118,7 @@ function drawDescripcion(doc: jsPDF, qe: QualityEvent, y: number, pageWidth: num
   return y + 4
 }
 
-function drawCausaRaiz(doc: jsPDF, qe: QualityEvent, y: number, pageWidth: number): number {
+function drawCausaRaiz(doc: jsPDF, qe: QualityEvent, meta: QEExportMeta, y: number, pageWidth: number): number {
   y = drawSectionTitle(doc, 'Causa Raíz', y)
   const maxWidth = pageWidth - MARGIN * 2
 
@@ -150,7 +154,7 @@ function drawCausaRaiz(doc: jsPDF, qe: QualityEvent, y: number, pageWidth: numbe
   if (causaRaizAprobadaEntry) {
     y += 3
     doc.text(
-      `Borrador IA — validado por ${resolveUserDisplayName(qe.causaRaizAprobadaPorId ?? causaRaizAprobadaEntry.realizadoPorId)}`,
+      `Borrador IA — validado por ${meta.causaRaizAprobadaPorNombre ?? causaRaizAprobadaEntry.realizadoPorNombre}`,
       MARGIN,
       y,
     )
@@ -279,7 +283,7 @@ export function buildQualityEventPdf(qe: QualityEvent, meta: QEExportMeta): jsPD
   const pageWidth = doc.internal.pageSize.getWidth()
 
   let y = MARGIN + 10
-  drawCabecera(doc, qe, y)
+  drawCabecera(doc, qe, meta, y)
 
   doc.addPage()
   y = MARGIN + 10
@@ -287,7 +291,7 @@ export function buildQualityEventPdf(qe: QualityEvent, meta: QEExportMeta): jsPD
 
   doc.addPage()
   y = MARGIN + 10
-  drawCausaRaiz(doc, qe, y, pageWidth)
+  drawCausaRaiz(doc, qe, meta, y, pageWidth)
 
   doc.addPage()
   y = MARGIN + 10

@@ -20,6 +20,13 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+const apiPostMock = vi.fn().mockResolvedValue({ data: { id: 'doc-nuevo' } })
+vi.mock('../../../lib/axios', () => ({
+  default: {
+    post: (...args: unknown[]) => apiPostMock(...args),
+  },
+}))
+
 function wrapper({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -115,5 +122,54 @@ describe('useDocumentForm — RN-DOC-020 sugerencia automática de fechaRevision
     })
 
     expect(result.current.form.getValues('fechaRevisionProxima')).toBe('')
+  })
+})
+
+describe('useDocumentForm — fix-fechas-utc: fechas vacías no viajan como \'\'', () => {
+  it('omite fechaVigencia y fechaRevisionProxima del payload cuando quedan vacías', async () => {
+    apiPostMock.mockClear()
+    const { result } = renderHook(() => useDocumentForm({ mode: 'create' }), { wrapper })
+
+    act(() => {
+      result.current.form.setValue('titulo', 'Procedimiento de prueba con título válido')
+      result.current.form.setValue('tipo', 'PRC')
+      result.current.form.setValue('areaId', 'area-007')
+      result.current.form.setValue('version', 'v1.0')
+      result.current.form.setValue('confidencialidad', 'INTERNO')
+      // fechaVigencia/fechaRevisionProxima quedan en su default: ''
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(apiPostMock).toHaveBeenCalledTimes(1)
+    const payload = apiPostMock.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.fechaVigencia).toBeUndefined()
+    expect(payload.fechaRevisionProxima).toBeUndefined()
+    expect('fechaVigencia' in payload && payload.fechaVigencia === '').toBe(false)
+  })
+
+  it('sí envía fechaVigencia/fechaRevisionProxima cuando el usuario las completó', async () => {
+    apiPostMock.mockClear()
+    const { result } = renderHook(() => useDocumentForm({ mode: 'create' }), { wrapper })
+
+    act(() => {
+      result.current.form.setValue('titulo', 'Procedimiento de prueba con título válido')
+      result.current.form.setValue('tipo', 'PRC')
+      result.current.form.setValue('areaId', 'area-007')
+      result.current.form.setValue('version', 'v1.0')
+      result.current.form.setValue('confidencialidad', 'INTERNO')
+      result.current.form.setValue('fechaVigencia', '2026-09-29')
+      result.current.form.setValue('fechaRevisionProxima', '2027-09-29')
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    const payload = apiPostMock.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.fechaVigencia).toBe('2026-09-29')
+    expect(payload.fechaRevisionProxima).toBe('2027-09-29')
   })
 })

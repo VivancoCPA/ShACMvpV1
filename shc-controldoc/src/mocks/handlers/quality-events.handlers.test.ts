@@ -9,6 +9,7 @@ import { getDocumentsStore, resetStore as resetDocumentsStore } from './document
 import type { Documento } from '../../types/documents.types'
 import { useAuthStore } from '../../stores/authStore'
 import { createMockUser } from '../fixtures/mockUser'
+import { getUsersStore } from '../fixtures/auth.fixtures'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
 import type { QualityEvent } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
@@ -45,7 +46,6 @@ function baseDoc(overrides: Partial<Documento>): Documento {
     archivoDistribucionUrl: null,
     qeVinculados: [],
     ncVinculados: [],
-    historialVersiones: [],
     auditTrail: [],
     creadoEn: now,
     actualizadoEn: now,
@@ -129,6 +129,12 @@ function setCurrentUser(id: string, rol: 'OPERARIO' | 'SUPERVISOR' | 'JEFE_CALID
     accessToken: 'token',
     empresaActivaId: 'empresa-001',
   })
+  // El handler de firmar-cierre valida el PIN enviado contra el PIN configurado del
+  // firmante (pin-firma-ui) — si `id` corresponde a un usuario real de authFixtures (no
+  // todos los ids de este archivo lo son), se le configura el mismo PIN '1234' que ya
+  // envían las pruebas de firmar-cierre, para no desincronizar los fixtures (CLAUDE.md).
+  const realFixtureUser = getUsersStore().find((u) => u.id === id)
+  if (realFixtureUser) realFixtureUser.pin = '1234'
 }
 
 function baseQE(overrides: Partial<QualityEvent>): QualityEvent {
@@ -353,6 +359,53 @@ describe('quality-events.handlers — firmar-cierre notifications', () => {
         (n) => n.usuarioId === 'user-gerencia-001' && n.entidadId === 'qe-test-cierre' && n.tipo === 'CAMBIO_ESTADO',
       ),
     ).toBeDefined()
+  })
+})
+
+describe('quality-events.handlers — PATCH /api/quality-events/:id/firmar-cierre valida el PIN (pin-firma-ui)', () => {
+  it('responde 422 con errorCode PIN_NO_CONFIGURADO cuando el firmante no tiene PIN configurado', async () => {
+    getQeStore().push(
+      baseQE({
+        id: 'qe-test-sin-pin',
+        numero: 'QE-TEST-SIN-PIN',
+        estado: 'PENDIENTE_CIERRE',
+        resultadoCierre: 'Cierre de prueba con más de cien caracteres para pasar la validación mínima requerida por el formulario.',
+      }),
+    )
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    getUsersStore().find((u) => u.id === 'user-jefecalidad-001')!.pin = undefined
+
+    const { status, data } = await call(
+      api.patch<{ success: boolean; message: string; errorCode?: string }>(
+        '/api/quality-events/qe-test-sin-pin/firmar-cierre',
+        { rol: 'JEFE_CALIDAD_SYST', pin: '1234' },
+      ),
+    )
+
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('PIN_NO_CONFIGURADO')
+  })
+
+  it('responde 401 cuando el PIN enviado no coincide con el configurado, sin registrar la firma', async () => {
+    getQeStore().push(
+      baseQE({
+        id: 'qe-test-pin-incorrecto',
+        numero: 'QE-TEST-PIN-INCORRECTO',
+        estado: 'PENDIENTE_CIERRE',
+        resultadoCierre: 'Cierre de prueba con más de cien caracteres para pasar la validación mínima requerida por el formulario.',
+      }),
+    )
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status } = await call(
+      api.patch<QualityEvent>('/api/quality-events/qe-test-pin-incorrecto/firmar-cierre', {
+        rol: 'JEFE_CALIDAD_SYST',
+        pin: '0000',
+      }),
+    )
+
+    expect(status).toBe(401)
+    expect(getQeStore().find((q) => q.id === 'qe-test-pin-incorrecto')?.cerradoPorId).toBeUndefined()
   })
 })
 

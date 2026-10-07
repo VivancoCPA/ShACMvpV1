@@ -1,40 +1,56 @@
-import { useId } from 'react'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { DOC_REVISION_ALERT_DAYS } from '../../../config/businessRules.config'
+import { calendarDaysUntil, formatCalendarDate } from '../../../utils/date.utils'
 
 interface RevisionSemaforoProps {
-  fechaRevisionProxima: string | undefined
+  fechaRevisionProxima: string | null | undefined
+}
+
+// Punto de color + fecha, siempre visibles; el texto de días relativo ("en N días"/"hace N
+// días"/"hoy") también es visible sin hover en ámbar y rojo — antes vivía en un tooltip que no
+// aparecía en verde/vencido y no funciona en pantallas táctiles (semaforo-revision-con-fecha).
+// El color nunca es el único portador de información.
+function RelativeDays({ diasRestantes, t }: { diasRestantes: number; t: (key: string, options?: Record<string, unknown>) => string }) {
+  if (diasRestantes === 0) return <span>{t('semaforo.hoy')}</span>
+  if (diasRestantes > 0) return <span>{t('semaforo.enDias', { count: diasRestantes })}</span>
+  return <span>{t('semaforo.haceDias', { count: Math.abs(diasRestantes) })}</span>
 }
 
 export function RevisionSemaforo({ fechaRevisionProxima }: RevisionSemaforoProps) {
-  const { t } = useTranslation('documents')
-  const tooltipId = useId()
+  const { t, i18n } = useTranslation('documents')
 
-  if (fechaRevisionProxima === undefined) {
+  // El backend real serializa un DateTime? vacío como JSON null (Program.cs no configura
+  // DefaultIgnoreCondition), no como clave ausente — a diferencia de lo que este componente
+  // asumía (=== undefined). Con null, calendarDaysUntil(null) lanzaba un TypeError que el
+  // ErrorBoundary de DocumentsPage atrapaba, tumbando toda la lista (fix-fechas-utc).
+  if (fechaRevisionProxima == null) {
     return <span className="text-muted dark:text-on-dark-soft">—</span>
   }
 
-  const diasRestantes = differenceInCalendarDays(parseISO(fechaRevisionProxima), new Date())
+  // fechaRevisionProxima es una fecha de calendario (fix-fechas-utc) — calendarDaysUntil/
+  // formatCalendarDate no la desfasan un día en zonas horarias negativas, a diferencia de
+  // differenceInCalendarDays(parseISO(...), new Date()) o new Date(iso) formateado localmente.
+  const diasRestantes = calendarDaysUntil(fechaRevisionProxima)
+  const fecha = formatCalendarDate(fechaRevisionProxima, i18n.language)
 
   if (diasRestantes > DOC_REVISION_ALERT_DAYS) {
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-success dark:bg-success" />
+      <span className="flex items-center gap-1.5">
+        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-success dark:bg-success" />
+        <span className="text-xs text-body dark:text-on-dark">{fecha}</span>
       </span>
     )
   }
 
   if (diasRestantes >= 8) {
     return (
-      <span className="group relative inline-flex items-center gap-1.5" aria-describedby={tooltipId}>
-        <span className="h-2 w-2 rounded-full bg-warning dark:bg-warning" />
-        <span
-          id={tooltipId}
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-xs text-on-dark opacity-0 shadow-md transition-opacity group-hover:opacity-100 dark:bg-surface-dark-elevated"
-        >
-          {t('semaforo.diasRestantes', { dias: diasRestantes })}
+      <span className="flex items-start gap-1.5">
+        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-warning dark:bg-warning" />
+        <span className="flex flex-col">
+          <span className="text-xs text-body dark:text-on-dark">{fecha}</span>
+          <span className="text-xs text-muted dark:text-on-dark-soft">
+            <RelativeDays diasRestantes={diasRestantes} t={t} />
+          </span>
         </span>
       </span>
     )
@@ -42,27 +58,36 @@ export function RevisionSemaforo({ fechaRevisionProxima }: RevisionSemaforoProps
 
   if (diasRestantes >= 1) {
     return (
-      <span className="group relative inline-flex items-center gap-1.5" aria-describedby={tooltipId}>
-        <span className="h-2 w-2 rounded-full bg-error dark:bg-error" />
-        <span className="rounded-[9999px] bg-error/20 px-1.5 py-0.5 text-xs font-medium text-error dark:bg-error/15 dark:text-error">
-          {t('semaforo.proximo')}
-        </span>
-        <span
-          id={tooltipId}
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-xs text-on-dark opacity-0 shadow-md transition-opacity group-hover:opacity-100 dark:bg-surface-dark-elevated"
-        >
-          {t('semaforo.diasRestantes', { dias: diasRestantes })}
+      <span className="flex items-start gap-1.5">
+        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-error dark:bg-error" />
+        <span className="flex flex-col">
+          <span className="flex items-center gap-1.5">
+            <span className="text-xs text-body dark:text-on-dark">{fecha}</span>
+            <span className="rounded-[9999px] bg-error/20 px-1.5 py-0.5 text-xs font-medium text-error dark:bg-error/15 dark:text-error">
+              {t('semaforo.proximo')}
+            </span>
+          </span>
+          <span className="text-xs text-muted dark:text-on-dark-soft">
+            <RelativeDays diasRestantes={diasRestantes} t={t} />
+          </span>
         </span>
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-error dark:bg-error" />
-      <span className="rounded-[9999px] bg-error/20 px-1.5 py-0.5 text-xs font-medium text-error dark:bg-error/15 dark:text-error">
-        {t('semaforo.vencido')}
+    <span className="flex items-start gap-1.5">
+      <span className="mt-1 h-2 w-2 flex-shrink-0 animate-pulse rounded-full bg-error dark:bg-error" />
+      <span className="flex flex-col">
+        <span className="flex items-center gap-1.5">
+          <span className="text-xs text-body dark:text-on-dark">{fecha}</span>
+          <span className="rounded-[9999px] bg-error/20 px-1.5 py-0.5 text-xs font-medium text-error dark:bg-error/15 dark:text-error">
+            {t('semaforo.vencido')}
+          </span>
+        </span>
+        <span className="text-xs text-muted dark:text-on-dark-soft">
+          <RelativeDays diasRestantes={diasRestantes} t={t} />
+        </span>
       </span>
     </span>
   )
