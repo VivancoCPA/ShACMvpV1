@@ -172,7 +172,10 @@
         "rechazadoEnRevision": "Rejected in review by {{nombre}} on {{fecha}}. Reason: {{motivo}}",
         "rechazadoEnAprobacion": "Rejected in approval by {{nombre}} on {{fecha}}. Reason: {{motivo}}",
         "faltaAsignacion": "Assign a reviewer and an approver before you can send this document to review.",
-        "faltaAsignacionEditar": "Edit"
+        "faltaAsignacionEditar": "Edit",
+        "revisionProxima": "Pending periodic review — due {{fecha}} (in {{dias}} days).",
+        "revisionVencida": "Periodic review overdue since {{fecha}} ({{dias}} days ago). This document is still valid, but must be reviewed.",
+        "revisionEnCurso": "In periodic review since {{fecha}}, started by {{nombre}}."
       },
       "actions": {
         "sendToReview": "Send to review",
@@ -241,6 +244,8 @@
         "DOCUMENTO_CREADO": "Document created",
         "NUEVA_VERSION_INICIADA": "New version started",
         "REVISION_PERIODICA_CONFIRMADA": "Periodic review confirmed",
+        "REVISION_PERIODICA_INICIADA": "Periodic review started",
+        "REVISION_PERIODICA_VENCIDA": "Periodic review overdue",
         "DOCUMENTO_ELIMINADO": "Document deleted",
         "RESTAURADO": "Document restored",
         "ARCHIVO_ORIGINAL_ACTUALIZADO": "Original file updated",
@@ -388,6 +393,8 @@
         "opcionA": "Confirm document still valid — no changes",
         "opcionADesc": "The document remains valid. Only the next review date will be updated.",
         "opcionAConfirm": "Confirm — document is still valid",
+        "fechaLabel": "Next review",
+        "fechaAyuda": "Suggested based on the document type. You can adjust it; minimum {{minDias}} days from today.",
         "opcionB": "Requires update — create new version",
         "opcionBDesc": "The document needs to be updated. A new draft version will be created.",
         "opcionBAction": "Create new version",

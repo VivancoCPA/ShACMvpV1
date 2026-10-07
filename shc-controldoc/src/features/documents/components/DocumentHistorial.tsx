@@ -20,6 +20,9 @@ const ACCIONES_RELEVANTES = new Set([
   'RECHAZADO_EN_REVISION',
   'RECHAZADO_EN_APROBACION',
   'REVISION_CANCELADA',
+  // revision-periodica-trazabilidad
+  'REVISION_PERIODICA_INICIADA',
+  'REVISION_PERIODICA_VENCIDA',
 ])
 
 // timestamp es un instante real (con hora significativa) — se convierte a hora local, a

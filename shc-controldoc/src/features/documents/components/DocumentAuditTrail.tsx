@@ -28,6 +28,9 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   RECHAZADO_EN_REVISION: XCircle,
   RECHAZADO_EN_APROBACION: XCircle,
   REVISION_CANCELADA: XCircle,
+  // revision-periodica-trazabilidad: REVISION_PERIODICA_INICIADA/VENCIDA no tienen un ícono
+  // semánticamente mejor disponible en este set — caen al FileText genérico de abajo, igual que
+  // REVISION_PERIODICA_CONFIRMADA (design.md D8).
 }
 
 interface DocumentAuditTrailProps {

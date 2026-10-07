@@ -920,3 +920,148 @@ describe('documents.handlers — PATCH /api/documents/:id/restaurar restringido 
     expect(status).toBe(403)
   })
 })
+
+// revision-periodica-fecha-editable: mismo contrato que el backend real — body opcional
+// { fechaRevisionProxima }, margen mínimo de 30 días, fecha de calendario sin hora.
+describe('documents.handlers — PATCH /api/documents/:id/confirmar-revision con fecha editable', () => {
+  function hoyIso(): string {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  function addDays(iso: string, days: number): string {
+    const d = new Date(`${iso}T00:00:00.000Z`)
+    d.setUTCDate(d.getUTCDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  it('sin body, un documento POL usa la fecha sugerida (hoy + 12 meses) como fecha de calendario', async () => {
+    const { status, data } = await call(
+      api.patch<Documento>('/api/documents/doc-001/confirmar-revision', undefined, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(data.fechaRevisionProxima).toMatch(/T00:00:00/)
+  })
+
+  it('con una fecha válida, se guarda exactamente esa fecha', async () => {
+    const fechaElegida = addDays(hoyIso(), 90)
+    const { status, data } = await call(
+      api.patch<Documento>(
+        '/api/documents/doc-001/confirmar-revision',
+        { fechaRevisionProxima: fechaElegida },
+        authHeaders('jefe.calidad@shac.pe'),
+      ),
+    )
+    expect(status).toBe(200)
+    expect(data.fechaRevisionProxima?.slice(0, 10)).toBe(fechaElegida)
+  })
+
+  it('con una fecha por debajo del margen mínimo, responde con un error de validación', async () => {
+    const fechaCorta = addDays(hoyIso(), 5)
+    const { status, data } = await call(
+      api.patch<{ errors?: string[] }>(
+        '/api/documents/doc-001/confirmar-revision',
+        { fechaRevisionProxima: fechaCorta },
+        authHeaders('jefe.calidad@shac.pe'),
+      ),
+    )
+    expect(status).toBe(400)
+    expect(data.errors?.some((e) => e.startsWith('fechaRevisionProxima:'))).toBe(true)
+  })
+
+  it('un documento REG sin body queda sin próxima revisión', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-001')
+    const original = store[idx]
+    store[idx] = { ...original, tipo: 'REG', estado: 'PUBLICADO' }
+
+    const { status, data } = await call(
+      api.patch<Documento>('/api/documents/doc-001/confirmar-revision', undefined, authHeaders('jefe.calidad@shac.pe')),
+    )
+
+    expect(status).toBe(200)
+    expect(data.fechaRevisionProxima).toBeFalsy()
+  })
+})
+
+// revision-periodica-permiso-por-rol (D1): las 3 acciones de revisión periódica se autorizan
+// por rol GLOBAL (JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO), no por docRole — un Jefe
+// conserva el permiso aunque sea autor/revisor/aprobador asignado de ESE documento. Antes de
+// este change, confirmar-revision no validaba ningún permiso y status (para estas 2
+// transiciones) tampoco.
+describe('documents.handlers — revisión periódica autorizada por rol global', () => {
+  it('JEFE_CALIDAD_SYST que es el aprobador asignado de doc-001 inicia la revisión periódica (200)', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-001')
+    store[idx] = { ...store[idx], aprobadorId: 'user-jefecalidad-001' }
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/status', { estado: 'EN_REVISION_PERIODICA' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+
+    expect(status).toBe(200)
+  })
+
+  it('SUPERVISOR no puede iniciar la revisión periódica (403)', async () => {
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/status', { estado: 'EN_REVISION_PERIODICA' }, authHeaders('supervisor@shac.pe')),
+    )
+
+    expect(status).toBe(403)
+  })
+
+  it('OPERARIO no puede iniciar la revisión periódica (403)', async () => {
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/status', { estado: 'EN_REVISION_PERIODICA' }, authHeaders('operario@shac.pe')),
+    )
+
+    expect(status).toBe(403)
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO que es el revisor asignado de doc-020 (EN_REVISION_PERIODICA) cancela la revisión periódica (200)', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-020')
+    store[idx] = { ...store[idx], revisorId: 'user-jefedocs-001' }
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-020/status', { estado: 'BORRADOR' }, authHeaders('jefe.docs@shac.pe')),
+    )
+
+    expect(status).toBe(200)
+  })
+
+  it('SUPERVISOR no puede cancelar la revisión periódica (403)', async () => {
+    const { status } = await call(
+      api.patch('/api/documents/doc-020/status', { estado: 'BORRADOR' }, authHeaders('supervisor@shac.pe')),
+    )
+
+    expect(status).toBe(403)
+  })
+
+  it('JEFE_CALIDAD_SYST que es el revisor asignado de doc-001 confirma la revisión periódica (200)', async () => {
+    const store = getDocumentsStore()
+    const idx = store.findIndex((d) => d.id === 'doc-001')
+    store[idx] = { ...store[idx], revisorId: 'user-jefecalidad-001' }
+
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/confirmar-revision', undefined, authHeaders('jefe.calidad@shac.pe')),
+    )
+
+    expect(status).toBe(200)
+  })
+
+  it('OPERARIO no puede confirmar la revisión periódica (403)', async () => {
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/confirmar-revision', undefined, authHeaders('operario@shac.pe')),
+    )
+
+    expect(status).toBe(403)
+  })
+
+  it('SUPERVISOR no puede confirmar la revisión periódica (403)', async () => {
+    const { status } = await call(
+      api.patch('/api/documents/doc-001/confirmar-revision', undefined, authHeaders('supervisor@shac.pe')),
+    )
+
+    expect(status).toBe(403)
+  })
+})

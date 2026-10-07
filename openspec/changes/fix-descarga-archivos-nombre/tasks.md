@@ -34,10 +34,10 @@
 - [x] 6.2 Correr los tests del backend (`dotnet test`) en `ShcMvpEndPoint`. 534/534 OK.
 - [x] 6.3 Correr `tsc` (type-check) en `shc-controldoc`. Sin errores.
 - [x] 6.4 Detener el backend en ejecución y correr `dotnet build` antes de la prueba manual. Hecho (se detuvo el proceso que bloqueaba el build, con tu confirmación).
-- [ ] 6.5 Prueba manual con MSW apagado (`VITE_ENABLE_MSW=false`), en dos sesiones/navegadores: como autor, crear un documento subiendo un `.docx` con nombre con tilde y espacios (p.ej. `Procedimiento de Inspección.docx`); como revisor, descargarlo y confirmar que el nombre, extensión y contenido son correctos al abrir en Word.
-- [ ] 6.6 Repetir la prueba manual con un `.xlsx`.
-- [ ] 6.7 Descargar el PDF de distribución de un documento publicado y confirmar su nombre.
+- [x] 6.5 Prueba manual con MSW apagado (`VITE_ENABLE_MSW=false`), en dos sesiones/navegadores: como autor, crear un documento subiendo un `.docx` con nombre con tilde y espacios (p.ej. `Procedimiento de Inspección.docx`); como revisor, descargarlo y confirmar que el nombre, extensión y contenido son correctos al abrir en Word. Verificado por Toño.
+- [x] 6.6 Repetir la prueba manual con un `.xlsx`. Verificado por Toño.
+- [x] 6.7 Descargar el PDF de distribución de un documento publicado y confirmar su nombre. Verificado por Toño.
 
 ## 7. Cierre
 
-- [ ] 7.1 Avisar "listo" para verificación de causa raíz releyendo el código real.
+- [x] 7.1 Avisar "listo" para verificación de causa raíz releyendo el código real. Toño confirmó: "ya revise los changes y confirmo que estan ok".

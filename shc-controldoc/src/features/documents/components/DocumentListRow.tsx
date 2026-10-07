@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown, RotateCcw } from 'lucide-react'
 import { TABLE_ROW_CLASS } from '../../../constants/ui.constants'
-import { getDocumentPermissions } from '../permissions'
+import { canManagePeriodicReview, getDocumentPermissions } from '../permissions'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { Tooltip } from '../../../components/ui/Tooltip'
@@ -63,8 +63,16 @@ export function DocumentListRow({
   const isReadOnly = READ_ONLY_ROLES.has(userRole)
   const docRole = userRoleToDocRole(userRole)
   const perms = isDeleted || isReadOnly
-    ? { canEdit: false, canDelete: false, canStartReview: false }
+    ? { canEdit: false, canDelete: false }
     : getDocumentPermissions(documento.estado, docRole)
+
+  // revision-periodica-permiso-por-rol (D1/D5): por rol GLOBAL, no por perms.canStartReview
+  // (docRole) — un JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO conserva el permiso aunque sea
+  // autor/revisor/aprobador asignado de este documento. Antes de este change, este componente
+  // no conocía esa asignación (solo aproximaba docRole desde el rol global vía
+  // userRoleToDocRole), así que ya mostraba el icono sin importar participación — por
+  // accidente, no por regla explícita; ahora queda documentado como intencional.
+  const canStartPeriodic = !isDeleted && !isReadOnly && documento.estado === 'PUBLICADO' && canManagePeriodicReview(userRole)
 
   const rowBg = index % 2 === 0
     ? 'bg-canvas dark:bg-surface-dark'
@@ -172,7 +180,7 @@ export function DocumentListRow({
               </button>
             </Tooltip>
           )}
-          {!isDeleted && perms.canStartReview && (
+          {canStartPeriodic && (
             <Tooltip content={t('list.actions.tooltips.iniciarRevision')}>
               <button
                 type="button"

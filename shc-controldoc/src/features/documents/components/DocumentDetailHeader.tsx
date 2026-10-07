@@ -5,8 +5,9 @@ import { DocumentConfidencialidadBadge } from './DocumentConfidencialidadBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
 import { useAuthStore } from '../../../stores/authStore'
 import { useArea } from '../../areas/hooks/useAreas'
-import { formatCalendarDateMedium } from '../../../utils/date.utils'
+import { formatCalendarDateMedium, calendarDaysUntil } from '../../../utils/date.utils'
 import { getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
+import { getRevisionPeriodicaNivel } from '../utils/revisionPeriodica'
 import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
 
 // documentos-rechazo-visible: la última entrada entre estas 3 acciones determina si corresponde
@@ -58,6 +59,20 @@ export function DocumentDetailHeader({ documento, getName }: DocumentDetailHeade
   const puedeEditarEnBorrador = documento.estado === 'BORRADOR' && getDocumentPermissions(documento.estado, docRole).canEdit
   const showFaltaAsignacionBanner = puedeEditarEnBorrador && (!documento.revisorId || !documento.aprobadorId)
 
+  // revision-periodica-trazabilidad: avisos visibles para cualquier lector (sin gate de rol) —
+  // el botón "Iniciar revisión periódica" ya vive en DocumentActionPanel, junto al título, no se
+  // duplica aquí (design.md D7). Mismo umbral que RevisionSemaforo vía getRevisionPeriodicaNivel.
+  const diasRestantesRevision = documento.fechaRevisionProxima ? calendarDaysUntil(documento.fechaRevisionProxima) : null
+  const nivelRevision = diasRestantesRevision !== null ? getRevisionPeriodicaNivel(diasRestantesRevision) : null
+  const showRevisionProximaBanner = documento.estado === 'PUBLICADO' && nivelRevision === 'proximo'
+  const showRevisionVencidaBanner = documento.estado === 'PUBLICADO' && nivelRevision === 'vencido'
+
+  const entradaInicioRevision = documento.estado === 'EN_REVISION_PERIODICA'
+    ? [...(documento.auditTrail ?? [])]
+        .filter((e) => e.accion === 'REVISION_PERIODICA_INICIADA')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+    : undefined
+
   return (
     <div className="space-y-4">
       {/* Banners */}
@@ -90,6 +105,33 @@ export function DocumentDetailHeader({ documento, getName }: DocumentDetailHeade
           >
             {t('detail.banners.faltaAsignacionEditar')}
           </Link>
+        </div>
+      )}
+
+      {showRevisionProximaBanner && documento.fechaRevisionProxima && (
+        <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          {t('detail.banners.revisionProxima', {
+            fecha: formatDate(documento.fechaRevisionProxima, locale),
+            dias: diasRestantesRevision,
+          })}
+        </div>
+      )}
+
+      {showRevisionVencidaBanner && documento.fechaRevisionProxima && (
+        <div className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
+          {t('detail.banners.revisionVencida', {
+            fecha: formatDate(documento.fechaRevisionProxima, locale),
+            dias: Math.abs(diasRestantesRevision ?? 0),
+          })}
+        </div>
+      )}
+
+      {entradaInicioRevision && (
+        <div className="rounded-md border border-teal/30 bg-teal/10 p-3 text-sm text-teal">
+          {t('detail.banners.revisionEnCurso', {
+            fecha: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(entradaInicioRevision.timestamp)),
+            nombre: entradaInicioRevision.realizadoPorNombre,
+          })}
         </div>
       )}
 

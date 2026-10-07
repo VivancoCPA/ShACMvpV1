@@ -184,6 +184,107 @@ describe('DocumentDetailHeader — banner de rechazo visible (documentos-rechazo
   })
 })
 
+describe('DocumentDetailHeader — avisos de revisión periódica (revision-periodica-trazabilidad)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('muestra el aviso ámbar cuando faltan <= 30 días para la revisión (PUBLICADO)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0)) // hoy = 1 set 2026
+
+    const documento = makeDocumento({
+      estado: 'PUBLICADO',
+      fechaRevisionProxima: '2026-09-21T00:00:00.000Z', // 20 días
+    })
+
+    renderHeader(documento)
+
+    expect(screen.getByText(/detail\.banners\.revisionProxima:/)).toBeInTheDocument()
+  })
+
+  it('muestra el aviso rojo cuando la revisión ya está vencida (PUBLICADO)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
+
+    const documento = makeDocumento({
+      estado: 'PUBLICADO',
+      fechaRevisionProxima: '2026-08-15T00:00:00.000Z', // ya pasó
+    })
+
+    renderHeader(documento)
+
+    expect(screen.getByText(/detail\.banners\.revisionVencida:/)).toBeInTheDocument()
+    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
+  })
+
+  it('no muestra ningún aviso de revisión cuando faltan más de 30 días', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
+
+    const documento = makeDocumento({
+      estado: 'PUBLICADO',
+      fechaRevisionProxima: '2027-01-01T00:00:00.000Z',
+    })
+
+    renderHeader(documento)
+
+    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/detail\.banners\.revisionVencida:/)).not.toBeInTheDocument()
+  })
+
+  it('muestra el aviso informativo de revisión en curso, con fecha y actor, en EN_REVISION_PERIODICA', () => {
+    const inicio: AuditTrailEntry = {
+      id: 'audit-rev-1',
+      accion: 'REVISION_PERIODICA_INICIADA',
+      estadoAnterior: 'PUBLICADO',
+      estadoNuevo: 'EN_REVISION_PERIODICA',
+      motivo: 'Revisión programada (fecha 25/09/2026)',
+      realizadoPorId: 'user-jefedocs-001',
+      realizadoPorNombre: 'Juan Mendoza',
+      timestamp: '2026-09-20T09:00:00.000Z',
+      generadoPorIA: false,
+    }
+    const documento = makeDocumento({
+      estado: 'EN_REVISION_PERIODICA',
+      fechaRevisionProxima: '2026-09-25T00:00:00.000Z',
+      auditTrail: [inicio],
+    })
+
+    renderHeader(documento)
+
+    expect(screen.getByText(/detail\.banners\.revisionEnCurso:/)).toBeInTheDocument()
+    expect(screen.getByText(/Juan Mendoza/)).toBeInTheDocument()
+  })
+
+  it('ninguno de los 3 avisos aparece fuera de PUBLICADO/EN_REVISION_PERIODICA (p.ej. BORRADOR)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
+
+    const inicio: AuditTrailEntry = {
+      id: 'audit-rev-2',
+      accion: 'REVISION_PERIODICA_INICIADA',
+      estadoAnterior: 'PUBLICADO',
+      estadoNuevo: 'EN_REVISION_PERIODICA',
+      realizadoPorId: 'user-jefedocs-001',
+      realizadoPorNombre: 'Juan Mendoza',
+      timestamp: '2026-08-20T09:00:00.000Z',
+      generadoPorIA: false,
+    }
+    const documento = makeDocumento({
+      estado: 'BORRADOR',
+      fechaRevisionProxima: '2026-08-15T00:00:00.000Z', // vencida, pero el estado no es PUBLICADO
+      auditTrail: [inicio],
+    })
+
+    renderHeader(documento)
+
+    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/detail\.banners\.revisionVencida:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/detail\.banners\.revisionEnCurso:/)).not.toBeInTheDocument()
+  })
+})
+
 describe('DocumentDetailHeader — nombres de autor/revisor/aprobador (nombres-usuarios-reales)', () => {
   it('muestra el nombre resuelto por getName, no el id crudo', () => {
     const documento = makeDocumento({ autorId: 'user-001', revisorId: 'user-002', aprobadorId: 'user-003' })

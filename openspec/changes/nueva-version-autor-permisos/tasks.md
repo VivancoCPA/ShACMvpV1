@@ -69,11 +69,11 @@
 - [x] 12.2 Correr los tests del backend (`dotnet test`) en `ShcMvpEndPoint`. 540/540 OK.
 - [x] 12.3 Correr `tsc --noEmit` en `shc-controldoc`. Sin errores.
 - [x] 12.4 Detener el backend en ejecución y correr `dotnet build` antes de la prueba manual. Hecho (con tu confirmación anterior).
-- [ ] 12.5 Prueba manual con MSW apagado: tomar un documento `PUBLICADO` cuyo revisor sea un JCD; entrar como ese JCD y crear una nueva versión → el JCD queda como autor, el revisor queda vacío, aparece el aviso.
-- [ ] 12.6 Asignar otro revisor y enviar a revisión → funciona.
-- [ ] 12.7 Repetir creando la versión con el autor original → hereda todo y se puede enviar directamente.
-- [ ] 12.8 Recorrer el flujo hasta publicar → la versión anterior pasa a `OBSOLETO`.
+- [x] 12.5 Prueba manual con MSW apagado: tomar un documento `PUBLICADO` cuyo revisor sea un JCD; entrar como ese JCD y crear una nueva versión → el JCD queda como autor, el revisor queda vacío, aparece el aviso. Verificado por Toño.
+- [x] 12.6 Asignar otro revisor y enviar a revisión → funciona. Verificado por Toño.
+- [x] 12.7 Repetir creando la versión con el autor original → hereda todo y se puede enviar directamente. Verificado por Toño.
+- [x] 12.8 Recorrer el flujo hasta publicar → la versión anterior pasa a `OBSOLETO`. Verificado por Toño.
 
 ## 13. Cierre
 
-- [ ] 13.1 Avisar "listo" para verificación de causa raíz releyendo el código real.
+- [x] 13.1 Avisar "listo" para verificación de causa raíz releyendo el código real. Toño confirmó: "ya revise los changes y confirmo que estan ok".

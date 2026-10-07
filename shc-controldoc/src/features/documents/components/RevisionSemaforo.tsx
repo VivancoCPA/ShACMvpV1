@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { DOC_REVISION_ALERT_DAYS } from '../../../config/businessRules.config'
 import { calendarDaysUntil, formatCalendarDate } from '../../../utils/date.utils'
+import { getRevisionPeriodicaNivel } from '../utils/revisionPeriodica'
 
 interface RevisionSemaforoProps {
   fechaRevisionProxima: string | null | undefined
@@ -33,7 +33,10 @@ export function RevisionSemaforo({ fechaRevisionProxima }: RevisionSemaforoProps
   const diasRestantes = calendarDaysUntil(fechaRevisionProxima)
   const fecha = formatCalendarDate(fechaRevisionProxima, i18n.language)
 
-  if (diasRestantes > DOC_REVISION_ALERT_DAYS) {
+  // revision-periodica-trazabilidad: el corte verde/no-verde usa el mismo helper que el aviso
+  // del detalle del documento (getRevisionPeriodicaNivel) — los umbrales de 8/1 días de abajo
+  // son una subdivisión visual propia de este semáforo, sin equivalente en el aviso del detalle.
+  if (getRevisionPeriodicaNivel(diasRestantes) === 'ok') {
     return (
       <span className="flex items-center gap-1.5">
         <span className="h-2 w-2 flex-shrink-0 rounded-full bg-success dark:bg-success" />

@@ -24,6 +24,15 @@ export function resolveDocRoleForUser(
   return 'OPERARIO'
 }
 
+// revision-periodica-permiso-por-rol (D1/D2): las 3 acciones de revisión periódica (iniciar,
+// confirmar vigencia, cancelar) se autorizan por rol GLOBAL, no por docRole — un
+// JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO conserva el permiso aunque sea autor/revisor/
+// aprobador asignado de ESE documento. Reemplaza `canStartReview`/`canCancelReview` de la
+// matriz `(estado, docRole)` como gate real de estas 3 acciones — esa matriz no cambia.
+export function canManagePeriodicReview(userRol: User['rol']): boolean {
+  return userRol === 'JEFE_CALIDAD_SYST' || userRol === 'JEFE_CONTROL_DOCUMENTARIO'
+}
+
 export function canAccessDocument(
   confidencialidad: DocConfidencialidad,
   userRole: string,

@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, RefreshCw, Loader2 } from 'lucide-react'
 import { useConfirmarRevisionPeriodica } from '../hooks/useDocumentActions'
-import { formatCalendarDateMedium } from '../../../utils/date.utils'
+import { formatCalendarDateMedium, todayCalendarDateIso, addCalendarDays, addCalendarMonths } from '../../../utils/date.utils'
+import { DOC_PERIODICIDAD_POR_TIPO } from '../../../config/businessRules.config'
+import {
+  confirmarRevisionPeriodicaSchema,
+  REVISION_PERIODICA_MIN_GAP_DAYS,
+  type ConfirmarRevisionPeriodicaInput,
+} from '../schemas/confirmarRevisionPeriodica.schema'
 import type { Documento } from '../../../types/documents.types'
 
 interface DocumentRevisionPeriodicaModalProps {
@@ -22,6 +30,26 @@ export function DocumentRevisionPeriodicaModal({
 
   const confirmar = useConfirmarRevisionPeriodica(documento.id)
 
+  // revision-periodica-fecha-editable (D1): sugerencia según el tipo de documento — misma tabla
+  // que el backend usa cuando no se envía fecha (DOC_PERIODICIDAD_POR_TIPO/
+  // DocumentoPeriodicidadConstants). REG/INF no tienen sugerencia (campo queda vacío).
+  const hoy = todayCalendarDateIso()
+  const minFecha = useMemo(() => addCalendarDays(hoy, REVISION_PERIODICA_MIN_GAP_DAYS), [hoy])
+  const fechaSugerida = useMemo(() => {
+    const meses = DOC_PERIODICIDAD_POR_TIPO[documento.tipo]
+    return meses ? addCalendarMonths(hoy, meses) : ''
+  }, [hoy, documento.tipo])
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<ConfirmarRevisionPeriodicaInput>({
+    resolver: zodResolver(confirmarRevisionPeriodicaSchema),
+    defaultValues: { fechaRevisionProxima: fechaSugerida },
+  })
+
   // fechaRevisionProxima es una fecha de calendario (sin hora significativa) — se lee en UTC
   // para no desfasarla un día en zonas horarias negativas (fix-fechas-utc).
   function formatDate(iso: string | undefined): string {
@@ -29,10 +57,21 @@ export function DocumentRevisionPeriodicaModal({
     return formatCalendarDateMedium(iso, locale)
   }
 
-  async function handleOpcionA() {
-    await confirmar.mutateAsync()
-    onClose()
-  }
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      await confirmar.mutateAsync({ fechaRevisionProxima: data.fechaRevisionProxima || undefined })
+      onClose()
+    } catch (error) {
+      // El toast de error ya lo muestra useConfirmarRevisionPeriodica (onError) — aquí solo se
+      // intenta ubicar el mensaje de campo del backend (FieldValidationException) en el input,
+      // sin perder el valor que el usuario ingresó.
+      const serverErrors = (error as { response?: { data?: { errors?: string[] } } })?.response?.data?.errors
+      const campoFecha = serverErrors?.find((e) => e.startsWith('fechaRevisionProxima:'))
+      if (campoFecha) {
+        setError('fechaRevisionProxima', { message: campoFecha.replace(/^fechaRevisionProxima:\s*/, '') })
+      }
+    }
+  })
 
   function handleOpcionB() {
     onClose()
@@ -122,6 +161,30 @@ export function DocumentRevisionPeriodicaModal({
           </button>
         </div>
 
+        {selected === 'A' && (
+          <div className="mt-4">
+            <label
+              htmlFor="revision-periodica-fecha"
+              className="mb-1 block text-sm font-medium text-body-strong dark:text-on-dark"
+            >
+              {t('revisionPeriodica.modal.fechaLabel')}
+            </label>
+            <input
+              id="revision-periodica-fecha"
+              type="date"
+              min={minFecha}
+              {...register('fechaRevisionProxima')}
+              className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+            />
+            <p className="mt-1 text-xs text-muted dark:text-on-dark-soft">
+              {t('revisionPeriodica.modal.fechaAyuda', { minDias: REVISION_PERIODICA_MIN_GAP_DAYS })}
+            </p>
+            {errors.fechaRevisionProxima && (
+              <p className="mt-1 text-xs text-error">{errors.fechaRevisionProxima.message}</p>
+            )}
+          </div>
+        )}
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
@@ -135,7 +198,7 @@ export function DocumentRevisionPeriodicaModal({
           {selected === 'A' && (
             <button
               type="button"
-              onClick={() => void handleOpcionA()}
+              onClick={() => void onSubmit()}
               disabled={confirmar.isPending}
               className="inline-flex items-center gap-2 rounded-md bg-teal px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >

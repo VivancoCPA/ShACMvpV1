@@ -11,7 +11,10 @@ import { getSessionUser as getUserFromRequest } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import { getQeStore } from './quality-events.handlers'
 import { getNonconformitiesStore } from './nonconformities.handlers'
-import { getDocumentPermissions } from '../../features/documents/permissions'
+import { canManagePeriodicReview, getDocumentPermissions } from '../../features/documents/permissions'
+import { DOC_PERIODICIDAD_POR_TIPO } from '../../config/businessRules.config'
+import { todayCalendarDateIso, addCalendarDays, addCalendarMonths } from '../../utils/date.utils'
+import { REVISION_PERIODICA_MIN_GAP_DAYS } from '../../features/documents/schemas/confirmarRevisionPeriodica.schema'
 import type { Documento, DocStatus, DocType, QeVinculadoResumen, NcVinculadoResumen, TipoAsignacion } from '../../types/documents.types'
 import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
@@ -685,6 +688,18 @@ export const documentHandlers = [
       return err(`Transición inválida: ${doc.estado} → ${nuevoEstado}`, 422)
     }
 
+    // revision-periodica-permiso-por-rol (D1/D3): iniciar/cancelar revisión periódica se
+    // autoriza por rol GLOBAL (canManagePeriodicReview), no por docRole — un JEFE_CALIDAD_SYST/
+    // JEFE_CONTROL_DOCUMENTARIO conserva el permiso aunque sea autor/revisor/aprobador asignado
+    // de este documento. Antes de este change, esta transición no validaba ningún permiso en MSW.
+    const esTransicionRevisionPeriodica =
+      (doc.estado === 'PUBLICADO' && nuevoEstado === 'EN_REVISION_PERIODICA') ||
+      (doc.estado === 'EN_REVISION_PERIODICA' && nuevoEstado === 'BORRADOR')
+    const requestUserEstado = getUserFromRequest(request)
+    if (esTransicionRevisionPeriodica && !(requestUserEstado && canManagePeriodicReview(requestUserEstado.rol))) {
+      return err('No tenés permiso para gestionar la revisión periódica de este documento', 403)
+    }
+
     // nueva-version-autor-permisos (D3): un documento sin revisor/aprobador asignado no puede
     // enviarse a revisión — error de validación por campo, no un 403/422 genérico. Espejo de
     // CambiarEstadoDocumentoHandler (backend real).
@@ -1167,41 +1182,54 @@ export const documentHandlers = [
   }),
 
   // PATCH /api/documents/:id/confirmar-revision — confirm periodic review, renew next review date
-  http.patch('/api/documents/:id/confirmar-revision', async ({ params }) => {
+  // revision-periodica-fecha-editable: acepta body opcional { fechaRevisionProxima }, mismo
+  // contrato que el backend real (ConfirmarRevisionPeriodicaHandler/Validator).
+  http.patch('/api/documents/:id/confirmar-revision', async ({ params, request }) => {
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
     if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
+
+    // revision-periodica-permiso-por-rol (D1/D4): primer gate de permiso de este handler — antes
+    // de este change aceptaba cualquier usuario autenticado. Por rol GLOBAL, no por docRole.
+    const requestUserConfirmar = getUserFromRequest(request)
+    if (!(requestUserConfirmar && canManagePeriodicReview(requestUserConfirmar.rol))) {
+      return err('No tenés permiso para confirmar la revisión periódica de este documento', 403)
+    }
+
     if (doc.estado !== 'PUBLICADO' && doc.estado !== 'EN_REVISION_PERIODICA') {
       return err('La revisión periódica solo aplica a documentos PUBLICADO o EN_REVISION_PERIODICA', 409)
     }
 
-    const now = new Date()
-    let fechaRevisionProxima: string | undefined = undefined
-    switch (doc.tipo) {
-      case 'POL':
-      case 'PRC':
-      case 'PLAN':
-        fechaRevisionProxima = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toISOString()
-        break
-      case 'MAT':
-        fechaRevisionProxima = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate()).toISOString()
-        break
-      case 'INS':
-        fechaRevisionProxima = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString()
-        break
-      case 'REG':
-      case 'INF':
-        fechaRevisionProxima = undefined
-        break
+    // El body es opcional (cliente que no envía nada, comportamiento anterior a este change) —
+    // leer content-length no es confiable entre entornos (fetch del navegador vs. adapter de
+    // Node en tests), así que directamente se intenta parsear y se cae a {} si no hay body.
+    let body: { fechaRevisionProxima?: string | null } = {}
+    try {
+      body = (await request.json()) as { fechaRevisionProxima?: string | null }
+    } catch {
+      body = {}
     }
 
+    let fechaRevisionProxima: string | undefined
+
+    if (body.fechaRevisionProxima) {
+      const minima = addCalendarDays(todayCalendarDateIso(), REVISION_PERIODICA_MIN_GAP_DAYS)
+      if (body.fechaRevisionProxima < minima) {
+        return fieldErr({
+          fechaRevisionProxima: `La próxima revisión debe ser al menos ${REVISION_PERIODICA_MIN_GAP_DAYS} días después de hoy.`,
+        })
+      }
+      fechaRevisionProxima = `${body.fechaRevisionProxima.slice(0, 10)}T00:00:00.000Z`
+    } else {
+      const meses = DOC_PERIODICIDAD_POR_TIPO[doc.tipo]
+      fechaRevisionProxima = meses ? `${addCalendarMonths(todayCalendarDateIso(), meses)}T00:00:00.000Z` : undefined
+    }
+
+    const now = new Date()
     const nowStr = now.toISOString()
-    const detalle = fechaRevisionProxima
-      ? `Documento confirmado vigente sin cambios. Próxima revisión: ${fechaRevisionProxima}`
-      : 'Documento confirmado vigente sin cambios. Sin próxima revisión programada.'
 
     const updated: Documento = {
       ...doc,
@@ -1213,7 +1241,8 @@ export const documentHandlers = [
         makeAuditEntry(doc.id, 'REVISION_PERIODICA_CONFIRMADA', {
           estadoAnterior: doc.estado,
           estadoNuevo: 'PUBLICADO',
-          valorNuevo: detalle,
+          valorAnterior: doc.fechaRevisionProxima?.slice(0, 10),
+          valorNuevo: fechaRevisionProxima?.slice(0, 10),
         }),
       ],
     }

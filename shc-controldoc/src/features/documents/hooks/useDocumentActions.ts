@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
+import { formatCalendarDateMedium } from '../../../utils/date.utils'
 import {
   patchDocumentStatus,
   signDocument,
@@ -27,6 +28,7 @@ import type {
   SignDocumentPayload,
   RegisterAccessPayload,
   NuevaVersionPayload,
+  ConfirmarRevisionPeriodicaPayload,
 } from '../../../api/endpoints/documents.api'
 import type { Documento } from '../../../types/documents.types'
 import { useAuthStore } from '../../../stores/authStore'
@@ -308,15 +310,16 @@ export function useConfirmarRevisionPeriodica(documentoId: string) {
   const { t, i18n } = useTranslation('documents')
 
   return useMutation({
-    mutationFn: () => confirmarRevisionPeriodica(documentoId),
+    mutationFn: (payload?: ConfirmarRevisionPeriodicaPayload) => confirmarRevisionPeriodica(documentoId, payload),
     onSuccess: (updatedDoc) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       const locale = i18n.language
+      // revision-periodica-fecha-editable: fechaRevisionProxima es una fecha de calendario — se
+      // formatea en UTC (formatCalendarDateMedium), nunca con un formateador de timestamp en la
+      // zona local del navegador (podía mostrar un día antes en UTC-5).
       const fecha = updatedDoc.fechaRevisionProxima
-        ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(
-            new Date(updatedDoc.fechaRevisionProxima),
-          )
+        ? formatCalendarDateMedium(updatedDoc.fechaRevisionProxima, locale)
         : '—'
       toast.success(t('revisionPeriodica.toast.confirmada', { fecha }))
     },

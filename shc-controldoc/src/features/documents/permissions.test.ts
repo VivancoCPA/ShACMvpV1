@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { getDocumentPermissions, resolveDocRoleForUser } from './permissions'
+import { canManagePeriodicReview, getDocumentPermissions, resolveDocRoleForUser } from './permissions'
 import type { DocumentPermissions, Documento } from '../../types/documents.types'
+import type { UserRole } from '../../types/auth.types'
 
 function doc(overrides: Partial<Pick<Documento, 'autorId' | 'revisorId' | 'aprobadorId'>> = {}) {
   return { autorId: 'autor-1', revisorId: 'revisor-1', aprobadorId: 'aprobador-1', ...overrides }
@@ -366,6 +367,34 @@ describe('getDocumentPermissions — archivo permissions (ADD-02)', () => {
   it('canViewArchivoDistribucion is false in non-distribution states', () => {
     for (const estado of ['BORRADOR', 'EN_REVISION', 'EN_APROBACION', 'OBSOLETO'] as const) {
       expect(getDocumentPermissions(estado, 'JEFE_CALIDAD').canViewArchivoDistribucion, `JEFE_CALIDAD in ${estado}`).toBe(false)
+    }
+  })
+})
+
+// revision-periodica-permiso-por-rol (D1): canManagePeriodicReview es por rol GLOBAL, sin
+// relación con docRole/getDocumentPermissions — gatea iniciar/confirmar/cancelar revisión
+// periódica aunque el actor sea autor/revisor/aprobador del documento.
+describe('canManagePeriodicReview — rol global, independiente del docRole', () => {
+  it('JEFE_CALIDAD_SYST puede gestionar la revisión periódica', () => {
+    expect(canManagePeriodicReview('JEFE_CALIDAD_SYST')).toBe(true)
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO puede gestionar la revisión periódica', () => {
+    expect(canManagePeriodicReview('JEFE_CONTROL_DOCUMENTARIO')).toBe(true)
+  })
+
+  it('ningún otro rol puede gestionar la revisión periódica', () => {
+    const otrosRoles: UserRole[] = [
+      'OPERARIO',
+      'SUPERVISOR',
+      'AUDITOR_INTERNO',
+      'ALTA_DIRECCION',
+      'ADMINISTRADOR_SISTEMA',
+      'ADMINISTRADOR_EMPRESA',
+      'SUPERADMIN',
+    ]
+    for (const rol of otrosRoles) {
+      expect(canManagePeriodicReview(rol), rol).toBe(false)
     }
   })
 })

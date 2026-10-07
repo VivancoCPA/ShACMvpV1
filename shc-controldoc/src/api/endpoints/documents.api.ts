@@ -142,8 +142,15 @@ export async function exportarPdfControlado(
   return { blob, fileName }
 }
 
-export async function confirmarRevisionPeriodica(id: string): Promise<Documento> {
-  const response = await api.patch<Documento>(`/api/documents/${id}/confirmar-revision`)
+export interface ConfirmarRevisionPeriodicaPayload {
+  fechaRevisionProxima?: string | null
+}
+
+export async function confirmarRevisionPeriodica(
+  id: string,
+  payload?: ConfirmarRevisionPeriodicaPayload,
+): Promise<Documento> {
+  const response = await api.patch<Documento>(`/api/documents/${id}/confirmar-revision`, payload)
   return response.data
 }
 

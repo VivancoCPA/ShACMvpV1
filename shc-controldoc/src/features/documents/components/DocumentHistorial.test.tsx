@@ -170,3 +170,43 @@ describe('DocumentHistorial — acciones de rechazo (documentos-rechazo-visible)
     expect(screen.queryByText(/Motivo:/)).not.toBeInTheDocument()
   })
 })
+
+describe('DocumentHistorial — revisión periódica trazable (revision-periodica-trazabilidad)', () => {
+  it('muestra REVISION_PERIODICA_INICIADA con su motivo y el actor real que la inició', () => {
+    const inicio: AuditTrailEntry = {
+      id: 'audit-rev-ini',
+      accion: 'REVISION_PERIODICA_INICIADA',
+      estadoAnterior: 'PUBLICADO',
+      estadoNuevo: 'EN_REVISION_PERIODICA',
+      motivo: 'Revisión programada (fecha 25/09/2026)',
+      realizadoPorId: 'user-jefedocs-001',
+      realizadoPorNombre: 'Juan Mendoza',
+      timestamp: '2026-09-20T09:00:00.000Z',
+      generadoPorIA: false,
+    }
+    const documento = makeDocumento({ auditTrail: [creado, inicio] })
+    render(<DocumentHistorial documento={documento} />)
+
+    expect(screen.getByText('REVISION_PERIODICA_INICIADA')).toBeInTheDocument()
+    expect(screen.getByText('Motivo: Revisión programada (fecha 25/09/2026)')).toBeInTheDocument()
+    expect(screen.getByText('Juan Mendoza')).toBeInTheDocument()
+  })
+
+  it('muestra REVISION_PERIODICA_VENCIDA con el actor "Sistema"', () => {
+    const vencida: AuditTrailEntry = {
+      id: 'audit-rev-venc',
+      accion: 'REVISION_PERIODICA_VENCIDA',
+      motivo: 'Fecha de revisión periódica alcanzada: 15/08/2026',
+      realizadoPorId: 'system',
+      realizadoPorNombre: 'Sistema',
+      timestamp: '2026-08-16T03:00:00.000Z',
+      generadoPorIA: true,
+    }
+    const documento = makeDocumento({ auditTrail: [creado, vencida] })
+    render(<DocumentHistorial documento={documento} />)
+
+    expect(screen.getByText('REVISION_PERIODICA_VENCIDA')).toBeInTheDocument()
+    expect(screen.getByText('Sistema')).toBeInTheDocument()
+    expect(screen.getByText('Motivo: Fecha de revisión periódica alcanzada: 15/08/2026')).toBeInTheDocument()
+  })
+})

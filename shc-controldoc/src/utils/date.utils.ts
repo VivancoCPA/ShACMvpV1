@@ -64,3 +64,33 @@ export function calendarDaysUntil(isoDate: string): number {
 
   return Math.round((target - today) / (1000 * 60 * 60 * 24))
 }
+
+// revision-periodica-fecha-editable: "hoy" como fecha de calendario del navegador (YYYY-MM-DD),
+// para precargar sugerencias y el atributo `min` de un <input type="date"> sin construir un
+// `Date` con hora (que arrastraría la zona local al comparar). El backend sigue siendo la
+// fuente de verdad real del margen mínimo — calcula "hoy" en America/Lima, no en la zona del
+// navegador (design.md D2) — este helper es solo para la UX de precarga/mínimo del campo.
+export function todayCalendarDateIso(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+// Suma días de calendario a una fecha ISO (YYYY-MM-DD o con hora), construyendo el cálculo en
+// UTC para que no se desfase por la zona local — mismo criterio que el resto de este archivo.
+export function addCalendarDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.slice(0, 10).split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+// Suma meses de calendario a una fecha ISO (YYYY-MM-DD o con hora) — mismo criterio UTC.
+export function addCalendarMonths(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.slice(0, 10).split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  date.setUTCMonth(date.getUTCMonth() + months)
+  return date.toISOString().slice(0, 10)
+}

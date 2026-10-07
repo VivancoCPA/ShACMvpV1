@@ -172,7 +172,10 @@
         "rechazadoEnRevision": "Rechazado en revisión por {{nombre}} el {{fecha}}. Motivo: {{motivo}}",
         "rechazadoEnAprobacion": "Rechazado en aprobación por {{nombre}} el {{fecha}}. Motivo: {{motivo}}",
         "faltaAsignacion": "Asigna un revisor y un aprobador para poder enviar este documento a revisión.",
-        "faltaAsignacionEditar": "Editar"
+        "faltaAsignacionEditar": "Editar",
+        "revisionProxima": "Pendiente de revisión periódica — vence el {{fecha}} (en {{dias}} días).",
+        "revisionVencida": "Revisión periódica vencida desde el {{fecha}} (hace {{dias}} días). Este documento sigue vigente, pero debe revisarse.",
+        "revisionEnCurso": "En revisión periódica desde el {{fecha}}, iniciada por {{nombre}}."
       },
       "actions": {
         "sendToReview": "Enviar a revisión",
@@ -241,6 +244,8 @@
         "DOCUMENTO_CREADO": "Documento creado",
         "NUEVA_VERSION_INICIADA": "Nueva versión iniciada",
         "REVISION_PERIODICA_CONFIRMADA": "Revisión periódica confirmada",
+        "REVISION_PERIODICA_INICIADA": "Revisión periódica iniciada",
+        "REVISION_PERIODICA_VENCIDA": "Revisión periódica vencida",
         "DOCUMENTO_ELIMINADO": "Documento eliminado",
         "RESTAURADO": "Documento restaurado",
         "ARCHIVO_ORIGINAL_ACTUALIZADO": "Archivo original actualizado",
@@ -388,6 +393,8 @@
         "opcionA": "Confirmar vigencia sin cambios",
         "opcionADesc": "El documento sigue siendo válido. Solo se actualizará la fecha de próxima revisión.",
         "opcionAConfirm": "Confirmar — el documento sigue vigente",
+        "fechaLabel": "Próxima revisión",
+        "fechaAyuda": "Sugerida según el tipo de documento. Puedes ajustarla; mínimo {{minDias}} días desde hoy.",
         "opcionB": "Requiere actualización — crear nueva versión",
         "opcionBDesc": "El documento necesita actualizarse. Se iniciará la creación de una nueva versión en borrador.",
         "opcionBAction": "Crear nueva versión",

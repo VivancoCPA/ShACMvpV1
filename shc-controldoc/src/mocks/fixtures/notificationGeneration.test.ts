@@ -8,9 +8,11 @@ import {
 } from './notificationGeneration'
 import { getQeStore, resetStore as resetQeStore } from '../handlers/quality-events.handlers'
 import { getIncidentsStore, resetStore as resetIncidentsStore } from '../handlers/incidents.handlers'
+import { getDocumentsStore, resetStore as resetDocumentsStore } from '../handlers/documents.handlers'
 import { resetStore as resetNotificationsStore } from './notifications.fixtures'
 import type { QualityEvent } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
+import type { Documento } from '../../types/documents.types'
 
 vi.mock('../../features/dashboard/utils/semaforoPendientes', () => ({
   calcularEstadoSemaforoDesdeFecha: () => ({ estado: 'AMARILLO', diasHabilesRestantes: 3 }),
@@ -43,10 +45,39 @@ function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
 }
 
+function baseDocumento(overrides: Partial<Documento>): Documento {
+  const now = '2026-01-01T00:00:00Z'
+  return {
+    id: 'doc-notif-001',
+    codigo: 'REG-NOTIF-001',
+    titulo: 'Documento de prueba',
+    tipo: 'REG',
+    version: 'v1.0',
+    estado: 'PUBLICADO',
+    areaId: 'area-001',
+    empresaId: 'empresa-001',
+    confidencialidad: 'INTERNO',
+    rolesAutorizados: [],
+    autorId: 'user-autor-001',
+    archivoOriginalUrl: null,
+    archivoOriginalNombre: null,
+    archivoOriginalBloqueado: false,
+    archivoDistribucionUrl: null,
+    qeVinculados: [],
+    ncVinculados: [],
+    auditTrail: [],
+    creadoEn: now,
+    actualizadoEn: now,
+    ...overrides,
+  }
+}
+
 afterEach(() => {
   resetQeStore()
   resetIncidentsStore()
+  resetDocumentsStore()
   resetNotificationsStore()
+  vi.useRealTimers()
 })
 
 describe('isResolvableAccount', () => {
@@ -199,6 +230,102 @@ describe('generateVencimientoNotifications', () => {
 
     const secondRun = generateVencimientoNotifications()
     expect(secondRun.filter((n) => n.entidadId === 'ac-notif-test-1')).toHaveLength(0)
+  })
+})
+
+describe('generateVencimientoNotifications — Documentos (revision-periodica-trazabilidad)', () => {
+  it('no genera nada para un documento que no está PUBLICADO, aunque su fecha ya haya pasado', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z'))
+
+    getDocumentsStore().push(
+      baseDocumento({
+        id: 'doc-notif-borrador',
+        estado: 'BORRADOR',
+        fechaRevisionProxima: '2026-08-01T00:00:00.000Z',
+      }),
+    )
+
+    const created = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-borrador')
+    expect(created).toHaveLength(0)
+  })
+
+  it('no genera nada cuando faltan más de 30 días', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z'))
+
+    getDocumentsStore().push(
+      baseDocumento({
+        id: 'doc-notif-lejos',
+        estado: 'PUBLICADO',
+        fechaRevisionProxima: '2027-01-01T00:00:00.000Z',
+      }),
+    )
+
+    const created = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-lejos')
+    expect(created).toHaveLength(0)
+  })
+
+  it('genera el preaviso para un documento a 20 días y no lo duplica en una segunda corrida', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z'))
+
+    getDocumentsStore().push(
+      baseDocumento({
+        id: 'doc-notif-preaviso',
+        estado: 'PUBLICADO',
+        fechaRevisionProxima: '2026-09-21T00:00:00.000Z', // 20 días
+      }),
+    )
+
+    const firstRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-preaviso')
+    expect(firstRun.length).toBeGreaterThan(0)
+    expect(firstRun.every((n) => n.cicloClave === 'PREAVISO:2026-09-21')).toBe(true)
+
+    const secondRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-preaviso')
+    expect(secondRun).toHaveLength(0)
+  })
+
+  it('genera el aviso de vencido para un documento con la fecha ya pasada y no lo duplica en una segunda corrida', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z'))
+
+    getDocumentsStore().push(
+      baseDocumento({
+        id: 'doc-notif-vencido',
+        estado: 'PUBLICADO',
+        fechaRevisionProxima: '2026-08-15T00:00:00.000Z',
+      }),
+    )
+
+    const firstRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-vencido')
+    expect(firstRun.length).toBeGreaterThan(0)
+    expect(firstRun.every((n) => n.cicloClave === 'VENCIDO:2026-08-15')).toBe(true)
+
+    const secondRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-vencido')
+    expect(secondRun).toHaveLength(0)
+  })
+
+  it('preaviso y vencido coexisten como notificaciones distintas dentro del mismo ciclo', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z'))
+
+    getDocumentsStore().push(
+      baseDocumento({
+        id: 'doc-notif-coexiste',
+        estado: 'PUBLICADO',
+        fechaRevisionProxima: '2026-09-10T00:00:00.000Z', // 9 días: preaviso
+      }),
+    )
+
+    const preavisoRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-coexiste')
+    expect(preavisoRun.every((n) => n.cicloClave === 'PREAVISO:2026-09-10')).toBe(true)
+
+    // Pasa el tiempo sin que se confirme la revisión — el mismo ciclo (misma fechaRevisionProxima) ahora está vencido.
+    vi.setSystemTime(new Date('2026-09-15T12:00:00Z'))
+    const vencidoRun = generateVencimientoNotifications().filter((n) => n.entidadId === 'doc-notif-coexiste')
+    expect(vencidoRun.every((n) => n.cicloClave === 'VENCIDO:2026-09-10')).toBe(true)
+    expect(vencidoRun.length).toBeGreaterThan(0)
   })
 })
 

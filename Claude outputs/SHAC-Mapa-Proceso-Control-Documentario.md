@@ -122,6 +122,8 @@ flowchart TD
     NV --> FLUJO --> FIN
 ```
 
+**Trazabilidad del vencimiento (revision-periodica-trazabilidad):** mientras el documento sigue `PUBLICADO`, el detalle muestra un aviso ámbar cuando faltan 30 días o menos para la fecha de revisión, y un aviso rojo si esa fecha ya pasó — en ambos casos visible para cualquier lector, sin esperar a que alguien inicie la revisión. Si nadie la inicia y la fecha se vence, el sistema (actor "Sistema") registra automáticamente una entrada `REVISION_PERIODICA_VENCIDA` en el historial y notifica al autor y a los Jefes de Calidad/Control Documentario — una sola vez por ciclo, sin necesidad de un cron real (se recalcula en cada `GET /api/notifications`, mismo mecanismo que los demás vencimientos del sistema). Cuando el Jefe de Calidad/Control Documentario sí presiona "Iniciar revisión periódica", la entrada que queda en el historial (`REVISION_PERIODICA_INICIADA`) indica si la revisión era programada, anticipada o no tenía fecha asignada, y el detalle muestra un aviso informativo con esa fecha y quién la inició. Si la revisión se reabre sin confirmarse (el ciclo sigue siendo el mismo, solo pasó el tiempo), el preaviso ámbar y el aviso rojo de vencido pueden coexistir como notificaciones distintas del mismo ciclo — no se pierden entre sí.
+
 **Importante:** cada código de documento solo puede tener **una** versión en proceso a la vez (en Borrador, En Revisión o En Aprobación). Si ya hay una en curso, el botón para crear otra aparece deshabilitado.
 
 ---

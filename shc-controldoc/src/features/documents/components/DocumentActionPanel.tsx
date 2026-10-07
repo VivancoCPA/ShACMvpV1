@@ -6,7 +6,7 @@ import { FileText, FileDown, Loader2, Info, RotateCcw } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
 import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
 import { useDocumentsByCode } from '../hooks/useDocuments'
-import { canAccessDocument, getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
+import { canAccessDocument, canManagePeriodicReview, getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
 import { useArea } from '../../areas/hooks/useAreas'
 import { DocumentSignatureModal } from './DocumentSignatureModal'
 import { DocumentRejectModal } from './DocumentRejectModal'
@@ -157,7 +157,10 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
   const canCancelReview = documento.estado === 'EN_REVISION' && perms.canEdit
   const canSign = documento.estado === 'EN_APROBACION' && isAprobador
   const canRejectAprobacion = documento.estado === 'EN_APROBACION' && isAprobador
-  const canStartPeriodic = documento.estado === 'PUBLICADO' && perms.canStartReview
+  // revision-periodica-permiso-por-rol (D1): por rol GLOBAL, no por docRole/perms.canStartReview
+  // — un JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO conserva el permiso aunque sea autor,
+  // revisor o aprobador asignado de ESTE documento.
+  const canStartPeriodic = documento.estado === 'PUBLICADO' && canManagePeriodicReview(user.rol)
   // canCreateVersion/canStartNewVersion NO usan el docRole/matriz de arriba: la regla real del
   // backend (NuevaVersionDocumentoEndpoint) es "autor del origen o rol global JCA/JCD", punto —
   // independiente de si ese JCA/JCD es también revisor/aprobador de ESTE documento (design.md D2).

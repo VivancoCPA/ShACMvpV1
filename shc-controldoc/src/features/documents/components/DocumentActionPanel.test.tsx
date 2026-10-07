@@ -270,3 +270,40 @@ describe('DocumentActionPanel — aviso cuando falta revisor o aprobador en BORR
     expect(boton).not.toBeDisabled()
   })
 })
+
+// revision-periodica-permiso-por-rol (D1): "Iniciar revisión periódica" se autoriza por rol
+// GLOBAL (canManagePeriodicReview), no por docRole/perms.canStartReview — a diferencia de
+// "Enviar a revisión"/"Aprobar"/"Firmar" (arriba), un JEFE_CALIDAD_SYST/JEFE_CONTROL_DOCUMENTARIO
+// ve este botón aunque sea autor/revisor/aprobador asignado del documento PUBLICADO.
+describe('DocumentActionPanel — PUBLICADO: Iniciar revisión periódica por rol global', () => {
+  it('JEFE_CALIDAD_SYST que es el aprobador asignado de este PUBLICADO sí ve "Iniciar revisión periódica"', () => {
+    const documento = makeDocumento({
+      estado: 'PUBLICADO',
+      autorId: 'user-autor-001',
+      aprobadorId: 'user-jca-001',
+    })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jca-001', rol: 'JEFE_CALIDAD_SYST' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('detail.actions.startPeriodicReview')).toBeInTheDocument()
+  })
+
+  it('JEFE_CONTROL_DOCUMENTARIO que es el autor de este PUBLICADO sí ve "Iniciar revisión periódica"', () => {
+    const documento = makeDocumento({ estado: 'PUBLICADO', autorId: 'user-jcd-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jcd-001', rol: 'JEFE_CONTROL_DOCUMENTARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('detail.actions.startPeriodicReview')).toBeInTheDocument()
+  })
+
+  it('SUPERVISOR no ve "Iniciar revisión periódica" en PUBLICADO', () => {
+    const documento = makeDocumento({ estado: 'PUBLICADO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-sup-001', rol: 'SUPERVISOR' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('detail.actions.startPeriodicReview')).not.toBeInTheDocument()
+  })
+})
