@@ -22,6 +22,8 @@ vi.mock('../components/EscaladoBanner', () => ({
 
 vi.mock('../hooks/useLocales', () => ({
   useLocales: () => ({ locales: [] }),
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática.
+  usePlanoBlob: () => ({ planoUrl: null, isLoading: false, isError: false }),
 }))
 
 vi.mock('../../areas/hooks/useAreas', () => ({
@@ -35,6 +37,8 @@ const navigateMock = vi.fn()
 vi.mock('../hooks/useIncidents', () => ({
   useIncident: () => ({ data: mockIncident, isLoading: false, isError: false }),
   useDeleteIncident: () => ({ mutate: vi.fn(), isPending: false }),
+  // proteccion-documental (design.md D8) — una evidencia ya no es una URL estática.
+  useEvidenciaBlob: () => ({ blobUrl: null, isLoading: false, isError: false }),
 }))
 
 vi.mock('../../../stores/authStore', () => ({

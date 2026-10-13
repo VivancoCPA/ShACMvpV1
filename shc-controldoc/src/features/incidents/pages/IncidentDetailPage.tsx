@@ -14,8 +14,8 @@ import {
   X,
 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
-import { useIncident, useDeleteIncident } from '../hooks/useIncidents'
-import { useLocales } from '../hooks/useLocales'
+import { useIncident, useDeleteIncident, useEvidenciaBlob } from '../hooks/useIncidents'
+import { useLocales, usePlanoBlob } from '../hooks/useLocales'
 import { getIncidentPermissions } from '../utils/incidentPermissions'
 import { getPlazoInvestigacion } from '../utils/incidentPlazoInvestigacion'
 import { SeverityBadge } from '../../../components/shared/SeverityBadge'
@@ -116,11 +116,68 @@ function Lightbox({ url, onClose }: LightboxProps) {
 }
 
 interface EvidenciasSubBlockProps {
+  incidenteId: string
   evidencias: IncidentEvidencia[]
   onLightbox: (url: string) => void
 }
 
-function EvidenciasSubBlock({ evidencias, onLightbox }: EvidenciasSubBlockProps) {
+// proteccion-documental (design.md D8) — cada evidencia se carga vía una petición autenticada
+// propia (useEvidenciaBlob), nunca desde ev.url directamente como src/href. Un componente por
+// evidencia porque cada una necesita su propia llamada a un hook (reglas de hooks: no se puede
+// llamar useQuery dentro de un .map en el componente padre).
+interface EvidenciaItemProps {
+  incidenteId: string
+  evidencia: IncidentEvidencia
+  onLightbox: (url: string) => void
+}
+
+function EvidenciaItem({ incidenteId, evidencia: ev, onLightbox }: EvidenciaItemProps) {
+  const { blobUrl } = useEvidenciaBlob(incidenteId, ev.id)
+
+  if (ev.tipo === 'imagen') {
+    return (
+      <div className="w-20">
+        <button
+          type="button"
+          onClick={() => blobUrl && onLightbox(blobUrl)}
+          disabled={!blobUrl}
+          className="group relative h-20 w-20 overflow-hidden rounded-md border border-hairline disabled:opacity-60 dark:border-hairline/20"
+          aria-label={ev.nombre}
+        >
+          {blobUrl && <img src={blobUrl} alt={ev.nombre} className="h-full w-full object-cover" />}
+          <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
+            <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
+          </div>
+        </button>
+        {ev.descripcion && (
+          <p className="mt-1 line-clamp-2 text-[10px] text-muted dark:text-on-dark-soft">
+            {ev.descripcion}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={blobUrl ?? undefined}
+      target="_blank"
+      rel="noreferrer"
+      aria-disabled={!blobUrl}
+      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-hairline bg-surface-soft p-1 hover:border-coral aria-disabled:pointer-events-none aria-disabled:opacity-60 dark:border-hairline/20 dark:bg-surface-dark-soft"
+    >
+      <FileText size={20} className="text-muted dark:text-on-dark-soft" />
+      <span className="max-w-full truncate text-center text-[10px] text-muted dark:text-on-dark-soft">
+        {ev.nombre}
+      </span>
+      <span className="text-[9px] text-muted dark:text-on-dark-soft">
+        {ev.tamanioKb} KB
+      </span>
+    </a>
+  )
+}
+
+function EvidenciasSubBlock({ incidenteId, evidencias, onLightbox }: EvidenciasSubBlockProps) {
   const { t } = useTranslation('incidents')
 
   return (
@@ -130,44 +187,9 @@ function EvidenciasSubBlock({ evidencias, onLightbox }: EvidenciasSubBlockProps)
         {t('detail.evidencias.title')}
       </p>
       <div className="flex flex-wrap gap-2">
-        {evidencias.map((ev) =>
-          ev.tipo === 'imagen' ? (
-            <div key={ev.id} className="w-20">
-              <button
-                type="button"
-                onClick={() => onLightbox(ev.url)}
-                className="group relative h-20 w-20 overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
-                aria-label={ev.nombre}
-              >
-                <img src={ev.url} alt={ev.nombre} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
-                  <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
-                </div>
-              </button>
-              {ev.descripcion && (
-                <p className="mt-1 line-clamp-2 text-[10px] text-muted dark:text-on-dark-soft">
-                  {ev.descripcion}
-                </p>
-              )}
-            </div>
-          ) : (
-            <a
-              key={ev.id}
-              href={ev.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-hairline bg-surface-soft p-1 hover:border-coral dark:border-hairline/20 dark:bg-surface-dark-soft"
-            >
-              <FileText size={20} className="text-muted dark:text-on-dark-soft" />
-              <span className="max-w-full truncate text-center text-[10px] text-muted dark:text-on-dark-soft">
-                {ev.nombre}
-              </span>
-              <span className="text-[9px] text-muted dark:text-on-dark-soft">
-                {ev.tamanioKb} KB
-              </span>
-            </a>
-          )
-        )}
+        {evidencias.map((ev) => (
+          <EvidenciaItem key={ev.id} incidenteId={incidenteId} evidencia={ev} onLightbox={onLightbox} />
+        ))}
       </div>
     </div>
   )
@@ -221,6 +243,9 @@ export function IncidentDetailPage() {
   const missingInformeMedico = incident.tipo === 'ACCIDENTE' && !incident.informeMedicoAdjunto
   const missingEvidencias = incident.tipo === 'ACCIDENTE' && !hasEvidencias
   const selectedLocal = locales.find((l) => l.id === incident.localId)
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado.
+  const { planoUrl: selectedLocalPlanoUrl } = usePlanoBlob(selectedLocal?.planoPngUrl ? selectedLocal.id : undefined)
 
   const handleDelete = () => {
     deleteMutation.mutate(incident.id, {
@@ -453,6 +478,7 @@ export function IncidentDetailPage() {
               {/* Evidencias sub-block */}
               {hasEvidencias && (
                 <EvidenciasSubBlock
+                  incidenteId={incident.id}
                   evidencias={incident.evidencias!}
                   onLightbox={setLightboxUrl}
                 />
@@ -491,14 +517,14 @@ export function IncidentDetailPage() {
                 </div>
               )}
             </dl>
-            {selectedLocal?.planoPngUrl && incident.ubicacion && (
+            {selectedLocal?.planoPngUrl && selectedLocalPlanoUrl && incident.ubicacion && (
               <div className="mt-4">
                 <div
                   className="relative overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
                   style={{ maxWidth: '240px' }}
                 >
                   <img
-                    src={selectedLocal.planoPngUrl}
+                    src={selectedLocalPlanoUrl}
                     alt={incident.localNombre ?? incident.localId}
                     className="w-full"
                   />

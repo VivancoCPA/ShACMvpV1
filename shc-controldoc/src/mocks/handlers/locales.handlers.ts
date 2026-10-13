@@ -1,4 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
+import { buildMinimalPngBytes } from '../utils/minimalPng'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { getIncidentsStore } from './incidents.handlers'
 import { useAuthStore } from '../../stores/authStore'
@@ -149,6 +150,25 @@ export const localesHandlers = [
 
     const zonasDelLocal = zonas.filter((z) => z.localId === local.id)
     return ok({ ...local, zonas: zonasDelLocal })
+  }),
+
+  // GET /api/locales/:id/plano — proteccion-documental (design.md D7): el plano ya no es una URL
+  // estática (`/mock/plano-placeholder.png`); se consume vía blob autenticado. Mismo gate de
+  // tenant que el resto de Locales. Bytes de un PNG real mínimo (no un placeholder de texto con
+  // extensión falsa) — igual criterio que buildMinimalDocxBytes/buildMinimalDistribucionPdfBytes.
+  http.get('/api/locales/:id/plano', async ({ params }) => {
+    await delay(LATENCY)
+
+    const local = locales.find((l) => l.id === params.id)
+    if (!local || local.empresaId !== getActiveEmpresaId() || !local.planoPngUrl) {
+      return err('Local no encontrado o sin plano', 404)
+    }
+
+    const bytes = buildMinimalPngBytes()
+    return new HttpResponse(bytes.buffer, {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' },
+    })
   }),
 
   // POST /api/locales — crear (RN-LOC-001, RN-LOC-003)

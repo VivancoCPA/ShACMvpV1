@@ -19,9 +19,9 @@ import {
   Eye,
 } from 'lucide-react'
 import { useAuthStore } from '../../../stores/authStore'
-import { useCreateIncident, useUpdateIncident } from '../hooks/useIncidents'
+import { useCreateIncident, useUpdateIncident, useEvidenciaBlob } from '../hooks/useIncidents'
 import { subirEvidencia } from '../api/incidents.api'
-import { useLocales } from '../hooks/useLocales'
+import { useLocales, usePlanoBlob } from '../hooks/useLocales'
 import { useZonasByLocal } from '../hooks/useZonasByLocal'
 import { getAutoSeveridad } from '../utils/incidentSeveridad'
 import { getPlazoInvestigacion } from '../utils/incidentPlazoInvestigacion'
@@ -79,6 +79,7 @@ function buildPreview(file: File): EvidenciaPreviewItem {
 }
 
 interface EvidenciasZonaProps {
+  incidenteId?: string
   existingEvidencias?: IncidentEvidencia[]
   onFilesChange: (files: File[]) => void
   onCaptionsChange: (captions: (string | undefined)[]) => void
@@ -86,7 +87,42 @@ interface EvidenciasZonaProps {
   tipoAccidente: boolean
 }
 
+// proteccion-documental (design.md D8) — una evidencia existente ya no es una URL estática; se
+// resuelve vía useEvidenciaBlob (petición autenticada), nunca ev.url directo.
+function ExistingEvidenciaThumb({ incidenteId, evidencia: ev }: { incidenteId: string; evidencia: IncidentEvidencia }) {
+  const { blobUrl } = useEvidenciaBlob(incidenteId, ev.id)
+  if (ev.tipo !== 'imagen') return null
+  return blobUrl ? <img src={blobUrl} alt={ev.nombre} className="h-full w-full object-cover" /> : null
+}
+
+function EvidenciaLightboxThumb({
+  incidenteId,
+  evidencia: ev,
+  onClick,
+}: {
+  incidenteId: string
+  evidencia: IncidentEvidencia
+  onClick: (url: string) => void
+}) {
+  const { blobUrl } = useEvidenciaBlob(incidenteId, ev.id)
+  return (
+    <button
+      type="button"
+      onClick={() => blobUrl && onClick(blobUrl)}
+      disabled={!blobUrl}
+      className="group relative h-16 w-16 overflow-hidden rounded-md border border-hairline disabled:opacity-60 dark:border-hairline/20"
+      aria-label={ev.nombre}
+    >
+      {blobUrl && <img src={blobUrl} alt={ev.nombre} className="h-full w-full object-cover" />}
+      <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
+        <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
+      </div>
+    </button>
+  )
+}
+
 function EvidenciasZona({
+  incidenteId,
   existingEvidencias,
   onFilesChange,
   onCaptionsChange,
@@ -151,11 +187,7 @@ function EvidenciasZona({
             <div key={ev.id} className="relative">
               {ev.tipo === 'imagen' ? (
                 <div className="h-20 w-20 overflow-hidden rounded-md border border-hairline dark:border-hairline/20">
-                  <img
-                    src={ev.url}
-                    alt={ev.nombre}
-                    className="h-full w-full object-cover"
-                  />
+                  {incidenteId && <ExistingEvidenciaThumb incidenteId={incidenteId} evidencia={ev} />}
                 </div>
               ) : (
                 <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-hairline bg-surface-soft p-1 dark:border-hairline/20 dark:bg-surface-dark-soft">
@@ -321,6 +353,9 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
   const { locales } = useLocales()
   const { data: zonas = [] } = useZonasByLocal(localIdValue ?? '')
   const selectedLocal = locales.find((l) => l.id === localIdValue)
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado.
+  const { planoUrl: selectedLocalPlanoUrl } = usePlanoBlob(selectedLocal?.planoPngUrl ? selectedLocal.id : undefined)
 
   // Auto-calc severity when tipo or numPersonasAfectadas changes
   useEffect(() => {
@@ -653,7 +688,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
             </div>
 
             {/* Interactive floor plan */}
-            {localIdValue && selectedLocal?.planoPngUrl && (
+            {localIdValue && selectedLocal?.planoPngUrl && selectedLocalPlanoUrl && (
               <div>
                 <p className={labelClass}>{t('form.fields.ubicacionPlano')}</p>
                 <p className="mb-2 text-xs text-muted dark:text-on-dark-soft">
@@ -666,7 +701,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
                   onClick={handleMapClick}
                 >
                   <img
-                    src={selectedLocal.planoPngUrl}
+                    src={selectedLocalPlanoUrl}
                     alt={selectedLocal.nombre}
                     className="w-full select-none"
                     draggable={false}
@@ -693,6 +728,7 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
 
           {/* Zona de evidencias */}
           <EvidenciasZona
+            incidenteId={incident?.id}
             existingEvidencias={isEdit ? incident?.evidencias : undefined}
             onFilesChange={setNewEvidencias}
             onCaptionsChange={(captions) => {
@@ -889,18 +925,12 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
                     <div className="flex flex-wrap gap-2">
                       {incident.evidencias.map((ev) =>
                         ev.tipo === 'imagen' ? (
-                          <button
+                          <EvidenciaLightboxThumb
                             key={ev.id}
-                            type="button"
-                            onClick={() => setLightboxUrl(ev.url)}
-                            className="group relative h-16 w-16 overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
-                            aria-label={ev.nombre}
-                          >
-                            <img src={ev.url} alt={ev.nombre} className="h-full w-full object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
-                              <Eye size={16} className="text-white opacity-0 group-hover:opacity-100" />
-                            </div>
-                          </button>
+                            incidenteId={incident.id}
+                            evidencia={ev}
+                            onClick={setLightboxUrl}
+                          />
                         ) : (
                           <div key={ev.id} className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-md border border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
                             <FileText size={18} className="text-muted dark:text-on-dark-soft" />

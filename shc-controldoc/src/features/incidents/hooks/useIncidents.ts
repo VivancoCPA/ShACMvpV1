@@ -1,9 +1,11 @@
+import { useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
   getIncidents,
   getIncident,
+  getEvidenciaBlob,
   createIncident,
   createIncidentOfflineSync,
   updateIncident,
@@ -40,6 +42,28 @@ export function useIncident(id: string) {
     queryFn: () => getIncident(id),
     enabled: !!id,
   })
+}
+
+// proteccion-documental (design.md D8) — una evidencia ya no es una URL estática: se obtiene
+// como blob autenticado y se expone como object URL. La derivación del object URL a partir del
+// blob es un cálculo puro (useMemo); el único useEffect es para revocarlo al desmontar o cuando
+// cambia el blob — un efecto secundario de limpieza, no una derivación de estado.
+export function useEvidenciaBlob(incidenteId: string, evidenciaId: string) {
+  const query = useQuery({
+    queryKey: ['incidents', 'evidencia', incidenteId, evidenciaId] as const,
+    queryFn: () => getEvidenciaBlob(incidenteId, evidenciaId),
+    retry: false,
+  })
+
+  const blobUrl = useMemo(() => (query.data ? URL.createObjectURL(query.data) : null), [query.data])
+
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+    }
+  }, [blobUrl])
+
+  return { blobUrl, isLoading: query.isLoading, isError: query.isError }
 }
 
 export function useCreateIncident() {

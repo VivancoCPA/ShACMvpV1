@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
-import { useLocales } from '../../incidents/hooks/useLocales'
+import { useLocales, usePlanoBlob } from '../../incidents/hooks/useLocales'
 import { useIncidentList } from '../../incidents/hooks/useIncidentList'
 import { IncidentMapCanvas } from '../../incidents/components/IncidentMapCanvas'
 import { useDashboardWidgetStateStore } from '../../../stores/dashboardWidgetStateStore'
@@ -22,6 +22,9 @@ export function HeatmapIncidentesWidget() {
   const activeLocales = locales.filter((l) => l.activo)
   const effectiveLocalId = selectedLocalId ?? activeLocales[0]?.id ?? ''
   const selectedLocal = activeLocales.find((l) => l.id === effectiveLocalId)
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado.
+  const { planoUrl } = usePlanoBlob(selectedLocal?.planoPngUrl ? selectedLocal.id : undefined)
 
   const incidentesEnPeriodo = useMemo(() => {
     const desde = new Date()
@@ -114,7 +117,7 @@ export function HeatmapIncidentesWidget() {
         <IncidentMapCanvas
           incidentes={incidentesEnPeriodo}
           localId={effectiveLocalId}
-          planoPngUrl={selectedLocal?.planoPngUrl}
+          planoPngUrl={planoUrl ?? undefined}
           onGroupClick={() => {}}
         />
       </div>

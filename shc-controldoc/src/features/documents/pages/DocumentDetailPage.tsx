@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import type { JSX } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronDown, ChevronUp, FileText, FileType, Sheet, Download, Lock, Upload, FileDown, Loader2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, Download, Lock, Upload, Loader2 } from 'lucide-react'
 import { useDocumentDetail } from '../hooks/useDocumentDetail'
-import { useGetArchivoOriginalUrl, useGetArchivoDistribucionUrl } from '../hooks/useDocumentActions'
+import { useGetArchivoOriginalUrl } from '../hooks/useDocumentActions'
 import { DocumentDetailHeader } from '../components/DocumentDetailHeader'
 import { DocumentActionPanel } from '../components/DocumentActionPanel'
 import { DocumentHistorial } from '../components/DocumentHistorial'
@@ -16,22 +15,6 @@ import { DocumentReplaceArchivoOriginalModal } from '../components/DocumentRepla
 import { getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
 import { useAuthStore } from '../../../stores/authStore'
 import { useUserNames } from '../../users/hooks/useUserNames'
-
-function getFileTypeInfo(archivoUrl?: string, tipoArchivo?: string): { icon: JSX.Element; label: string } | null {
-  const ext = archivoUrl?.split('.').pop()?.toLowerCase() ?? ''
-  const mime = tipoArchivo ?? ''
-  if (ext === 'pdf' || mime === 'application/pdf') {
-    return { icon: <FileText size={14} aria-hidden="true" />, label: 'PDF' }
-  }
-  if (ext === 'docx' || ext === 'doc' || mime.includes('wordprocessingml') || mime === 'application/msword') {
-    return { icon: <FileType size={14} aria-hidden="true" />, label: 'Word' }
-  }
-  if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheetml') || mime === 'application/vnd.ms-excel') {
-    return { icon: <Sheet size={14} aria-hidden="true" />, label: 'Excel' }
-  }
-  if (!ext && !mime) return null
-  return { icon: <FileText size={14} aria-hidden="true" />, label: ext.toUpperCase() || 'Archivo' }
-}
 
 function DetailSkeleton() {
   return (
@@ -63,7 +46,6 @@ export function DocumentDetailPage() {
 
   const { documento, isLoading, isError } = useDocumentDetail(id)
   const { abrirArchivoOriginal, isLoading: isLoadingOriginal } = useGetArchivoOriginalUrl()
-  const { descargarArchivoDistribucion, isLoading: isLoadingDistribucion } = useGetArchivoDistribucionUrl()
 
   // Una sola llamada a useUserNames por pantalla (nombres-usuarios-reales D4): el header
   // necesita autor/revisor/aprobador y el action panel necesita aprobador (preview de PDF) —
@@ -109,9 +91,10 @@ export function DocumentDetailPage() {
           documento.estado === 'OBSOLETO' &&
           (user?.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user?.rol === 'ALTA_DIRECCION')
 
-        const distUrl = documento.archivoDistribucionUrl
-        const showArchivoSection =
-          perms.canViewArchivoOriginal || isObsoletoHistorico || perms.canViewArchivoDistribucion
+        // proteccion-documental (design.md D1) — la descarga de la distribución ya no vive aquí:
+        // "Descargar copia (PDF)" (DocumentActionPanel) la reemplaza. Esta sección solo cubre el
+        // archivo original.
+        const showArchivoSection = perms.canViewArchivoOriginal || isObsoletoHistorico
 
         return (
           <div className="mx-auto max-w-3xl space-y-6 px-6 py-8">
@@ -146,22 +129,6 @@ export function DocumentDetailPage() {
                   ) : (
                     <p className="text-muted dark:text-on-dark-soft">—</p>
                   )}
-                  {(documento.archivoUrl || documento.tipoArchivo) && (() => {
-                    const fileInfo = getFileTypeInfo(documento.archivoUrl, documento.tipoArchivo)
-                    if (!fileInfo) return null
-                    return (
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">
-                          {t('archivo.tipo')}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 rounded bg-surface-soft px-2 py-0.5 text-xs font-medium text-body dark:bg-surface-dark-elevated dark:text-on-dark">
-                          {fileInfo.icon}
-                          {fileInfo.label}
-                        </span>
-                      </div>
-                    )
-                  })()}
-
                   {showArchivoSection && (
                     <div className="rounded-lg border border-hairline bg-surface-soft p-4 dark:border-hairline/20 dark:bg-surface-dark-elevated">
                       <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted dark:text-on-dark-soft">
@@ -202,25 +169,6 @@ export function DocumentDetailPage() {
                           </div>
                         )}
 
-                        {perms.canViewArchivoDistribucion && distUrl && (
-                          <button
-                            type="button"
-                            onClick={() => void descargarArchivoDistribucion(documento.id)}
-                            disabled={isLoadingDistribucion}
-                            className="inline-flex w-fit items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-cream disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
-                          >
-                            {isLoadingDistribucion
-                              ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-                              : <FileDown size={12} aria-hidden="true" />}
-                            {t('archivo.distribucion.ver')}
-                          </button>
-                        )}
-
-                        {perms.canViewArchivoDistribucion && !distUrl && (
-                          <p className="text-xs text-muted dark:text-on-dark-soft">
-                            {t('archivo.distribucion.autoGenerado')}
-                          </p>
-                        )}
                       </div>
                     </div>
                   )}

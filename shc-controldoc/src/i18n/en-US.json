@@ -278,9 +278,9 @@
       "accessError": "You do not have access to this action."
     },
     "actions": {
-      "verArchivo": "View original file",
       "exportarPdf": "Export controlled PDF",
-      "exportarPdfControlado": "Export controlled PDF",
+      "descargarCopia": "Download copy (PDF)",
+      "descargarCopiaAyuda": "The downloaded copy carries your name and the date; it is an UNCONTROLLED COPY",
       "exportando": "Exporting…",
       "errorExportar": "Could not generate the PDF. Please try again.",
       "delete": {
@@ -348,6 +348,23 @@
       "previewNote": "The preview shows the document as it will appear when printed.",
       "download": "Download PDF",
       "cancel": "Cancel"
+    },
+    "visor": {
+      "verDocumento": "View document",
+      "tituloModal": "Document viewer",
+      "generandoVistaPrevia": "Generating preview…",
+      "errorGenerico": "The document could not be loaded. Please try again.",
+      "sinArchivoParaVisualizar": "This document does not have a file to view yet",
+      "reintentar": "Retry",
+      "cerrar": "Close",
+      "paginaAnterior": "Previous page",
+      "paginaSiguiente": "Next page",
+      "paginaDe": "Page {{actual}} of {{total}}",
+      "acercar": "Zoom in",
+      "alejar": "Zoom out",
+      "ajustarAlAncho": "Fit to width",
+      "imprimir": "Print",
+      "imprimiendo": "Preparing to print…"
     },
     "versiones": {
       "vigente": "Current version",

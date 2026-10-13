@@ -5,9 +5,26 @@ import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse, delay } from 'msw'
-import { describe, expect, it, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, expect, it, vi, beforeAll, afterEach, afterAll } from 'vitest'
 import i18n from '../../../i18n'
 import { HeatmapIncidentesWidget } from './HeatmapIncidentesWidget'
+
+// proteccion-documental (design.md D7) — usePlanoBlob pide el plano vía una petición
+// autenticada real (axios responseType: 'blob'); en este entorno de test (jsdom + msw/node vía
+// XHR) esa combinación específica choca con una incompatibilidad conocida entre
+// @mswjs/interceptors y el undici de Node (ver error "object.stream is not a function" al
+// intentar reproducirlo con un handler MSW real). Se mockea solo usePlanoBlob (useLocales sigue
+// siendo el real, vía importOriginal) — el contenido del plano no es lo que este test verifica.
+vi.mock('../../incidents/hooks/useLocales', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../incidents/hooks/useLocales')>()
+  return {
+    ...actual,
+    // Ambos locales del fixture tienen planoPngUrl truthy — el mock refleja eso devolviendo
+    // siempre una URL (object URL simulado), igual que antes del cambio el string crudo del
+    // fixture era siempre truthy. `showPlan` en IncidentMapCanvas depende de este valor.
+    usePlanoBlob: () => ({ planoUrl: 'blob:mock-plano-url', isLoading: false, isError: false }),
+  }
+})
 import type { Local, Incidente } from '../../incidents/types/incident.types'
 
 const NOW = Date.now()

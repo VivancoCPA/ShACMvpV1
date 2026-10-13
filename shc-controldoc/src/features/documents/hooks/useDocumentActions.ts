@@ -8,12 +8,8 @@ import {
   patchDocumentStatus,
   signDocument,
   deleteDocument,
-  getDocumentDownloadUrl,
-  registerDocumentAccess,
   createNuevaVersion,
-  getArchivoUrl,
   getArchivoOriginalUrl,
-  getArchivoDistribucionBlob,
   replaceArchivoOriginal,
   exportarPdfControlado,
   confirmarRevisionPeriodica,
@@ -26,7 +22,6 @@ import {
 import type {
   PatchDocumentStatusPayload,
   SignDocumentPayload,
-  RegisterAccessPayload,
   NuevaVersionPayload,
   ConfirmarRevisionPeriodicaPayload,
 } from '../../../api/endpoints/documents.api'
@@ -84,52 +79,10 @@ export function useDeleteDocument(documentId: string) {
   })
 }
 
-export function useGetDownloadUrl(documentId: string) {
-  return useMutation({
-    mutationFn: () => getDocumentDownloadUrl(documentId),
-  })
-}
-
-export function useRegisterAccess(documentId: string) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (payload: RegisterAccessPayload) =>
-      registerDocumentAccess(documentId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
-    },
-  })
-}
-
-export function useGetArchivoUrl() {
-  const { t } = useTranslation('documents')
-
-  const mutation = useMutation({
-    mutationFn: (documentoId: string) => getArchivoUrl(documentoId),
-    onSuccess: (data) => {
-      window.open(data.url, '_blank', 'noopener,noreferrer')
-    },
-    onError: () => {
-      toast.error(t('archivo.errorAbrir'))
-    },
-  })
-
-  return {
-    abrirArchivo: async (documentoId: string): Promise<void> => {
-      try {
-        await mutation.mutateAsync(documentoId)
-      } catch {
-        // handled by onError
-      }
-    },
-    isLoading: mutation.isPending,
-  }
-}
-
 export function useExportarPdfControlado() {
   const { t } = useTranslation('documents')
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: async (documento: Documento) => {
@@ -138,7 +91,7 @@ export function useExportarPdfControlado() {
         userNombreCompleto: `${user.nombre} ${user.apellido}`,
       })
     },
-    onSuccess: ({ blob, fileName }) => {
+    onSuccess: ({ blob, fileName }, documento) => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -147,6 +100,9 @@ export function useExportarPdfControlado() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      // fix-log-refresco-inmediato: el backend registra DESCARGA en el audit trail, pero sin
+      // esta invalidación el detalle (refetchOnWindowFocus: false) no lo muestra hasta recargar.
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documento.id) })
     },
     onError: () => {
       toast.error(t('actions.errorExportar'))
@@ -245,40 +201,6 @@ export function useGetArchivoOriginalUrl() {
     abrirArchivoOriginal: async (documentoId: string, fallbackNombre?: string): Promise<void> => {
       try {
         await mutation.mutateAsync({ documentoId, fallbackNombre })
-      } catch {
-        // handled by onError
-      }
-    },
-    isLoading: mutation.isPending,
-  }
-}
-
-export function useGetArchivoDistribucionUrl() {
-  const { t } = useTranslation('documents')
-  const queryClient = useQueryClient()
-
-  const mutation = useMutation({
-    mutationFn: (documentoId: string) => getArchivoDistribucionBlob(documentoId),
-    onSuccess: ({ blob, fileName }, documentoId) => {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
-    },
-    onError: () => {
-      toast.error(t('archivo.errorAbrir'))
-    },
-  })
-
-  return {
-    descargarArchivoDistribucion: async (documentoId: string): Promise<void> => {
-      try {
-        await mutation.mutateAsync(documentoId)
       } catch {
         // handled by onError
       }

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { AlertTriangle } from 'lucide-react'
 import { localFormSchema, type LocalFormInput } from '../schemas/localForm.schema'
-import { useCrearLocal, useActualizarLocal } from '../hooks/useLocales'
+import { useCrearLocal, useActualizarLocal, usePlanoBlob } from '../hooks/useLocales'
 import { PlanoUploadField } from './PlanoUploadField'
 import type { LocalConZonas } from '../api/locales.api'
 
@@ -41,7 +41,10 @@ export function LocalForm({ mode, local, onCancel }: LocalFormProps) {
     defaultValues,
   })
 
-  const existingUrl = isEdit && local?.planoPngUrl ? local.planoPngUrl : undefined
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado (usePlanoBlob) y se pasa el object URL.
+  const { planoUrl: existingPlanoBlobUrl } = usePlanoBlob(isEdit && local?.planoPngUrl ? local.id : undefined)
+  const existingUrl = existingPlanoBlobUrl ?? undefined
 
   const onSubmit = async (data: LocalFormInput) => {
     setServerError(null)

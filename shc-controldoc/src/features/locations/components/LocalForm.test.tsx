@@ -26,6 +26,14 @@ vi.mock('../hooks/useLocales', () => ({
     mutateAsync: actualizarLocalMutateAsync,
     isPending: actualizarLocalIsPending,
   }),
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática: se resuelve como
+  // blob autenticado. El mock simula que hay plano (devuelve un object URL) solo cuando se pasa
+  // un localId, igual que el hook real (enabled: !!localId).
+  usePlanoBlob: (localId?: string) => ({
+    planoUrl: localId ? 'blob:mock-plano-url' : null,
+    isLoading: false,
+    isError: false,
+  }),
 }))
 
 afterEach(() => cleanup())
@@ -74,7 +82,9 @@ describe('LocalForm', () => {
     expect(screen.getByLabelText(/form\.fields\.nombre/)).toHaveValue('Almacén Sur')
     expect(screen.getByLabelText(/form\.fields\.direccion/)).toHaveValue('Av. Industrial 450')
     const planoThumbnail = screen.getByAltText('form.plano.previewAlt') as HTMLImageElement
-    expect(planoThumbnail.src).toContain('/mock/plano-loc-001.png')
+    // proteccion-documental (design.md D7) — el preview ya no es la URL vieja del fixture; es el
+    // object URL resuelto por usePlanoBlob (blob autenticado).
+    expect(planoThumbnail.src).toContain('blob:mock-plano-url')
   })
 
   it('edición sin nuevo archivo no envía planoUrl', async () => {

@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
@@ -6,6 +7,7 @@ import {
   listarLocales,
   listarZonas,
   obtenerLocal,
+  getPlanoBlob,
   crearLocal,
   actualizarLocal,
   desactivarLocal,
@@ -52,6 +54,30 @@ export function useLocal(id: string) {
     queryFn: () => obtenerLocal(id),
     enabled: !!id,
   })
+}
+
+// proteccion-documental (design.md D7) — el plano ya no es una URL estática: se obtiene como
+// blob autenticado y se expone como object URL. La derivación del object URL a partir del blob
+// es un cálculo puro (useMemo, no useEffect); el único useEffect es para revocarlo al desmontar o
+// cuando cambia el blob — un efecto secundario de limpieza, no una derivación de estado (mismo
+// criterio que el iframe de impresión de DocumentViewer).
+export function usePlanoBlob(localId: string | undefined) {
+  const query = useQuery({
+    queryKey: ['locationsAdmin', 'plano', localId] as const,
+    queryFn: () => getPlanoBlob(localId!),
+    enabled: !!localId,
+    retry: false,
+  })
+
+  const objectUrl = useMemo(() => (query.data ? URL.createObjectURL(query.data) : null), [query.data])
+
+  useEffect(() => {
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [objectUrl])
+
+  return { planoUrl: objectUrl, isLoading: query.isLoading, isError: query.isError }
 }
 
 export function useCrearLocal() {

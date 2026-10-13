@@ -168,8 +168,13 @@ describe('getDocumentPermissions — JEFE_CALIDAD canDelete scope', () => {
 })
 
 describe('getDocumentPermissions — PUBLICADO', () => {
-  it('AUTOR: all denied', () => {
-    expect(getDocumentPermissions('PUBLICADO', 'AUTOR')).toEqual(deny())
+  // autor-lectura-publicado (2026-10-08, decisión de Toño): AUTOR lee su documento publicado
+  // igual que REVISOR/APROBADOR — diverge a propósito del PRD §4.2 ("Sin acceso" se interpreta
+  // como "sin edición", no "sin lectura"). canEdit/canDelete/canStartReview siguen en false.
+  it('AUTOR: canRead, canViewArchivoDistribucion (sin edición)', () => {
+    expect(getDocumentPermissions('PUBLICADO', 'AUTOR')).toEqual(
+      deny({ canRead: true, canViewArchivoDistribucion: true }),
+    )
   })
 
   it('REVISOR: canRead, canViewArchivoDistribucion', () => {
@@ -198,8 +203,9 @@ describe('getDocumentPermissions — PUBLICADO', () => {
 })
 
 describe('getDocumentPermissions — OBSOLETO (RN-DOC-003)', () => {
-  it('AUTOR: all denied (no read access)', () => {
-    expect(getDocumentPermissions('OBSOLETO', 'AUTOR')).toEqual(deny())
+  // autor-lectura-publicado: mismo razonamiento que PUBLICADO — AUTOR lee, no edita.
+  it('AUTOR: canRead only (sin edición — RN-DOC-003)', () => {
+    expect(getDocumentPermissions('OBSOLETO', 'AUTOR')).toEqual(deny({ canRead: true }))
   })
 
   it('REVISOR: canRead only', () => {
@@ -354,8 +360,10 @@ describe('getDocumentPermissions — archivo permissions (ADD-02)', () => {
     expect(getDocumentPermissions('PUBLICADO', 'JEFE_CALIDAD').canViewArchivoDistribucion).toBe(true)
   })
 
-  it('canViewArchivoDistribucion is false for AUTOR in PUBLICADO (no read access)', () => {
-    expect(getDocumentPermissions('PUBLICADO', 'AUTOR').canViewArchivoDistribucion).toBe(false)
+  // autor-lectura-publicado: AUTOR ahora tiene canRead en PUBLICADO, así que hereda
+  // canViewArchivoDistribucion igual que REVISOR/APROBADOR/OPERARIO/JEFE_CALIDAD.
+  it('canViewArchivoDistribucion is true for AUTOR in PUBLICADO (now has read access)', () => {
+    expect(getDocumentPermissions('PUBLICADO', 'AUTOR').canViewArchivoDistribucion).toBe(true)
   })
 
   it('canViewArchivoDistribucion is true for all readers in EN_REVISION_PERIODICA', () => {

@@ -150,7 +150,7 @@ describe('DocumentActionPanel — preview de PDF muestra el nombre del aprobador
       id === 'user-aprobador-001' ? 'Luis Paredes' : (id ?? ''),
     )
 
-    fireEvent.click(screen.getByText('actions.exportarPdfControlado'))
+    fireEvent.click(screen.getByText('actions.descargarCopia'))
 
     expect(screen.getByText('Luis Paredes')).toBeInTheDocument()
   })
@@ -162,7 +162,7 @@ describe('DocumentActionPanel — preview de PDF muestra el nombre del aprobador
     })
     renderPanel(makePublicadoDocumento('user-desconocido'), () => 'common:userNames.noDisponible')
 
-    fireEvent.click(screen.getByText('actions.exportarPdfControlado'))
+    fireEvent.click(screen.getByText('actions.descargarCopia'))
 
     expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
     expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
@@ -305,5 +305,170 @@ describe('DocumentActionPanel — PUBLICADO: Iniciar revisión periódica por ro
     renderPanel(documento)
 
     expect(screen.queryByText('detail.actions.startPeriodicReview')).not.toBeInTheDocument()
+  })
+})
+
+// visor-documentos (document-detail delta spec) — "Ver documento" usa canRead de la matriz
+// (perms.canRead), con el OR explícito de la excepción CA-34 para OBSOLETO. No depende de
+// documento.archivoUrl (a diferencia de "Ver archivo"/"Exportar PDF controlado").
+describe('DocumentActionPanel — Ver documento (visor-documentos)', () => {
+  it('el aprobador asignado ve "Ver documento" en EN_APROBACION', () => {
+    const documento = makeDocumento({ estado: 'EN_APROBACION', aprobadorId: 'user-aprobador-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-aprobador-001', rol: 'JEFE_CALIDAD_SYST' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+  })
+
+  it('OPERARIO no ve "Ver documento" en BORRADOR', () => {
+    const documento = makeDocumento({ estado: 'BORRADOR', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-operario-999', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('visor.verDocumento')).not.toBeInTheDocument()
+  })
+
+  // autor-lectura-publicado (2026-10-08, decisión de Toño): el autor lee su propio documento
+  // en PUBLICADO/OBSOLETO igual que REVISOR/APROBADOR (diverge a propósito del PRD §4.2).
+  it('el AUTOR ve "Ver documento" en PUBLICADO', () => {
+    const documento = makeDocumento({ estado: 'PUBLICADO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+  })
+
+  it('el AUTOR ve "Ver documento" en OBSOLETO', () => {
+    const documento = makeDocumento({ estado: 'OBSOLETO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+  })
+
+  it('CA-34: ALTA_DIRECCION sin ser docRole asignado ve "Ver documento" en OBSOLETO', () => {
+    const documento = makeDocumento({ estado: 'OBSOLETO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-dir-999', rol: 'ALTA_DIRECCION' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+  })
+
+  it('CA-34: JEFE_CONTROL_DOCUMENTARIO sin ser docRole asignado ve "Ver documento" en OBSOLETO', () => {
+    const documento = makeDocumento({ estado: 'OBSOLETO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-jcd-999', rol: 'JEFE_CONTROL_DOCUMENTARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+  })
+
+  it('sin CA-34: OPERARIO no ve "Ver documento" en OBSOLETO', () => {
+    const documento = makeDocumento({ estado: 'OBSOLETO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-operario-999', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('visor.verDocumento')).not.toBeInTheDocument()
+  })
+
+  it('no requiere archivoUrl para mostrarse (a diferencia de Ver archivo)', () => {
+    const documento = makeDocumento({ estado: 'BORRADOR', autorId: 'user-autor-001', archivoUrl: undefined })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+    expect(screen.queryByText('actions.verArchivo')).not.toBeInTheDocument()
+  })
+
+  it('se oculta por confidencialidad aunque canRead sea true', () => {
+    const documento = makeDocumento({
+      estado: 'BORRADOR',
+      autorId: 'user-autor-001',
+      confidencialidad: 'CONFIDENCIAL',
+    })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    // OPERARIO nunca tiene acceso a CONFIDENCIAL por canAccessDocument, sin importar canRead.
+    expect(screen.queryByText('visor.verDocumento')).not.toBeInTheDocument()
+  })
+})
+
+// proteccion-documental (design.md D1, tasks.md 9.6) — "Descargar copia (PDF)" (antes "Exportar
+// PDF controlado") reemplaza tanto el botón "Ver archivo" (retirado del todo) como el de
+// distribución de DocumentDetailPage; ya no depende de archivoUrl, solo de estado+canRead.
+describe('DocumentActionPanel — Descargar copia (PDF)', () => {
+  it('"Ver archivo" ya no existe para ningún rol/estado', () => {
+    const documento = makeDocumento({ estado: 'PUBLICADO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('actions.verArchivo')).not.toBeInTheDocument()
+  })
+
+  it('visible en PUBLICADO con acceso', () => {
+    const documento = makeDocumento({ estado: 'PUBLICADO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('actions.descargarCopia')).toBeInTheDocument()
+    expect(screen.getByText('actions.descargarCopiaAyuda')).toBeInTheDocument()
+  })
+
+  it('visible en EN_REVISION_PERIODICA con acceso', () => {
+    const documento = makeDocumento({ estado: 'EN_REVISION_PERIODICA', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('actions.descargarCopia')).toBeInTheDocument()
+  })
+
+  it('ausente en BORRADOR', () => {
+    const documento = makeDocumento({ estado: 'BORRADOR', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('actions.descargarCopia')).not.toBeInTheDocument()
+  })
+
+  it('ausente en EN_REVISION', () => {
+    const documento = makeDocumento({ estado: 'EN_REVISION', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-otro', rol: 'ALTA_DIRECCION' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('actions.descargarCopia')).not.toBeInTheDocument()
+  })
+
+  it('ausente en EN_APROBACION', () => {
+    const documento = makeDocumento({ estado: 'EN_APROBACION', autorId: 'user-autor-001', aprobadorId: 'user-aprobador-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-aprobador-001', rol: 'JEFE_CALIDAD_SYST' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.queryByText('actions.descargarCopia')).not.toBeInTheDocument()
+  })
+
+  // RN-DOC-003: OBSOLETO no tiene ninguna acción de descarga, solo "Ver documento".
+  it('ausente en OBSOLETO, incluso para quien sí ve "Ver documento"', () => {
+    const documento = makeDocumento({ estado: 'OBSOLETO', autorId: 'user-autor-001' })
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-autor-001', rol: 'OPERARIO' } as never })
+
+    renderPanel(documento)
+
+    expect(screen.getByText('visor.verDocumento')).toBeInTheDocument()
+    expect(screen.queryByText('actions.descargarCopia')).not.toBeInTheDocument()
   })
 })

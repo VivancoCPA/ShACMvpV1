@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detalle de documento — Opción 1</title>
+<style>
+:root{
+  --canvas:#faf9f5;--soft:#f5f0e8;--card:#efe9de;--cream:#e8e0d2;
+  --ink:#141413;--body-strong:#252523;--body:#3d3d3a;--muted:#6c6a64;--muted-soft:#8e8b82;
+  --hair:#e6dfd8;--hair-soft:#ebe6df;--coral:#cc785c;--coral-dark:#a9583e;
+  --teal:#5db8a6;--amber:#e8a55a;--success:#5db872;--warning:#d4a017;--error:#c64545;
+  --white:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--body);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif}
+.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+.label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+/* app shell */
+.shell{display:flex;min-height:100vh}
+.nav{width:220px;background:var(--soft);border-right:1px solid var(--hair);padding:20px 14px;flex-shrink:0}
+.brand{font-family:Georgia,"EB Garamond",serif;font-size:20px;color:var(--ink);font-weight:600;margin:0 8px 24px}
+.nav a{display:block;padding:8px 10px;border-radius:6px;color:var(--body);text-decoration:none;margin-bottom:2px}
+.nav a.on{background:var(--card);color:var(--ink);font-weight:600}
+.main{flex:1;min-width:0}
+/* sticky header */
+.hdr{position:sticky;top:0;z-index:5;background:rgba(250,249,245,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--hair)}
+.hdr-in{max-width:1440px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.crumb{font-size:12px;color:var(--muted);width:100%;margin-bottom:-6px}
+.crumb a{color:var(--muted);text-decoration:none}
+.code{font-size:13px;font-weight:600;color:var(--muted)}
+.title{font-size:22px;min-width:0;font-weight:600;color:var(--ink);margin:0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid}
+.p-pub{color:#2f7d43;background:rgba(93,184,114,.12);border-color:rgba(93,184,114,.35)}
+.p-ver{color:var(--body-strong);background:var(--card);border-color:var(--hair)}
+.p-conf{color:var(--muted);background:var(--white);border-color:var(--hair)}
+.p-amber{color:#9a6420;background:rgba(232,165,90,.14);border-color:rgba(232,165,90,.4)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+.spacer{flex:1}
+.btn{border:1px solid var(--hair);background:var(--white);color:var(--body-strong);padding:7px 14px;border-radius:8px;font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn-pri{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.btn-pri:hover{background:#2a2925}
+.btn-full{width:100%;text-align:center;display:block;margin-bottom:8px}
+/* layout */
+.wrap{max-width:1440px;margin:0 auto;padding:20px 32px 48px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+.banner{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(232,165,90,.4);background:rgba(232,165,90,.1);color:#8a5a1c;border-radius:8px;padding:10px 14px}
+.banner a{color:#8a5a1c;font-weight:600}
+.cardx{min-width:0;background:var(--white);border:1px solid var(--hair);border-radius:12px}
+.pad{padding:20px 24px}
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--hair);padding:0 16px;overflow-x:auto}
+.tab{border:0;background:none;font:inherit;color:var(--muted);padding:13px 10px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--coral)}
+.cnt{font-size:11px;background:var(--card);color:var(--muted);border-radius:999px;padding:0 7px}
+.panel{display:none;overflow-x:auto}.panel.on{display:block}
+/* content pieces */
+.desc{color:var(--body);max-width:72ch;margin:6px 0 18px}
+.file{display:flex;align-items:center;gap:12px;border:1px solid var(--hair);border-radius:8px;padding:12px 14px;background:var(--canvas)}
+.ficon{width:36px;height:44px;border-radius:4px;background:var(--coral);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--hair);background:var(--canvas)}
+td{padding:11px 12px;border-bottom:1px solid var(--hair-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.act{font-weight:600;color:var(--body-strong)}
+.sub{color:var(--muted);font-size:12px}
+.more{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--hair);color:var(--muted);font-size:13px}
+.st{font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px}
+.st-v{background:rgba(93,184,114,.14);color:#2f7d43}.st-r{background:var(--card);color:var(--muted)}.st-a{background:rgba(198,69,69,.1);color:var(--error)}
+/* timeline (historial) */
+.tl{list-style:none;margin:0;padding:8px 24px 16px}
+.tl li{position:relative;padding:10px 0 10px 26px;border-left:2px solid var(--hair);margin-left:6px}
+.tl li:before{content:"";position:absolute;left:-7px;top:15px;width:12px;height:12px;border-radius:50%;background:var(--white);border:2px solid var(--coral)}
+.tl li.ok:before{border-color:var(--success)}.tl li.bad:before{border-color:var(--error)}
+/* sidebar */
+.side{position:sticky;top:96px;display:flex;flex-direction:column;gap:16px}
+.dl{display:grid;grid-template-columns:1fr;gap:12px;margin:14px 0 0}
+.dl .v{color:var(--body-strong);margin-top:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.person{display:flex;align-items:center;gap:10px}
+.av{width:28px;height:28px;border-radius:50%;background:var(--cream);color:var(--body-strong);font-size:11px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
+.hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+.mini{list-style:none;margin:10px 0 0;padding:0}
+.mini li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--hair-soft);font-size:13px}
+.mini li:first-child{border-top:0}
+.mini .when{color:var(--muted-soft);font-size:12px;white-space:nowrap;margin-left:auto}
+.link{color:var(--coral-dark);font-weight:600;text-decoration:none;font-size:13px}
+.note{max-width:1440px;margin:0 auto;padding:0 32px 40px;color:var(--muted);font-size:12px}
+.ann{display:inline-block;background:var(--coral);color:#fff;border-radius:999px;font-size:11px;font-weight:700;width:18px;height:18px;text-align:center;line-height:18px;margin-right:6px;vertical-align:1px}
+@media (max-width:1100px){.wrap{grid-template-columns:1fr}.side{position:static;order:-1}.nav{display:none}}
+@media (max-width:640px){.hdr-in,.wrap,.note{padding-left:16px;padding-right:16px}.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand">SHAC</div>
+    <a href="#">Dashboard</a>
+    <a href="#" class="on">Documentos</a>
+    <a href="#">No conformidades</a>
+    <a href="#">Eventos de calidad</a>
+    <a href="#">Incidentes</a>
+    <a href="#">Notificaciones</a>
+  </nav>
+
+  <div class="main">
+    <!-- 1. Encabezado fijo -->
+    <header class="hdr">
+      <div class="hdr-in">
+        <div class="crumb"><a href="#">Documentos</a> / PRC-CD-013</div>
+        <span class="code mono">PRC-CD-013</span>
+        <h1 class="title">Procedimiento de control de documentos</h1>
+        <span class="pill p-pub">Publicado</span>
+        <span class="pill p-ver">v2</span>
+        <span class="pill p-conf">Interno</span>
+        <span class="pill p-amber"><span class="dot"></span>Revisión en 18 días</span>
+        <span class="spacer"></span>
+        <button class="btn">Nueva versión</button>
+        <button class="btn">Iniciar revisión periódica</button>
+        <button class="btn">⋯</button>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="banner">
+        <span><b>Pendiente de revisión periódica</b> — vence el 30/10/2026 (en 18 días).</span>
+        <a href="#">Iniciar revisión</a>
+      </div>
+
+      <!-- 2. Columna principal con pestañas -->
+      <section class="cardx">
+        <div class="tabs" role="tablist">
+          <button class="tab on" data-t="resumen">Resumen</button>
+          <button class="tab" data-t="historial">Historial <span class="cnt">6</span></button>
+          <button class="tab" data-t="versiones">Versiones <span class="cnt">2</span></button>
+          <button class="tab" data-t="vinculos">Vínculos <span class="cnt">3</span></button>
+          <button class="tab" data-t="copias">Copias <span class="cnt">2</span></button>
+          <button class="tab" data-t="log">Log <span class="cnt">48</span></button>
+        </div>
+
+        <div class="panel on" id="resumen">
+          <div class="pad">
+            <div class="label">Descripción</div>
+            <p class="desc">Establece los lineamientos para la elaboración, revisión, aprobación, distribución y control de los documentos del Sistema de Gestión de Calidad y SST, según ISO 9001:2015 §7.5 e ISO 45001:2018 §7.5.</p>
+            <div class="label" style="margin-bottom:8px">Documento publicado</div>
+            <div class="file">
+              <div class="ficon">PDF</div>
+              <div style="flex:1;min-width:0">
+                <div class="act">PRC-CD-013 v2 — Control de documentos.pdf</div>
+                <div class="sub">Firmado por María Quispe · 12/09/2026 10:42 · hash <span class="mono">8f3a…c21e</span></div>
+              </div>
+              <button class="btn">Ver</button>
+            </div>
+            <div class="row2" style="margin-top:20px">
+              <div><div class="label">Motivo del cambio (v2)</div><p class="desc" style="margin:4px 0 0">Se incorpora el control de copias controladas y el registro de impresión.</p></div>
+              <div><div class="label">Alcance</div><p class="desc" style="margin:4px 0 0">Todas las sedes y locales de la empresa.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="historial">
+          <ul class="tl">
+            <li class="ok"><div class="act">Publicado (firmado)</div><div class="sub">María Quispe · Aprobadora · 12/09/2026 10:42</div></li>
+            <li class="ok"><div class="act">Aprobado por revisor</div><div class="sub">Luis Ramos · Revisor · 10/09/2026 16:05</div></li>
+            <li class="bad"><div class="act">Rechazado en revisión</div><div class="sub">Luis Ramos · 08/09/2026 09:20 — “Falta el anexo de registros”</div></li>
+            <li><div class="act">Enviado a revisión</div><div class="sub">Carlos Vivanco · Autor · 07/09/2026 18:11</div></li>
+            <li><div class="act">Nueva versión creada (v2)</div><div class="sub">Carlos Vivanco · 05/09/2026 11:30</div></li>
+          </ul>
+        </div>
+
+        <div class="panel" id="versiones">
+          <table><thead><tr><th>Versión</th><th>Estado</th><th>Publicada</th><th>Aprobó</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="act">v2</td><td><span class="st st-v">Publicado</span></td><td>12/09/2026</td><td>María Quispe</td><td><a class="link" href="#">Ver</a></td></tr>
+            <tr><td class="act">v1</td><td><span class="st st-r">Obsoleto</span></td><td>03/03/2025</td><td>María Quispe</td><td><a class="link" href="#">Ver</a></td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="panel" id="vinculos">
+          <table><thead><tr><th>Tipo</th><th>Código</th><th>Título</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>QE</td><td class="mono">QE-2026-014</td><td>Uso de formato desactualizado en almacén</td><td>Cerrado</td></tr>
+            <tr><td>NC</td><td class="mono">NC-2026-031</td><td>Documento obsoleto en punto de uso</td><td>En tratamiento</td></tr>
+            <tr><td>NC</td><td class="mono">NC-2026-009</td><td>Falta de registro de distribución</td><td>Cerrada</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="panel" id="copias">
+          <div class="pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <span class="sub">Copias impresas asignadas a un destinatario. Se recogen al cambiar de versión.</span>
+            <button class="btn btn-pri">Emitir copia controlada</button>
+          </div>
+          <table><thead><tr><th>N°</th><th>Destinatario</th><th>Ubicación</th><th>Emitida</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="mono">PRC-CD-013-v2-C002</td><td>Auditor externo — SGS</td><td>—</td><td>20/09/2026<div class="sub">Ana Torres</div></td><td><span class="st st-v">Vigente</span></td><td><a class="link" href="#">Acciones ▾</a></td></tr>
+            <tr><td class="mono">PRC-CD-013-v2-C001</td><td>Almacén central</td><td>Tablero A-2</td><td>13/09/2026<div class="sub">Ana Torres</div></td><td><span class="st st-v">Vigente</span></td><td><a class="link" href="#">Acciones ▾</a></td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="panel" id="log">
+          <table><thead><tr><th>Fecha y hora</th><th>Acción</th><th>Usuario</th><th>Detalle</th></tr></thead>
+          <tbody>
+            <tr><td>12/10/2026 09:14</td><td class="act">Descarga</td><td>Pedro Huamán</td><td class="sub">Copia no controlada · hash 1c9e…</td></tr>
+            <tr><td>12/10/2026 09:12</td><td class="act">Visualización</td><td>Pedro Huamán</td><td class="sub">Visor</td></tr>
+            <tr><td>11/10/2026 17:40</td><td class="act">Impresión</td><td>Ana Torres</td><td class="sub">Desde el visor</td></tr>
+            <tr><td>20/09/2026 11:02</td><td class="act">Copia controlada emitida</td><td>Ana Torres</td><td class="sub">C002 → Auditor externo</td></tr>
+            <tr><td>13/09/2026 08:30</td><td class="act">Copia controlada emitida</td><td>Ana Torres</td><td class="sub">C001 → Almacén central</td></tr>
+          </tbody></table>
+          <div class="more"><span>Mostrando 5 de 48</span><button class="btn">Ver más</button></div>
+        </div>
+      </section>
+
+      <!-- 3. Barra lateral fija -->
+      <aside class="side">
+        <div class="cardx pad">
+          <button class="btn btn-pri btn-full">Ver documento</button>
+          <button class="btn btn-full">Descargar copia (PDF)</button>
+          <p class="hint">La copia descargada lleva tu nombre y la fecha; es una COPIA NO CONTROLADA.</p>
+        </div>
+
+        <div class="cardx pad">
+          <div class="label">Ficha</div>
+          <div class="dl">
+            <div class="row2">
+              <div><div class="label">Tipo</div><div class="v">Procedimiento</div></div>
+              <div><div class="label">Área</div><div class="v">Calidad</div></div>
+            </div>
+            <div class="row2">
+              <div><div class="label">Publicado</div><div class="v">12/09/2026</div></div>
+              <div><div class="label">Próx. revisión</div><div class="v">30/10/2026</div></div>
+            </div>
+            <div><div class="label" style="margin-bottom:6px">Responsables</div>
+              <div class="person"><span class="av">CV</span><div><div class="v">Carlos Vivanco</div><div class="sub">Autor</div></div></div>
+              <div class="person" style="margin-top:8px"><span class="av">LR</span><div><div class="v">Luis Ramos</div><div class="sub">Revisor</div></div></div>
+              <div class="person" style="margin-top:8px"><span class="av">MQ</span><div><div class="v">María Quispe</div><div class="sub">Aprobadora</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cardx pad">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="label">Actividad reciente</span>
+            <a class="link" href="#" data-go="log">Ver log</a>
+          </div>
+          <ul class="mini">
+            <li><span>Pedro Huamán descargó una copia</span><span class="when">hace 5 min</span></li>
+            <li><span>Pedro Huamán abrió el visor</span><span class="when">hace 7 min</span></li>
+            <li><span>Ana Torres imprimió</span><span class="when">ayer</span></li>
+            <li><span>Copia C002 emitida</span><span class="when">20/09</span></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div class="note">
+      <span class="ann">1</span>Encabezado fijo con estado, versión, confidencialidad, semáforo y acciones de gestión.
+      &nbsp; <span class="ann">2</span>Pestañas: crece solo la pestaña activa.
+      &nbsp; <span class="ann">3</span>Barra lateral fija: acciones de lectura, ficha y actividad reciente.
+      &nbsp; Datos ficticios. Debajo de 1100 px, la barra lateral sube sobre las pestañas.
+    </div>
+  </div>
+</div>
+<script>
+const tabs=document.querySelectorAll('.tab');
+function go(id){tabs.forEach(t=>t.classList.toggle('on',t.dataset.t===id));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===id));}
+tabs.forEach(t=>t.addEventListener('click',()=>go(t.dataset.t)));
+document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go);window.scrollTo({top:0,behavior:'smooth'});}));
+</script>
+</body>
+</html>

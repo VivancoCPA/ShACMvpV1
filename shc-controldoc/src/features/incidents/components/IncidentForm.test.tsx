@@ -34,6 +34,8 @@ const createMutateAsyncMock = vi.fn()
 vi.mock('../hooks/useIncidents', () => ({
   useCreateIncident: () => ({ mutateAsync: createMutateAsyncMock, isPending: false }),
   useUpdateIncident: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  // proteccion-documental (design.md D8) — una evidencia ya no es una URL estática.
+  useEvidenciaBlob: () => ({ blobUrl: null, isLoading: false, isError: false }),
 }))
 
 // subirEvidencia() se llama directo desde IncidentForm.tsx (no vía un hook) antes de armar el
@@ -57,6 +59,8 @@ let mockLocales: Local[] = []
 let mockIsLoading = false
 vi.mock('../hooks/useLocales', () => ({
   useLocales: () => ({ locales: mockLocales, isLoading: mockIsLoading, isError: false }),
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática.
+  usePlanoBlob: () => ({ planoUrl: null, isLoading: false, isError: false }),
 }))
 
 const localFixtures: Local[] = [

@@ -26,6 +26,8 @@ vi.mock('../hooks/useLocales', () => ({
   useLocal: () => ({ data: mockLocal, isLoading: mockIsLoading, isError: mockIsError }),
   useCrearLocal: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useActualizarLocal: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática.
+  usePlanoBlob: () => ({ planoUrl: null, isLoading: false, isError: false }),
 }))
 
 function renderPage() {

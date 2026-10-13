@@ -63,16 +63,6 @@ export interface SignDocumentPayload {
   pin: string
 }
 
-export interface RegisterAccessPayload {
-  accion: 'DESCARGA' | 'VISUALIZACION'
-  timestamp: string
-}
-
-export interface DownloadUrlResponse {
-  url: string
-  expiresAt: string
-}
-
 export async function patchDocumentStatus(
   id: string,
   payload: PatchDocumentStatusPayload,
@@ -83,30 +73,6 @@ export async function patchDocumentStatus(
 
 export async function signDocument(id: string, payload: SignDocumentPayload): Promise<Documento> {
   const response = await api.post<Documento>(`/api/documents/${id}/sign`, payload)
-  return response.data
-}
-
-export async function getDocumentDownloadUrl(id: string): Promise<DownloadUrlResponse> {
-  const response = await api.get<DownloadUrlResponse>(`/api/documents/${id}/download-url`)
-  return response.data
-}
-
-export async function registerDocumentAccess(
-  id: string,
-  payload: RegisterAccessPayload,
-): Promise<void> {
-  await api.post(`/api/documents/${id}/audit/access`, payload)
-}
-
-export interface ArchivoUrlResponse {
-  url: string
-  expiresAt: string
-  nombreArchivo: string
-  tipoArchivo: string
-}
-
-export async function getArchivoUrl(id: string): Promise<ArchivoUrlResponse> {
-  const response = await api.get<ArchivoUrlResponse>(`/api/documents/${id}/archivo`)
   return response.data
 }
 
@@ -172,12 +138,13 @@ export async function getArchivoOriginalUrl(
   return { blob, fileName }
 }
 
-export async function getArchivoDistribucionBlob(id: string): Promise<{ blob: Blob; fileName: string }> {
-  const response = await api.get(`/api/documents/${id}/archivo-distribucion`, { responseType: 'blob' })
-  const blob = response.data as Blob
-  const disposition = (response.headers as Record<string, string>)['content-disposition']
-  const fileName = getFileNameFromContentDisposition(disposition, `documento-${id}-distribucion.pdf`)
-  return { blob, fileName }
+// visor-documentos (design.md D1/D6) — GET /:id/visor siempre se consume como blob autenticado
+// vía esta instancia de axios (JWT adjunto por el interceptor), nunca como una URL estática
+// abierta con window.open. El endpoint decide el contenido según estado (vista previa generada,
+// PDF de distribución tal cual, o con el sello OBSOLETO) — el frontend no distingue esos casos.
+export async function getDocumentVisorBlob(id: string): Promise<Blob> {
+  const response = await api.get(`/api/documents/${id}/visor`, { responseType: 'blob' })
+  return response.data as Blob
 }
 
 export async function vincularQE(documentId: string, qualityEventId: string): Promise<Documento> {

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, FileDown, Loader2, Info, RotateCcw } from 'lucide-react'
+import { Eye, FileDown, Loader2, Info, RotateCcw, X } from 'lucide-react'
 
 import { useAuthStore } from '../../../stores/authStore'
-import { useChangeStatus, useDeleteDocument, useGetArchivoUrl, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
+import { useChangeStatus, useDeleteDocument, useExportarPdfControlado, useRestaurarDocumento } from '../hooks/useDocumentActions'
 import { useDocumentsByCode } from '../hooks/useDocuments'
 import { canAccessDocument, canManagePeriodicReview, getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
 import { useArea } from '../../areas/hooks/useAreas'
@@ -12,6 +12,7 @@ import { DocumentSignatureModal } from './DocumentSignatureModal'
 import { DocumentRejectModal } from './DocumentRejectModal'
 import { DocumentNuevaVersionModal } from './DocumentNuevaVersionModal'
 import { DocumentRevisionPeriodicaModal } from './DocumentRevisionPeriodicaModal'
+import { DocumentViewer } from './DocumentViewer'
 import { formatCalendarDateMedium } from '../../../utils/date.utils'
 import type { Documento, DocStatus } from '../../../types/documents.types'
 
@@ -54,13 +55,13 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
     }
     return 'none'
   })
+  const [showVisor, setShowVisor] = useState(false)
   const [showPdfPreview, setShowPdfPreview] = useState(false)
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
 
   const changeStatus = useChangeStatus(documento.id)
   const deleteDocument = useDeleteDocument(documento.id)
   const restaurar = useRestaurarDocumento(documento.id)
-  const { abrirArchivo, isLoading: isLoadingArchivo } = useGetArchivoUrl()
   const { exportar, isLoading: isLoadingExportar } = useExportarPdfControlado()
 
   if (!user) return null
@@ -131,8 +132,6 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
   }
 
   const hasFileAccess = canAccessDocument(documento.confidencialidad, user.rol, documento.rolesAutorizados ?? [])
-  const canVerArchivo = hasFileAccess && !!documento.archivoUrl
-  const canExportarPdf = documento.estado === 'PUBLICADO' && hasFileAccess && !!documento.archivoUrl
 
   // nueva-version-autor-permisos: docRole resuelto con la misma precedencia que el backend
   // (AUTOR → REVISOR → APROBADOR → JEFE_CALIDAD → OPERARIO), no un flag `isJefeCalidad` suelto
@@ -144,6 +143,22 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
   const isAprobador = documento.aprobadorId === user.id
   const docRole = resolveDocRoleForUser(documento, user)
   const perms = getDocumentPermissions(documento.estado, docRole, { isAssignedAuthor: docRole === 'AUTOR' })
+  // visor-documentos (design.md D2) + autor-lectura-publicado (2026-10-08): "Ver documento" usa
+  // canRead de la matriz (AUTOR ya tiene canRead=true en PUBLICADO/OBSOLETO, igual que
+  // REVISOR/APROBADOR), con el mismo OR de la excepción CA-34 que aplica en el backend para
+  // OBSOLETO (JEFE_CONTROL_DOCUMENTARIO/ALTA_DIRECCION ven el visor aunque su docRole resuelto
+  // sea OPERARIO, sin canRead en ese estado) — sin esto, ese caso quedaría bloqueado del visor
+  // pese a tener acceso histórico reconocido. No requiere !!documento.archivoUrl (a diferencia de
+  // "Ver archivo"/"Exportar PDF"): el backend decide qué mostrar según estado.
+  const canVerDocumento =
+    hasFileAccess &&
+    (perms.canRead || (documento.estado === 'OBSOLETO' && (user.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user.rol === 'ALTA_DIRECCION')))
+  // proteccion-documental (design.md D1) — "Descargar copia (PDF)" (antes "Exportar PDF
+  // controlado") ya no depende de `documento.archivoUrl` (ese campo nunca existió en el backend
+  // real); depende del mismo `canRead` que "Ver documento" y del estado vigente. OBSOLETO queda
+  // sin ninguna acción de descarga (RN-DOC-003) — solo "Ver documento".
+  const canDescargarCopia =
+    (documento.estado === 'PUBLICADO' || documento.estado === 'EN_REVISION_PERIODICA') && hasFileAccess && perms.canRead
   const faltaAsignacion = documento.estado === 'BORRADOR' && (!documento.revisorId || !documento.aprobadorId)
   const puedeEditarEnBorrador = documento.estado === 'BORRADOR' && perms.canEdit
   const canSendToReview = puedeEditarEnBorrador && !faltaAsignacion
@@ -177,7 +192,7 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
   )
 
   const hasAnyAction =
-    canVerArchivo || canExportarPdf ||
+    canVerDocumento || canDescargarCopia ||
     canSendToReview || canSendToReviewBloqueadoPorAsignacion || canDelete || canApproveReview || canRejectReview ||
     canCancelReview || canSign || canRejectAprobacion || canStartPeriodic ||
     canCreateVersion || canStartNewVersion
@@ -196,35 +211,35 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {canVerArchivo && (
+        {canVerDocumento && (
           <button
             type="button"
-            onClick={() => void abrirArchivo(documento.id)}
-            disabled={isLoadingArchivo}
-            className="inline-flex items-center gap-2 rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+            onClick={() => setShowVisor(true)}
+            className="inline-flex items-center gap-2 rounded-md bg-coral px-4 py-2.5 text-sm font-medium text-white hover:bg-coral-dark"
           >
-            {isLoadingArchivo
-              ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-              : <FileText size={14} aria-hidden="true" />}
-            {t('actions.verArchivo')}
+            <Eye size={14} aria-hidden="true" />
+            {t('visor.verDocumento')}
           </button>
         )}
 
-        {canExportarPdf && (
-          <button
-            type="button"
-            onClick={() => setShowPdfPreview(true)}
-            disabled={isLoadingExportar}
-            className="inline-flex items-center gap-2 rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
-          >
-            {isLoadingExportar
-              ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-              : <FileDown size={14} aria-hidden="true" />}
-            {isLoadingExportar ? t('actions.exportando') : t('actions.exportarPdfControlado')}
-          </button>
+        {canDescargarCopia && (
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => setShowPdfPreview(true)}
+              disabled={isLoadingExportar}
+              className="inline-flex items-center gap-2 rounded-md border border-hairline bg-canvas px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-60 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
+            >
+              {isLoadingExportar
+                ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                : <FileDown size={14} aria-hidden="true" />}
+              {isLoadingExportar ? t('actions.exportando') : t('actions.descargarCopia')}
+            </button>
+            <p className="text-xs text-muted dark:text-on-dark-soft">{t('actions.descargarCopiaAyuda')}</p>
+          </div>
         )}
 
-        {(canVerArchivo || canExportarPdf) && (canSendToReview || canSendToReviewBloqueadoPorAsignacion || canApproveReview || canRejectReview || canCancelReview || canSign || canRejectAprobacion || canStartPeriodic || canCreateVersion || canStartNewVersion || canDelete) && (
+        {(canVerDocumento || canDescargarCopia) && (canSendToReview || canSendToReviewBloqueadoPorAsignacion || canApproveReview || canRejectReview || canCancelReview || canSign || canRejectAprobacion || canStartPeriodic || canCreateVersion || canStartNewVersion || canDelete) && (
           <div className="h-6 w-px bg-hairline dark:bg-hairline/20" aria-hidden="true" />
         )}
 
@@ -484,6 +499,34 @@ export function DocumentActionPanel({ documento, initialAction, getName }: Docum
                   : <FileDown size={14} aria-hidden="true" />}
                 {t('pdf.download')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showVisor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm dark:bg-ink/60">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="visor-documento-title"
+            className="flex h-[90vh] w-full max-w-4xl flex-col rounded-xl bg-canvas shadow-xl dark:bg-surface-dark"
+          >
+            <div className="flex items-center justify-between border-b border-hairline px-4 py-3 dark:border-hairline/20">
+              <h2 id="visor-documento-title" className="text-sm font-semibold text-ink dark:text-on-dark">
+                {t('visor.tituloModal')} · {documento.codigo}
+              </h2>
+              <button
+                type="button"
+                aria-label={t('visor.cerrar')}
+                onClick={() => setShowVisor(false)}
+                className="rounded-md p-1.5 text-muted hover:bg-surface-soft dark:text-on-dark-soft dark:hover:bg-surface-dark-elevated"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden p-2">
+              <DocumentViewer documentoId={documento.id} />
             </div>
           </div>
         </div>

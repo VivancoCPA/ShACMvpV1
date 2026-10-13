@@ -31,6 +31,40 @@ function buildMinimalDistribucionPdfBytes(doc: Documento): Uint8Array {
   return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
 }
 
+// visor-documentos — vista previa mock para BORRADOR/EN_REVISION/EN_APROBACION. Bytes de PDF
+// reales generados localmente (mismo criterio que buildMinimalDistribucionPdfBytes/
+// buildMinimalDocxBytes, RN-DOC-009 adjustment en document-pdf-security) — nunca una URL externa
+// fija, a diferencia del handler mock de /archivo.
+function buildMinimalVistaPreviaPdfBytes(doc: Documento): Uint8Array {
+  const pdf = new jsPDF()
+  pdf.setFontSize(14)
+  pdf.setTextColor(139, 0, 0)
+  pdf.text(`VISTA PREVIA — NO CONTROLADO — ${doc.estado}`, 20, 20)
+  pdf.setTextColor(0, 0, 0)
+  pdf.setFontSize(16)
+  pdf.text(`${doc.codigo} — ${doc.titulo}`, 20, 40)
+  pdf.setFontSize(11)
+  pdf.text(`Versión ${doc.version} · Estado: ${doc.estado}`, 20, 50)
+  pdf.text('Vista previa generada desde el archivo original (documento mock — sin backend real)', 20, 60)
+  return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
+}
+
+// visor-documentos — mismo PDF de distribución, con el sello OBSOLETO agregado al vuelo (nunca
+// modifica el fixture ni el "archivo" guardado — mismo criterio que el backend real, que lo
+// aplica sobre una copia en memoria, nunca sobre el archivo en disco).
+function buildObsoletoPdfBytes(doc: Documento): Uint8Array {
+  const pdf = new jsPDF()
+  pdf.setFontSize(16)
+  pdf.text(`${doc.codigo} — ${doc.titulo}`, 20, 40)
+  pdf.setFontSize(11)
+  pdf.text(`Versión ${doc.version} · Estado: ${doc.estado}`, 20, 50)
+  pdf.text('PDF de distribución (documento mock — sin backend real)', 20, 60)
+  pdf.setFontSize(18)
+  pdf.setTextColor(200, 0, 0)
+  pdf.text('OBSOLETO — No usar', 20, 20)
+  return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
+}
+
 function nombreArea(areaId: string): string {
   return getAreasStore().find((a) => a.id === areaId)?.nombre ?? areaId
 }
@@ -945,37 +979,6 @@ export const documentHandlers = [
     return ok(updated)
   }),
 
-  // GET /api/documents/:id/archivo — signed view URL + VISUALIZACION audit (RN-DOC-008/009)
-  http.get('/api/documents/:id/archivo', async ({ params }) => {
-    await delay(LATENCY)
-
-    const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
-
-    const doc = store[idx]
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
-    const ext = doc.archivoUrl?.split('.').pop() ?? 'pdf'
-    const tipoArchivo = doc.tipoArchivo ?? 'application/pdf'
-    const nombreArchivo = `${doc.codigo}-${doc.version}.${ext}`
-    const now = new Date().toISOString()
-
-    store[idx] = {
-      ...doc,
-      actualizadoEn: now,
-      auditTrail: [
-        ...doc.auditTrail,
-        makeAuditEntry(doc.id, 'VISUALIZACION', { timestamp: now }),
-      ],
-    }
-
-    return ok({
-      url: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/pdf-sample.pdf',
-      expiresAt,
-      nombreArchivo,
-      tipoArchivo,
-    })
-  }),
-
   // POST /api/documents/:id/nueva-version — create new version draft (RN-DOC-002)
   http.post('/api/documents/:id/nueva-version', async ({ params, request }) => {
     await delay(LATENCY)
@@ -1082,7 +1085,10 @@ export const documentHandlers = [
     return ok(newDoc, 201)
   }),
 
-  // POST /api/documents/:id/exportar-pdf — watermarked PDF for controlled copy (RN-DOC-007)
+  // POST /api/documents/:id/exportar-pdf — watermarked PDF for controlled copy (RN-DOC-007).
+  // proteccion-documental (design.md D1) — única descarga de un documento vigente: agrega el
+  // mismo gate de confidencialidad/CanRead que ya usan archivo-original/visor (antes solo
+  // validaba tenant + estado), y amplía los estados permitidos a PUBLICADO/EN_REVISION_PERIODICA.
   http.post('/api/documents/:id/exportar-pdf', async ({ params, request }) => {
     await delay(LATENCY)
 
@@ -1090,8 +1096,23 @@ export const documentHandlers = [
     if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
 
     const doc = store[idx]
-    if (doc.estado !== 'PUBLICADO') {
-      return err('Solo se puede exportar documentos en estado PUBLICADO', 409)
+
+    const requestUser = getUserFromRequest(request)
+    const userRole = requestUser?.rol ?? 'OPERARIO'
+    const tieneAccesoPorConfidencialidad =
+      doc.confidencialidad === 'PUBLICO' || doc.confidencialidad === 'INTERNO'
+        ? true
+        : doc.confidencialidad === 'CONFIDENCIAL'
+          ? CONFIDENCIAL_ROLES.has(userRole)
+          : ((doc.rolesAutorizados as string[] | undefined) ?? []).includes(userRole)
+    if (!tieneAccesoPorConfidencialidad) return err('Documento no encontrado', 404)
+
+    const docRole = getDocRoleForUser(doc, requestUser)
+    const permisos = getDocumentPermissions(doc.estado, docRole, { isAssignedAuthor: docRole === 'AUTOR' })
+    if (!permisos.canRead) return err('No tenés permiso para descargar la copia de este documento', 403)
+
+    if (doc.estado !== 'PUBLICADO' && doc.estado !== 'EN_REVISION_PERIODICA') {
+      return err('Solo se puede exportar el PDF controlado de un documento vigente (PUBLICADO o EN_REVISION_PERIODICA)', 409)
     }
 
     const body = await request.json() as { userNombreCompleto: string }
@@ -1160,25 +1181,6 @@ export const documentHandlers = [
         'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     })
-  }),
-
-  // GET /api/documents/:id/download-url — signed URL (RN-DOC-009)
-  http.get('/api/documents/:id/download-url', async ({ params, request }) => {
-    await delay(LATENCY)
-
-    const url = new URL(request.url)
-    if (url.searchParams.get('expired') === 'true') {
-      return HttpResponse.json(
-        { success: false, data: null, message: 'URL de descarga expirada' },
-        { status: 403 },
-      )
-    }
-
-    const doc = store.find((d) => d.id === params.id)
-    if (!doc || doc.empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
-
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
-    return ok({ url: `mock://signed-url-${params.id as string}`, expiresAt })
   }),
 
   // PATCH /api/documents/:id/confirmar-revision — confirm periodic review, renew next review date
@@ -1291,28 +1293,6 @@ export const documentHandlers = [
     return ok(updated)
   }),
 
-  // POST /api/documents/:id/audit/access — register DESCARGA or VISUALIZACION (RN-DOC-008)
-  http.post('/api/documents/:id/audit/access', async ({ params, request }) => {
-    await delay(LATENCY)
-
-    const idx = store.findIndex((d) => d.id === params.id)
-    if (idx === -1 || store[idx].empresaId !== getActiveEmpresaId()) return err('Documento no encontrado', 404)
-
-    const body = await request.json() as Record<string, unknown>
-    const accion = body.accion as string
-    const timestamp = (body.timestamp as string | undefined) ?? new Date().toISOString()
-
-    store[idx] = {
-      ...store[idx],
-      auditTrail: [
-        ...store[idx].auditTrail,
-        makeAuditEntry(params.id as string, accion, { timestamp }),
-      ],
-    }
-
-    return ok({ success: true })
-  }),
-
   // GET /api/documents/:id/archivo-original — download original editable file as Blob (RN-DOC-013, RN-DOC-016)
   http.get('/api/documents/:id/archivo-original', async ({ params, request }) => {
     await delay(LATENCY)
@@ -1407,8 +1387,10 @@ export const documentHandlers = [
     return ok({ archivoOriginalUrl: mockUrl, archivoOriginalNombre: mockNombre })
   }),
 
-  // GET /api/documents/:id/archivo-distribucion — download distribution PDF as Blob (RN-DOC-018)
-  http.get('/api/documents/:id/archivo-distribucion', async ({ params }) => {
+  // GET /api/documents/:id/visor — visor-documentos. Devuelve bytes PDF inline (nunca
+  // attachment: el frontend lo consume como blob para pdf.js, no como descarga). Replica el
+  // mismo gate de permisos que archivo-original/archivo-distribucion — ninguna regla nueva.
+  http.get('/api/documents/:id/visor', async ({ params, request }) => {
     await delay(LATENCY)
 
     const idx = store.findIndex((d) => d.id === params.id)
@@ -1416,32 +1398,51 @@ export const documentHandlers = [
 
     const doc = store[idx]
 
-    if (!doc.archivoDistribucionUrl) {
-      return err('Documento sin PDF de distribución', 404)
+    const requestUser = getUserFromRequest(request)
+    const userRole = requestUser?.rol ?? 'OPERARIO'
+
+    const tieneAccesoPorConfidencialidad =
+      doc.confidencialidad === 'PUBLICO' || doc.confidencialidad === 'INTERNO'
+        ? true
+        : doc.confidencialidad === 'CONFIDENCIAL'
+          ? CONFIDENCIAL_ROLES.has(userRole)
+          : ((doc.rolesAutorizados as string[] | undefined) ?? []).includes(userRole)
+    if (!tieneAccesoPorConfidencialidad) return err('Documento no encontrado', 404)
+
+    const docRole = getDocRoleForUser(doc, requestUser)
+    const perms = getDocumentPermissions(doc.estado, docRole, { isAssignedAuthor: docRole === 'AUTOR' })
+
+    // design.md D2: canRead de la matriz, con el OR de la excepción CA-34 (mismo chequeo inline
+    // que ya usa el handler de archivo-original) cuando Estado == OBSOLETO.
+    const isHistoricalAccess =
+      doc.estado === 'OBSOLETO' &&
+      (userRole === 'JEFE_CONTROL_DOCUMENTARIO' || userRole === 'ALTA_DIRECCION')
+    if (!(perms.canRead || isHistoricalAccess)) {
+      return err('No tenés permiso para ver este documento', 403)
     }
 
-    const fileName = `${doc.codigo}-${doc.version}-distribucion.pdf`
-    const now = new Date().toISOString()
+    let bytes: Uint8Array
+    if (doc.estado === 'BORRADOR' || doc.estado === 'EN_REVISION' || doc.estado === 'EN_APROBACION') {
+      if (!doc.archivoOriginalUrl) return err('Este documento aún no tiene archivo para visualizar', 404)
+      bytes = buildMinimalVistaPreviaPdfBytes(doc)
+    } else if (doc.estado === 'OBSOLETO') {
+      if (!doc.archivoDistribucionUrl) return err('Este documento aún no tiene archivo para visualizar', 404)
+      bytes = buildObsoletoPdfBytes(doc)
+    } else {
+      if (!doc.archivoDistribucionUrl) return err('Este documento aún no tiene archivo para visualizar', 404)
+      bytes = buildMinimalDistribucionPdfBytes(doc)
+    }
 
     store[idx] = {
       ...doc,
-      actualizadoEn: now,
-      auditTrail: [
-        ...doc.auditTrail,
-        makeAuditEntry(doc.id, 'DESCARGA', {
-          timestamp: now,
-          campoModificado: 'archivo',
-          valorNuevo: fileName,
-        }),
-      ],
+      auditTrail: [...doc.auditTrail, makeAuditEntry(doc.id, 'VISUALIZACION', { timestamp: new Date().toISOString() })],
     }
 
-    const bytes = buildMinimalDistribucionPdfBytes(doc)
     return new HttpResponse(bytes.buffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': 'inline',
       },
     })
   }),

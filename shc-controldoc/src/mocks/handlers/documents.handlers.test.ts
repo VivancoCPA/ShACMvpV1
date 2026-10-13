@@ -130,52 +130,16 @@ describe('documents.handlers — GET /api/documents/:id/archivo-original', () =>
   })
 })
 
-describe('documents.handlers — GET /api/documents/:id/archivo-distribucion', () => {
-  it('devuelve un archivo binario con Content-Disposition cuando archivoDistribucionUrl existe (CA-DOC-2)', async () => {
-    // doc-001 está PUBLICADO y tiene archivoDistribucionUrl
-    const { status, data, headers } = await call(
-      api.get<string>('/api/documents/doc-001/archivo-distribucion', authHeaders('operario@shac.pe')),
-    )
-    expect(status).toBe(200)
-    expect(headers['content-disposition']).toContain('attachment')
-    expect(headers['content-disposition']).toContain('POL-CD-001-v2.0-distribucion.pdf')
-    expect(typeof data).toBe('string')
-    expect((data as string).length).toBeGreaterThan(0)
-  })
-
-  it('registra una entrada DESCARGA en el auditTrail al descargar (RN-DOC-008, CA-DOC-3)', async () => {
-    const before = getDocumentsStore().find((d) => d.id === 'doc-001')!.auditTrail.length
-    await call(api.get('/api/documents/doc-001/archivo-distribucion', authHeaders('operario@shac.pe')))
-    const after = getDocumentsStore().find((d) => d.id === 'doc-001')!
-    expect(after.auditTrail.length).toBe(before + 1)
-    expect(after.auditTrail[after.auditTrail.length - 1].accion).toBe('DESCARGA')
-  })
-
-  it('devuelve 404 si el documento no tiene archivoDistribucionUrl', async () => {
-    const store = getDocumentsStore()
-    const doc = store.find((d) => !d.archivoDistribucionUrl)
-    expect(doc).toBeDefined()
-    const { status } = await call(
-      api.get(`/api/documents/${doc!.id}/archivo-distribucion`, authHeaders('operario@shac.pe')),
-    )
-    expect(status).toBe(404)
-  })
-
-  it('devuelve 404 para un documento inexistente', async () => {
-    const { status } = await call(
-      api.get('/api/documents/doc-no-existe/archivo-distribucion', authHeaders('operario@shac.pe')),
-    )
-    expect(status).toBe(404)
-  })
-
-  it('devuelve un .pdf genuinamente válido, no un placeholder de texto plano (CA-DOC-4)', async () => {
-    const response = await api.get('/api/documents/doc-001/archivo-distribucion', {
-      ...authHeaders('operario@shac.pe'),
-      responseType: 'arraybuffer',
-    })
-    const bytes = new Uint8Array(response.data as ArrayBuffer)
-    const header = Buffer.from(bytes.slice(0, 5)).toString('ascii')
-    expect(header).toBe('%PDF-')
+// proteccion-documental (design.md D1) — GET /:id/archivo-distribucion se retira: el maestro ya
+// no se descarga directamente, solo vía la copia controlada (POST /:id/exportar-pdf). Sin
+// handler MSW, la ruta ya no existe — el server de test está configurado con
+// onUnhandledRequest: 'error' (línea 16), así que la petición ni siquiera devuelve una
+// respuesta HTTP: la promesa de axios se rechaza directamente (no hay error.response).
+describe('documents.handlers — GET /api/documents/:id/archivo-distribucion ya no existe', () => {
+  it('no hay handler registrado para esta ruta', async () => {
+    await expect(
+      api.get('/api/documents/doc-001/archivo-distribucion', authHeaders('operario@shac.pe')),
+    ).rejects.toThrow()
   })
 })
 

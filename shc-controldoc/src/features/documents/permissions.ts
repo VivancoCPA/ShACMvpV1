@@ -108,9 +108,13 @@ function getBasePermissions(
       }
 
     case 'PUBLICADO':
+      // autor-lectura-publicado (2026-10-08, decisión de Toño): AUTOR lee su propio documento
+      // publicado igual que REVISOR/APROBADOR — el PRD §4.2 dice "Sin acceso" para AUTOR en
+      // PUBLICADO, pero eso se interpreta como "sin edición", no "sin lectura". No toca
+      // canEdit/canDelete/canStartReview (siguen en false para AUTOR).
       switch (rol) {
         case 'AUTOR':
-          return { ...DENY_ALL }
+          return { ...DENY_ALL, canRead: true }
         case 'REVISOR':
           return { ...DENY_ALL, canRead: true }
         case 'APROBADOR':
@@ -123,9 +127,10 @@ function getBasePermissions(
 
     case 'OBSOLETO':
       // RN-DOC-003: OBSOLETO is read-only. No write actions allowed for any role.
+      // autor-lectura-publicado: mismo razonamiento que PUBLICADO — AUTOR lee, no edita.
       switch (rol) {
         case 'AUTOR':
-          return { ...DENY_ALL }
+          return { ...DENY_ALL, canRead: true }
         case 'REVISOR':
           return { ...DENY_ALL, canRead: true }
         case 'APROBADOR':

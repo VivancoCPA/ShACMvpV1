@@ -104,8 +104,6 @@ export interface Documento {
   fechaObsolescencia?: string
   motivoVersion?: string
   descripcion?: string
-  archivoUrl?: string
-  tipoArchivo?: string
   hashArchivo?: string
   archivoOriginalUrl: string | null
   archivoOriginalNombre: string | null

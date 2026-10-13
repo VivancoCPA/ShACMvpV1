@@ -30,6 +30,13 @@ export async function obtenerLocal(id: string): Promise<LocalConZonas> {
   return response.data
 }
 
+// proteccion-documental (design.md D7) — el plano ya no se sirve como URL estática; se obtiene
+// siempre como blob autenticado vía la instancia `api` (JWT adjunto por el interceptor existente).
+export async function getPlanoBlob(localId: string): Promise<Blob> {
+  const response = await api.get(`/api/locales/${localId}/plano`, { responseType: 'blob' })
+  return response.data
+}
+
 // El header Content-Type se elimina explícitamente (en vez de fijarlo a
 // 'multipart/form-data') para que axios/el navegador calculen el boundary
 // real del FormData; fijarlo a mano rompería el parseo en el handler MSW.

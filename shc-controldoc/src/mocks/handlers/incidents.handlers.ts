@@ -1,4 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
+import { jsPDF } from 'jspdf'
+import { buildMinimalPngBytes } from '../utils/minimalPng'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
 import { localFixtures, zonaFixtures } from '../fixtures/locales.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
@@ -150,6 +152,33 @@ export const incidentHandlers = [
     if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     return ok(inc)
+  }),
+
+  // GET /api/incidents/:incidenteId/evidencias/:evidenciaId/archivo — proteccion-documental
+  // (design.md D8): una evidencia ya no es una URL estática (incluidas las URLs externas de
+  // placeholder en los fixtures); se consume vía blob autenticado. Mismo gate de tenant que el
+  // resto de Incidentes. Bytes reales (PNG/PDF mínimos), no un placeholder de texto con extensión
+  // falsa — mismo criterio que buildMinimalPngBytes/buildMinimalDistribucionPdfBytes.
+  http.get('/api/incidents/:incidenteId/evidencias/:evidenciaId/archivo', async ({ params }) => {
+    await delay(LATENCY)
+
+    const inc = incidents.find((i) => i.id === params.incidenteId)
+    if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
+
+    const evidencia = inc.evidencias?.find((e) => e.id === params.evidenciaId)
+    if (!evidencia) return err('incidents:errors.notFound', 404)
+
+    if (evidencia.tipo === 'imagen') {
+      const bytes = buildMinimalPngBytes()
+      return new HttpResponse(bytes.buffer, { status: 200, headers: { 'Content-Type': 'image/png' } })
+    }
+
+    const pdf = new jsPDF()
+    pdf.setFontSize(14)
+    pdf.text(`Evidencia: ${evidencia.nombre}`, 20, 30)
+    pdf.text('Documento mock — sin backend real', 20, 40)
+    const bytes = new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
+    return new HttpResponse(bytes.buffer, { status: 200, headers: { 'Content-Type': 'application/pdf' } })
   }),
 
   // POST /api/incidents — create

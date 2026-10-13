@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../stores/authStore'
 import { queryClient } from '../../../lib/queryClient'
 import { createNotificationsHubConnection } from '../../../lib/notificationsHub'
 import { QUERY_KEYS } from './useNotifications'
+import { QUERY_KEYS as DOCUMENTS_QUERY_KEYS } from '../../documents/constants'
 import type { NotificationToastHandle } from './useNotificationToast'
 import type { Notificacion } from '../../../types/notification.types'
 
@@ -34,6 +35,14 @@ export function useNotificationsHub(toastHandle: NotificationToastHandle): void 
       // que el heurístico de diffing de useNotificationToast no lo duplique.
       toastHandle.markSeen(notificacion.createdAt)
       toast(notificacion.mensaje)
+
+      // fix-log-refresco-inmediato: una acción de OTRO usuario sobre un documento (p.ej. el
+      // revisor aprueba mientras el autor tiene el detalle abierto) no se ve hasta recargar sin
+      // esto — refetchOnWindowFocus está deliberadamente apagado a nivel global.
+      if (notificacion.entidadTipo === 'DOCUMENTO') {
+        void queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEYS.documents.detail(notificacion.entidadId) })
+        void queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEYS.documents.all })
+      }
     })
 
     // Un fallo de conexión (backend real inalcanzable) no debe bloquear la app — el polling de

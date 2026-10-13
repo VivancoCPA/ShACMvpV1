@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useLocales } from '../hooks/useLocales'
+import { useLocales, usePlanoBlob } from '../hooks/useLocales'
 import { useIncidentList } from '../hooks/useIncidentList'
 import { IncidentMapCanvas } from '../components/IncidentMapCanvas'
 import { IncidentMapSidePanel } from '../components/IncidentMapSidePanel'
@@ -18,6 +18,9 @@ export function IncidentMapView() {
   const mapLocalParam = searchParams.get('mapLocal')
   const selectedLocalId = mapLocalParam ?? activeLocales[0]?.id ?? ''
   const selectedLocal = activeLocales.find((l) => l.id === selectedLocalId)
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado.
+  const { planoUrl } = usePlanoBlob(selectedLocal?.planoPngUrl ? selectedLocal.id : undefined)
 
   const { incidentes } = useIncidentList()
 
@@ -68,7 +71,7 @@ export function IncidentMapView() {
           <IncidentMapCanvas
             incidentes={incidentes}
             localId={selectedLocalId}
-            planoPngUrl={selectedLocal?.planoPngUrl}
+            planoPngUrl={planoUrl ?? undefined}
             onGroupClick={(group) => setSelectedGroup(group)}
           />
         </div>

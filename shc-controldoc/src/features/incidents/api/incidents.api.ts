@@ -35,6 +35,16 @@ export async function getIncident(id: string): Promise<Incidente> {
   return response.data
 }
 
+// proteccion-documental (design.md D8) — una evidencia ya no se sirve como URL estática; se
+// obtiene siempre como blob autenticado vía la instancia `api` (JWT adjunto por el interceptor
+// existente).
+export async function getEvidenciaBlob(incidenteId: string, evidenciaId: string): Promise<Blob> {
+  const response = await api.get(`/api/incidents/${incidenteId}/evidencias/${evidenciaId}/archivo`, {
+    responseType: 'blob',
+  })
+  return response.data
+}
+
 export async function createIncident(data: CreateIncidentInput): Promise<Incidente> {
   const response = await api.post<Incidente>('/api/incidents', data)
   return response.data

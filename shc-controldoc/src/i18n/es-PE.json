@@ -278,9 +278,9 @@
       "accessError": "No tienes acceso a esta acción."
     },
     "actions": {
-      "verArchivo": "Ver archivo original",
       "exportarPdf": "Exportar PDF controlado",
-      "exportarPdfControlado": "Exportar PDF controlado",
+      "descargarCopia": "Descargar copia (PDF)",
+      "descargarCopiaAyuda": "La copia descargada lleva tu nombre y la fecha; es una COPIA NO CONTROLADA",
       "exportando": "Exportando…",
       "errorExportar": "No se pudo generar el PDF. Intente nuevamente.",
       "delete": {
@@ -348,6 +348,23 @@
       "previewNote": "La vista previa muestra el documento como se verá al imprimir.",
       "download": "Descargar PDF",
       "cancel": "Cancelar"
+    },
+    "visor": {
+      "verDocumento": "Ver documento",
+      "tituloModal": "Visor de documento",
+      "generandoVistaPrevia": "Generando vista previa…",
+      "errorGenerico": "No se pudo cargar el documento. Intenta de nuevo.",
+      "sinArchivoParaVisualizar": "Este documento aún no tiene archivo para visualizar",
+      "reintentar": "Reintentar",
+      "cerrar": "Cerrar",
+      "paginaAnterior": "Página anterior",
+      "paginaSiguiente": "Página siguiente",
+      "paginaDe": "Página {{actual}} de {{total}}",
+      "acercar": "Acercar",
+      "alejar": "Alejar",
+      "ajustarAlAncho": "Ajustar al ancho",
+      "imprimir": "Imprimir",
+      "imprimiendo": "Preparando impresión…"
     },
     "versiones": {
       "vigente": "Versión vigente",
