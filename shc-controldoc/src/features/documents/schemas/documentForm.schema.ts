@@ -1,9 +1,10 @@
 import { z } from 'zod'
 import { differenceInCalendarDays } from 'date-fns'
 import { DOC_REVISION_MIN_GAP_DAYS } from '../../../config/businessRules.config'
-import { DOCUMENT_AUTHORIZED_ROLES } from '../constants'
+import { DOCUMENT_AUTHORIZED_ROLES, TIPOS_CON_ORIGINAL_PDF } from '../constants'
 
 const RN_DOC_020_MESSAGE = `La próxima revisión debe ser al menos ${DOC_REVISION_MIN_GAP_DAYS} días después de la fecha de vigencia.`
+const RN_DOC_021_MESSAGE = 'Para este tipo de documento, el archivo original debe ser Word (.docx) o Excel (.xlsx).'
 
 const userRoleEnum = z.enum(DOCUMENT_AUTHORIZED_ROLES)
 
@@ -36,6 +37,21 @@ export const documentFormSchema = z
         inclusive: true,
         path: ['rolesAutorizados'],
         message: 'Debes seleccionar al menos un rol autorizado para documentos RESTRINGIDO.',
+      })
+    }
+
+    // RN-DOC-021: archivoOriginalFile solo puede ser un PDF cuando tipo está en
+    // TIPOS_CON_ORIGINAL_PDF (INF/MAT/PLAN). Se revalida con cualquier combinación de valores
+    // del formulario — cambiar tipo después de elegir el archivo (o al revés) se detecta igual.
+    if (
+      data.archivoOriginalFile &&
+      data.archivoOriginalFile.type === 'application/pdf' &&
+      !TIPOS_CON_ORIGINAL_PDF.includes(data.tipo)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['archivoOriginalFile'],
+        message: RN_DOC_021_MESSAGE,
       })
     }
 

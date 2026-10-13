@@ -6,6 +6,7 @@ import { setupServer } from 'msw/node'
 import { documentHandlers } from '../../../mocks/handlers/documents.handlers'
 import { useAuthStore } from '../../../stores/authStore'
 import { DocumentReplaceArchivoOriginalModal } from './DocumentReplaceArchivoOriginalModal'
+import type { DocType } from '../../../types/documents.types'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -29,12 +30,13 @@ afterEach(() => {
 })
 afterAll(() => server.close())
 
-function renderModal(onClose: () => void, archivoOriginalNombre?: string | null) {
+function renderModal(onClose: () => void, archivoOriginalNombre?: string | null, tipo: DocType = 'PRC') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <DocumentReplaceArchivoOriginalModal
         documentId="doc-004"
+        tipo={tipo}
         archivoOriginalNombre={archivoOriginalNombre}
         onClose={onClose}
       />
@@ -78,5 +80,29 @@ describe('DocumentReplaceArchivoOriginalModal', () => {
     await userEvent.click(confirmBtn)
 
     await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  // original-pdf-tipos-permitidos (RN-DOC-021)
+  it('accepts a PDF when tipo allows it', async () => {
+    const { container } = renderModal(vi.fn(), null, 'PLAN')
+
+    const file = new File(['%PDF-1.4'], 'plan.pdf', { type: 'application/pdf' })
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
+    await userEvent.upload(input, file)
+
+    expect(screen.getByText('archivo.original.modal.confirmar')).not.toBeDisabled()
+    expect(screen.queryByText('form.error_file_type')).not.toBeInTheDocument()
+  })
+
+  it('rejects a PDF when tipo does not allow it', async () => {
+    const { container } = renderModal(vi.fn(), null, 'PRC')
+
+    const file = new File(['%PDF-1.4'], 'procedimiento.pdf', { type: 'application/pdf' })
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
+    // applyAccept: false — ver el mismo comentario en FileUploadField.test.tsx.
+    await userEvent.upload(input, file, { applyAccept: false })
+
+    expect(screen.getByText('form.error_file_type')).toBeInTheDocument()
+    expect(screen.getByText('archivo.original.modal.confirmar')).toBeDisabled()
   })
 })

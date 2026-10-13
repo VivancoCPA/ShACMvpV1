@@ -2,7 +2,7 @@
 import { jsPDF } from 'jspdf'
 import { documentFixtures } from '../fixtures/documents.fixtures'
 import { createCambioEstadoNotification, createAsignacionNotification } from '../fixtures/notificationGeneration'
-import { DOC_STATUS_TRANSITIONS, DOCUMENT_ASIGNACION_ELIGIBLE_ROLES } from '../../features/documents/constants'
+import { DOC_STATUS_TRANSITIONS, DOCUMENT_ASIGNACION_ELIGIBLE_ROLES, TIPOS_CON_ORIGINAL_PDF } from '../../features/documents/constants'
 import { getUsersStore } from '../fixtures/auth.fixtures'
 import { getEmpresasActivasForUsuario } from '../fixtures/empresas.fixtures'
 import { buildMinimalDocxBytes } from '../utils/minimalDocx'
@@ -20,6 +20,39 @@ import type { UserRole } from '../../types/auth.types'
 import type { AuditTrailEntry } from '../../types/documents.types'
 import type { QEAuditTrailEntry } from '../../features/quality-events/types/qualityEvent.types'
 import type { AuditTrailEntry as NCAuditTrailEntry } from '../../features/nonconformities/types/nonconformity.types'
+
+const MIME_PDF = 'application/pdf'
+const MIME_OFFICE = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+])
+
+// original-pdf-tipos-permitidos (RN-DOC-021, design.md D6): mismo patrón que
+// locales.handlers.ts validatePlano — función pura exportada para poder probarla sin depender
+// del transporte real de un File por HTTP. Valida por MIME type (`file.type`), no por extensión
+// del nombre: en Node (MSW `request.formData()` reconstruyendo el multipart recibido por axios/
+// jsdom) el nombre original del archivo no sobrevive el viaje de ida y vuelta (termina como
+// "blob"), pero el `type` sí — mismo criterio que ya usa FileUploadField.tsx en el cliente
+// (ACCEPTED_TYPES_ORIGINAL es un Set de MIME types, no de extensiones). El mock no puede
+// inspeccionar la firma binaria real del archivo; el backend real sí valida ambas.
+export function validateArchivoOriginalFormato(
+  tipo: DocType,
+  mimeType: string,
+): { ok: boolean; message?: string } {
+  const esPdf = mimeType === MIME_PDF
+  const esOffice = MIME_OFFICE.has(mimeType)
+
+  if (!esPdf && !esOffice) {
+    return { ok: false, message: 'Formato no permitido.' }
+  }
+  if (esPdf && !TIPOS_CON_ORIGINAL_PDF.includes(tipo)) {
+    return {
+      ok: false,
+      message: `Para documentos de tipo ${tipo} el archivo original debe ser Word (.docx) o Excel (.xlsx).`,
+    }
+  }
+  return { ok: true }
+}
 
 function buildMinimalDistribucionPdfBytes(doc: Documento): Uint8Array {
   const pdf = new jsPDF()
@@ -1346,9 +1379,8 @@ export const documentHandlers = [
     })
   }),
 
-  // POST /api/documents/:id/archivo-original — replace original editable file (RN-DOC-013, RN-DOC-015)
-  // NOTE: MSW cannot parse multipart/form-data boundaries. Body is ignored; a mock URL is returned.
-  http.post('/api/documents/:id/archivo-original', async ({ params }) => {
+  // POST /api/documents/:id/archivo-original — replace original editable file (RN-DOC-013, RN-DOC-015, RN-DOC-021)
+  http.post('/api/documents/:id/archivo-original', async ({ params, request }) => {
     await delay(LATENCY)
 
     const id = params.id as string
@@ -1366,9 +1398,23 @@ export const documentHandlers = [
       return err('Solo se puede actualizar el archivo original en BORRADOR o EN_REVISION (RN-DOC-013)', 403)
     }
 
+    // original-pdf-tipos-permitidos (RN-DOC-021, design.md D6): replica la validación por tipo
+    // del backend real — por MIME type (ver comentario de validateArchivoOriginalFormato), el
+    // mock no puede inspeccionar la firma binaria real del archivo.
+    const formData = await request.formData()
+    const archivo = formData.get('archivoOriginal')
+    const mimeType = archivo !== null && typeof archivo !== 'string' ? archivo.type : null
+    if (mimeType) {
+      const validation = validateArchivoOriginalFormato(doc.tipo, mimeType)
+      if (!validation.ok) {
+        return err(validation.message ?? 'Formato no permitido.', 400)
+      }
+    }
+
     const now = new Date().toISOString()
-    const mockUrl = `/mock/originales/${id}/documento-${Date.now()}.docx`
-    const mockNombre = `documento-${Date.now()}.docx`
+    const extensionReal = mimeType === 'application/pdf' ? '.pdf' : '.docx'
+    const mockUrl = `/mock/originales/${id}/documento-${Date.now()}${extensionReal}`
+    const mockNombre = `documento-${Date.now()}${extensionReal}`
 
     store[idx] = {
       ...doc,

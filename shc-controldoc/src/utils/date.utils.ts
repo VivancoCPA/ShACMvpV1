@@ -94,3 +94,27 @@ export function addCalendarMonths(isoDate: string, months: number): string {
   date.setUTCMonth(date.getUTCMonth() + months)
   return date.toISOString().slice(0, 10)
 }
+
+// detalle-documento-dos-columnas: "Actividad reciente" de la sidebar necesita fechas relativas
+// ("hace 5 min", "ayer") sin agregar claves i18n propias para cada unidad — Intl.RelativeTimeFormat
+// ya localiza es-PE/en-US de forma nativa (numeric:'auto' produce "ayer"/"yesterday" para el caso
+// especial de -1 día). isoDateTime es un timestamp real (no una fecha de calendario), así que se
+// lee en la zona local del navegador, igual que formatDateTime. Más allá de ~2 días se cae a la
+// fecha absoluta, por pedido explícito del encargo ("o la fecha si es más vieja").
+export function formatRelativeTime(isoDateTime: string, locale = 'es-PE'): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const diffMinutes = Math.round((new Date(isoDateTime).getTime() - Date.now()) / 60_000)
+
+  if (Math.abs(diffMinutes) < 60) {
+    return rtf.format(diffMinutes, 'minute')
+  }
+  const diffHours = Math.round(diffMinutes / 60)
+  if (Math.abs(diffHours) < 24) {
+    return rtf.format(diffHours, 'hour')
+  }
+  const diffDays = Math.round(diffHours / 24)
+  if (Math.abs(diffDays) <= 2) {
+    return rtf.format(diffDays, 'day')
+  }
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(isoDateTime))
+}

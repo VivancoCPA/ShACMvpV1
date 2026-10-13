@@ -6,7 +6,7 @@ import { Calendar } from 'lucide-react'
 import { FileUploadField } from './FileUploadField'
 import type { DocumentFormInput } from '../schemas/documentForm.schema'
 import type { UserRole } from '../../../types/auth.types'
-import { DOC_TYPES } from '../constants'
+import { DOC_TYPES, TIPOS_CON_ORIGINAL_PDF } from '../constants'
 import { useAreas } from '../../areas/hooks/useAreas'
 import { useCandidatosAsignacion } from '../hooks/useCandidatosAsignacion'
 import type { TipoAsignacion } from '../../../types/documents.types'
@@ -251,6 +251,11 @@ export function DocumentForm({
   const { register, control, formState: { errors } } = useFormContext<DocumentFormInput>()
 
   const confidencialidad = useWatch({ control, name: 'confidencialidad' })
+  const tipo = useWatch({ control, name: 'tipo' })
+  // original-pdf-tipos-permitidos (RN-DOC-021): solo relevante en creación — tipo es inmutable
+  // tras la creación del documento (ver design.md Context), así que en edición esto nunca
+  // cambia el conjunto de formatos ya aceptado para el documento existente.
+  const allowPdfOriginal = TIPOS_CON_ORIGINAL_PDF.includes(tipo)
   const canEditConfidencialidad = CONFIDENCIALIDAD_EDIT_ROLES.has(userRole)
   const { data: areas = [] } = useAreas()
   const areasActivas = areas.filter((a) => a.activo)
@@ -430,7 +435,7 @@ export function DocumentForm({
         <div>
           <Label htmlFor="archivoOriginalFile">{t('form.archivoOriginal.label')}</Label>
           <p className="mb-1.5 text-xs text-muted dark:text-on-dark-soft">
-            {t('form.archivoOriginal.hint')}
+            {allowPdfOriginal ? t('form.archivoOriginal.hintConPdf') : t('form.archivoOriginal.hint')}
           </p>
           <Controller
             control={control}
@@ -441,6 +446,7 @@ export function DocumentForm({
                 onChange={field.onChange}
                 existingFileName={existingArchivoOriginalNombre ?? undefined}
                 variant="original"
+                allowPdf={allowPdfOriginal}
                 disabled={archivoOriginalBloqueado}
                 frozenMessage={archivoOriginalBloqueado ? t('form.archivoOriginal.congelado') : undefined}
                 replaceLabel={t('form.archivoOriginal.reemplazar')}

@@ -7,12 +7,18 @@ const SIZE_CLASSES = {
   lg: 'w-12 h-12 text-base',
 }
 
+// detalle-documento-dos-columnas (D4): `rol` pasa a opcional — el lookup de nombres
+// (`user-names-lookup`) no expone rol a propósito (superficie mínima), así que la ficha de
+// responsables del detalle de documento usa `UserAvatar` sin él. Sin `rol`, el fondo de
+// fallback es un color neutro fijo en vez de `ROLE_AVATAR_BG[rol]`.
+const NEUTRAL_AVATAR_BG = 'bg-surface-cream dark:bg-surface-dark-elevated'
+
 interface UserAvatarProps {
   user: {
     nombre: string
     apellido: string
     avatarUrl?: string
-    rol: UserRole
+    rol?: UserRole
   }
   size?: 'sm' | 'md' | 'lg'
 }
@@ -20,7 +26,7 @@ interface UserAvatarProps {
 export function UserAvatar({ user, size = 'md' }: UserAvatarProps) {
   const sizeClass = SIZE_CLASSES[size]
   const initials = `${user.nombre.charAt(0)}${user.apellido.charAt(0)}`.toUpperCase()
-  const bgClass = ROLE_AVATAR_BG[user.rol]
+  const bgClass = user.rol ? ROLE_AVATAR_BG[user.rol] : NEUTRAL_AVATAR_BG
 
   if (user.avatarUrl) {
     return (

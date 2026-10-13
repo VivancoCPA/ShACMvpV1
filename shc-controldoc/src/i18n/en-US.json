@@ -135,8 +135,10 @@
       "archivoOriginal": {
         "label": "Original editable file",
         "hint": "Upload the source file (.docx or .xlsx). Only visible to the Author and Document Control Manager.",
+        "hintConPdf": "Word, Excel, or PDF. If you have the editable file, upload it: a PDF can't be edited in new versions. Only visible to the Author and Document Control Manager.",
         "reemplazar": "Replace original file",
-        "congelado": "File frozen — create a new version to edit"
+        "congelado": "File frozen — create a new version to edit",
+        "errorTipoNoPermitido": "For this document type, the original file must be Word (.docx) or Excel (.xlsx)."
       },
       "archivoDistribucion": {
         "label": "Distribution PDF",
@@ -197,7 +199,58 @@
       "confirmStartPeriodicReview": "Start periodic review for this document?",
       "confirmDelete": "Delete this document? This action cannot be undone.",
       "confirm": "Confirm",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "tabs": {
+        "resumen": "Summary",
+        "historial": "History",
+        "versiones": "Versions",
+        "vinculos": "Links",
+        "copias": "Copies",
+        "log": "Log"
+      },
+      "ficha": {
+        "titulo": "Details",
+        "versionVigente": "Current version",
+        "publicado": "Published",
+        "tipo": "Type",
+        "area": "Area",
+        "proxRevision": "Next review",
+        "confidencialidad": "Confidentiality",
+        "responsables": "Responsible parties",
+        "autor": "Author",
+        "revisor": "Reviewer",
+        "aprobador": "Approver",
+        "sinAsignar": "Unassigned",
+        "sinPublicar": "—"
+      },
+      "actividadReciente": {
+        "titulo": "Recent activity",
+        "verLog": "View log",
+        "vacio": "No recent activity."
+      },
+      "lectura": {
+        "emitirCopiaControlada": "Issue controlled copy"
+      },
+      "vinculos": {
+        "qeTitulo": "Linked QEs",
+        "ncTitulo": "Linked NCs"
+      },
+      "copias": {
+        "placeholder": "Available soon."
+      },
+      "menu": {
+        "masAcciones": "More actions"
+      },
+      "sinDescripcion": "No description",
+      "publicado": {
+        "titulo": "Published document",
+        "firmadoPor": "Signed by {{nombre}} · {{fecha}}",
+        "copiarHash": "Copy hash",
+        "hashCopiado": "Hash copied",
+        "obsoletoDesde": "Obsolete version since {{fecha}}"
+      },
+      "motivoCambio": "Reason for change (v{{version}})",
+      "vigenteDesde": "Effective since"
     },
     "signature": {
       "title": "Sign and Publish Document",
@@ -303,6 +356,7 @@
       "urlExpirada": "The file URL has expired. Please try again.",
       "formatosAceptados": "Accepted formats: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Max. 50 MB.",
       "formatosOriginal": "Formats: DOCX, XLSX · Max. 50 MB.",
+      "formatosOriginalConPdf": "Formats: DOCX, XLSX, PDF · Max. 50 MB.",
       "formatosDistribucion": "Format: PDF · Max. 50 MB.",
       "tipo": "File type",
       "seccion": "Document files",

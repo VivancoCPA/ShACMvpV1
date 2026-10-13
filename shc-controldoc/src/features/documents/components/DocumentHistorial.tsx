@@ -31,6 +31,18 @@ function formatTimestamp(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
 }
 
+/**
+ * Entradas que `DocumentHistorial` efectivamente muestra (filtradas por `ACCIONES_RELEVANTES`,
+ * orden descendente) — exportada para que `DocumentDetailPage` calcule el contador de la
+ * pestaña "Historial" sin reimplementar el mismo filtro ni asumir un campo que no existe en el
+ * backend real (ver comentario de `ACCIONES_RELEVANTES` arriba: nunca `historialVersiones`).
+ */
+export function getHistorialEntries(documento: Documento): AuditTrailEntry[] {
+  return (documento.auditTrail ?? [])
+    .filter((entry) => ACCIONES_RELEVANTES.has(entry.accion))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
 function describeEntry(entry: AuditTrailEntry, t: (key: string, options?: Record<string, unknown>) => string): string {
   const label = t(`auditTrail.actions.${entry.accion}`, { defaultValue: entry.accion })
   if (entry.accion === 'ESTADO_CAMBIADO' && (entry.estadoAnterior || entry.estadoNuevo)) {
@@ -43,9 +55,7 @@ export function DocumentHistorial({ documento }: DocumentHistorialProps) {
   const { t, i18n } = useTranslation('documents')
   const locale = i18n.language
 
-  const entries = (documento.auditTrail ?? [])
-    .filter((entry) => ACCIONES_RELEVANTES.has(entry.accion))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const entries = getHistorialEntries(documento)
 
   if (entries.length === 0) {
     return (

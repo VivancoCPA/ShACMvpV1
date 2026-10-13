@@ -1,21 +1,25 @@
+// @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useAuthStore } from '../../../stores/authStore'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { DocumentDetailHeader } from './DocumentDetailHeader'
-import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
+import type { DocumentActionsAvailability } from '../hooks/useDocumentActionsAvailability'
+import type { DocumentActionsController } from '../hooks/useDocumentActionsController'
+import type { Documento } from '../../../types/documents.types'
+
+// detalle-documento-dos-columnas: DocumentDetailHeader ya no calcula su propia disponibilidad
+// de acciones ni recibe `getName` (la cuadrícula de metadatos se movió a la ficha de la
+// sidebar) — availability/controller llegan como props ya resueltos, así que estos tests los
+// arman a mano en vez de depender de QueryClientProvider/authStore/MSW.
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
-      params ? `${key}:${Object.values(params).join('|')}` : key,
-    i18n: { language: 'es-PE' },
+    t: (key: string) => key,
   }),
 }))
 
 afterEach(() => {
   cleanup()
-  useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
 })
 
 function makeDocumento(overrides: Partial<Documento>): Documento {
@@ -43,268 +47,205 @@ function makeDocumento(overrides: Partial<Documento>): Documento {
   }
 }
 
-function renderHeader(documento: Documento, getName: (id?: string | null) => string = (id) => id ?? '') {
-  const queryClient = new QueryClient()
+const EMPTY_AVAILABILITY: DocumentActionsAvailability = {
+  isDeleted: false,
+  canRestore: false,
+  canVerDocumento: false,
+  canDescargarCopia: false,
+  faltaAsignacion: false,
+  canSendToReview: false,
+  canSendToReviewBloqueadoPorAsignacion: false,
+  canDelete: false,
+  canApproveReview: false,
+  canRejectReview: false,
+  canCancelReview: false,
+  canSign: false,
+  canRejectAprobacion: false,
+  canStartPeriodic: false,
+  canCreateVersion: false,
+  canStartNewVersion: false,
+  otraVersionEnProceso: undefined,
+  hasAnyAction: false,
+}
+
+function makeAvailability(overrides: Partial<DocumentActionsAvailability>): DocumentActionsAvailability {
+  return { ...EMPTY_AVAILABILITY, ...overrides }
+}
+
+function makeController(overrides: Partial<DocumentActionsController> = {}): DocumentActionsController {
+  const base = {
+    modal: 'none',
+    setModal: vi.fn(),
+    showVisor: false,
+    setShowVisor: vi.fn(),
+    showPdfPreview: false,
+    setShowPdfPreview: vi.fn(),
+    showRestoreConfirm: false,
+    setShowRestoreConfirm: vi.fn(),
+    changeStatus: { isPending: false } as DocumentActionsController['changeStatus'],
+    deleteDocument: { isPending: false } as DocumentActionsController['deleteDocument'],
+    restaurar: { isPending: false, mutate: vi.fn() } as unknown as DocumentActionsController['restaurar'],
+    exportar: vi.fn(),
+    isLoadingExportar: false,
+    handleConfirm: vi.fn(),
+    handleConfirmDelete: vi.fn(),
+  }
+  return { ...base, ...overrides } as DocumentActionsController
+}
+
+function renderHeader(props: {
+  documento: Documento
+  availability: DocumentActionsAvailability
+  controller: DocumentActionsController
+}) {
   return render(
-    <QueryClientProvider client={queryClient}>
-      <DocumentDetailHeader documento={documento} getName={getName} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <DocumentDetailHeader {...props} />
+    </MemoryRouter>,
   )
 }
 
-describe('DocumentDetailHeader — banner de QE vinculados', () => {
-  it('muestra el número del QE, no el id crudo', () => {
-    const documento = makeDocumento({
-      qeVinculados: [
-        { id: 'qe-2026-003', numero: 'QE-2026-003', tipo: 'ADUANERO', severidad: 'MEDIA', estado: 'PENDIENTE_CIERRE' },
-      ],
+describe('DocumentDetailHeader — layout fijo y sin cuadrícula de metadatos', () => {
+  it('el header tiene la clase sticky', () => {
+    const { container } = renderHeader({
+      documento: makeDocumento({}),
+      availability: makeAvailability({}),
+      controller: makeController(),
     })
 
-    renderHeader(documento)
-
-    expect(screen.getByText('detail.banners.qeVinculados:QE-2026-003')).toBeInTheDocument()
+    expect(container.querySelector('header')?.className).toContain('sticky')
   })
 
-  it('lista todos los números cuando hay más de un QE vinculado', () => {
-    const documento = makeDocumento({
-      qeVinculados: [
-        { id: 'qe-2026-002', numero: 'QE-2026-002', tipo: 'CALIDAD', severidad: 'ALTA', estado: 'CERRADO' },
-        { id: 'qe-2026-007', numero: 'QE-2026-007', tipo: 'CALIDAD', severidad: 'MEDIA', estado: 'ANALISIS_COMPLETADO' },
-      ],
+  it('no renderiza la cuadrícula de metadatos (Tipo/Área/Autor/Revisor/Aprobador)', () => {
+    renderHeader({
+      documento: makeDocumento({ revisorId: 'user-002', aprobadorId: 'user-003' }),
+      availability: makeAvailability({}),
+      controller: makeController(),
     })
 
-    renderHeader(documento)
-
-    expect(screen.getByText('detail.banners.qeVinculados:QE-2026-002, QE-2026-007')).toBeInTheDocument()
-  })
-
-  it('no muestra el banner cuando no hay QE vinculados', () => {
-    const documento = makeDocumento({ qeVinculados: [] })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.qeVinculados/)).not.toBeInTheDocument()
-  })
-})
-
-describe('DocumentDetailHeader — banner de rechazo visible (documentos-rechazo-visible)', () => {
-  const rechazoEnRevision: AuditTrailEntry = {
-    id: 'audit-rej-1',
-    accion: 'RECHAZADO_EN_REVISION',
-    estadoAnterior: 'EN_REVISION',
-    estadoNuevo: 'BORRADOR',
-    motivo: 'Falta evidencia fotográfica.',
-    realizadoPorId: 'user-002',
-    realizadoPorNombre: 'Carmen Torres',
-    timestamp: '2026-02-01T10:00:00.000Z',
-    generadoPorIA: false,
-  }
-
-  const rechazoEnAprobacion: AuditTrailEntry = {
-    id: 'audit-rej-2',
-    accion: 'RECHAZADO_EN_APROBACION',
-    estadoAnterior: 'EN_APROBACION',
-    estadoNuevo: 'BORRADOR',
-    motivo: 'Documento incompleto.',
-    realizadoPorId: 'user-003',
-    realizadoPorNombre: 'Sofía Vargas',
-    timestamp: '2026-02-02T10:00:00.000Z',
-    generadoPorIA: false,
-  }
-
-  const revisionCancelada: AuditTrailEntry = {
-    id: 'audit-cancel-1',
-    accion: 'REVISION_CANCELADA',
-    estadoAnterior: 'EN_REVISION',
-    estadoNuevo: 'BORRADOR',
-    realizadoPorId: 'user-004',
-    realizadoPorNombre: 'Diego Salazar',
-    timestamp: '2026-02-03T10:00:00.000Z',
-    generadoPorIA: false,
-  }
-
-  it('aparece tras un rechazo en revisión, con nombre, fecha y motivo', () => {
-    const documento = makeDocumento({ estado: 'BORRADOR', auditTrail: [rechazoEnRevision] })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.rechazadoEnRevision:/)).toBeInTheDocument()
-    expect(screen.getByText(/Carmen Torres/)).toBeInTheDocument()
-    expect(screen.getByText(/Falta evidencia fotográfica\./)).toBeInTheDocument()
-  })
-
-  it('aparece tras un rechazo en aprobación, con la clave correspondiente', () => {
-    const documento = makeDocumento({ estado: 'BORRADOR', auditTrail: [rechazoEnAprobacion] })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.rechazadoEnAprobacion:/)).toBeInTheDocument()
-  })
-
-  it('no aparece tras una cancelación de revisión (sin motivo)', () => {
-    const documento = makeDocumento({ estado: 'BORRADOR', auditTrail: [revisionCancelada] })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.rechazadoEn/)).not.toBeInTheDocument()
-  })
-
-  it('desaparece después de reenviar a revisión (estado ya no BORRADOR)', () => {
-    const documento = makeDocumento({ estado: 'EN_REVISION', auditTrail: [rechazoEnRevision] })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.rechazadoEn/)).not.toBeInTheDocument()
-  })
-
-  it('solo considera la entrada más reciente entre rechazo/cancelación', () => {
-    // El documento fue rechazado y luego la revisión (del reenvío siguiente) fue cancelada —
-    // la entrada más reciente es la cancelación, así que no debe mostrarse el banner de rechazo.
-    const documento = makeDocumento({
-      estado: 'BORRADOR',
-      auditTrail: [rechazoEnRevision, revisionCancelada],
-    })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.rechazadoEn/)).not.toBeInTheDocument()
-  })
-
-  it('es visible para un rol de solo lectura, sin gating adicional', () => {
-    useAuthStore.setState({
-      user: { id: 'u-1', nombre: 'Ana', apellido: 'Pérez', email: 'a@a.com', rol: 'AUDITOR_INTERNO' },
-      accessToken: 'token',
-      isAuthenticated: true,
-    })
-    const documento = makeDocumento({ estado: 'BORRADOR', auditTrail: [rechazoEnRevision] })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.rechazadoEnRevision:/)).toBeInTheDocument()
-  })
-})
-
-describe('DocumentDetailHeader — avisos de revisión periódica (revision-periodica-trazabilidad)', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('muestra el aviso ámbar cuando faltan <= 30 días para la revisión (PUBLICADO)', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0)) // hoy = 1 set 2026
-
-    const documento = makeDocumento({
-      estado: 'PUBLICADO',
-      fechaRevisionProxima: '2026-09-21T00:00:00.000Z', // 20 días
-    })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.revisionProxima:/)).toBeInTheDocument()
-  })
-
-  it('muestra el aviso rojo cuando la revisión ya está vencida (PUBLICADO)', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
-
-    const documento = makeDocumento({
-      estado: 'PUBLICADO',
-      fechaRevisionProxima: '2026-08-15T00:00:00.000Z', // ya pasó
-    })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.revisionVencida:/)).toBeInTheDocument()
-    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
-  })
-
-  it('no muestra ningún aviso de revisión cuando faltan más de 30 días', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
-
-    const documento = makeDocumento({
-      estado: 'PUBLICADO',
-      fechaRevisionProxima: '2027-01-01T00:00:00.000Z',
-    })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/detail\.banners\.revisionVencida:/)).not.toBeInTheDocument()
-  })
-
-  it('muestra el aviso informativo de revisión en curso, con fecha y actor, en EN_REVISION_PERIODICA', () => {
-    const inicio: AuditTrailEntry = {
-      id: 'audit-rev-1',
-      accion: 'REVISION_PERIODICA_INICIADA',
-      estadoAnterior: 'PUBLICADO',
-      estadoNuevo: 'EN_REVISION_PERIODICA',
-      motivo: 'Revisión programada (fecha 25/09/2026)',
-      realizadoPorId: 'user-jefedocs-001',
-      realizadoPorNombre: 'Juan Mendoza',
-      timestamp: '2026-09-20T09:00:00.000Z',
-      generadoPorIA: false,
-    }
-    const documento = makeDocumento({
-      estado: 'EN_REVISION_PERIODICA',
-      fechaRevisionProxima: '2026-09-25T00:00:00.000Z',
-      auditTrail: [inicio],
-    })
-
-    renderHeader(documento)
-
-    expect(screen.getByText(/detail\.banners\.revisionEnCurso:/)).toBeInTheDocument()
-    expect(screen.getByText(/Juan Mendoza/)).toBeInTheDocument()
-  })
-
-  it('ninguno de los 3 avisos aparece fuera de PUBLICADO/EN_REVISION_PERIODICA (p.ej. BORRADOR)', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 8, 1, 9, 0, 0))
-
-    const inicio: AuditTrailEntry = {
-      id: 'audit-rev-2',
-      accion: 'REVISION_PERIODICA_INICIADA',
-      estadoAnterior: 'PUBLICADO',
-      estadoNuevo: 'EN_REVISION_PERIODICA',
-      realizadoPorId: 'user-jefedocs-001',
-      realizadoPorNombre: 'Juan Mendoza',
-      timestamp: '2026-08-20T09:00:00.000Z',
-      generadoPorIA: false,
-    }
-    const documento = makeDocumento({
-      estado: 'BORRADOR',
-      fechaRevisionProxima: '2026-08-15T00:00:00.000Z', // vencida, pero el estado no es PUBLICADO
-      auditTrail: [inicio],
-    })
-
-    renderHeader(documento)
-
-    expect(screen.queryByText(/detail\.banners\.revisionProxima:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/detail\.banners\.revisionVencida:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/detail\.banners\.revisionEnCurso:/)).not.toBeInTheDocument()
-  })
-})
-
-describe('DocumentDetailHeader — nombres de autor/revisor/aprobador (nombres-usuarios-reales)', () => {
-  it('muestra el nombre resuelto por getName, no el id crudo', () => {
-    const documento = makeDocumento({ autorId: 'user-001', revisorId: 'user-002', aprobadorId: 'user-003' })
-
-    renderHeader(documento, (id) =>
-      id === 'user-002' ? 'Diego Salazar' : id === 'user-003' ? 'Ana Pérez' : (id ?? ''),
-    )
-
-    expect(screen.getByText('Diego Salazar')).toBeInTheDocument()
-    expect(screen.getByText('Ana Pérez')).toBeInTheDocument()
     expect(screen.queryByText('user-002')).not.toBeInTheDocument()
     expect(screen.queryByText('user-003')).not.toBeInTheDocument()
   })
 
-  it('muestra el texto genérico cuando getName no resuelve un id', () => {
-    const documento = makeDocumento({ autorId: 'user-conocido', revisorId: 'user-desconocido' })
+  it('muestra breadcrumb, código y título', () => {
+    renderHeader({
+      documento: makeDocumento({ codigo: 'PRC-CD-013', titulo: 'Control de documentos' }),
+      availability: makeAvailability({}),
+      controller: makeController(),
+    })
 
-    renderHeader(documento, (id) => (id === 'user-conocido' ? 'Autor Conocido' : 'common:userNames.noDisponible'))
+    expect(screen.getByText('Control de documentos')).toBeInTheDocument()
+    expect(screen.getAllByText('PRC-CD-013').length).toBeGreaterThan(0)
+  })
+})
 
-    expect(screen.getByText('common:userNames.noDisponible')).toBeInTheDocument()
-    expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
+describe('DocumentDetailHeader — acciones de gestión (máx. 2 inline + menú ⋯)', () => {
+  it('sin ninguna acción disponible, no renderiza botones ni menú', () => {
+    renderHeader({
+      documento: makeDocumento({}),
+      availability: makeAvailability({}),
+      controller: makeController(),
+    })
+
+    expect(screen.queryByRole('button', { name: /detail\.actions/ })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('detail.menu.masAcciones')).not.toBeInTheDocument()
+  })
+
+  it('con exactamente 2 acciones disponibles, ambas se muestran inline sin menú ⋯', () => {
+    renderHeader({
+      documento: makeDocumento({ estado: 'PUBLICADO', autorId: 'user-001' }),
+      availability: makeAvailability({ canCreateVersion: true, canStartPeriodic: true }),
+      controller: makeController(),
+    })
+
+    expect(screen.getByText('detail.actions.createNewVersion')).toBeInTheDocument()
+    expect(screen.getByText('detail.actions.startPeriodicReview')).toBeInTheDocument()
+    expect(screen.queryByLabelText('detail.menu.masAcciones')).not.toBeInTheDocument()
+  })
+
+  it('con más de 2 acciones disponibles, las de menor prioridad van al menú ⋯', () => {
+    renderHeader({
+      documento: makeDocumento({ estado: 'PUBLICADO', autorId: 'user-001' }),
+      availability: makeAvailability({
+        canCreateVersion: true,
+        canStartPeriodic: true,
+        canDelete: true,
+      }),
+      controller: makeController(),
+    })
+
+    // Prioridad (D7): nueva versión > iniciar revisión periódica > eliminar — las 2 primeras
+    // inline, "eliminar" queda detrás del menú.
+    expect(screen.getByText('detail.actions.createNewVersion')).toBeInTheDocument()
+    expect(screen.getByText('detail.actions.startPeriodicReview')).toBeInTheDocument()
+    expect(screen.queryByText('detail.actions.delete')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('detail.menu.masAcciones'))
+    expect(screen.getByText('detail.actions.delete')).toBeInTheDocument()
+  })
+
+  it('firmar tiene la mayor prioridad: aparece inline aunque haya otras 2 acciones disponibles', () => {
+    renderHeader({
+      documento: makeDocumento({ estado: 'EN_APROBACION' }),
+      availability: makeAvailability({
+        canSign: true,
+        canRejectAprobacion: true,
+        canCancelReview: true,
+      }),
+      controller: makeController(),
+    })
+
+    expect(screen.getByText('detail.actions.sign')).toBeInTheDocument()
+    expect(screen.getByText('detail.actions.reject')).toBeInTheDocument()
+    expect(screen.queryByText('detail.actions.cancelReview')).not.toBeInTheDocument()
+  })
+
+  it('click en un botón inline llama al setModal correspondiente', () => {
+    const controller = makeController()
+    renderHeader({
+      documento: makeDocumento({ estado: 'EN_APROBACION' }),
+      availability: makeAvailability({ canSign: true }),
+      controller,
+    })
+
+    fireEvent.click(screen.getByText('detail.actions.sign'))
+
+    expect(controller.setModal).toHaveBeenCalledWith('sign')
+  })
+})
+
+describe('DocumentDetailHeader — documento eliminado', () => {
+  it('con canRestore, muestra el botón de restaurar en vez de acciones normales', () => {
+    renderHeader({
+      documento: makeDocumento({ deletedAt: '2026-01-05T10:00:00.000Z' }),
+      availability: makeAvailability({ isDeleted: true, canRestore: true }),
+      controller: makeController(),
+    })
+
+    expect(screen.getByText('deleted.banner.restaurar')).toBeInTheDocument()
+    expect(screen.queryByText('detail.actions.delete')).not.toBeInTheDocument()
+  })
+
+  it('sin canRestore, no muestra ningún botón de gestión', () => {
+    renderHeader({
+      documento: makeDocumento({ deletedAt: '2026-01-05T10:00:00.000Z' }),
+      availability: makeAvailability({ isDeleted: true, canRestore: false }),
+      controller: makeController(),
+    })
+
+    expect(screen.queryByText('deleted.banner.restaurar')).not.toBeInTheDocument()
+  })
+
+  it('click en restaurar muestra la confirmación inline', () => {
+    const controller = makeController()
+    renderHeader({
+      documento: makeDocumento({ deletedAt: '2026-01-05T10:00:00.000Z' }),
+      availability: makeAvailability({ isDeleted: true, canRestore: true }),
+      controller,
+    })
+
+    fireEvent.click(screen.getByText('deleted.banner.restaurar'))
+
+    expect(controller.setShowRestoreConfirm).toHaveBeenCalledWith(true)
   })
 })

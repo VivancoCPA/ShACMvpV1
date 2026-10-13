@@ -23,6 +23,13 @@ export const DOCUMENT_ASIGNACION_ELIGIBLE_ROLES: Record<TipoAsignacion, readonly
   APROBADOR: ['JEFE_CONTROL_DOCUMENTARIO', 'ALTA_DIRECCION'],
 }
 
+// original-pdf-tipos-permitidos (RN-DOC-021, design.md D1): tipos de documento que aceptan un
+// PDF nativo como archivo original. Espejo de DocumentoFormatosPermitidos.TiposConOriginalPdf en
+// el backend — el servidor es quien la aplica de verdad; esta lista la usan el formulario
+// (DocumentForm, FileUploadField, documentForm.schema.ts) y el handler MSW para que el modo mock
+// siga la misma regla.
+export const TIPOS_CON_ORIGINAL_PDF: readonly DocType[] = ['INF', 'MAT', 'PLAN']
+
 export const QUERY_KEYS = {
   documents: {
     all: ['documents'] as const,

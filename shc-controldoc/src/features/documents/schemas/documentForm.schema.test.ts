@@ -154,3 +154,44 @@ describe('documentFormSchema — RN-DOC-020 validación cruzada de fechas', () =
     expect(result.success).toBe(true)
   })
 })
+
+describe('documentFormSchema — RN-DOC-021 PDF nativo solo para INF/MAT/PLAN', () => {
+  it('passes when archivoOriginalFile is a PDF and tipo is PLAN', () => {
+    const result = documentFormSchema.safeParse({
+      ...validPayload,
+      tipo: 'PLAN',
+      archivoOriginalFile: new File(['%PDF-1.4'], 'plan.pdf', { type: 'application/pdf' }),
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('fails when archivoOriginalFile is a PDF and tipo is PRC', () => {
+    const result = documentFormSchema.safeParse({
+      ...validPayload,
+      tipo: 'PRC',
+      archivoOriginalFile: new File(['%PDF-1.4'], 'procedimiento.pdf', { type: 'application/pdf' }),
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path[0])
+      expect(paths).toContain('archivoOriginalFile')
+    }
+  })
+
+  it('passes when archivoOriginalFile is a .docx regardless of tipo', () => {
+    const docx = new File(['contenido'], 'procedimiento.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    })
+    expect(documentFormSchema.safeParse({ ...validPayload, tipo: 'PRC', archivoOriginalFile: docx }).success).toBe(true)
+    expect(documentFormSchema.safeParse({ ...validPayload, tipo: 'PLAN', archivoOriginalFile: docx }).success).toBe(true)
+  })
+
+  it('passes when archivoOriginalFile is absent, regardless of tipo', () => {
+    const result = documentFormSchema.safeParse({
+      ...validPayload,
+      tipo: 'PRC',
+      archivoOriginalFile: null,
+    })
+    expect(result.success).toBe(true)
+  })
+})

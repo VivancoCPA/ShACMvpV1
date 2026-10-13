@@ -2,15 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploadField } from './FileUploadField'
 import { useReplaceArchivoOriginal } from '../hooks/useDocumentActions'
+import { TIPOS_CON_ORIGINAL_PDF } from '../constants'
+import type { DocType } from '../../../types/documents.types'
 
 interface DocumentReplaceArchivoOriginalModalProps {
   documentId: string
+  tipo: DocType
   archivoOriginalNombre?: string | null
   onClose: () => void
 }
 
 export function DocumentReplaceArchivoOriginalModal({
   documentId,
+  tipo,
   archivoOriginalNombre,
   onClose,
 }: DocumentReplaceArchivoOriginalModalProps) {
@@ -81,6 +85,7 @@ export function DocumentReplaceArchivoOriginalModal({
           value={file}
           onChange={setFile}
           variant="original"
+          allowPdf={TIPOS_CON_ORIGINAL_PDF.includes(tipo)}
           isUploading={replaceArchivoOriginal.isPending}
         />
 

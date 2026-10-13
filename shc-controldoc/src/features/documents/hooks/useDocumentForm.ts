@@ -128,8 +128,10 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
         if (data.archivoOriginalFile) {
           const formData = new FormData()
           formData.append('archivoOriginal', data.archivoOriginalFile)
+          // original-pdf-tipos-permitidos: Content-Type undefined (no 'multipart/form-data' a
+          // mano) — axios calcula el boundary real; fijarlo rompe request.formData() en MSW.
           await api.post(`/api/documents/${created.id}/archivo-original`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': undefined },
           })
         }
 
@@ -143,7 +145,7 @@ export function useDocumentForm({ mode, documentId }: UseDocumentFormOptions) {
           const formData = new FormData()
           formData.append('archivoOriginal', data.archivoOriginalFile)
           await api.post(`/api/documents/${documentId}/archivo-original`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': undefined },
           })
         }
 

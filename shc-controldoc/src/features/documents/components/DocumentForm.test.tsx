@@ -115,3 +115,20 @@ describe('DocumentForm — Revisor/Aprobador desde candidatos reales', () => {
     expect(screen.getByText('form.asignacion_sin_candidatos')).toBeInTheDocument()
   })
 })
+
+// original-pdf-tipos-permitidos (RN-DOC-021)
+describe('DocumentForm — texto de ayuda del archivo original según tipo', () => {
+  it('muestra el texto con PDF para un tipo que lo permite (PLAN)', () => {
+    renderForm({ isAutorOrJefe: true }, { tipo: 'PLAN' })
+
+    expect(screen.getByText('form.archivoOriginal.hintConPdf')).toBeInTheDocument()
+    expect(screen.queryByText('form.archivoOriginal.hint')).not.toBeInTheDocument()
+  })
+
+  it('muestra el texto sin PDF para un tipo que no lo permite (PRC)', () => {
+    renderForm({ isAutorOrJefe: true }, { tipo: 'PRC' })
+
+    expect(screen.getByText('form.archivoOriginal.hint')).toBeInTheDocument()
+    expect(screen.queryByText('form.archivoOriginal.hintConPdf')).not.toBeInTheDocument()
+  })
+})

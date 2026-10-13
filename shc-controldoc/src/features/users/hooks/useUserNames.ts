@@ -32,5 +32,16 @@ export function useUserNames(ids: (string | null | undefined)[]) {
     return query.data?.find((u) => u.id === id)?.nombreCompleto ?? t('userNames.noDisponible')
   }
 
-  return { getName, isLoading: query.isLoading }
+  // detalle-documento-dos-columnas (D3/D5): expone nombre/apellido/avatarUrl para la ficha de
+  // responsables (UserAvatar necesita nombre+apellido para las iniciales). Devuelve `undefined`
+  // cuando el id está ausente o aún no se resolvió — el caller decide el fallback ("Sin
+  // asignar" vs. estado de carga), igual que ya hace con `getName`.
+  function getUser(id?: string | null): { nombre: string; apellido: string; avatarUrl?: string } | undefined {
+    if (!id) return undefined
+    const match = query.data?.find((u) => u.id === id)
+    if (!match?.nombre || !match.apellido) return undefined
+    return { nombre: match.nombre, apellido: match.apellido, avatarUrl: match.avatarUrl }
+  }
+
+  return { getName, getUser, isLoading: query.isLoading }
 }

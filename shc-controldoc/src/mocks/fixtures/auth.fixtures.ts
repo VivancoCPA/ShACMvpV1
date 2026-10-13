@@ -9,7 +9,11 @@ export interface MockUser {
   rol: UserRole
   areaId?: string
   areaIds?: string[]
-  avatarUrl: undefined
+  /** `string` = data URI base64 (mismo formato que el backend real, ver
+   *  `detalle-documento-dos-columnas`/design.md) para los pocos usuarios semilla que la
+   *  traen de fábrica; `undefined` para el resto — así se puede probar tanto el caso con foto
+   *  como el de iniciales de respaldo sin depender solo del CRUD de usuarios. */
+  avatarUrl?: string
   createdAt: string
   lastLogin?: string
   activo: boolean
@@ -81,7 +85,10 @@ export const authFixtures: MockUser[] = [
     password: 'Shac2025!',
     rol: 'JEFE_CONTROL_DOCUMENTARIO',
     areaId: 'area-009',
-    avatarUrl: undefined,
+    // detalle-documento-dos-columnas (D3): avatar semilla para probar el caso "con foto" en la
+    // ficha de responsables (es APROBADOR_ID en documents.fixtures.ts) sin depender del CRUD.
+    avatarUrl:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     activo: true,
     createdAt: '2024-03-02T10:20:00.000Z',
   },
@@ -108,7 +115,11 @@ export const authFixtures: MockUser[] = [
     password: 'Shac2025!',
     rol: 'SUPERVISOR',
     areaId: 'area-007',
-    avatarUrl: undefined,
+    // detalle-documento-dos-columnas (D3): segundo caso "con foto" (es AUTOR_ID en
+    // documents.fixtures.ts); user-supervisor-001 (REVISOR_ID) se deja sin avatarUrl a propósito
+    // para seguir probando el caso "sin foto → iniciales".
+    avatarUrl:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     activo: true,
     createdAt: '2025-02-10T13:10:00.000Z',
   },

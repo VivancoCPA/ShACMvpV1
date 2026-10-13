@@ -135,8 +135,10 @@
       "archivoOriginal": {
         "label": "Archivo original editable",
         "hint": "Sube el archivo fuente (.docx o .xlsx). Solo visible para el Autor y el Jefe de Control Documentario.",
+        "hintConPdf": "Word, Excel o PDF. Si tienes el archivo editable, súbelo: el PDF no se puede editar en nuevas versiones. Solo visible para el Autor y el Jefe de Control Documentario.",
         "reemplazar": "Reemplazar archivo original",
-        "congelado": "Archivo congelado — crea una nueva versión para editar"
+        "congelado": "Archivo congelado — crea una nueva versión para editar",
+        "errorTipoNoPermitido": "Para este tipo de documento, el archivo original debe ser Word (.docx) o Excel (.xlsx)."
       },
       "archivoDistribucion": {
         "label": "PDF de distribución",
@@ -197,7 +199,58 @@
       "confirmStartPeriodicReview": "¿Iniciar revisión periódica de este documento?",
       "confirmDelete": "¿Eliminar este documento? Esta acción no se puede deshacer.",
       "confirm": "Confirmar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "tabs": {
+        "resumen": "Resumen",
+        "historial": "Historial",
+        "versiones": "Versiones",
+        "vinculos": "Vínculos",
+        "copias": "Copias",
+        "log": "Log"
+      },
+      "ficha": {
+        "titulo": "Ficha",
+        "versionVigente": "Versión vigente",
+        "publicado": "Publicado",
+        "tipo": "Tipo",
+        "area": "Área",
+        "proxRevision": "Próx. revisión",
+        "confidencialidad": "Confidencialidad",
+        "responsables": "Responsables",
+        "autor": "Autor",
+        "revisor": "Revisor",
+        "aprobador": "Aprobador",
+        "sinAsignar": "Sin asignar",
+        "sinPublicar": "—"
+      },
+      "actividadReciente": {
+        "titulo": "Actividad reciente",
+        "verLog": "Ver log",
+        "vacio": "Sin actividad reciente."
+      },
+      "lectura": {
+        "emitirCopiaControlada": "Emitir copia controlada"
+      },
+      "vinculos": {
+        "qeTitulo": "QE vinculados",
+        "ncTitulo": "NC vinculadas"
+      },
+      "copias": {
+        "placeholder": "Disponible próximamente."
+      },
+      "menu": {
+        "masAcciones": "Más acciones"
+      },
+      "sinDescripcion": "Sin descripción",
+      "publicado": {
+        "titulo": "Documento publicado",
+        "firmadoPor": "Firmado por {{nombre}} · {{fecha}}",
+        "copiarHash": "Copiar hash",
+        "hashCopiado": "Hash copiado",
+        "obsoletoDesde": "Versión obsoleta desde {{fecha}}"
+      },
+      "motivoCambio": "Motivo del cambio (v{{version}})",
+      "vigenteDesde": "Vigente desde"
     },
     "signature": {
       "title": "Firmar y Publicar Documento",
@@ -303,6 +356,7 @@
       "urlExpirada": "La URL del archivo ha expirado. Intente nuevamente.",
       "formatosAceptados": "Formatos aceptados: PDF, Word (.doc, .docx), Excel (.xls, .xlsx). Máx. 50 MB.",
       "formatosOriginal": "Formatos: DOCX, XLSX · Máx. 50 MB.",
+      "formatosOriginalConPdf": "Formatos: DOCX, XLSX, PDF · Máx. 50 MB.",
       "formatosDistribucion": "Formato: PDF · Máx. 50 MB.",
       "tipo": "Tipo de archivo",
       "seccion": "Archivos del documento",

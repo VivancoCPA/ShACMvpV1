@@ -264,6 +264,9 @@ describe('users.handlers — POST /api/users/:id/reset-password (RN-USR-004)', (
 interface NombreDto {
   id: string
   nombreCompleto: string
+  nombre?: string
+  apellido?: string
+  avatarUrl?: string
 }
 
 describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', () => {
@@ -274,7 +277,17 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
     try {
       const res = await api.get<NombreDto[]>('/api/users/nombres', { ...headers, params: { ids: 'user-jefedocs-001' } })
       expect(res.status).toBe(200)
-      expect(res.data).toEqual([{ id: 'user-jefedocs-001', nombreCompleto: expect.any(String) }])
+      // detalle-documento-dos-columnas: user-jefedocs-001 trae nombre/apellido/avatarUrl de
+      // fábrica (ver auth.fixtures.ts, D3) — el contrato ahora los incluye de forma aditiva.
+      expect(res.data).toEqual([
+        {
+          id: 'user-jefedocs-001',
+          nombreCompleto: expect.any(String),
+          nombre: expect.any(String),
+          apellido: expect.any(String),
+          avatarUrl: expect.any(String),
+        },
+      ])
     } finally {
       jefeDocs.activo = true
     }

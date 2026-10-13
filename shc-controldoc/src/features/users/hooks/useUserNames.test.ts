@@ -101,4 +101,60 @@ describe('useUserNames', () => {
 
     expect(qc.getQueryCache().findAll({ queryKey: ['users', 'nombres'] })).toHaveLength(1)
   })
+
+  describe('getUser', () => {
+    it('resuelve nombre/apellido/avatarUrl para un usuario con foto', async () => {
+      const qc = newQueryClient()
+      // user-jefedocs-001 trae avatarUrl de fábrica (ver auth.fixtures.ts, D3).
+      const { result } = renderHook(() => useUserNames(['user-jefedocs-001']), { wrapper: makeWrapper(qc) })
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      const user = result.current.getUser('user-jefedocs-001')
+      expect(user).toBeDefined()
+      expect(user?.nombre).toBe('Sofía')
+      expect(user?.apellido).toBe('Vargas')
+      expect(user?.avatarUrl).toMatch(/^data:image\/png;base64,/)
+    })
+
+    it('resuelve nombre/apellido sin avatarUrl para un usuario sin foto', async () => {
+      const qc = newQueryClient()
+      // user-supervisor-001 no tiene avatarUrl de fábrica.
+      const { result } = renderHook(() => useUserNames(['user-supervisor-001']), { wrapper: makeWrapper(qc) })
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      const user = result.current.getUser('user-supervisor-001')
+      expect(user).toBeDefined()
+      expect(user?.nombre).toBe('Carmen')
+      expect(user?.avatarUrl).toBeUndefined()
+    })
+
+    it('devuelve undefined para un id ausente', async () => {
+      const qc = newQueryClient()
+      const { result } = renderHook(() => useUserNames(['user-jefedocs-001']), { wrapper: makeWrapper(qc) })
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(result.current.getUser(undefined)).toBeUndefined()
+      expect(result.current.getUser(null)).toBeUndefined()
+    })
+
+    it('devuelve undefined mientras la query está cargando', () => {
+      const qc = newQueryClient()
+      const { result } = renderHook(() => useUserNames(['user-jefedocs-001']), { wrapper: makeWrapper(qc) })
+
+      expect(result.current.isLoading).toBe(true)
+      expect(result.current.getUser('user-jefedocs-001')).toBeUndefined()
+    })
+
+    it('devuelve undefined para un id que el backend no resolvió', async () => {
+      const qc = newQueryClient()
+      const { result } = renderHook(() => useUserNames(['user-operario-101']), { wrapper: makeWrapper(qc) })
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(result.current.getUser('user-operario-101')).toBeUndefined()
+    })
+  })
 })

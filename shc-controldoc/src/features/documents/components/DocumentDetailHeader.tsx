@@ -3,224 +3,126 @@ import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { DocumentConfidencialidadBadge } from './DocumentConfidencialidadBadge'
 import { RevisionSemaforo } from './RevisionSemaforo'
-import { useAuthStore } from '../../../stores/authStore'
-import { useArea } from '../../areas/hooks/useAreas'
-import { formatCalendarDateMedium, calendarDaysUntil } from '../../../utils/date.utils'
-import { getDocumentPermissions, resolveDocRoleForUser } from '../permissions'
-import { getRevisionPeriodicaNivel } from '../utils/revisionPeriodica'
-import type { AuditTrailEntry, Documento } from '../../../types/documents.types'
-
-// documentos-rechazo-visible: la última entrada entre estas 3 acciones determina si corresponde
-// mostrar el banner de rechazo — nunca para REVISION_CANCELADA. Derivado de auditTrail ya
-// cargado, sin useEffect ni fetch adicional.
-const ACCIONES_RECHAZO_O_CANCELACION = new Set(['RECHAZADO_EN_REVISION', 'RECHAZADO_EN_APROBACION', 'REVISION_CANCELADA'])
-
-function getUltimaEntradaDeRechazo(auditTrail: AuditTrailEntry[]): AuditTrailEntry | undefined {
-  return [...auditTrail]
-    .filter((e) => ACCIONES_RECHAZO_O_CANCELACION.has(e.accion))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-}
+import { DocumentManagementActions } from './DocumentManagementActions'
+import { getManagementActionItems } from '../utils/documentManagementActions'
+import type { DocumentActionsAvailability } from '../hooks/useDocumentActionsAvailability'
+import type { DocumentActionsController } from '../hooks/useDocumentActionsController'
+import type { Documento } from '../../../types/documents.types'
 
 interface DocumentDetailHeaderProps {
   documento: Documento
-  /** Resuelve autorId/revisorId/aprobadorId a nombre real — ver DocumentDetailPage (D4). */
-  getName: (id?: string | null) => string
+  availability: DocumentActionsAvailability
+  controller: DocumentActionsController
 }
 
-// fechaEmision/fechaVigencia/fechaRevisionProxima son fechas de calendario (sin hora
-// significativa) — formatCalendarDateMedium las lee en UTC para no desfasarlas un día en
-// zonas horarias negativas (fix-fechas-utc).
-function formatDate(iso: string | undefined, locale: string): string {
-  if (!iso) return '—'
-  return formatCalendarDateMedium(iso, locale)
-}
-
-export function DocumentDetailHeader({ documento, getName }: DocumentDetailHeaderProps) {
-  const { t, i18n } = useTranslation('documents')
-  const locale = i18n.language
-  const user = useAuthStore((s) => s.user)
-  const { data: area } = useArea(documento.areaId)
-
-  const isJefeDocOrDireccion =
-    user?.rol === 'JEFE_CONTROL_DOCUMENTARIO' || user?.rol === 'ALTA_DIRECCION'
+/**
+ * Encabezado fijo del detalle de documento (detalle-documento-dos-columnas): `sticky top-0`,
+ * contiene breadcrumb/código/título/badges/semáforo y las acciones de GESTIÓN (máx. 2 inline +
+ * menú "⋯", ver `getManagementActionItems`/design.md D7). Ya no incluye la cuadrícula de
+ * metadatos (Tipo/Área/Autor/Revisor/Aprobador/fechas — ahora en la ficha de la sidebar) ni los
+ * banners contextuales (ahora en `DocumentDetailBanners`, fuera de esta zona fija).
+ */
+export function DocumentDetailHeader({ documento, availability, controller }: DocumentDetailHeaderProps) {
+  const { t } = useTranslation('documents')
 
   const showPeriodicReviewSemaforo =
     documento.estado === 'PUBLICADO' || documento.estado === 'EN_REVISION_PERIODICA'
 
-  const ultimaEntradaRechazo = getUltimaEntradaDeRechazo(documento.auditTrail ?? [])
-  const showRechazoBanner =
-    documento.estado === 'BORRADOR' &&
-    (ultimaEntradaRechazo?.accion === 'RECHAZADO_EN_REVISION' || ultimaEntradaRechazo?.accion === 'RECHAZADO_EN_APROBACION')
-
-  // nueva-version-autor-permisos: solo relevante para quien podría enviarlo a revisión
-  // (AUTOR/JEFE_CALIDAD para este documento) — a un REVISOR/APROBADOR/OPERARIO no le sirve un
-  // enlace a "Editar" que no puede usar.
-  const docRole = resolveDocRoleForUser(documento, user)
-  const puedeEditarEnBorrador = documento.estado === 'BORRADOR' && getDocumentPermissions(documento.estado, docRole).canEdit
-  const showFaltaAsignacionBanner = puedeEditarEnBorrador && (!documento.revisorId || !documento.aprobadorId)
-
-  // revision-periodica-trazabilidad: avisos visibles para cualquier lector (sin gate de rol) —
-  // el botón "Iniciar revisión periódica" ya vive en DocumentActionPanel, junto al título, no se
-  // duplica aquí (design.md D7). Mismo umbral que RevisionSemaforo vía getRevisionPeriodicaNivel.
-  const diasRestantesRevision = documento.fechaRevisionProxima ? calendarDaysUntil(documento.fechaRevisionProxima) : null
-  const nivelRevision = diasRestantesRevision !== null ? getRevisionPeriodicaNivel(diasRestantesRevision) : null
-  const showRevisionProximaBanner = documento.estado === 'PUBLICADO' && nivelRevision === 'proximo'
-  const showRevisionVencidaBanner = documento.estado === 'PUBLICADO' && nivelRevision === 'vencido'
-
-  const entradaInicioRevision = documento.estado === 'EN_REVISION_PERIODICA'
-    ? [...(documento.auditTrail ?? [])]
-        .filter((e) => e.accion === 'REVISION_PERIODICA_INICIADA')
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-    : undefined
+  const managementItems = availability.isDeleted
+    ? []
+    : getManagementActionItems(availability, controller, t)
 
   return (
-    <div className="space-y-4">
-      {/* Banners */}
-      {documento.estado === 'OBSOLETO' && (
-        <div className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
-          {t('detail.banners.obsoleto')}
-        </div>
-      )}
-
-      {documento.qeVinculados.length > 0 && (
-        <div className="rounded-md border border-amber/30 bg-amber/10 p-3 text-sm text-amber">
-          {t('detail.banners.qeVinculados', { ids: documento.qeVinculados.map((q) => q.numero).join(', ') })}
-        </div>
-      )}
-
-      {documento.confidencialidad === 'RESTRINGIDO' && isJefeDocOrDireccion && (
-        <div className="rounded-md border border-teal/30 bg-teal/10 p-3 text-sm text-teal">
-          {t('detail.banners.restringido', {
-            roles: (documento.rolesAutorizados ?? []).join(', '),
-          })}
-        </div>
-      )}
-
-      {showFaltaAsignacionBanner && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-          <span>{t('detail.banners.faltaAsignacion')}</span>
-          <Link
-            to={`/documents/${documento.id}/edit`}
-            className="shrink-0 font-medium underline hover:no-underline"
-          >
-            {t('detail.banners.faltaAsignacionEditar')}
+    <header className="sticky top-0 z-10 border-b border-hairline bg-canvas dark:border-hairline/20 dark:bg-surface-dark">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3">
+        <nav className="w-full text-xs text-muted dark:text-on-dark-soft">
+          <Link to="/documentos" className="hover:underline">
+            {t('detail.backToList')}
           </Link>
-        </div>
-      )}
+          {' / '}
+          <span className="font-mono">{documento.codigo}</span>
+        </nav>
 
-      {showRevisionProximaBanner && documento.fechaRevisionProxima && (
-        <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-          {t('detail.banners.revisionProxima', {
-            fecha: formatDate(documento.fechaRevisionProxima, locale),
-            dias: diasRestantesRevision,
-          })}
-        </div>
-      )}
+        <span className="font-mono text-sm font-semibold text-muted dark:text-on-dark-soft">
+          {documento.codigo}
+        </span>
 
-      {showRevisionVencidaBanner && documento.fechaRevisionProxima && (
-        <div className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
-          {t('detail.banners.revisionVencida', {
-            fecha: formatDate(documento.fechaRevisionProxima, locale),
-            dias: Math.abs(diasRestantesRevision ?? 0),
-          })}
-        </div>
-      )}
+        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold text-ink dark:text-on-dark">
+          {documento.titulo}
+        </h1>
 
-      {entradaInicioRevision && (
-        <div className="rounded-md border border-teal/30 bg-teal/10 p-3 text-sm text-teal">
-          {t('detail.banners.revisionEnCurso', {
-            fecha: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(entradaInicioRevision.timestamp)),
-            nombre: entradaInicioRevision.realizadoPorNombre,
-          })}
-        </div>
-      )}
-
-      {showRechazoBanner && ultimaEntradaRechazo && (
-        <div className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
-          {t(
-            ultimaEntradaRechazo.accion === 'RECHAZADO_EN_REVISION'
-              ? 'detail.banners.rechazadoEnRevision'
-              : 'detail.banners.rechazadoEnAprobacion',
-            {
-              nombre: ultimaEntradaRechazo.realizadoPorNombre,
-              fecha: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
-                new Date(ultimaEntradaRechazo.timestamp),
-              ),
-              motivo: ultimaEntradaRechazo.motivo ?? '',
-            },
-          )}
-        </div>
-      )}
-
-      {/* Header card — unified: title + badges + metadata grid */}
-      <div className="rounded-lg border border-hairline bg-surface-card p-6 dark:border-hairline/20 dark:bg-surface-dark-elevated">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-sm font-semibold text-muted dark:text-on-dark-soft">
-            {documento.codigo}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={documento.estado} />
           <DocumentConfidencialidadBadge confidencialidad={documento.confidencialidad} />
+          <span className="rounded-md border border-hairline bg-surface-card px-2 py-0.5 font-mono text-xs text-body dark:border-hairline/20 dark:bg-surface-dark-elevated dark:text-on-dark">
+            {documento.version}
+          </span>
           {showPeriodicReviewSemaforo && (
             <RevisionSemaforo fechaRevisionProxima={documento.fechaRevisionProxima} />
           )}
         </div>
 
-        <h1 className="text-2xl font-semibold text-ink dark:text-on-dark">
-          {documento.titulo}
-        </h1>
-
-        {/* Metadata grid */}
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Tipo</dt>
-            <dd className="mt-0.5 text-body dark:text-on-dark">
-              {t(`types.${documento.tipo}`, { defaultValue: documento.tipo })}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Versión</dt>
-            <dd className="mt-0.5 font-mono text-body dark:text-on-dark">{documento.version}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Área</dt>
-            <dd className="mt-0.5 text-body dark:text-on-dark">{area?.nombre ?? documento.areaId}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Autor</dt>
-            <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.autorId)}</dd>
-          </div>
-          {documento.revisorId && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Revisor</dt>
-              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.revisorId)}</dd>
-            </div>
+        <div className="ml-auto">
+          {availability.isDeleted ? (
+            <DocumentDeletedAction availability={availability} controller={controller} />
+          ) : (
+            <DocumentManagementActions items={managementItems} />
           )}
-          {documento.aprobadorId && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Aprobador</dt>
-              <dd className="mt-0.5 text-xs text-muted dark:text-on-dark-soft">{getName(documento.aprobadorId)}</dd>
-            </div>
-          )}
-          {documento.fechaEmision && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Emisión</dt>
-              <dd className="mt-0.5 text-body dark:text-on-dark">{formatDate(documento.fechaEmision, locale)}</dd>
-            </div>
-          )}
-          {documento.fechaVigencia && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Vigencia</dt>
-              <dd className="mt-0.5 text-body dark:text-on-dark">{formatDate(documento.fechaVigencia, locale)}</dd>
-            </div>
-          )}
-          {documento.fechaRevisionProxima && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted dark:text-on-dark-soft">Próx. revisión</dt>
-              <dd className="mt-0.5 text-body dark:text-on-dark">{formatDate(documento.fechaRevisionProxima, locale)}</dd>
-            </div>
-          )}
-        </dl>
+        </div>
       </div>
-    </div>
+    </header>
+  )
+}
+
+interface DocumentDeletedActionProps {
+  availability: DocumentActionsAvailability
+  controller: DocumentActionsController
+}
+
+/**
+ * Reemplaza las acciones de gestión normales cuando el documento está eliminado (soft-delete).
+ * El mensaje de "este documento fue eliminado…" vive en `DocumentDetailBanners` (franja debajo
+ * del header), no aquí — este bloque es solo el botón/confirmación de restaurar, o nada si el
+ * rol actual no puede restaurar (sin texto de "sin acciones": el mensaje del banner ya cubre
+ * ese contexto).
+ */
+function DocumentDeletedAction({ availability, controller }: DocumentDeletedActionProps) {
+  const { t } = useTranslation('documents')
+  const { showRestoreConfirm, setShowRestoreConfirm, restaurar } = controller
+
+  if (!availability.canRestore) return null
+
+  if (showRestoreConfirm) {
+    return (
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-body dark:text-on-dark">{t('deleted.restore.confirm.title')}</p>
+        <button
+          type="button"
+          onClick={() => setShowRestoreConfirm(false)}
+          disabled={restaurar.isPending}
+          className="rounded-md border border-hairline bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-soft disabled:opacity-50 dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark"
+        >
+          {t('deleted.restore.confirm.cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={() => restaurar.mutate()}
+          disabled={restaurar.isPending}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal/90 disabled:opacity-50"
+        >
+          {t('deleted.restore.confirm.confirm')}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setShowRestoreConfirm(true)}
+      className="inline-flex items-center justify-center gap-2 rounded-md border border-teal/40 bg-teal/10 px-4 py-2 text-sm font-medium text-teal hover:bg-teal/20 dark:border-teal/30"
+    >
+      {t('deleted.banner.restaurar')}
+    </button>
   )
 }

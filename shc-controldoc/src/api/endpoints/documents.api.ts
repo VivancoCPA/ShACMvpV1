@@ -176,7 +176,11 @@ export async function replaceArchivoOriginal(
   const response = await api.post<{ archivoOriginalUrl: string; archivoOriginalNombre: string }>(
     `/api/documents/${id}/archivo-original`,
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
+    // original-pdf-tipos-permitidos: Content-Type se elimina (no se fija a
+    // 'multipart/form-data') para que axios/el navegador calculen el boundary real del
+    // FormData — fijarlo a mano rompe el parseo con request.formData() en el handler MSW
+    // (mismo criterio ya documentado en locales.api.ts/MULTIPART_CONFIG).
+    { headers: { 'Content-Type': undefined } },
   )
   return response.data
 }

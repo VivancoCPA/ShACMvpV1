@@ -33,11 +33,16 @@ export interface UserFilters {
   activo?: boolean
 }
 
-/** GET /api/users/nombres — superficie mínima a propósito (nombres-usuarios-reales):
- * solo id/nombreCompleto, sin email/rol/avatar. Alimenta únicamente texto de display. */
+/** GET /api/users/nombres — superficie mínima a propósito (nombres-usuarios-reales, ampliada
+ * en detalle-documento-dos-columnas): id/nombreCompleto siempre; nombre/apellido/avatarUrl
+ * opcionales y aditivos (nunca email/rol). Alimenta texto de display y el avatar de
+ * responsables en la ficha del detalle de documento. */
 export interface UserNombre {
   id: string
   nombreCompleto: string
+  nombre?: string
+  apellido?: string
+  avatarUrl?: string
 }
 
 /** entidadTipo propio del dominio de usuarios — CLAUDE.md restringe AuditTrailEntry a

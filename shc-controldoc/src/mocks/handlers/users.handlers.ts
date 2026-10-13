@@ -153,9 +153,18 @@ export const userHandlers = [
         .map((ue) => ue.usuarioId),
     )
 
+    // detalle-documento-dos-columnas: nombre/apellido/avatarUrl son aditivos y opcionales — se
+    // omiten (no se envían como `undefined` explícito) cuando el usuario no tiene avatarUrl,
+    // igual que haría el backend real al no incluir la columna en el SELECT.
     const nombres = getUsersStore()
       .filter((u) => ids.includes(u.id) && idsAsignadosAEmpresa.has(u.id))
-      .map((u) => ({ id: u.id, nombreCompleto: `${u.nombre} ${u.apellido}`.trim() }))
+      .map((u) => ({
+        id: u.id,
+        nombreCompleto: `${u.nombre} ${u.apellido}`.trim(),
+        nombre: u.nombre,
+        apellido: u.apellido,
+        ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}),
+      }))
 
     return ok(nombres)
   }),
@@ -202,14 +211,9 @@ export const userHandlers = [
       rol: body.rol ?? 'OPERARIO',
       activo: true,
       createdAt: now,
-      avatarUrl: undefined,
+      avatarUrl: body.avatarBase64,
       ...(body.areaId ? { areaId: body.areaId } : {}),
       ...(body.areaIds ? { areaIds: body.areaIds } : {}),
-    }
-    if (body.avatarBase64) {
-      // MockUser.avatarUrl está tipado `undefined` (semilla fija sin avatar); el CRUD real
-      // de esta spec es el primer productor de avatarUrl, de ahí el cast puntual.
-      ;(newUser as unknown as { avatarUrl?: string }).avatarUrl = body.avatarBase64
     }
 
     store.push(newUser)
@@ -265,9 +269,7 @@ export const userHandlers = [
       // Empresa 1 se reflejaba en Empresa 2).
       ...(body.areaId !== undefined ? { areaId: body.areaId } : {}),
       ...(body.areaIds !== undefined ? { areaIds: body.areaIds } : {}),
-      ...(body.avatarBase64 !== undefined
-        ? ({ avatarUrl: body.avatarBase64 } as unknown as { avatarUrl: undefined })
-        : {}),
+      ...(body.avatarBase64 !== undefined ? { avatarUrl: body.avatarBase64 } : {}),
     }
     store[idx] = updated
 

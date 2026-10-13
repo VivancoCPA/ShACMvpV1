@@ -8,6 +8,8 @@ const ACCEPTED_TYPES_GENERIC = new Set([
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ])
+// original-pdf-tipos-permitidos: variante 'original' sin PDF permitido (POL/PRC/INS/REG) —
+// cuando allowPdf es true (INF/MAT/PLAN, ver TIPOS_CON_ORIGINAL_PDF) se le suma 'application/pdf'.
 const ACCEPTED_TYPES_ORIGINAL = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -27,6 +29,9 @@ interface FileUploadFieldProps {
   variant?: FileUploadVariant
   frozenMessage?: string
   replaceLabel?: string
+  // original-pdf-tipos-permitidos: solo aplica a variant='original'. true cuando el tipo de
+  // documento vigente admite PDF nativo como archivo original (ver TIPOS_CON_ORIGINAL_PDF).
+  allowPdf?: boolean
 }
 
 function formatBytes(bytes: number): string {
@@ -49,6 +54,7 @@ export function FileUploadField({
   variant = 'generic',
   frozenMessage,
   replaceLabel,
+  allowPdf = false,
 }: FileUploadFieldProps) {
   const { t } = useTranslation('documents')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -58,19 +64,23 @@ export function FileUploadField({
   const [showExisting, setShowExisting] = useState(!!(existingFileUrl || existingFileName) && !value)
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
+  // original-pdf-tipos-permitidos (RN-DOC-021): variant='original' suma PDF a lo aceptado solo
+  // cuando allowPdf es true (el tipo de documento vigente está en TIPOS_CON_ORIGINAL_PDF).
   const acceptedTypes =
-    variant === 'original' ? ACCEPTED_TYPES_ORIGINAL :
-    variant === 'distribucion' ? ACCEPTED_TYPES_DISTRIBUCION :
+    variant === 'original'
+      ? (allowPdf ? new Set([...ACCEPTED_TYPES_ORIGINAL, 'application/pdf']) : ACCEPTED_TYPES_ORIGINAL)
+      : variant === 'distribucion' ? ACCEPTED_TYPES_DISTRIBUCION :
     ACCEPTED_TYPES_GENERIC
 
   const acceptAttr =
-    variant === 'original' ? '.docx,.xlsx' :
+    variant === 'original' ? (allowPdf ? '.docx,.xlsx,.pdf' : '.docx,.xlsx') :
     variant === 'distribucion' ? '.pdf' :
     '.pdf,.doc,.docx,.xls,.xlsx'
 
   const formatHint =
-    variant === 'original' ? t('archivo.formatosOriginal') :
-    variant === 'distribucion' ? t('archivo.formatosDistribucion') :
+    variant === 'original'
+      ? (allowPdf ? t('archivo.formatosOriginalConPdf') : t('archivo.formatosOriginal'))
+      : variant === 'distribucion' ? t('archivo.formatosDistribucion') :
     t('archivo.formatosAceptados')
 
   const replaceBtnLabel = replaceLabel ?? t('form.upload_replace')
