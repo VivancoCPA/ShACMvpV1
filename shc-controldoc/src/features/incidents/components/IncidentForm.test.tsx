@@ -9,6 +9,7 @@ import type { UserRole } from '../../../types/auth.types'
 afterEach(() => {
   cleanup()
   createMutateAsyncMock.mockReset()
+  mockPlanoUrl = null
 })
 
 vi.mock('react-i18next', () => ({
@@ -60,8 +61,9 @@ let mockIsLoading = false
 vi.mock('../hooks/useLocales', () => ({
   useLocales: () => ({ locales: mockLocales, isLoading: mockIsLoading, isError: false }),
   // proteccion-documental (design.md D7) — el plano ya no es una URL estática.
-  usePlanoBlob: () => ({ planoUrl: null, isLoading: false, isError: false }),
+  usePlanoBlob: () => ({ planoUrl: mockPlanoUrl, isLoading: false, isError: false }),
 }))
+let mockPlanoUrl: string | null = null
 
 const localFixtures: Local[] = [
   {
@@ -242,5 +244,72 @@ describe('IncidentForm — caption opcional por foto (m7-ajuste-texto-foto-incid
     )
 
     expect(screen.queryByLabelText('form.evidencias.captionAriaLabel')).not.toBeInTheDocument()
+  })
+})
+
+describe('IncidentForm — plano del local (fix-incidentes-detalle-nombres-ubicacion)', () => {
+  beforeEach(() => {
+    mockIsLoading = false
+  })
+
+  it('en edición con ubicación guardada muestra el pin en esa posición', () => {
+    mockLocales = [{ ...localFixtures[0], planoPngUrl: '/api/locales/loc-001/plano' }]
+    mockPlanoUrl = 'blob:plano'
+    const incident = buildIncidentFixture({ localId: 'loc-001', ubicacion: { x: 60, y: 20 } })
+
+    render(
+      <MemoryRouter>
+        <IncidentForm mode="edit" incident={incident} />
+      </MemoryRouter>,
+    )
+
+    const plano = screen.getByAltText('Almacén Principal')
+    const pin = plano.parentElement?.querySelector('.bg-coral') as HTMLElement | null
+    expect(pin).not.toBeNull()
+    expect(pin).toHaveStyle({ left: '60%', top: '20%' })
+    expect(screen.queryByText('form.ubicacion.sinPlano')).not.toBeInTheDocument()
+  })
+
+  it('con un local sin plano muestra el aviso y no el plano', () => {
+    mockLocales = [localFixtures[0]]
+    const incident = buildIncidentFixture({ localId: 'loc-001' })
+
+    render(
+      <MemoryRouter>
+        <IncidentForm mode="edit" incident={incident} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('form.ubicacion.sinPlano')).toBeInTheDocument()
+    expect(screen.queryByText('form.ubicacion.clickHint')).not.toBeInTheDocument()
+  })
+})
+
+describe('IncidentForm — barra de acciones fija (incidentes-ajustes-ui)', () => {
+  beforeEach(() => {
+    mockRole = 'SUPERVISOR'
+    mockLocales = []
+    mockIsLoading = false
+  })
+
+  it('en alta, la barra de acciones es sticky y el submit sigue dentro del form', () => {
+    renderForm()
+    const actions = screen.getByTestId('incident-form-actions')
+    expect(actions.className).toContain('sticky')
+    const submit = screen.getByRole('button', { name: 'form.actions.submit' })
+    expect(actions).toContainElement(submit)
+    expect(submit.closest('form')).not.toBeNull()
+    expect(submit).toHaveAttribute('type', 'submit')
+  })
+
+  it('en edición, la barra de acciones es sticky y el submit sigue dentro del form', () => {
+    render(
+      <MemoryRouter>
+        <IncidentForm mode="edit" incident={buildIncidentFixture()} />
+      </MemoryRouter>,
+    )
+    const actions = screen.getByTestId('incident-form-actions')
+    expect(actions.className).toContain('sticky')
+    expect(screen.getByRole('button', { name: 'form.actions.submit' }).closest('form')).not.toBeNull()
   })
 })

@@ -172,11 +172,24 @@ Para rol `SUPERVISOR`, el sistema SHALL responder `{ kpisArea, qePorEstado, qeAb
 - **THEN** esa AC aparece tanto en `accionesCorrectivasPendientesArea` como en `accionesCorrectivasVencidas`
 
 ### Requirement: Resumen JEFE_CALIDAD
-Para rol `JEFE_CALIDAD_SYST` (mapeado a `rol: 'JEFE_CALIDAD'` en la respuesta), el sistema SHALL responder con alcance organizacional completo (toda la empresa activa, sin filtro de área): `{ kpis, qeCriticosAbiertos, ncPendientesVerificacion, distribucionQEPorTipo, qePorEstado, accionesCorrectivasPorVencer, tendenciaMensualVolumen, tendenciaMensualKpis }`. `qePorEstado` SHALL inicializar los 8 estados persistibles de QE en 0 aunque no haya datos. `tendenciaMensualVolumen` SHALL cubrir los últimos 12 meses (`abiertos`/`cerrados` por mes). `tendenciaMensualKpis` SHALL cubrir KPI-01/KPI-04/KPI-05 × 12 meses.
+Para el rol `JEFE_CALIDAD_SYST` (mapeado a `rol: 'JEFE_CALIDAD'` en la respuesta), el sistema SHALL responder con alcance organizacional completo (toda la empresa activa, sin filtro de área): `{ kpis, qeCriticosAbiertos, ncPendientesVerificacion, distribucionQEPorTipo, qePorEstado, accionesCorrectivasPorVencer, tendenciaMensualVolumen, tendenciaMensualKpis, incidentesSinQeVencidos, incidentesSinQeVencidosTotal }`.
+- `qePorEstado` SHALL inicializar los 8 estados persistibles de QE en 0 aunque no haya datos.
+- `tendenciaMensualVolumen` SHALL cubrir los últimos 12 meses (`abiertos`/`cerrados` por mes).
+- `tendenciaMensualKpis` SHALL cubrir KPI-01/KPI-04/KPI-05 × 12 meses.
+- `incidentesSinQeVencidos` SHALL listar, como `IncidenteResumen`, como máximo 10 incidentes activos sin QE que superaron su plazo para vincular un QE (RN-INC-006, mismos plazos que el escáner de vencimientos), ordenados del más vencido al menos.
+- `incidentesSinQeVencidosTotal` SHALL contar todos esos incidentes, sin el límite de 10.
 
 #### Scenario: Estado sin QE
 - **WHEN** ningún QE de la empresa está en `estado: EN_VERIFICACION`
 - **THEN** `qePorEstado.EN_VERIFICACION` responde `0`, no una clave ausente
+
+#### Scenario: Incidentes sin QE vencidos ordenados y limitados
+- **WHEN** la empresa tiene 12 incidentes activos sin QE con el plazo vencido y 1 en preaviso
+- **THEN** `incidentesSinQeVencidos` tiene 10 elementos, el primero es el de mayor tiempo vencido, y `incidentesSinQeVencidosTotal` es 12
+
+#### Scenario: Incidentes de otra empresa o con QE no cuentan
+- **WHEN** un incidente vencido pertenece a otra empresa o ya tiene `qeId`
+- **THEN** no aparece en `incidentesSinQeVencidos`
 
 ### Requirement: Resumen ALTA_DIRECCION
 Para rol `ALTA_DIRECCION`, el sistema SHALL responder con alcance organizacional completo: `{ kpisEstrategicos, resumenPorModulo, alertasCriticas, tendenciaTrimestral, comparativaMensual, reaperturas, acsConSolicitudAjustePlazo }`. `resumenPorModulo.documentos` SHALL responder `{ total, publicados, vencidosRevision }` calculado sobre documentos reales de la empresa activa: `total` = documentos no eliminados; `publicados` = documentos con `estado: PUBLICADO`; `vencidosRevision` = documentos `PUBLICADO` cuya `fechaRevisionProxima` ya pasó. `tendenciaTrimestral.ncCerradas` SHALL contar las No Conformidades cuya fecha real de transición a `CERRADA` (derivada de `NoConformidadAuditTrail`, última entrada con `campoModificado: "estado"` y `valorNuevo: "CERRADA"` — **no** la columna `NoConformidad.fechaCierre`, que es una fecha límite esperada fijada en la creación y nunca sincronizada automáticamente con el cierre real) cae dentro de ese trimestre. `comparativaMensual` SHALL comparar KPI-01/KPI-04/KPI-05 entre el mes actual y el mes anterior, clasificando la tendencia como `SUBE`/`BAJA`/`ESTABLE` (diferencia absoluta menor a 2 puntos se considera `ESTABLE`). `reaperturas` SHALL listar QE con `ciclo > 1`, ordenados por fecha de reapertura más reciente. `acsConSolicitudAjustePlazo` SHALL incluir solo acciones correctivas de QE `ALTA`/`CRITICA` con al menos una solicitud de ajuste de plazo en estado `PENDIENTE`.

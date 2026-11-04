@@ -1,5 +1,10 @@
 ﻿import { http, HttpResponse, delay } from 'msw'
-import { qualityEventFixtures } from '../fixtures/quality-events.fixtures'
+import {
+  qualityEventFixtures,
+  sugerenciaCausaRaizIAFixture,
+  sugerenciaCausaRaizIshikawaIAFixture,
+  getAsistenteIAMockFalla,
+} from '../fixtures/quality-events.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getUsersStore } from '../fixtures/auth.fixtures'
 import { getRolEfectivo } from '../fixtures/empresas.fixtures'
@@ -8,14 +13,14 @@ import { resolveRolSegundaFirma, resolveQEEditAccess, puedeVincularDocumentos } 
 import { getIncidentsStore } from './incidents.handlers'
 import { getNonconformitiesStore } from './nonconformities.handlers'
 import { getDocumentsStore, makeAuditEntry } from './documents.handlers'
-import { syncOrigenFromQEEstado } from './qeOriginSync'
+import { linkIncidentToQE, syncOrigenFromQEEstado, unlinkIncidentFromQE } from './qeOriginSync'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
 import { contarDiasHabiles } from '../../utils/businessDays'
 import { getSessionUserUnchecked } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
-import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC } from '../../features/quality-events/types/qualityEvent.types'
+import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC, CandidatoResponsableQE, QualityEventUpdateInput, OrigenIAValor } from '../../features/quality-events/types/qualityEvent.types'
 import type { QeVinculadoResumen } from '../../types/documents.types'
 
 const LATENCY = 400
@@ -126,6 +131,54 @@ function commitQE(idx: number, previous: QualityEvent, updated: QualityEvent): Q
   return updated
 }
 
+// qe-precarga-incidente-responsable — espejo de ResponsableInvestigacionValidator (backend):
+// SUPERVISOR y JEFE_CALIDAD_SYST activos en la empresa, por rol de empresa (no el rol global).
+function getCandidatosResponsable(empresaId: string): CandidatoResponsableQE[] {
+  return getUsersStore()
+    .filter((u) => u.activo)
+    .flatMap((u): CandidatoResponsableQE[] => {
+      const rol = getRolEfectivo(u.id, empresaId)
+      if (rol !== 'SUPERVISOR' && rol !== 'JEFE_CALIDAD_SYST') return []
+      return [{ id: u.id, nombreCompleto: `${u.nombre} ${u.apellido}`, rol, avatarUrl: u.avatarUrl ?? null }]
+    })
+    .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto))
+}
+
+// Nombre/avatar resueltos en lectura, igual que el LEFT JOIN del backend (D6) — no se guardan en el store.
+function conResponsable(qe: QualityEvent): QualityEvent {
+  if (!qe.responsableInvestigacionId) return qe
+  const usuario = getUsersStore().find((u) => u.id === qe.responsableInvestigacionId)
+  return {
+    ...qe,
+    responsableInvestigacionNombre: resolveUserDisplayName(qe.responsableInvestigacionId),
+    responsableInvestigacionAvatarUrl: usuario?.avatarUrl,
+  }
+}
+
+function notificarResponsableAsignado(qe: QualityEvent, actorId: string): void {
+  if (!qe.responsableInvestigacionId) return
+  createAsignacionNotification({
+    entidadTipo: 'QE',
+    entidadId: qe.id,
+    entidadCodigo: qe.numero,
+    empresaId: qe.empresaId,
+    asignadoId: qe.responsableInvestigacionId,
+    actorId,
+    link: `/quality-events/${qe.id}`,
+    mensaje: `Fuiste asignado como responsable de investigación del ${qe.numero}.`,
+  })
+}
+
+const responsableInvalidoResponse = () =>
+  HttpResponse.json(
+    {
+      success: false,
+      message: 'Error de validación.',
+      errors: ['responsableInvestigacionId: El usuario no es un candidato válido (debe ser SUPERVISOR o JEFE_CALIDAD_SYST activo en la empresa).'],
+    },
+    { status: 400 },
+  )
+
 const ORIGIN_REQUIRED_FIELD: Record<string, string> = {
   O1_INCIDENTE_CAMPO: 'incidenteId',
   O2_NC_DETECTADA: 'ncId',
@@ -169,12 +222,22 @@ export const qualityEventHandlers = [
     const totalItems = filtered.length
     const totalPages = Math.ceil(totalItems / pageSize)
     const start = (page - 1) * pageSize
-    const items = filtered.slice(start, start + pageSize)
+    const items = filtered.slice(start, start + pageSize).map(conResponsable)
 
     return HttpResponse.json({
       success: true,
       data: { items, pagination: { page, pageSize, totalItems, totalPages } },
     })
+  }),
+
+  // Registrado antes de '/api/quality-events/:id' para que MSW no lo tome como un id.
+  http.get('/api/quality-events/candidatos-responsable', async () => {
+    await delay(LATENCY)
+    const empresaId = getActiveEmpresaId()
+    if (!empresaId) {
+      return HttpResponse.json({ success: false, message: 'Sesión sin empresa activa' }, { status: 401 })
+    }
+    return HttpResponse.json({ success: true, data: getCandidatosResponsable(empresaId) })
   }),
 
   http.get('/api/quality-events/:id', async ({ params }) => {
@@ -186,7 +249,60 @@ export const qualityEventHandlers = [
         { status: 404 }
       )
     }
-    return HttpResponse.json({ success: true, data: qe })
+    return HttpResponse.json({ success: true, data: conResponsable(qe) })
+  }),
+
+  http.patch('/api/quality-events/:id/responsable', async ({ params, request }) => {
+    await delay(LATENCY)
+    if (getCurrentUserForEditAccess().rol !== 'JEFE_CALIDAD_SYST') {
+      return HttpResponse.json({ success: false, message: 'Acceso denegado' }, { status: 403 })
+    }
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+    const qe = qeStore[idx]
+    if (ESTADOS_BLOQUEADOS_SEVERIDAD_MINERAL.includes(qe.estado)) {
+      return HttpResponse.json(
+        { success: false, message: 'QE_CERRADO: No se puede asignar responsable a un Quality Event cerrado', errorCode: 'QE_CERRADO' },
+        { status: 422 }
+      )
+    }
+
+    const body = await request.json() as { responsableInvestigacionId?: string }
+    const nuevo = getCandidatosResponsable(qe.empresaId).find((c) => c.id === body.responsableInvestigacionId)
+    if (!nuevo) return responsableInvalidoResponse()
+    if (qe.responsableInvestigacionId === nuevo.id) {
+      return HttpResponse.json({ success: true, data: conResponsable(qe) })
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: qe.responsableInvestigacionId ? 'RESPONSABLE_CAMBIADO' : 'RESPONSABLE_ASIGNADO',
+      campoModificado: 'responsableInvestigacionId',
+      valorAnterior: qe.responsableInvestigacionId ? resolveUserDisplayName(qe.responsableInvestigacionId) : undefined,
+      valorNuevo: nuevo.nombreCompleto,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const updated: QualityEvent = {
+      ...qe,
+      responsableInvestigacionId: nuevo.id,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    commitQE(idx, qe, updated)
+    notificarResponsableAsignado(updated, currentUser.id)
+    return HttpResponse.json({ success: true, data: conResponsable(updated) })
   }),
 
   http.post('/api/quality-events', async ({ request }) => {
@@ -239,6 +355,12 @@ export const qualityEventHandlers = [
       }
     }
 
+    const responsableId = body.responsableInvestigacionId as string | undefined
+    const responsable = responsableId
+      ? getCandidatosResponsable(activeEmpresaId).find((c) => c.id === responsableId)
+      : undefined
+    if (responsableId && !responsable) return responsableInvalidoResponse()
+
     const numeroCount = qeStore.filter((q) => q.empresaId === activeEmpresaId).length + 1
     const numero = `QE-2026-${numeroCount.toString().padStart(3, '0')}`
     const now = new Date().toISOString()
@@ -268,13 +390,39 @@ export const qualityEventHandlers = [
           timestamp: now,
           generadoPorIA: false,
         },
+        ...(responsable
+          ? [{
+              id: `aud-${numero}-2`,
+              entidadTipo: 'QualityEvent' as const,
+              entidadId: `qe-2026-${(qeStore.length + 1).toString().padStart(3, '0')}`,
+              accion: 'RESPONSABLE_ASIGNADO',
+              campoModificado: 'responsableInvestigacionId',
+              valorNuevo: responsable.nombreCompleto,
+              realizadoPorId: currentUser.id,
+              realizadoPorNombre: currentUser.nombre,
+              timestamp: now,
+              generadoPorIA: false,
+            }]
+          : []),
       ],
+      responsableInvestigacionId: responsable?.id,
       creadoEn: now,
       actualizadoEn: now,
     } as QualityEvent
 
+    // Vinculación atómica con el incidente de origen en la misma request (incidentes-qe-estado-alertas
+    // D3) — el frontend ya no completa el vínculo con un PATCH /api/incidents/:id.
+    if (newQE.origen === 'O1_INCIDENTE_CAMPO' && newQE.incidenteId &&
+        !linkIncidentToQE(newQE, currentUser, { soloSiAbierto: false })) {
+      return HttpResponse.json(
+        { success: false, message: 'Este incidente ya tiene un Quality Event vinculado' },
+        { status: 422 }
+      )
+    }
+
     qeStore.push(newQE)
-    return HttpResponse.json({ success: true, data: newQE }, { status: 201 })
+    notificarResponsableAsignado(newQE, currentUser.id)
+    return HttpResponse.json({ success: true, data: conResponsable(newQE) }, { status: 201 })
   }),
 
   http.patch('/api/quality-events/:id', async ({ params, request }) => {
@@ -287,9 +435,191 @@ export const qualityEventHandlers = [
       )
     }
     const previous = qeStore[idx]
-    const body = await request.json() as Partial<QualityEvent>
-    const updated = { ...previous, ...body, actualizadoEn: new Date().toISOString() }
+    // qe-analisis-causa-raiz-fix — espejo de ActualizarQualityEventCommand: los campos de firma
+    // no forman parte del PATCH genérico (solo POST /:id/aprobar-causa-raiz los escribe).
+    const { origenIA, ...body } = await request.json() as Partial<QualityEvent> & Pick<QualityEventUpdateInput, 'origenIA'>
+    delete body.causaRaizAprobadaPorId
+    delete body.causaRaizFirmadaEn
+    const now = new Date().toISOString()
+    const updated: QualityEvent = { ...previous, ...body, actualizadoEn: now }
+    // PRD: una sola herramienta de análisis activa por QE — se limpia la lista de la otra.
+    if (body.metodoAnalisis === '5_PORQUES') updated.ishikawa = undefined
+    if (body.metodoAnalisis === 'ISHIKAWA') updated.cincoPorques = undefined
+
+    // qe-asistente-ia D8 — espejo de ActualizarQualityEventHandler para los campos que pueden
+    // venir de una sugerencia IA: 'IA' marca generadoPorIA, 'IA_EDITADO' agrega el sufijo.
+    const currentUser = getCurrentUser()
+    const auditIA = (campo: string, valorNuevo: string, origen: OrigenIAValor | undefined): QEAuditTrailEntry => ({
+      id: `aud-${previous.id}-${updated.auditTrail.length + 1}-${campo}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: previous.id,
+      accion: 'CAMPO_EDITADO',
+      campoModificado: campo,
+      valorNuevo: origen === 'IA_EDITADO' ? `${valorNuevo} (sugerencia IA editada)` : valorNuevo,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: origen === 'IA',
+    })
+    if (body.causaRaizDefinitiva !== undefined && body.causaRaizDefinitiva !== previous.causaRaizDefinitiva) {
+      updated.auditTrail = [...updated.auditTrail, auditIA('causaRaizDefinitiva', body.causaRaizDefinitiva, origenIA?.causaRaiz)]
+    }
+    if (body.cincoPorques && JSON.stringify(body.cincoPorques) !== JSON.stringify(previous.cincoPorques)) {
+      const completas = body.cincoPorques.filter((p) => p.respuesta.trim() !== '').length
+      updated.auditTrail = [
+        ...updated.auditTrail,
+        auditIA('cincoPorques', `5 Porqués actualizado (${completas} de 5 respuestas completas)`, origenIA?.cincoPorques),
+      ]
+    }
+    // qe-asistente-ia-ishikawa — mismo tratamiento para el Ishikawa (origenIA.ishikawa).
+    if (body.ishikawa && JSON.stringify(body.ishikawa) !== JSON.stringify(previous.ishikawa)) {
+      const completas = body.ishikawa.filter((i) => i.causa.trim() !== '').length
+      updated.auditTrail = [
+        ...updated.auditTrail,
+        auditIA('ishikawa', `Ishikawa actualizado (${completas} de 6 categorías completas)`, origenIA?.ishikawa),
+      ]
+    }
     commitQE(idx, previous, updated)
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  // qe-asistente-ia — espejo de GET /api/config/funcionalidades (el mock siempre tiene IA y se
+  // presenta como proveedor real: la sugerencia fija ya es la del fixture).
+  http.get('/api/config/funcionalidades', async () => {
+    await delay(LATENCY)
+    return HttpResponse.json({ success: true, data: { asistenteIA: true, asistenteIASimulado: false } })
+  }),
+
+  // qe-asistente-ia — espejo de AsistirCausaRaizIAHandler con una sugerencia fija: no guarda nada
+  // en el QE, solo agrega ASISTENTE_IA_CONSULTADO al audit trail.
+  // qe-asistente-ia-ishikawa: body opcional { metodo }; sin método, el guardado en el QE y si no
+  // 5 Porqués — mismo orden que AsistirCausaRaizIAHandler.
+  http.post('/api/quality-events/:id/asistente-ia', async ({ params, request }) => {
+    await delay(800)
+    const texto = await request.text()
+    const metodo = texto ? (JSON.parse(texto) as { metodo?: string }).metodo : undefined
+    if (metodo !== undefined && metodo !== '5_PORQUES' && metodo !== 'ISHIKAWA') {
+      return HttpResponse.json(
+        { success: false, data: null, message: 'metodo debe ser 5_PORQUES o ISHIKAWA' },
+        { status: 400 }
+      )
+    }
+    const metodoEfectivo = metodo ?? qeStore.find(q => q.id === params.id)?.metodoAnalisis ?? '5_PORQUES'
+    const sugerencia = metodoEfectivo === 'ISHIKAWA' ? sugerenciaCausaRaizIshikawaIAFixture : sugerenciaCausaRaizIAFixture
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+    if (getAsistenteIAMockFalla()) {
+      return HttpResponse.json(
+        {
+          success: false,
+          data: null,
+          message: 'El asistente no está disponible en este momento. Puedes completar el análisis manualmente.',
+          errorCode: 'IA_NO_DISPONIBLE',
+        },
+        { status: 503 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'ASISTENTE_IA_CONSULTADO',
+      valorNuevo: `${sugerencia.modelo} · ${metodoEfectivo}`,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: true,
+    }
+    commitQE(idx, qe, { ...qe, auditTrail: [...qe.auditTrail, auditEntry] })
+    return HttpResponse.json({ success: true, data: { ...sugerencia, generadoEn: now } })
+  }),
+
+  // RN-QE-002 — espejo de AprobarCausaRaizQEHandler: PIN verificado contra getUsersStore(),
+  // firmante y hora fijados por el handler, nunca por el cliente.
+  http.post('/api/quality-events/:id/aprobar-causa-raiz', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const actor = getCurrentUserForEditAccess()
+    if (actor.rol !== 'JEFE_CALIDAD_SYST') {
+      return HttpResponse.json(
+        { success: false, message: 'solo el Jefe de Calidad puede aprobar la causa raíz' },
+        { status: 403 }
+      )
+    }
+    if (qe.estado !== 'EN_INVESTIGACION' && qe.estado !== 'ANALISIS_COMPLETADO') {
+      return HttpResponse.json(
+        { success: false, message: 'ANALISIS_NO_EDITABLE: la causa raíz solo se aprueba en EN_INVESTIGACION o ANALISIS_COMPLETADO', errorCode: 'ANALISIS_NO_EDITABLE' },
+        { status: 422 }
+      )
+    }
+    const causaRaiz = (qe.causaRaizDefinitiva ?? '').trim()
+    if (causaRaiz.length < 100 || causaRaiz.length > 500) {
+      return HttpResponse.json(
+        { success: false, message: 'CAUSA_RAIZ_INVALIDA: La causa raíz debe tener entre 100 y 500 caracteres', errorCode: 'CAUSA_RAIZ_INVALIDA' },
+        { status: 422 }
+      )
+    }
+    if (qe.causaRaizFirmadaEn) {
+      return HttpResponse.json(
+        { success: false, message: 'CAUSA_RAIZ_FIRMADA: La causa raíz ya fue aprobada y no se puede modificar', errorCode: 'CAUSA_RAIZ_FIRMADA' },
+        { status: 422 }
+      )
+    }
+
+    const body = await request.json() as { pin?: string }
+    const signer = getUsersStore().find((u) => u.id === actor.id)
+    if (!signer?.pin) {
+      return HttpResponse.json(
+        { success: false, data: null, message: 'PIN_NO_CONFIGURADO: Debés configurar tu PIN de firma antes de aprobar la causa raíz', errorCode: 'PIN_NO_CONFIGURADO' },
+        { status: 422 },
+      )
+    }
+    if (body.pin !== signer.pin) {
+      return HttpResponse.json(
+        { success: false, data: null, message: 'PIN incorrecto', errorCode: 'PIN_INCORRECTO' },
+        { status: 401 },
+      )
+    }
+
+    const now = new Date().toISOString()
+    const currentUser = getCurrentUser()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'CAUSA_RAIZ_APROBADA',
+      campoModificado: 'causaRaizDefinitiva',
+      valorNuevo: causaRaiz.slice(0, 100),
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const updated: QualityEvent = {
+      ...qe,
+      causaRaizAprobadaPorId: currentUser.id,
+      causaRaizFirmadaEn: now,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    commitQE(idx, qe, updated)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -305,6 +635,19 @@ export const qualityEventHandlers = [
 
     const body = await request.json() as { nuevoEstado: QEStatus; comentario?: string; firmaPin?: string }
     const qe = qeStore[idx]
+
+    // PRD §1.3 (1 → 2) — espejo de QE_SIN_RESPONSABLE en TransicionarEstadoQEHandler. Solo desde
+    // ABIERTO: REABIERTO → EN_INVESTIGACION es una reapertura y no se bloquea (design.md D4).
+    if (qe.estado === 'ABIERTO' && body.nuevoEstado === 'EN_INVESTIGACION' && !qe.responsableInvestigacionId) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'QE_SIN_RESPONSABLE: Asigna un responsable de investigación antes de iniciar la investigación',
+          errorCode: 'QE_SIN_RESPONSABLE',
+        },
+        { status: 422 }
+      )
+    }
 
     if (body.nuevoEstado === 'EN_EJECUCION' && !qe.causaRaizFirmadaEn) {
       return HttpResponse.json(
@@ -377,6 +720,8 @@ export const qualityEventHandlers = [
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
+    // El incidente de origen queda libre para un QE nuevo (incidentes-qe-estado-alertas D5).
+    if (qe.origen === 'O1_INCIDENTE_CAMPO' && qe.incidenteId) unlinkIncidentFromQE(qe)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -393,6 +738,21 @@ export const qualityEventHandlers = [
     const qe = qeStore[idx]
     const now = new Date().toISOString()
     const currentUser = getCurrentUser()
+
+    // Re-vinculación con el incidente de origen (D5): si mientras tanto se vinculó a otro QE o ya
+    // no está ABIERTO, el QE sigue eliminado.
+    if (qe.origen === 'O1_INCIDENTE_CAMPO' && qe.incidenteId &&
+        !linkIncidentToQE(qe, currentUser, { soloSiAbierto: true })) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'El incidente de origen ya está vinculado a otro Quality Event o ya no está abierto',
+          errorCode: 'INCIDENTE_YA_VINCULADO',
+        },
+        { status: 422 }
+      )
+    }
+
     const auditEntry: QEAuditTrailEntry = {
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
@@ -1012,7 +1372,7 @@ export const qualityEventHandlers = [
     }
     if (body.pin !== signer.pin) {
       return HttpResponse.json(
-        { success: false, data: null, message: 'PIN incorrecto' },
+        { success: false, data: null, message: 'PIN incorrecto', errorCode: 'PIN_INCORRECTO' },
         { status: 401 },
       )
     }

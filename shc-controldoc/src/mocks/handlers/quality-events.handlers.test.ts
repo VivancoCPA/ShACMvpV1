@@ -11,6 +11,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { createMockUser } from '../fixtures/mockUser'
 import { getUsersStore } from '../fixtures/auth.fixtures'
 import { getNotificationsStore, resetStore as resetNotificationsStore } from '../fixtures/notifications.fixtures'
+import { setAsistenteIAMockFalla } from '../fixtures/quality-events.fixtures'
 import type { QualityEvent } from '../../features/quality-events/types/qualityEvent.types'
 import type { Incidente } from '../../features/incidents/types/incident.types'
 import type { NoConformidad } from '../../features/nonconformities/types/nonconformity.types'
@@ -570,7 +571,7 @@ describe('quality-events.handlers — RN-QE-001 vínculo único Incidente → QE
     incidenteId,
   })
 
-  it('creating a QE from an incident, then linking it back, updates incidente.qeId', async () => {
+  it('creating a QE from an incident links incidente.qeId in the same request (incidentes-qe-estado-alertas D3)', async () => {
     setCurrentUser('user-supervisor-001', 'SUPERVISOR')
     getIncidentsStore().push(baseIncidente({ id: 'inc-test-link', numero: 'INC-TEST-LINK' }))
 
@@ -579,10 +580,52 @@ describe('quality-events.handlers — RN-QE-001 vínculo único Incidente → QE
     )
     expect(status).toBe(201)
 
-    // Mirrors what QualityEventForm does on success: PATCH the incident with the new qeId.
-    await call(api.patch('/api/incidents/inc-test-link', { qeId: data.id }))
+    const inc = getIncidentsStore().find((i) => i.id === 'inc-test-link')
+    expect(inc?.qeId).toBe(data.id)
+    expect(inc?.auditTrail.at(-1)).toMatchObject({ accion: 'QE_VINCULADO', valorNuevo: data.numero })
+  })
 
-    expect(getIncidentsStore().find((i) => i.id === 'inc-test-link')?.qeId).toBe(data.id)
+  it('deleting the QE frees the incident and records the reason', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    getIncidentsStore().push(baseIncidente({ id: 'inc-test-unlink', numero: 'INC-TEST-UNLINK' }))
+    const { data: qe } = await call(api.post<QualityEvent>('/api/quality-events', createPayload('inc-test-unlink')))
+
+    const { status } = await call(api.delete(`/api/quality-events/${qe.id}`))
+    expect(status).toBe(200)
+
+    const inc = getIncidentsStore().find((i) => i.id === 'inc-test-unlink')
+    expect(inc?.qeId).toBeUndefined()
+    expect(inc?.estado).toBe('ABIERTO')
+    expect(inc?.auditTrail.at(-1)).toMatchObject({
+      accion: 'ESTADO_SINCRONIZADO_QE',
+      valorNuevo: `QE ${qe.numero} eliminado`,
+      realizadoPorNombre: 'Sistema',
+    })
+  })
+
+  it('reactivating the QE re-links the incident when it is still free', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    getIncidentsStore().push(baseIncidente({ id: 'inc-test-relink', numero: 'INC-TEST-RELINK' }))
+    const { data: qe } = await call(api.post<QualityEvent>('/api/quality-events', createPayload('inc-test-relink')))
+    await call(api.delete(`/api/quality-events/${qe.id}`))
+
+    const { status } = await call(api.patch(`/api/quality-events/${qe.id}/reactivar`))
+    expect(status).toBe(200)
+    expect(getIncidentsStore().find((i) => i.id === 'inc-test-relink')?.qeId).toBe(qe.id)
+  })
+
+  it('reactivating the QE returns 422 INCIDENTE_YA_VINCULADO when the incident was taken by another QE', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    getIncidentsStore().push(baseIncidente({ id: 'inc-test-taken', numero: 'INC-TEST-TAKEN' }))
+    const { data: qe } = await call(api.post<QualityEvent>('/api/quality-events', createPayload('inc-test-taken')))
+    await call(api.delete(`/api/quality-events/${qe.id}`))
+    const { data: otro } = await call(api.post<QualityEvent>('/api/quality-events', createPayload('inc-test-taken')))
+
+    const { status, data } = await call(api.patch<{ errorCode: string }>(`/api/quality-events/${qe.id}/reactivar`))
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('INCIDENTE_YA_VINCULADO')
+    expect(getIncidentsStore().find((i) => i.id === 'inc-test-taken')?.qeId).toBe(otro.id)
+    expect(getQeStore().find((q) => q.id === qe.id)?.deletedAt).toBeDefined()
   })
 
   it('rejects a second QE creation for an incident already linked to a QE', async () => {
@@ -676,6 +719,8 @@ describe('quality-events.handlers — sincronización de estado Incidente <- QE'
         id: 'qe-sync-investigacion',
         numero: 'QE-SYNC-INV',
         estado: 'ABIERTO',
+        // qe-precarga-incidente-responsable: ABIERTO → EN_INVESTIGACION exige responsable.
+        responsableInvestigacionId: 'user-supervisor-001',
         incidenteId: 'inc-sync-investigacion',
       }),
     )
@@ -689,10 +734,13 @@ describe('quality-events.handlers — sincronización de estado Incidente <- QE'
     const inc = getIncidentsStore().find((i) => i.id === 'inc-sync-investigacion')
     expect(inc?.estado).toBe('EN_INVESTIGACION')
     expect(inc?.auditTrail[inc.auditTrail.length - 1]).toMatchObject({
-      accion: 'ESTADO_CAMBIADO',
+      accion: 'ESTADO_SINCRONIZADO_QE',
       estadoAnterior: 'ABIERTO',
       estadoNuevo: 'EN_INVESTIGACION',
-      valorNuevo: 'Sincronizado automáticamente desde QE QE-SYNC-INV',
+      valorNuevo: 'QE-SYNC-INV',
+      realizadoPorId: 'system',
+      realizadoPorNombre: 'Sistema',
+      generadoPorIA: true,
     })
   })
 
@@ -780,7 +828,7 @@ describe('quality-events.handlers — sincronización de estado Incidente <- QE'
 
   it('does not sync when the QE has no incidenteId linked', async () => {
     getIncidentsStore().push(baseIncidente({ id: 'inc-no-link', numero: 'INC-NO-LINK', estado: 'ABIERTO' }))
-    getQeStore().push(baseQE({ id: 'qe-no-link', numero: 'QE-NO-LINK', estado: 'ABIERTO', incidenteId: undefined }))
+    getQeStore().push(baseQE({ id: 'qe-no-link', numero: 'QE-NO-LINK', estado: 'ABIERTO', incidenteId: undefined, responsableInvestigacionId: 'user-supervisor-001' }))
 
     setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
     const { status } = await call(
@@ -796,7 +844,7 @@ describe('quality-events.handlers — sincronización de estado Incidente <- QE'
       baseIncidente({ id: 'inc-sync-anulado', numero: 'INC-SYNC-ANULADO', estado: 'ANULADO', qeId: 'qe-sync-anulado' }),
     )
     getQeStore().push(
-      baseQE({ id: 'qe-sync-anulado', numero: 'QE-SYNC-ANULADO', estado: 'ABIERTO', incidenteId: 'inc-sync-anulado' }),
+      baseQE({ id: 'qe-sync-anulado', numero: 'QE-SYNC-ANULADO', estado: 'ABIERTO', incidenteId: 'inc-sync-anulado', responsableInvestigacionId: 'user-supervisor-001' }),
     )
 
     setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
@@ -820,6 +868,8 @@ describe('quality-events.handlers — sincronización de estado NC <- QE (RN-QE-
         numero: 'QE-NC-SYNC-INV',
         origen: 'O2_NC_DETECTADA',
         estado: 'ABIERTO',
+        // qe-precarga-incidente-responsable: ABIERTO → EN_INVESTIGACION exige responsable.
+        responsableInvestigacionId: 'user-supervisor-001',
         ncId: 'nc-sync-investigacion',
       }),
     )
@@ -928,7 +978,7 @@ describe('quality-events.handlers — sincronización de estado NC <- QE (RN-QE-
   it('does not sync when the QE has no ncId linked', async () => {
     getNonconformitiesStore().push(baseNC({ id: 'nc-no-link', numero: 'NC-CAL-2026-NO-LINK', estado: 'ABIERTA' }))
     getQeStore().push(
-      baseQE({ id: 'qe-nc-no-link', numero: 'QE-NC-NO-LINK', origen: 'O2_NC_DETECTADA', estado: 'ABIERTO', ncId: undefined }),
+      baseQE({ id: 'qe-nc-no-link', numero: 'QE-NC-NO-LINK', origen: 'O2_NC_DETECTADA', estado: 'ABIERTO', ncId: undefined, responsableInvestigacionId: 'user-supervisor-001' }),
     )
 
     setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
@@ -950,6 +1000,8 @@ describe('quality-events.handlers — sincronización de estado NC <- QE (RN-QE-
         numero: 'QE-NC-SYNC-ANULADA',
         origen: 'O2_NC_DETECTADA',
         estado: 'ABIERTO',
+        // qe-precarga-incidente-responsable: ABIERTO → EN_INVESTIGACION exige responsable.
+        responsableInvestigacionId: 'user-supervisor-001',
         ncId: 'nc-sync-anulada',
       }),
     )
@@ -1170,5 +1222,196 @@ describe('quality-events.handlers — POST/DELETE /api/quality-events/:id/docume
       api.post('/api/quality-events/qe-link-8/documentos-vinculados', { documentoId: 'doc-otra-empresa' }),
     )
     expect(status).toBe(404)
+  })
+})
+
+describe('quality-events.handlers — análisis tipado y aprobar-causa-raiz (qe-analisis-causa-raiz-fix)', () => {
+  const causaRaiz = 'c'.repeat(150)
+  const cincoPorques = [1, 2, 3, 4, 5].map((n) => ({ pregunta: `¿Por qué ${n}?`, respuesta: `Respuesta ${n}` }))
+
+  it('PATCH devuelve las listas, limpia la otra herramienta e ignora los campos de firma', async () => {
+    getQeStore().push(baseQE({
+      id: 'qe-analisis-1',
+      estado: 'EN_INVESTIGACION',
+      metodoAnalisis: 'ISHIKAWA',
+      ishikawa: [{ categoria: 'METODO', causa: 'Causa previa' }],
+    }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(api.patch<QualityEvent>('/api/quality-events/qe-analisis-1', {
+      metodoAnalisis: '5_PORQUES',
+      cincoPorques,
+      causaRaizFirmadaEn: '2026-01-01T00:00:00Z',
+      causaRaizAprobadaPorId: 'user-jefecalidad-001',
+    }))
+
+    expect(status).toBe(200)
+    expect(data.cincoPorques).toEqual(cincoPorques)
+    expect(data.ishikawa).toBeUndefined()
+    expect(data.causaRaizFirmadaEn).toBeUndefined()
+    expect(data.causaRaizAprobadaPorId).toBeUndefined()
+  })
+
+  it('aprueba con el PIN del fixture y registra CAUSA_RAIZ_APROBADA', async () => {
+    getQeStore().push(baseQE({ id: 'qe-analisis-2', estado: 'ANALISIS_COMPLETADO', causaRaizDefinitiva: causaRaiz }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.post<QualityEvent>('/api/quality-events/qe-analisis-2/aprobar-causa-raiz', { pin: '1234' }),
+    )
+
+    expect(status).toBe(200)
+    expect(data.causaRaizAprobadaPorId).toBe('user-jefecalidad-001')
+    expect(data.causaRaizFirmadaEn).toBeDefined()
+    expect(data.auditTrail.some((e) => e.accion === 'CAUSA_RAIZ_APROBADA')).toBe(true)
+  })
+
+  it('PIN distinto → 401 PIN_INCORRECTO', async () => {
+    getQeStore().push(baseQE({ id: 'qe-analisis-3', estado: 'ANALISIS_COMPLETADO', causaRaizDefinitiva: causaRaiz }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.post<{ errorCode?: string }>('/api/quality-events/qe-analisis-3/aprobar-causa-raiz', { pin: '9999' }),
+    )
+
+    expect(status).toBe(401)
+    expect(data.errorCode).toBe('PIN_INCORRECTO')
+    expect(getQeStore().find((q) => q.id === 'qe-analisis-3')?.causaRaizFirmadaEn).toBeUndefined()
+  })
+
+  it('SUPERVISOR → 403', async () => {
+    getQeStore().push(baseQE({ id: 'qe-analisis-4', estado: 'ANALISIS_COMPLETADO', causaRaizDefinitiva: causaRaiz }))
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+
+    const { status } = await call(api.post('/api/quality-events/qe-analisis-4/aprobar-causa-raiz', { pin: '1234' }))
+
+    expect(status).toBe(403)
+  })
+
+  it('causa raíz corta → 422 CAUSA_RAIZ_INVALIDA', async () => {
+    getQeStore().push(baseQE({ id: 'qe-analisis-5', estado: 'ANALISIS_COMPLETADO', causaRaizDefinitiva: 'corta' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.post<{ errorCode?: string }>('/api/quality-events/qe-analisis-5/aprobar-causa-raiz', { pin: '1234' }),
+    )
+
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('CAUSA_RAIZ_INVALIDA')
+  })
+})
+
+describe('quality-events.handlers — asistente IA (qe-asistente-ia)', () => {
+  beforeEach(() => setAsistenteIAMockFalla(false))
+
+  it('funcionalidades devuelve asistenteIA: true', async () => {
+    const { status, data } = await call(api.get<{ asistenteIA: boolean; asistenteIASimulado: boolean }>('/api/config/funcionalidades'))
+
+    expect(status).toBe(200)
+    expect(data.asistenteIA).toBe(true)
+    expect(data.asistenteIASimulado).toBe(false)
+  })
+
+  it('devuelve la sugerencia fija, no modifica el QE y registra ASISTENTE_IA_CONSULTADO', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-1', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.post<{ causaRaizProbable: string; cincoPorques: unknown[]; accionesSugeridas: unknown[] }>(
+        '/api/quality-events/qe-ia-1/asistente-ia',
+      ),
+    )
+
+    expect(status).toBe(200)
+    expect(data.causaRaizProbable.length).toBeGreaterThanOrEqual(100)
+    expect(data.cincoPorques).toHaveLength(5)
+    expect(data.accionesSugeridas.length).toBeGreaterThanOrEqual(2)
+    const qe = getQeStore().find((q) => q.id === 'qe-ia-1')!
+    expect(qe.causaRaizDefinitiva).toBeUndefined()
+    expect(qe.auditTrail.some((e) => e.accion === 'ASISTENTE_IA_CONSULTADO' && e.generadoPorIA)).toBe(true)
+  })
+
+  it('con el toggle de falla responde 503 IA_NO_DISPONIBLE', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-2', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    setAsistenteIAMockFalla(true)
+
+    const { status, data } = await call(api.post<{ errorCode?: string }>('/api/quality-events/qe-ia-2/asistente-ia'))
+
+    expect(status).toBe(503)
+    expect(data.errorCode).toBe('IA_NO_DISPONIBLE')
+  })
+
+  it('PATCH con origenIA marca generadoPorIA o agrega el sufijo de edición', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-3', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { data } = await call(api.patch<QualityEvent>('/api/quality-events/qe-ia-3', {
+      causaRaizDefinitiva: 'c'.repeat(150),
+      metodoAnalisis: '5_PORQUES',
+      cincoPorques: [1, 2, 3, 4, 5].map((n) => ({ pregunta: `P${n}`, respuesta: `R${n}` })),
+      origenIA: { causaRaiz: 'IA', cincoPorques: 'IA_EDITADO' },
+    }))
+
+    const causa = data.auditTrail.find((e) => e.campoModificado === 'causaRaizDefinitiva')
+    const porques = data.auditTrail.find((e) => e.campoModificado === 'cincoPorques')
+    expect(causa?.generadoPorIA).toBe(true)
+    expect(porques?.generadoPorIA).toBe(false)
+    expect(porques?.valorNuevo).toMatch(/\(sugerencia IA editada\)$/)
+    expect(data).not.toHaveProperty('origenIA')
+  })
+
+  // qe-asistente-ia-ishikawa
+  it('con metodo ISHIKAWA devuelve las 6 categorías sin 5 Porqués y lo registra en el audit', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-4', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.post<{ cincoPorques?: unknown[] | null; ishikawa?: { categoria: string }[] | null }>(
+        '/api/quality-events/qe-ia-4/asistente-ia',
+        { metodo: 'ISHIKAWA' },
+      ),
+    )
+
+    expect(status).toBe(200)
+    expect(data.cincoPorques ?? null).toBeNull()
+    expect(new Set(data.ishikawa!.map((i) => i.categoria)).size).toBe(6)
+    const audit = getQeStore().find((q) => q.id === 'qe-ia-4')!.auditTrail.find((e) => e.accion === 'ASISTENTE_IA_CONSULTADO')
+    expect(audit?.valorNuevo).toMatch(/· ISHIKAWA$/)
+  })
+
+  it('con metodo 5_PORQUES responde como antes', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-5', estado: 'EN_INVESTIGACION', metodoAnalisis: 'ISHIKAWA' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { data } = await call(
+      api.post<{ cincoPorques: unknown[]; ishikawa?: unknown[] | null }>('/api/quality-events/qe-ia-5/asistente-ia', { metodo: '5_PORQUES' }),
+    )
+
+    expect(data.cincoPorques).toHaveLength(5)
+    expect(data.ishikawa ?? null).toBeNull()
+  })
+
+  it('un metodo inválido responde 400', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-6', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status } = await call(api.post('/api/quality-events/qe-ia-6/asistente-ia', { metodo: 'PARETO' }))
+
+    expect(status).toBe(400)
+  })
+
+  it('PATCH con origenIA.ishikawa marca generadoPorIA en la entrada de ishikawa', async () => {
+    getQeStore().push(baseQE({ id: 'qe-ia-7', estado: 'EN_INVESTIGACION' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { data } = await call(api.patch<QualityEvent>('/api/quality-events/qe-ia-7', {
+      metodoAnalisis: 'ISHIKAWA',
+      ishikawa: ['METODO', 'MAQUINA', 'MATERIAL', 'MANO_DE_OBRA', 'MEDICION', 'MEDIO_AMBIENTE'].map((categoria) => ({ categoria, causa: 'Causa' })),
+      origenIA: { ishikawa: 'IA' },
+    }))
+
+    const entrada = data.auditTrail.find((e) => e.campoModificado === 'ishikawa')
+    expect(entrada?.generadoPorIA).toBe(true)
   })
 })

@@ -8,6 +8,7 @@ import { puedeAdministrarEmpresas } from '../permissions/empresasPermissions'
 import { EmpresaList } from '../components/EmpresaList'
 import { EmpresaFormModal } from '../components/EmpresaFormModal'
 import type { Empresa } from '../types/empresa.types'
+import { SeguridadSesionEmpresaModal } from '../../sesion/components/SeguridadSesionEmpresaModal'
 
 export function EmpresasAdminPage() {
   const { t } = useTranslation('empresas')
@@ -15,6 +16,7 @@ export function EmpresasAdminPage() {
   const canAdminister = user ? puedeAdministrarEmpresas(user) : false
 
   const [formEmpresa, setFormEmpresa] = useState<Empresa | null | undefined>(undefined)
+  const [seguridadEmpresa, setSeguridadEmpresa] = useState<Empresa | null>(null)
 
   const actions = canAdminister ? (
     <button
@@ -30,11 +32,23 @@ export function EmpresasAdminPage() {
   return (
     <PageWrapper title={t('header.title')} actions={actions}>
       <ErrorBoundary>
-        <EmpresaList onEdit={setFormEmpresa} canAdminister={canAdminister} />
+        <EmpresaList
+          onEdit={setFormEmpresa}
+          onSeguridadSesion={setSeguridadEmpresa}
+          canAdminister={canAdminister}
+        />
       </ErrorBoundary>
 
       {formEmpresa !== undefined && (
         <EmpresaFormModal empresa={formEmpresa ?? undefined} onClose={() => setFormEmpresa(undefined)} />
+      )}
+
+      {seguridadEmpresa && (
+        <SeguridadSesionEmpresaModal
+          empresaId={seguridadEmpresa.id}
+          empresaNombre={seguridadEmpresa.razonSocial}
+          onClose={() => setSeguridadEmpresa(null)}
+        />
       )}
     </PageWrapper>
   )

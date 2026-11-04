@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useDarkMode } from '../../hooks/useDarkMode'
 import { useOfflineIncidentSync } from '../../features/incidents/hooks/useOfflineIncidentSync'
 import { SyncQueueBadge } from '../../features/incidents/components/SyncQueueBadge'
+import { SessionTimeoutManager } from '../../features/sesion/components/SessionTimeoutManager'
 
 /**
  * Layout mobile-first de una columna para rutas bajo `/m/*`. Hermano de
@@ -28,6 +29,7 @@ export function MobileShell() {
           <SyncQueueBadge onRetry={(localId) => void retry(localId)} />
         </div>
       </header>
+      <SessionTimeoutManager />
       <main className="mx-auto w-full max-w-md px-4 py-6">
         <Outlet />
       </main>

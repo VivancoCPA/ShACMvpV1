@@ -78,20 +78,79 @@ export function IncidentMapCanvas({ incidentes, localId, planoPngUrl, onGroupCli
   const showPlan = !imgError && !!planoPngUrl
 
   return (
-    <div className="relative flex-1 overflow-hidden rounded-lg border border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
-      {/* Floor plan image */}
-      {planoPngUrl && !imgError && (
-        <img
-          src={planoPngUrl}
-          alt=""
-          className="h-full w-full object-contain"
-          onError={() => setImgError(true)}
-          aria-hidden="true"
-        />
+    <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-hairline bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark-soft">
+      {/* Floor plan image + markers. El envoltorio mide exactamente lo mismo que la
+          imagen (sin object-contain), así left/top en % caen sobre el plano real.
+          Sin overflow-hidden propio para no recortar el tooltip del marcador. */}
+      {showPlan && (
+        <div data-testid="incident-map-plano" className="relative inline-block min-w-0 max-w-full">
+          <img
+            src={planoPngUrl}
+            alt=""
+            className="block h-auto max-h-[70vh] w-auto max-w-full"
+            onError={() => setImgError(true)}
+            aria-hidden="true"
+          />
+
+          {/* Markers */}
+          {groups.map((group) => {
+            const { id, members, centroid } = group
+            const count = members.length
+            const markerStyle = getMarkerStyle(count)
+            const isHovered = hoveredGroupId === id
+
+            const allSameZone = members.every((m) => m.zonaId === members[0].zonaId)
+            const zoneLabel = allSameZone
+              ? (members[0].zonaNombre ?? '')
+              : t('map.multipleZones')
+
+            const tipos = members.map((m) => m.tipo)
+            const topTipo = mostFrequent(tipos)
+            const tipoLabel = INCIDENT_TYPE_LABELS[topTipo as keyof typeof INCIDENT_TYPE_LABELS] ?? topTipo
+
+            const latestDate = members
+              .map((m) => m.fechaEvento)
+              .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
+
+            return (
+              <div
+                key={id}
+                style={{ left: `${centroid.x}%`, top: `${centroid.y}%` }}
+                className="absolute"
+              >
+                {/* Marker circle */}
+                <button
+                  type="button"
+                  onClick={() => onGroupClick(group)}
+                  onMouseEnter={() => setHoveredGroupId(id)}
+                  onMouseLeave={() => setHoveredGroupId(null)}
+                  style={{ transform: 'translate(-50%, -50%)' }}
+                  className={`${markerStyle} flex items-center justify-center rounded-full text-xs font-bold text-white opacity-85 transition-opacity hover:opacity-100`}
+                  aria-label={`${count} incidente${count !== 1 ? 's' : ''}`}
+                >
+                  {count > 1 ? count : null}
+                </button>
+
+                {/* Tooltip */}
+                {isHovered && (
+                  <div
+                    style={{ transform: 'translate(-50%, calc(-100% - 12px))' }}
+                    className="absolute left-0 top-0 z-10 w-40 rounded-md bg-ink/90 px-2.5 py-2 text-xs text-white shadow-lg dark:bg-surface-dark-elevated dark:text-on-dark"
+                  >
+                    <p className="font-medium">{count} incidente{count !== 1 ? 's' : ''}</p>
+                    <p className="mt-0.5 text-white/70">{zoneLabel}</p>
+                    <p className="mt-0.5 text-white/70">{tipoLabel}</p>
+                    <p className="mt-0.5 text-white/70">{formatShortDate(latestDate, i18n.language)}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {/* Plan unavailable */}
-      {(!planoPngUrl || imgError) && (
+      {!showPlan && (
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-sm text-muted dark:text-on-dark-soft">{t('map.planUnavailable')}</p>
         </div>
@@ -105,61 +164,6 @@ export function IncidentMapCanvas({ incidentes, localId, planoPngUrl, onGroupCli
           </p>
         </div>
       )}
-
-      {/* Markers */}
-      {groups.map((group) => {
-        const { id, members, centroid } = group
-        const count = members.length
-        const markerStyle = getMarkerStyle(count)
-        const isHovered = hoveredGroupId === id
-
-        const allSameZone = members.every((m) => m.zonaId === members[0].zonaId)
-        const zoneLabel = allSameZone
-          ? (members[0].zonaNombre ?? '')
-          : t('map.multipleZones')
-
-        const tipos = members.map((m) => m.tipo)
-        const topTipo = mostFrequent(tipos)
-        const tipoLabel = INCIDENT_TYPE_LABELS[topTipo as keyof typeof INCIDENT_TYPE_LABELS] ?? topTipo
-
-        const latestDate = members
-          .map((m) => m.fechaEvento)
-          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
-
-        return (
-          <div
-            key={id}
-            style={{ left: `${centroid.x}%`, top: `${centroid.y}%` }}
-            className="absolute"
-          >
-            {/* Marker circle */}
-            <button
-              type="button"
-              onClick={() => onGroupClick(group)}
-              onMouseEnter={() => setHoveredGroupId(id)}
-              onMouseLeave={() => setHoveredGroupId(null)}
-              style={{ transform: 'translate(-50%, -50%)' }}
-              className={`${markerStyle} flex items-center justify-center rounded-full text-xs font-bold text-white opacity-85 transition-opacity hover:opacity-100`}
-              aria-label={`${count} incidente${count !== 1 ? 's' : ''}`}
-            >
-              {count > 1 ? count : null}
-            </button>
-
-            {/* Tooltip */}
-            {isHovered && (
-              <div
-                style={{ transform: 'translate(-50%, calc(-100% - 12px))' }}
-                className="absolute left-0 top-0 z-10 w-40 rounded-md bg-ink/90 px-2.5 py-2 text-xs text-white shadow-lg dark:bg-surface-dark-elevated dark:text-on-dark"
-              >
-                <p className="font-medium">{count} incidente{count !== 1 ? 's' : ''}</p>
-                <p className="mt-0.5 text-white/70">{zoneLabel}</p>
-                <p className="mt-0.5 text-white/70">{tipoLabel}</p>
-                <p className="mt-0.5 text-white/70">{formatShortDate(latestDate, i18n.language)}</p>
-              </div>
-            )}
-          </div>
-        )
-      })}
 
       {/* Legend */}
       <IncidentMapLegend />

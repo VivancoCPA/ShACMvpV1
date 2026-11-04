@@ -159,6 +159,18 @@ export function resolveRolSegundaFirma(
   return 'SUPERVISOR'
 }
 
+// `esResponsable` de getQualityEventPermissions para los permisos ligados a la investigación
+// (qe-precarga-incidente-responsable D11). No aplica a la verificación, que usa auditorAsignadoId.
+export function esResponsableInvestigacion(qe: QualityEvent, usuario: Pick<User, 'id'>): boolean {
+  return Boolean(qe.responsableInvestigacionId) && qe.responsableInvestigacionId === usuario.id
+}
+
+// PATCH /api/quality-events/:id/responsable — solo JEFE_CALIDAD_SYST, fuera de los estados cerrados
+// (espejo de AsignarResponsableQEHandler).
+export function puedeAsignarResponsable(qe: QualityEvent, rol: UserRole): boolean {
+  return rol === 'JEFE_CALIDAD_SYST' && !['CERRADO', 'EN_VERIFICACION', 'VERIFICADO'].includes(qe.estado)
+}
+
 // Gate de vinculación de documentos (fs-vinculacion-documento-qe, design.md D4) — espejo del
 // backend (DocumentoQualityEventLinkService.PuedeVincularDesdeQE): JEFE_CALIDAD_SYST en cualquier
 // estado activo, o el SUPERVISOR responsable de la investigación, mientras el QE no esté CERRADO
@@ -167,7 +179,7 @@ export function resolveRolSegundaFirma(
 export function puedeVincularDocumentos(qe: QualityEvent, usuario: Pick<User, 'id' | 'rol'>): boolean {
   if (qe.estado === 'CERRADO' || qe.estado === 'VERIFICADO') return false
   if (usuario.rol === 'JEFE_CALIDAD_SYST') return true
-  return usuario.rol === 'SUPERVISOR' && qe.responsableInvestigacionId === usuario.id
+  return usuario.rol === 'SUPERVISOR' && esResponsableInvestigacion(qe, usuario)
 }
 
 export function validateTransitionToEnEjecucion(qe: QualityEvent): {

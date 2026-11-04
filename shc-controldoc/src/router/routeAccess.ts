@@ -52,6 +52,7 @@ export const ROUTE_ROLE_GROUPS = {
   areasAdmin: ['ADMINISTRADOR_SISTEMA'],
   locationsAdmin: ['ADMINISTRADOR_SISTEMA', 'JEFE_CALIDAD_SYST'],
   empresasAdmin: ['SUPERADMIN'],
+  parametrosSesion: ['SUPERADMIN'],
 } satisfies Record<string, UserRole[]>
 
 interface RouteAccessEntry {
@@ -86,6 +87,7 @@ export const ROUTE_ACCESS_TABLE: RouteAccessEntry[] = [
   { path: '/admin/areas', requiredRoles: ROUTE_ROLE_GROUPS.areasAdmin },
   { path: '/admin/empresas', requiredRoles: ROUTE_ROLE_GROUPS.empresasAdmin },
   { path: '/admin/empresas/:id/usuarios', requiredRoles: ROUTE_ROLE_GROUPS.empresasAdmin },
+  { path: '/admin/parametros-sesion', requiredRoles: ROUTE_ROLE_GROUPS.parametrosSesion },
   { path: '/admin/locales', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },
   { path: '/admin/locales/new', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },
   { path: '/admin/locales/:id/editar', requiredRoles: ROUTE_ROLE_GROUPS.locationsAdmin },

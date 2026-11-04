@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getIncidentQEAlertLevel, PLAZO_QE_HORAS } from './incidentQEAlert'
+import { getIncidentQEAlertLevel, getIncidentQEPlazoInfo, PLAZO_QE_HORAS } from './incidentQEAlert'
 import type { Incidente } from '../types/incident.types'
 
 function makeIncidente(overrides: Partial<Incidente> = {}): Incidente {
@@ -82,5 +82,29 @@ describe('getIncidentQEAlertLevel — RN-INC-006', () => {
     const justOver = makeIncidente({ tipo, fechaEvento: hoursAgo(horas + 1) })
     expect(getIncidentQEAlertLevel(justUnder, NOW)).not.toBe('ROJO')
     expect(getIncidentQEAlertLevel(justOver, NOW)).toBe('ROJO')
+  })
+})
+
+describe('getIncidentQEPlazoInfo — tooltip RN-INC-006 (incidentes-ajustes-ui)', () => {
+  it('devuelve el plazo correcto por tipo', () => {
+    expect(getIncidentQEPlazoInfo(makeIncidente({ tipo: 'ACCIDENTE' }), NOW).plazoHoras).toBe(24)
+    expect(getIncidentQEPlazoInfo(makeIncidente({ tipo: 'INCIDENTE' }), NOW).plazoHoras).toBe(48)
+    expect(getIncidentQEPlazoInfo(makeIncidente({ tipo: 'CUASI_ACCIDENTE' }), NOW).plazoHoras).toBe(72)
+    expect(getIncidentQEPlazoInfo(makeIncidente({ tipo: 'CONDICION_INSEGURA' }), NOW).plazoHoras).toBe(48)
+  })
+
+  it('horasRestantes es positivo antes del vencimiento', () => {
+    const inc = makeIncidente({ tipo: 'INCIDENTE', fechaEvento: hoursAgo(40) })
+    expect(getIncidentQEPlazoInfo(inc, NOW).horasRestantes).toBe(8)
+  })
+
+  it('horasRestantes es negativo después del vencimiento', () => {
+    const inc = makeIncidente({ tipo: 'INCIDENTE', fechaEvento: hoursAgo(50) })
+    expect(getIncidentQEPlazoInfo(inc, NOW).horasRestantes).toBe(-2)
+  })
+
+  it('redondea hacia abajo', () => {
+    const inc = makeIncidente({ tipo: 'INCIDENTE', fechaEvento: hoursAgo(40.5) })
+    expect(getIncidentQEPlazoInfo(inc, NOW).horasRestantes).toBe(7)
   })
 })

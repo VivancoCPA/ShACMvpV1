@@ -139,6 +139,7 @@ export function IncidentQuickReportForm() {
           photoCaptions: photos.map((p) => p.caption),
           geoUbicacion,
           empresaId: empresaActivaId,
+          usuarioId: user?.id,
         })
         setSubmitResult({ type: 'queued' })
         void notifyIncidentEnqueued()

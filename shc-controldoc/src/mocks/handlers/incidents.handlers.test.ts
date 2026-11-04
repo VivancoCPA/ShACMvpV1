@@ -45,7 +45,8 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
 function authHeaders(email: string, empresaId?: string) {
   const mockUser = authFixtures.find((u) => u.email === email)
   if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
-  const { password: _password, ...user } = mockUser
+  const { password, ...user } = mockUser
+  void password // se descarta: el usuario en sesión nunca lleva la contraseña
   const accessToken = `mock-access-token-${user.id}-${Date.now()}`
   const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
   const empresaActivaId = empresaId ?? empresasDisponibles[0]?.id ?? null
@@ -53,37 +54,86 @@ function authHeaders(email: string, empresaId?: string) {
   return { headers: { Authorization: `Bearer ${accessToken}` } }
 }
 
+// incidentes-qe-estado-alertas (D4): la única transición manual que queda es anular un incidente
+// ABIERTO sin QE; el resto del ciclo lo gobierna el QE vinculado (ver quality-events.handlers).
+function pushIncidenteAnulable(overrides: Partial<Incidente> = {}): Incidente {
+  // Copia de inc-005 (reportadoPorId user-005, cuenta real resoluble) en ABIERTO y sin QE.
+  const base = getIncidentsStore().find((i) => i.id === 'inc-005')!
+  const inc: Incidente = { ...base, id: 'inc-anulable', estado: 'ABIERTO', qeId: undefined, auditTrail: [], ...overrides }
+  getIncidentsStore().push(inc)
+  return inc
+}
+
 describe('incidents.handlers — PATCH /api/incidents/:id/status notification emission', () => {
-  it('notifies the reporter on a valid transition', async () => {
-    // inc-005's fixture reportadoPorId is user-005, a real resolvable account
-    const { status } = await call(
-      api.patch<Incidente>(
-        '/api/incidents/inc-005/status',
-        { estado: 'PENDIENTE_CIERRE' },
-        authHeaders('jefe.calidad@shac.pe'),
-      ),
+  it('notifies the reporter on a valid annulment', async () => {
+    pushIncidenteAnulable()
+    const { status, data } = await call(
+      api.patch<Incidente>('/api/incidents/inc-anulable/status', { estado: 'ANULADO' }, authHeaders('jefe.calidad@shac.pe')),
     )
     expect(status).toBe(200)
+    expect(data.estado).toBe('ANULADO')
+    expect(data.auditTrail.at(-1)).toMatchObject({ accion: 'ESTADO_CAMBIADO', estadoAnterior: 'ABIERTO', estadoNuevo: 'ANULADO' })
 
     const notif = getNotificationsStore().find(
-      (n) => n.usuarioId === 'user-005' && n.entidadId === 'inc-005' && n.tipo === 'CAMBIO_ESTADO',
+      (n) => n.usuarioId === 'user-005' && n.entidadId === 'inc-anulable' && n.tipo === 'CAMBIO_ESTADO',
     )
     expect(notif).toBeDefined()
   })
 
-  it('does not notify the acting user when they perform their own transition', async () => {
-    // luis.paredes@shac.pe → id user-005, same as inc-005's reportadoPorId
+  it('does not notify the acting user when they perform their own annulment', async () => {
+    // luis.paredes@shac.pe → id user-005, same as the incident's reportadoPorId
+    pushIncidenteAnulable()
     const { status } = await call(
-      api.patch<Incidente>(
-        '/api/incidents/inc-005/status',
-        { estado: 'PENDIENTE_CIERRE' },
-        authHeaders('luis.paredes@shac.pe'),
-      ),
+      api.patch<Incidente>('/api/incidents/inc-anulable/status', { estado: 'ANULADO' }, authHeaders('luis.paredes@shac.pe')),
     )
     expect(status).toBe(200)
 
-    const notif = getNotificationsStore().find((n) => n.usuarioId === 'user-005' && n.entidadId === 'inc-005')
+    const notif = getNotificationsStore().find((n) => n.usuarioId === 'user-005' && n.entidadId === 'inc-anulable')
     expect(notif).toBeUndefined()
+  })
+})
+
+describe('incidents.handlers — estado y vínculo gobernados por el QE (incidentes-qe-estado-alertas)', () => {
+  it('rejects a manual advance with 422 ESTADO_GOBERNADO_POR_QE', async () => {
+    pushIncidenteAnulable()
+    const { status, data } = await call(
+      api.patch<{ errorCode: string }>(
+        '/api/incidents/inc-anulable/status',
+        { estado: 'EN_INVESTIGACION' },
+        authHeaders('jefe.calidad@shac.pe'),
+      ),
+    )
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('ESTADO_GOBERNADO_POR_QE')
+    expect(getIncidentsStore().find((i) => i.id === 'inc-anulable')!.estado).toBe('ABIERTO')
+  })
+
+  it('rejects annulling an incident that has a linked QE', async () => {
+    pushIncidenteAnulable({ qeId: 'qe-x' })
+    const { status, data } = await call(
+      api.patch<{ errorCode: string }>('/api/incidents/inc-anulable/status', { estado: 'ANULADO' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('ESTADO_GOBERNADO_POR_QE')
+  })
+
+  it('rejects PATCH /:id with a different qeId (QE_VINCULO_GESTIONADO_POR_QE)', async () => {
+    pushIncidenteAnulable()
+    const { status, data } = await call(
+      api.patch<{ errorCode: string }>('/api/incidents/inc-anulable', { qeId: 'qe-x' }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('QE_VINCULO_GESTIONADO_POR_QE')
+    expect(getIncidentsStore().find((i) => i.id === 'inc-anulable')!.qeId).toBeUndefined()
+  })
+
+  it('ignores PATCH /:id with the same qeId it already has', async () => {
+    pushIncidenteAnulable({ qeId: 'qe-x' })
+    const { status } = await call(
+      api.patch('/api/incidents/inc-anulable', { qeId: 'qe-x', condicionesEntorno: ['PISO'] }, authHeaders('jefe.calidad@shac.pe')),
+    )
+    expect(status).toBe(200)
+    expect(getIncidentsStore().find((i) => i.id === 'inc-anulable')!.qeId).toBe('qe-x')
   })
 })
 
@@ -168,5 +218,63 @@ describe('incidents.handlers — empresa isolation (me-f3-scoping-modulos)', () 
       ),
     )
     expect(status).toBe(401)
+  })
+})
+
+describe('incidents.handlers — paridad de nombres y ubicación con el backend (fix-incidentes-detalle-nombres-ubicacion)', () => {
+  const nuevoIncidente = {
+    tipo: 'CUASI_ACCIDENTE',
+    descripcion: 'Incidente de prueba para ubicación en el plano',
+    areaId: 'area-007',
+    turno: 'DIA',
+    fechaEvento: new Date().toISOString(),
+    huboLesionados: false,
+    localId: 'loc-001',
+  }
+
+  it('detalle y listado traen reportadoPorNombre, localNombre y zonaNombre', async () => {
+    const headers = authHeaders('jefe.calidad@shac.pe')
+    const detalle = await call(api.get<Incidente>('/api/incidents/inc-001', headers))
+    expect(detalle.status).toBe(200)
+    expect(detalle.data.reportadoPorNombre).toBeTruthy()
+    expect(detalle.data.reportadoPorNombre).not.toBe('user-001')
+    expect(detalle.data.localNombre).toBe('Almacén Principal')
+    expect(detalle.data.zonaNombre).toBe('Zona de Recepción')
+
+    const listado = await call(api.get<{ items: Incidente[] }>('/api/incidents?pageSize=100', headers))
+    const item = listado.data.items.find((i) => i.id === 'inc-001')
+    expect(item?.reportadoPorNombre).toBe(detalle.data.reportadoPorNombre)
+    expect(item?.localNombre).toBe('Almacén Principal')
+  })
+
+  it('POST con ubicacionX/ubicacionY devuelve ubicacion anidada y el nombre de quien reporta', async () => {
+    const { status, data } = await call(
+      api.post<Incidente>('/api/incidents', { ...nuevoIncidente, ubicacionX: 20, ubicacionY: 70 }, authHeaders('operario@shac.pe')),
+    )
+    expect(status).toBe(201)
+    expect(data.ubicacion).toEqual({ x: 20, y: 70 })
+
+    const detalle = await call(api.get<Incidente>(`/api/incidents/${data.id}`, authHeaders('operario@shac.pe')))
+    expect(detalle.data.reportadoPorNombre).toBe('Luis Quispe')
+  })
+
+  it('POST ignora body.ubicacion (contrato del backend real)', async () => {
+    const { data } = await call(
+      api.post<Incidente>('/api/incidents', { ...nuevoIncidente, ubicacion: { x: 1, y: 2 } }, authHeaders('operario@shac.pe')),
+    )
+    expect(data.ubicacion).toBeUndefined()
+  })
+
+  it('PATCH con ubicacionX/ubicacionY actualiza la ubicación sin guardar los campos planos', async () => {
+    const { data } = await call(
+      api.patch<Incidente & { ubicacionX?: number }>(
+        '/api/incidents/inc-001',
+        { ubicacionX: 33, ubicacionY: 44 },
+        authHeaders('jefe.calidad@shac.pe'),
+      ),
+    )
+    expect(data.ubicacion).toEqual({ x: 33, y: 44 })
+    expect(data.ubicacionX).toBeUndefined()
+    expect(getIncidentsStore().find((i) => i.id === 'inc-001')?.ubicacion).toEqual({ x: 33, y: 44 })
   })
 })

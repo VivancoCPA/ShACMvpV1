@@ -34,6 +34,7 @@ import { CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
 import { useAreas } from '../../areas/hooks/useAreas'
 import type { Incidente, IncidentType, IncidentSeveridad, IncidenteUbicacion } from '../types/incident.types'
 import type { IncidentEvidencia } from '../types/incident.types'
+import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../../utils/datetimeLocal'
 
 const TIPO_ICONS: Record<IncidentType, React.ReactNode> = {
   ACCIDENTE: <HardHat size={22} />,
@@ -62,16 +63,7 @@ interface EvidenciaPreviewItem {
 // rechaza escribirlo en una columna `timestamp with time zone` (falla dura, 500). Estas dos
 // funciones son el fix correcto (no un relabeling server-side): convertir explícitamente
 // hora-local <-> UTC en el límite del formulario, igual que ya se hace en IncidentQuickReportForm
-// (`new Date().toISOString()`).
-function toDatetimeLocalValue(isoUtc: string): string {
-  const d = new Date(isoUtc)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function fromDatetimeLocalValue(local: string): string {
-  return new Date(local).toISOString()
-}
+// (`new Date().toISOString()`). Las funciones viven en utils/datetimeLocal.ts.
 
 function buildPreview(file: File): EvidenciaPreviewItem {
   const isPdf = file.type === 'application/pdf'
@@ -420,9 +412,10 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
           equiposInvolucrados: data.equiposInvolucrados
             ? data.equiposInvolucrados.split('\n').filter(Boolean)
             : undefined,
-          ...(evidenciasSubidas.length > 0
-            ? { evidencias: [...(incident.evidencias ?? []), ...evidenciasSubidas] }
-            : {}),
+          // Siempre se sobreescribe: el campo `evidencias` del formulario (File[]) nunca viaja al
+          // PATCH; `undefined` se omite al serializar, igual que antes.
+          evidencias:
+            evidenciasSubidas.length > 0 ? [...(incident.evidencias ?? []), ...evidenciasSubidas] : undefined,
         },
       })
       navigate(`/incidents/${incident.id}`)
@@ -687,6 +680,10 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
               </select>
             </div>
 
+            {localIdValue && selectedLocal && !selectedLocal.planoPngUrl && (
+              <p className="text-xs text-muted dark:text-on-dark-soft">{t('form.ubicacion.sinPlano')}</p>
+            )}
+
             {/* Interactive floor plan */}
             {localIdValue && selectedLocal?.planoPngUrl && selectedLocalPlanoUrl && (
               <div>
@@ -948,8 +945,12 @@ export function IncidentForm({ mode, incident, onCancel }: IncidentFormProps) {
           </div>
         )}
 
-        {/* ─── Actions ─── */}
-        <div className="flex items-center justify-end gap-3">
+        {/* ─── Actions ─── barra fija al pie del <main> con scroll; -mx-6/px-6
+            compensan el p-6 de PageWrapper. Sigue dentro del <form> (type="submit"). */}
+        <div
+          data-testid="incident-form-actions"
+          className="sticky bottom-0 z-10 -mx-6 mt-6 flex items-center justify-end gap-3 border-t border-hairline bg-canvas/95 px-6 py-3 backdrop-blur dark:border-hairline/20 dark:bg-surface-dark/95"
+        >
           <button
             type="button"
             onClick={onCancel ?? (() => navigate('/incidents'))}

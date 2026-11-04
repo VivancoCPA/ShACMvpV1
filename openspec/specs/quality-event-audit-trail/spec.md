@@ -5,9 +5,7 @@
 Reverse-chronological audit trail timeline for the Quality Event detail page, backed by a dedicated MSW sub-resource endpoint and fixture coverage of at least 4 entries per QE.
 
 ---
-
 ## Requirements
-
 ### Requirement: GET /api/quality-events/:id/audit-trail endpoint
 The system SHALL register a `GET /api/quality-events/:id/audit-trail` handler in `src/mocks/handlers/quality-events.handlers.ts` that returns the matching QE's `auditTrail` array (`QEAuditTrailEntry[]`) sorted by `timestamp` descending (most recent first). An unknown `:id` SHALL return 404 with `success: false`.
 
@@ -112,3 +110,20 @@ The system SHALL ensure every fixture in `qualityEventFixtures` has at least 4 e
 #### Scenario: generadoPorIA is always false for EXPORTACION_PDF entries
 - **WHEN** the export-pdf endpoint appends an `EXPORTACION_PDF` audit entry
 - **THEN** the entry's `generadoPorIA` field is `false`, and no "Generado por IA" badge renders on it
+
+### Requirement: QEAuditTrail renders the ASISTENTE_IA_CONSULTADO accion type
+`QEAuditTrail` SHALL recognize the `accion` value `ASISTENTE_IA_CONSULTADO` and render it with:
+- the label `t('qualityEvents:detail.auditTrail.acciones.ASISTENTE_IA_CONSULTADO')` ("Consulta al asistente IA");
+- a `Sparkles` icon;
+- the "Generado por IA" badge, since the entry carries `generadoPorIA: true`.
+
+When a `CAMPO_EDITADO` entry's `valorNuevo` ends with the server suffix "(sugerencia IA editada)", its description SHALL append `t('qualityEvents:detail.auditTrail.sugerenciaIAEditada')`, so the timeline distinguishes an AI suggestion the user edited from a value typed by hand.
+
+#### Scenario: Consultation entry
+- **WHEN** `QEAuditTrail` renders an entry with `accion: 'ASISTENTE_IA_CONSULTADO'`, `generadoPorIA: true`
+- **THEN** it shows "Consulta al asistente IA" and the "Generado por IA" badge
+
+#### Scenario: Edited AI suggestion
+- **WHEN** `QEAuditTrail` renders a `CAMPO_EDITADO` entry whose `valorNuevo` ends with "(sugerencia IA editada)"
+- **THEN** the description includes "sugerencia IA editada"
+

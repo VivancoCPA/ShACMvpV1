@@ -1,4 +1,5 @@
 import api from '../../../lib/axios'
+import { mockSessionHeaders } from '../../../lib/mockSession'
 import type { User } from '../../../types/auth.types'
 import type { Empresa } from '../../empresas/types/empresa.types'
 import type { LoginInput } from '../schemas/login.schema'
@@ -35,7 +36,9 @@ export async function loginUser(
 }
 
 export async function logoutUser(): Promise<void> {
-  await api.post('/api/auth/logout')
+  // El mock identifica la sesión a cerrar por su "cookie" de refresh (header mock-only); contra el
+  // backend real viaja la cookie httpOnly y este header queda vacío.
+  await api.post('/api/auth/logout', undefined, { headers: mockSessionHeaders() })
 }
 
 /** Cambia la empresa activa de una sesión ya autenticada — ver empresa-session

@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios'
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse } from '../types/api.types'
 import { useAuthStore } from '../stores/authStore'
+import { sessionEndReasonFromError } from '../features/sesion/utils/sessionEndReason'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -24,6 +25,11 @@ const PUBLIC_AUTH_PATHS = [
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
 ]
+
+// pin-olvidado-pista (design.md D2): un 401 con alguno de estos códigos es una credencial
+// incorrecta (PIN de firma, contraseña de confirmación), no un access token vencido — refrescar
+// la sesión y reenviar la petición solo probaría dos veces el mismo PIN/contraseña erróneo.
+const CREDENTIAL_ERROR_CODES = ['PIN_INCORRECTO', 'CONTRASENA_INCORRECTA']
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const isPublicAuthEndpoint = PUBLIC_AUTH_PATHS.some((path) => config.url?.includes(path))
@@ -73,9 +79,26 @@ api.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retry?: boolean })
       | undefined
 
-    const isRefreshCall = original?.url?.includes('/api/auth/refresh') ?? false
+    const isPublicAuthCall = PUBLIC_AUTH_PATHS.some((path) => original?.url?.includes(path))
 
-    if (axiosError.response?.status === 401 && original && !original._retry && !isRefreshCall) {
+    if (axiosError.response?.status === 401) {
+      const errorCode = (axiosError.response.data as { errorCode?: string } | undefined)?.errorCode
+      if (errorCode && CREDENTIAL_ERROR_CODES.includes(errorCode)) return Promise.reject(error)
+
+      // sesion-timeout-inactividad (design.md D12): un cierre por política (SESION_INACTIVA /
+      // SESION_MAXIMA_ALCANZADA, venga de /refresh, /actividad o cualquier otra petición) NO se
+      // reintenta — el servidor ya revocó la sesión; refrescar de nuevo solo daría otro 401.
+      const reason = sessionEndReasonFromError(axiosError)
+      if (reason) {
+        const { endSession } = await import('./sessionEnd')
+        await endSession(reason, { notifyServer: false })
+        return Promise.reject(error)
+      }
+    }
+
+    // Los endpoints públicos de auth (login con credenciales inválidas, /refresh mismo, etc.)
+    // nunca disparan un refresh: un 401 ahí no significa "access token vencido".
+    if (axiosError.response?.status === 401 && original && !original._retry && !isPublicAuthCall) {
       original._retry = true
       try {
         await useAuthStore.getState().refreshToken()
@@ -84,8 +107,9 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${newToken}`
         }
         return api(original)
-      } catch {
-        useAuthStore.getState().logout()
+      } catch (refreshError) {
+        const { endSession } = await import('./sessionEnd')
+        await endSession(sessionEndReasonFromError(refreshError), { notifyServer: false })
       }
     }
     return Promise.reject(error)

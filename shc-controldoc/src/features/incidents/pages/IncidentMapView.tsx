@@ -66,7 +66,7 @@ export function IncidentMapView() {
       </div>
 
       {/* Canvas + side panel */}
-      <div className="relative flex min-h-[500px] gap-0">
+      <div className="relative flex min-h-[320px] gap-0">
         <div className="flex flex-1">
           <IncidentMapCanvas
             incidentes={incidentes}

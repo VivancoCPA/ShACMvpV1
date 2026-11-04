@@ -7,7 +7,7 @@ Backend .NET para la configuración, cambio y reset administrativo del PIN de fi
 ## Requirements
 
 ### Requirement: Configuración y cambio de PIN de firma (autogestión)
-El sistema SHALL exponer `POST /api/auth/set-pin`, requiriendo `password` (contraseña actual del usuario autenticado, como confirmación de identidad) y `pin` (exactamente 4 dígitos numéricos). Si `password` es correcta, el sistema SHALL guardar el hash de `pin` en `ShacUser.PinHash` usando `IPasswordHasher<ShacUser>`, reemplazando cualquier PIN previamente configurado. El mismo endpoint sirve tanto para la primera configuración (`PinHash` era `null`) como para un cambio posterior.
+El sistema SHALL exponer `POST /api/auth/set-pin`, requiriendo `password` (contraseña actual del usuario autenticado, como confirmación de identidad) y `pin` (exactamente 4 dígitos numéricos). Si `password` es correcta, el sistema SHALL guardar el hash de `pin` en `ShacUser.PinHash` usando `IPasswordHasher<ShacUser>`, reemplazando cualquier PIN previamente configurado. El mismo endpoint sirve tanto para la primera configuración (`PinHash` era `null`) como para un cambio posterior. El `UserDto` devuelto por `login`, `refresh` y `switch-empresa` SHALL exponer `TienePinFirma: bool`, calculado como `PinHash != null` dentro de `UserDto.From`, sin exponer nunca el hash.
 
 #### Scenario: Primera configuración de PIN
 - **WHEN** un usuario autenticado sin `PinHash` configurado envía `POST /api/auth/set-pin` con su contraseña actual correcta y `pin: '1234'`
@@ -25,6 +25,10 @@ El sistema SHALL exponer `POST /api/auth/set-pin`, requiriendo `password` (contr
 - **WHEN** se envía `POST /api/auth/set-pin` con un `pin` que no son exactamente 4 dígitos numéricos
 - **THEN** el sistema responde 400 sin modificar `PinHash`
 
+#### Scenario: TienePinFirma pasa a true tras configurar el PIN
+- **WHEN** un usuario sin PIN configurado llama exitosamente a `POST /api/auth/set-pin` y luego inicia sesión (o refresca su sesión)
+- **THEN** el `UserDto` de la respuesta de login/refresh tiene `TienePinFirma: true`
+
 ### Requirement: Reset de PIN de firma por administrador
 El sistema SHALL exponer `PATCH /api/empresas/{empresaId}/usuarios/{usuarioId}/reset-pin`, restringido al rol `SUPERADMIN` (mismo gate que `ActualizarAsignacionEndpoint`/`AsignarUsuarioEmpresaEndpoint`), permitido únicamente si existe una asignación `UsuarioEmpresa` para `(usuarioId, empresaId)`. El sistema SHALL limpiar `PinHash` (`null`) del usuario indicado, sin definir un valor de PIN nuevo — el usuario configura uno propio la próxima vez que lo necesite, vía `POST /api/auth/set-pin`.
 
@@ -39,3 +43,14 @@ El sistema SHALL exponer `PATCH /api/empresas/{empresaId}/usuarios/{usuarioId}/r
 #### Scenario: Usuario objetivo sin asignación en la empresa indicada
 - **WHEN** `usuarioId` no tiene ninguna fila `UsuarioEmpresa` para `empresaId`
 - **THEN** el sistema responde 404
+
+#### Scenario: TienePinFirma pasa a false tras el reset
+- **WHEN** un `SUPERADMIN` resetea exitosamente el PIN de un usuario que lo tenía configurado, y ese usuario luego inicia sesión
+- **THEN** el `UserDto` de la respuesta de login tiene `TienePinFirma: false`
+
+### Requirement: Contraseña incorrecta en set-pin identificada con errorCode
+Cuando `POST /api/auth/set-pin` recibe una `password` que no coincide con la contraseña actual del usuario, el sistema SHALL responder 401 con `errorCode: "CONTRASENA_INCORRECTA"` (`UnauthorizedBusinessException("Contraseña actual incorrecta", "CONTRASENA_INCORRECTA")`) y SHALL NOT modificar `PinHash`.
+
+#### Scenario: set-pin con contraseña actual incorrecta
+- **WHEN** un usuario autenticado envía `POST /api/auth/set-pin` con una contraseña incorrecta
+- **THEN** el sistema responde 401 con `errorCode: "CONTRASENA_INCORRECTA"` y `PinHash` no cambia

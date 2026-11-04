@@ -194,3 +194,10 @@ The `Incidente` interface SHALL include the following additional optional fields
 #### Scenario: ubicacion is typed as IncidenteUbicacion or undefined
 - **WHEN** a developer reads `incidente.ubicacion`
 - **THEN** TypeScript infers the type as `IncidenteUbicacion | undefined`
+
+### Requirement: Nombre de quien reportó en `Incidente`
+La interfaz `Incidente` SHALL declarar `reportadoPorNombre?: string`, junto a los campos ya existentes `localNombre?` y `zonaNombre?`. Los tres son campos de lectura que entrega la API y nunca se envían al crear o actualizar.
+
+#### Scenario: Tipo acepta los nombres
+- **WHEN** se tipa un objeto `Incidente` con `reportadoPorNombre`, `localNombre` y `zonaNombre`
+- **THEN** TypeScript compila sin error, y también compila si los tres faltan

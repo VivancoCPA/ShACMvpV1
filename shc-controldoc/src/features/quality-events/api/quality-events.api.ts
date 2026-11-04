@@ -6,6 +6,10 @@ import type {
   QualityEventUpdateInput,
   AccionCorrectivaQE,
   QEAuditTrailEntry,
+  CandidatoResponsableQE,
+  Funcionalidades,
+  SugerenciaCausaRaizIA,
+  AnalisisCausaRaizMetodo,
 } from '../types/qualityEvent.types'
 import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.schema'
 import type { CreateQEACInput } from '../schemas/createQEAccion.schema'
@@ -184,6 +188,27 @@ export async function firmarCierre(id: string, data: FirmarCierreInput): Promise
   return response.data
 }
 
+// RN-QE-002: el servidor verifica el PIN y fija firmante y hora — el cliente solo envía el PIN.
+export async function aprobarCausaRaiz(id: string, pin: string): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${id}/aprobar-causa-raiz`, { pin })
+  return response.data
+}
+
+export async function getFuncionalidades(): Promise<Funcionalidades> {
+  const response = await api.get<Funcionalidades>('/api/config/funcionalidades')
+  return response.data
+}
+
+// qe-asistente-ia: devuelve una sugerencia sin guardarla; el usuario decide qué usar. El método
+// define si trae 5 Porqués o Ishikawa (qe-asistente-ia-ishikawa).
+export async function asistirCausaRaizIA(
+  id: string,
+  metodo: AnalisisCausaRaizMetodo,
+): Promise<SugerenciaCausaRaizIA> {
+  const response = await api.post<SugerenciaCausaRaizIA>(`/api/quality-events/${id}/asistente-ia`, { metodo })
+  return response.data
+}
+
 export async function forzarVencimientoVerificacion(
   id: string,
   auditorAsignadoId?: string,
@@ -210,5 +235,15 @@ export async function registrarVerificacionEficacia(
   data: VerificacionEficaciaInput,
 ): Promise<QualityEvent> {
   const response = await api.post<QualityEvent>(`/api/quality-events/${id}/verificacion-eficacia`, data)
+  return response.data
+}
+
+export async function getCandidatosResponsableQE(): Promise<CandidatoResponsableQE[]> {
+  const response = await api.get<CandidatoResponsableQE[]>('/api/quality-events/candidatos-responsable')
+  return response.data
+}
+
+export async function asignarResponsableQE(id: string, responsableInvestigacionId: string): Promise<QualityEvent> {
+  const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/responsable`, { responsableInvestigacionId })
   return response.data
 }

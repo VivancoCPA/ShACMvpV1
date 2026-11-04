@@ -59,7 +59,7 @@ The system SHALL define `DocumentAuthorizedRole` as a TypeScript string literal 
 - **THEN** TypeScript accepts the assignment without error
 
 ### Requirement: Documento interface
-The system SHALL define a `Documento` interface with all required and optional fields: `id`, `codigo`, `titulo`, `tipo`, `version`, `estado`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `autorId`, `revisorId?`, `aprobadorId?`, `fechaEmision?`, `fechaVigencia?`, `fechaRevisionProxima?`, `archivoUrl?`, `hashArchivo?`, `qeVinculados`, `ncVinculados`, `historialVersiones`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL also include two required fields from addendum SHAC-PRD-003-ADD-01: `confidencialidad: DocConfidencialidad` (no default at type level — default `'INTERNO'` is enforced by the API) and `rolesAutorizados: DocumentAuthorizedRole[]` (empty array when `confidencialidad !== 'RESTRINGIDO'`). The interface SHALL NOT include an `area` field — it is replaced by `areaId`.
+The system SHALL define a `Documento` interface with all required and optional fields: `id`, `codigo`, `titulo`, `tipo`, `version`, `estado`, `areaId` (string — FK to `Area.id`, the M6-S08 administered area catalog), `empresaId` (string — FK to `Empresa.id`, required and immutable after creation per RN-EMP-001), `autorId`, `revisorId?`, `aprobadorId?`, `fechaEmision?`, `fechaVigencia?`, `fechaRevisionProxima?`, `archivoUrl?`, `hashArchivo?`, `qeVinculados`, `ncVinculados`, `auditTrail`, `creadoEn`, `actualizadoEn`. The interface SHALL NOT include `historialVersiones` — there is no backend equivalent (see the removed `VersionEntry interface` requirement). The interface SHALL also include two required fields from addendum SHAC-PRD-003-ADD-01: `confidencialidad: DocConfidencialidad` (no default at type level — default `'INTERNO'` is enforced by the API) and `rolesAutorizados: DocumentAuthorizedRole[]` (empty array when `confidencialidad !== 'RESTRINGIDO'`). The interface SHALL NOT include an `area` field — it is replaced by `areaId`.
 
 `qeVinculados` SHALL be typed as `QeVinculadoResumen[]` (`{ id: string; numero: string; tipo: QEType; severidad: QESeverity; estado: QEStatus }`), not `string[]` — a document's linked Quality Events carry enough summary data to render a badge/label without a second lookup. This is a breaking change from the previous `string[]` (raw id list) shape.
 
@@ -74,6 +74,10 @@ The system SHALL define a `Documento` interface with all required and optional f
 #### Scenario: Documento interface accepts valid optional fields as undefined
 - **WHEN** a developer constructs a `Documento` with `revisorId` omitted
 - **THEN** TypeScript accepts the object without error
+
+#### Scenario: Documento interface has no historialVersiones field
+- **WHEN** a developer accesses `documento.historialVersiones`
+- **THEN** TypeScript emits a compile error — the property does not exist on `Documento`
 
 #### Scenario: Documento no longer has an area field
 - **WHEN** a developer attempts to read or assign `documento.area`
@@ -133,15 +137,8 @@ The system SHALL define an `NcVinculadoResumen` interface in `src/types/document
 - **WHEN** a developer constructs an `NcVinculadoResumen` without `severidad`
 - **THEN** TypeScript emits a compile error for the missing required field
 
-### Requirement: VersionEntry interface
-The system SHALL define a `VersionEntry` interface with fields: `version`, `fechaPublicacion`, `autorId`, `descripcionCambios`, `hashArchivo?`.
-
-#### Scenario: VersionEntry is typed and used in Documento
-- **WHEN** a developer accesses `documento.historialVersiones`
-- **THEN** TypeScript infers the element type as `VersionEntry`
-
 ### Requirement: Document-scoped AuditTrailEntry interface
-The system SHALL define an `AuditTrailEntry` interface scoped to the document domain with fields: `id`, `entidadTipo` (union literal `'Documento' | 'NoConformidad'`), `entidadId`, `accion`, `estadoAnterior?`, `estadoNuevo?`, `campoModificado?`, `valorAnterior?`, `valorNuevo?`, `realizadoPorId`, `realizadoPorNombre`, `timestamp`, `ipOrigen?`, `generadoPorIA`.
+The system SHALL define an `AuditTrailEntry` interface scoped to the document domain with fields: `id`, `entidadTipo?` (union literal `'Documento' | 'NoConformidad'`), `entidadId?`, `accion`, `estadoAnterior?`, `estadoNuevo?`, `campoModificado?`, `valorAnterior?`, `valorNuevo?`, `motivo?`, `realizadoPorId`, `realizadoPorNombre`, `timestamp`, `ipOrigen?`, `generadoPorIA`. `entidadTipo`, `entidadId`, and `ipOrigen` are optional (not required): the real backend entity `DocumentoAuditTrail` has no equivalent columns and never sends them — the type reflects that rather than the backend inventing values for them.
 
 #### Scenario: AuditTrailEntry entidadTipo accepts NoConformidad
 - **WHEN** a developer constructs an `AuditTrailEntry` with `entidadTipo: 'NoConformidad'`
@@ -154,6 +151,18 @@ The system SHALL define an `AuditTrailEntry` interface scoped to the document do
 #### Scenario: AuditTrailEntry entidadTipo accepts Documento
 - **WHEN** a developer constructs an `AuditTrailEntry` with `entidadTipo: 'Documento'`
 - **THEN** TypeScript accepts the value without error (existing behavior preserved)
+
+#### Scenario: AuditTrailEntry accepts an entry without entidadTipo/entidadId/ipOrigen
+- **WHEN** a developer constructs an `AuditTrailEntry` with only `id`, `accion`, `realizadoPorId`, `realizadoPorNombre`, `timestamp`, `generadoPorIA` (matching what the real backend sends)
+- **THEN** TypeScript accepts the object without error
+
+#### Scenario: AuditTrailEntry accepts an optional motivo field
+- **WHEN** a developer constructs an `AuditTrailEntry` with `accion: 'RECHAZADO_EN_REVISION'` and `motivo: 'Falta evidencia fotográfica.'`
+- **THEN** TypeScript accepts the value without error
+
+#### Scenario: AuditTrailEntry omits motivo when absent
+- **WHEN** a developer constructs an `AuditTrailEntry` for an action without a motivo (e.g. `accion: 'REVISION_CANCELADA'`) and leaves `motivo` undefined
+- **THEN** TypeScript accepts the value without error, since `motivo` is optional
 
 ### Requirement: DocFilters interface
 The system SHALL define a `DocFilters` interface for list queries: `estado?`, `tipo?`, `areaId?`, `autorId?`, `search?`, `page?`, `pageSize?`.

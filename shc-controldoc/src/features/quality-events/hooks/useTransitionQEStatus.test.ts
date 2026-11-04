@@ -15,6 +15,15 @@ vi.mock('sonner', () => ({
   },
 }))
 
+// qe-precarga-incidente-responsable D12 — t devuelve la clave para el código traducido y el
+// defaultValue ('') para cualquier otro, así se comprueba también el fallback al message del servidor.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: { defaultValue?: string }) =>
+      key === 'errors.QE_SIN_RESPONSABLE' ? key : (opts?.defaultValue ?? key),
+  }),
+}))
+
 const server = setupServer(...qualityEventHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -72,5 +81,18 @@ describe('useTransitionQEStatus', () => {
 
     expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  })
+})
+
+describe('useTransitionQEStatus — QE_SIN_RESPONSABLE', () => {
+  it('muestra el mensaje traducido cuando el servidor responde QE_SIN_RESPONSABLE', async () => {
+    const { toast } = await import('sonner')
+    const { result } = renderHook(() => useTransitionQEStatus(), { wrapper: createWrapper() })
+
+    // qe-2026-018 está en ABIERTO sin responsable de investigación.
+    result.current.mutate({ id: 'qe-2026-018', data: { nuevoEstado: 'EN_INVESTIGACION' } })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(toast.error).toHaveBeenCalledWith('errors.QE_SIN_RESPONSABLE')
   })
 })

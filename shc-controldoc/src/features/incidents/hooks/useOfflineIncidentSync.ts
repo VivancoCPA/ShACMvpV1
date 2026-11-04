@@ -158,12 +158,13 @@ export function useOfflineIncidentSync() {
       // no bloquea a los siguientes"). Un ciclo *futuro* (online/sync/retry)
       // sí puede volver a intentar una entrada en error — eso es intencional.
       const attempted = new Set<number>()
-      let pending = (await listPending()).filter((entry) => !attempted.has(entry.localId))
+      // Solo las entradas del usuario logueado (sesion-timeout-inactividad design.md D13).
+      let pending = (await listPending(userIdRef.current)).filter((entry) => !attempted.has(entry.localId))
       while (isMountedRef.current && pending.length > 0) {
         const next = pending[0]
         attempted.add(next.localId)
         await syncOne(next)
-        pending = (await listPending()).filter((entry) => !attempted.has(entry.localId))
+        pending = (await listPending(userIdRef.current)).filter((entry) => !attempted.has(entry.localId))
       }
     } finally {
       isSyncingRef.current = false

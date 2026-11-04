@@ -59,6 +59,8 @@ const baseData: JefeCalidadDashboardData = {
       { periodo: '2026-06', valor: 85 },
     ],
   },
+  incidentesSinQeVencidos: [],
+  incidentesSinQeVencidosTotal: 0,
 }
 
 const accionesRequeridas: AccionRequerida[] = [

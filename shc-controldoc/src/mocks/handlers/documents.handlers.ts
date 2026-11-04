@@ -931,7 +931,7 @@ export const documentHandlers = [
       )
     }
     if (pin !== signer.pin) {
-      return err('PIN incorrecto', 401)
+      return err('PIN incorrecto', 401, 'PIN_INCORRECTO')
     }
 
     const doc = store[idx]

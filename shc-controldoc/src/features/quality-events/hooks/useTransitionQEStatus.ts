@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import { transitionQEStatus } from '../api/quality-events.api'
 import type { QEStatusTransitionInput } from '../types/qualityEvent.types'
@@ -9,6 +10,7 @@ import { QUERY_KEYS as NC_QUERY_KEYS } from '../../nonconformities/hooks/useNonc
 
 export function useTransitionQEStatus() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation('qualityEvents')
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: QEStatusTransitionInput }) =>
@@ -28,7 +30,15 @@ export function useTransitionQEStatus() {
       }
     },
     onError: (error: unknown) => {
-      const axiosError = error as AxiosError<{ message?: string }>
+      // errorCode con traducción propia (p.ej. QE_SIN_RESPONSABLE) → mensaje localizado; si no,
+      // el message del servidor como antes (qe-precarga-incidente-responsable D12).
+      const axiosError = error as AxiosError<{ message?: string; errorCode?: string }>
+      const errorCode = axiosError.response?.data?.errorCode
+      const traducido = errorCode ? t(`errors.${errorCode}`, { defaultValue: '' }) : ''
+      if (traducido) {
+        toast.error(traducido)
+        return
+      }
       const message = axiosError.response?.data?.message ?? 'Error al cambiar estado'
       toast.error(message)
     },

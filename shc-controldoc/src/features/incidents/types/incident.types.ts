@@ -130,6 +130,9 @@ export interface Incidente {
   fechaEvento: string
   fechaReporte: string
   reportadoPorId: string
+  /** Solo lectura: nombre completo de quien reportó, resuelto por la API (LEFT JOIN). Mostrar esto,
+   * nunca `reportadoPorId` (fix-incidentes-detalle-nombres-ubicacion). */
+  reportadoPorNombre?: string
   huboLesionados: boolean
   auditTrail: AuditTrailEntry[]
   creadoEn: string

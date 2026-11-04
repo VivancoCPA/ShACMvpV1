@@ -18,6 +18,7 @@ import type { NCStatus, AuditTrailEntry as NCAuditTrailEntry } from '../../featu
 // Mapeo de estado QE -> estado del origen resultante: EN_VERIFICACION/VERIFICADO no avanzan el
 // origen más allá de CERRADO/CERRADA -su parte del ciclo ya terminó-, y REABIERTO (persistido
 // como EN_INVESTIGACION) hace que el origen vuelva a EN_INVESTIGACION.
+// Espejo de IncidenteQeSync.MapearEstado del backend (incidentes-qe-estado-alertas D6).
 const QE_ESTADO_TO_INCIDENTE_ESTADO: Record<QEStatus, IncidentStatus> = {
   ABIERTO: 'ABIERTO',
   EN_INVESTIGACION: 'EN_INVESTIGACION',
@@ -84,34 +85,104 @@ function makeSyncAuditEntry<TEntidadTipo extends string>(
   }
 }
 
-function syncIncidenteFromQEEstado(
+export function mapQEEstadoToIncidentEstado(estado: QEStatus): IncidentStatus {
+  return QE_ESTADO_TO_INCIDENTE_ESTADO[estado]
+}
+
+// incidentes-qe-estado-alertas (D1) — mismo contrato que IncidenteQeSync en el backend: actor
+// "Sistema", accion ESTADO_SINCRONIZADO_QE y valorNuevo = número del QE. Solo toca un incidente
+// de la misma empresa que sigue apuntando a este QE.
+function makeIncidentSyncAuditEntry(
   incidenteId: string,
-  estadoQE: QEStatus,
-  qeNumero: string,
-  actor: { id: string; nombre: string },
-): void {
+  estadoAnterior: string,
+  estadoNuevo: string,
+  valorNuevo: string,
+): IncidentAuditTrailEntry {
+  return {
+    id: `aud-sync-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    entidadTipo: 'Incidente',
+    entidadId: incidenteId,
+    accion: 'ESTADO_SINCRONIZADO_QE',
+    estadoAnterior,
+    estadoNuevo,
+    valorNuevo,
+    realizadoPorId: 'system',
+    realizadoPorNombre: 'Sistema',
+    timestamp: new Date().toISOString(),
+    generadoPorIA: true,
+  }
+}
+
+function findLinkedIncidentIdx(qe: QualityEvent): number {
+  return getIncidentsStore().findIndex(
+    (i) => i.id === qe.incidenteId && i.empresaId === qe.empresaId && i.qeId === qe.id && !i.deletedAt,
+  )
+}
+
+function syncIncidenteFromQEEstado(qe: QualityEvent): void {
   const store = getIncidentsStore()
-  const idx = store.findIndex((i) => i.id === incidenteId)
+  const idx = findLinkedIncidentIdx(qe)
   if (idx === -1) return
 
   const inc = store[idx]
-  const nuevoEstado = resolveNuevoEstado(QE_ESTADO_TO_INCIDENTE_ESTADO, estadoQE, inc.estado, 'ANULADO')
+  const nuevoEstado = resolveNuevoEstado(QE_ESTADO_TO_INCIDENTE_ESTADO, qe.estado, inc.estado, 'ANULADO')
   if (nuevoEstado === null) return
-
-  const auditEntry: IncidentAuditTrailEntry = makeSyncAuditEntry(
-    'Incidente',
-    inc.id,
-    inc.estado,
-    nuevoEstado,
-    qeNumero,
-    actor,
-  )
 
   store[idx] = {
     ...inc,
     estado: nuevoEstado,
     actualizadoEn: new Date().toISOString(),
-    auditTrail: [...inc.auditTrail, auditEntry],
+    auditTrail: [...inc.auditTrail, makeIncidentSyncAuditEntry(inc.id, inc.estado, nuevoEstado, qe.numero)],
+  }
+}
+
+// Vinculación atómica (D3/D5): asigna qeId solo si el incidente sigue libre. soloSiAbierto lo
+// usa la reactivación del QE. Devuelve false si no pudo vincular.
+export function linkIncidentToQE(
+  qe: QualityEvent,
+  actor: { id: string; nombre: string },
+  { soloSiAbierto }: { soloSiAbierto: boolean },
+): boolean {
+  const store = getIncidentsStore()
+  const idx = store.findIndex((i) => i.id === qe.incidenteId && i.empresaId === qe.empresaId)
+  if (idx === -1) return false
+  const inc = store[idx]
+  if (inc.qeId) return false
+  if (soloSiAbierto && (inc.deletedAt || inc.estado !== 'ABIERTO')) return false
+
+  const now = new Date().toISOString()
+  const auditEntry: IncidentAuditTrailEntry = {
+    id: `aud-link-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    entidadTipo: 'Incidente',
+    entidadId: inc.id,
+    accion: 'QE_VINCULADO',
+    valorNuevo: qe.numero,
+    realizadoPorId: actor.id,
+    realizadoPorNombre: actor.nombre,
+    timestamp: now,
+    generadoPorIA: false,
+  }
+  store[idx] = { ...inc, qeId: qe.id, actualizadoEn: now, auditTrail: [...inc.auditTrail, auditEntry] }
+  return true
+}
+
+// Al eliminar el QE el incidente queda libre y en ABIERTO; se registra aunque el estado no
+// cambie, porque cambia el vínculo (D5).
+export function unlinkIncidentFromQE(qe: QualityEvent): void {
+  const store = getIncidentsStore()
+  const idx = findLinkedIncidentIdx(qe)
+  if (idx === -1) return
+
+  const inc = store[idx]
+  store[idx] = {
+    ...inc,
+    qeId: undefined,
+    estado: 'ABIERTO',
+    actualizadoEn: new Date().toISOString(),
+    auditTrail: [
+      ...inc.auditTrail,
+      makeIncidentSyncAuditEntry(inc.id, inc.estado, 'ABIERTO', `QE ${qe.numero} eliminado`),
+    ],
   }
 }
 
@@ -151,7 +222,7 @@ function syncNonconformidadFromQEEstado(
 // O3_HALLAZGO_AUDITORIA / O4_REPORTE_EXTERNO no tienen entidad origen que sincronizar.
 export function syncOrigenFromQEEstado(qe: QualityEvent, actor: { id: string; nombre: string }): void {
   if (qe.origen === 'O1_INCIDENTE_CAMPO' && qe.incidenteId) {
-    syncIncidenteFromQEEstado(qe.incidenteId, qe.estado, qe.numero, actor)
+    syncIncidenteFromQEEstado(qe)
     return
   }
   if (qe.origen === 'O2_NC_DETECTADA' && qe.ncId) {

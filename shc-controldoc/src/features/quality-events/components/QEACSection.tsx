@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -18,11 +18,10 @@ import { cerrarQEAccionSchema, type CerrarQEACInput } from '../schemas/cerrarQEA
 import { solicitarAjustePlazoACSchema, type SolicitarAjustePlazoACInput } from '../schemas/solicitarAjustePlazoAC.schema'
 import { rechazarAjustePlazoACSchema, type RechazarAjustePlazoACInput } from '../schemas/rechazarAjustePlazoAC.schema'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../constants/plazoAjuste.constants'
+import { AC_CREATE_VISIBLE_STATES } from '../constants/accionCorrectivaQE.constants'
 import { calcularRequiereAprobacionGerencia } from '../constants/plazoAjuste.utils'
 import { contarDiasHabiles } from '../../../utils/businessDays'
 import type { AccionCorrectivaQE, QEStatus, QESeverity, SolicitudAjustePlazoAC } from '../types/qualityEvent.types'
-
-const AC_CREATE_VISIBLE_STATES: QEStatus[] = ['EN_INVESTIGACION', 'ANALISIS_COMPLETADO', 'EN_EJECUCION']
 
 const AC_STATUS_COLORS: Record<string, string> = {
   PENDIENTE: 'bg-muted-soft/20 text-muted',
@@ -143,14 +142,20 @@ function CerrarQEACModal({
 
 // ─── AgregarQEACModal ─────────────────────────────────────────────────────────
 
-function AgregarQEACModal({
+// Exportado para "Crear AC" desde una acción sugerida por el asistente IA (qe-asistente-ia):
+// llega con la descripción precargada y una ayuda (tipo/rol/plazo sugeridos) encima del form.
+export function AgregarQEACModal({
   onConfirm,
   onClose,
   isPending,
+  defaultValues,
+  ayuda,
 }: {
   onConfirm: (data: CreateQEACInput) => Promise<void>
   onClose: () => void
   isPending: boolean
+  defaultValues?: Partial<CreateQEACInput>
+  ayuda?: ReactNode
 }) {
   const { t } = useTranslation('qualityEvents')
   const { data: users = [] } = useUsers()
@@ -166,6 +171,7 @@ function AgregarQEACModal({
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof createQEAccionSchema>, unknown, CreateQEACInput>({
     resolver: zodResolver(createQEAccionSchema),
+    defaultValues,
   })
 
   const inputClass =
@@ -191,6 +197,7 @@ function AgregarQEACModal({
 
         <form onSubmit={(e) => void handleSubmit(onConfirm)(e)}>
           <div className="space-y-4 px-6 py-5">
+            {ayuda}
             <div>
               <label htmlFor="qeac-titulo" className={labelClass}>
                 {t('detail.acSection.fields.titulo')}

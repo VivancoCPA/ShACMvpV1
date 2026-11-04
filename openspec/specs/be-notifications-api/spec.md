@@ -7,11 +7,15 @@ Backend .NET del inbox de notificaciones de SHAC: entidad `Notificacion` persist
 ## Requirements
 
 ### Requirement: Entidad Notificacion persistida
-El sistema SHALL persistir cada notificación como una fila `Notificacion` con campos `Id (Guid)`, `UsuarioId (Guid, destinatario)`, `EmpresaId (Guid, empresa de la entidad que originó la notificación)`, `Tipo`, `EntidadTipo`, `EntidadId (Guid)`, `EntidadCodigo (string, el código legible de la entidad — p.ej. "QE-2026-001")`, `Mensaje (string)`, `Leida (bool, default false)`, `CreatedAt (DateTime UTC)` y `Link (string, ruta deep-link del frontend)`.
+El sistema SHALL persistir cada notificación como una fila `Notificacion` con campos `Id (Guid)`, `UsuarioId (Guid, destinatario)`, `EmpresaId (Guid, empresa de la entidad que originó la notificación)`, `Tipo`, `EntidadTipo`, `EntidadId (Guid)`, `EntidadCodigo (string, el código legible de la entidad — p.ej. "QE-2026-001")`, `Mensaje (string)`, `Leida (bool, default false)`, `CreatedAt (DateTime UTC)`, `Link (string, ruta deep-link del frontend)` y `CicloClave (string, default "")`. `CicloClave` SHALL permanecer `""` para toda notificación que no sea del bloque de vencimiento de revisión periódica de Documentos (Acciones Correctivas, cambio de estado, asignación, etc.) — preserva exactamente la idempotencia "una sola notificación para siempre por entidad" que esos bloques ya tenían antes de este campo.
 
 #### Scenario: Notificación creada con todos los campos requeridos
 - **WHEN** se genera una notificación para cualquiera de los disparadores de este módulo
-- **THEN** la fila persistida tiene `UsuarioId`, `EmpresaId`, `Tipo`, `EntidadTipo`, `EntidadId`, `EntidadCodigo`, `Mensaje`, `Leida: false` y `CreatedAt` poblados
+- **THEN** la fila persistida tiene `UsuarioId`, `EmpresaId`, `Tipo`, `EntidadTipo`, `EntidadId`, `EntidadCodigo`, `Mensaje`, `Leida: false`, `CreatedAt` y `CicloClave` poblados
+
+#### Scenario: CicloClave queda vacío para notificaciones que no son de revisión periódica de Documentos
+- **WHEN** se genera una notificación de cambio de estado, asignación, o vencimiento de una Acción Correctiva
+- **THEN** su `CicloClave` es `""`
 
 ### Requirement: NotificacionTipo — 7 valores (D4, confirmado)
 El sistema SHALL definir `NotificacionTipo` con 7 valores: `CAMBIO_ESTADO`, `ASIGNACION`, `VENCIMIENTO`, `SEVERIDAD_CRITICA`, `CIERRE`, `VERIFICACION_EFICAZ` y `COMERCIO_EXTERIOR` — los 3 primeros coinciden con el contrato ya establecido en `notification-types` (frontend); los 4 adicionales preservan la distinción que las interfaces del backend ya modelan en vez de aplanarlos a `CAMBIO_ESTADO`.
@@ -87,27 +91,46 @@ El sistema SHALL detectar, a través de las tres tablas de Acción Correctiva (I
 - **THEN** la segunda ejecución no crea ninguna notificación nueva para esa AC
 
 ### Requirement: Escaneo idempotente de vencimiento de revisión periódica de Documentos (RN-DOC-006)
-El sistema SHALL extender el escaneo de vencimientos (`VencimientoScanner.ScanAsync`) con un cuarto bloque sobre `Documento`: para cada documento no eliminado con `fechaRevisionProxima` no nula — **sin filtrar por `estado`**, fiel al comportamiento del mock (`notificationGeneration.ts`), que evalúa cualquier documento con esa fecha asignada independientemente de si ya está `PUBLICADO` — cuyos días corridos restantes hasta esa fecha (diferencia en días de calendario, no días hábiles) sean 30 o menos, y para el cual no exista ya ninguna notificación `VENCIMIENTO` con ese `EntidadTipo: DOCUMENTO` y `EntidadId`, el sistema SHALL crear una notificación `VENCIMIENTO` dirigida a: el `autorId` del documento (si resuelve a un usuario existente) y a todo usuario cuyo rol efectivo en la empresa del documento sea `JEFE_CONTROL_DOCUMENTARIO` o `JEFE_CALIDAD_SYST`. La idempotencia SHALL evaluarse por documento (no por destinatario): si ya existe al menos una notificación `VENCIMIENTO` para ese `EntidadId`, el sistema SHALL NOT generar notificaciones adicionales para ese documento aunque haya destinatarios que aún no la recibieron. El sistema SHALL soportar persistir más de una fila de notificación por documento (una por destinatario) bajo el mismo `(EntidadTipo, EntidadId)`, reforzado por un índice único de base de datos sobre `(EntidadTipo, EntidadId, UsuarioId)` filtrado a `Tipo = 'VENCIMIENTO'` — más amplio que el índice de 2 columnas usado para Acciones Correctivas, que solo necesita un destinatario por entidad. El escaneo SHALL ejecutarse dentro del mismo `BackgroundService` (`VencimientoScanService`) que ya cubre Acciones Correctivas, no como un proceso separado.
+El sistema SHALL extender el escaneo de vencimientos (`VencimientoScanner.ScanAsync`) con un cuarto bloque sobre `Documento`, limitado a documentos con `Estado == PUBLICADO`, `DeletedAt == null` y `FechaRevisionProxima` no nula. "Hoy" SHALL calcularse como fecha de calendario en `America/Lima` (no UTC del servidor), una sola vez por corrida del escaneo.
 
-#### Scenario: Documento a 15 días de su revisión notifica a autor y jefes
-- **WHEN** el escaneo corre y un documento `PUBLICADO` tiene `fechaRevisionProxima` a 15 días corridos, sin notificación `VENCIMIENTO` previa para él, en una empresa con un `JEFE_CALIDAD_SYST` y un `JEFE_CONTROL_DOCUMENTARIO` distintos del autor
-- **THEN** se crean 3 notificaciones `VENCIMIENTO` con `EntidadTipo: DOCUMENTO` y el mismo `EntidadId`: una para el autor y una para cada jefe
+Para cada documento que cumple el filtro, SHALL calcular `diasRestantes = (FechaRevisionProxima.Date - hoyLima).Days` y distinguir dos ramas mutuamente excluyentes:
+- **Preaviso** (`0 < diasRestantes <= 30`): SHALL crear una notificación `VENCIMIENTO` por destinatario (autor + todo usuario con rol efectivo `JEFE_CONTROL_DOCUMENTARIO`/`JEFE_CALIDAD_SYST` en la empresa del documento, igual que antes) con el mensaje "El documento {código} vence su revisión periódica el {dd/mm/aaaa}".
+- **Vencido** (`diasRestantes <= 0`): SHALL, además de notificar a los mismos destinatarios con el mensaje "La revisión periódica de {código} está vencida desde {fecha}. Debe iniciarse la revisión.", agregar **una** entrada `REVISION_PERIODICA_VENCIDA` al audit trail del documento, con `RealizadoPorId: "system"`, `RealizadoPorNombre: "Sistema"`, `GeneradoPorIA: true`, y el motivo o `ValorNuevo` indicando la fecha de revisión vencida ("Fecha de revisión periódica alcanzada: dd/mm/aaaa").
+- Documentos con `diasRestantes > 30` SHALL omitirse sin generar nada.
+
+La idempotencia SHALL evaluarse por **ciclo**: cada rama usa una `CicloClave` derivada de la `FechaRevisionProxima` vigente (p.ej. `"PREAVISO:{fecha:yyyy-MM-dd}"` / `"VENCIDO:{fecha:yyyy-MM-dd}"`), reforzada por el índice único `(EntidadTipo, EntidadId, UsuarioId, CicloClave)` filtrado a `Tipo = 'VENCIMIENTO'`. Mientras la `FechaRevisionProxima` del documento no cambie, cada rama SHALL generar como máximo un lote de notificaciones (y, en el caso de vencido, una sola entrada de audit trail); al confirmarse una `FechaRevisionProxima` nueva (ver `ConfirmarRevisionPeriodicaHandler`), el ciclo siguiente SHALL volver a evaluar y notificar independientemente de los avisos de ciclos anteriores, que SHALL NOT borrarse.
+
+#### Scenario: Documento a 15 días de su revisión notifica a autor y jefes (preaviso)
+- **WHEN** el escaneo corre y un documento `PUBLICADO` tiene `fechaRevisionProxima` a 15 días corridos (calculados en `America/Lima`), sin notificación `VENCIMIENTO` previa para ese ciclo, en una empresa con un `JEFE_CALIDAD_SYST` y un `JEFE_CONTROL_DOCUMENTARIO` distintos del autor
+- **THEN** se crean 3 notificaciones `VENCIMIENTO` (autor + 2 jefes) con la `CicloClave` de preaviso de ese ciclo
 
 #### Scenario: Documento a más de 30 días no genera notificación
 - **WHEN** el escaneo corre y un documento `PUBLICADO` tiene `fechaRevisionProxima` a 45 días corridos
 - **THEN** no se crea ninguna notificación `VENCIMIENTO` para ese documento
 
-#### Scenario: Repetir el escaneo no duplica notificaciones para el mismo documento
-- **WHEN** el escaneo se ejecuta dos veces seguidas y el documento ya tiene al menos una notificación `VENCIMIENTO` de la primera corrida
-- **THEN** la segunda ejecución no crea ninguna notificación adicional para ese documento, incluso si un nuevo `JEFE_CALIDAD_SYST` se incorporó a la empresa entre ambas corridas
+#### Scenario: Documento vencido genera notificación de vencido y una entrada de audit trail
+- **WHEN** el escaneo corre y un documento `PUBLICADO` tiene `fechaRevisionProxima` en el pasado, sin notificación de vencido previa para ese ciclo
+- **THEN** se crea la notificación `VENCIMIENTO` de vencido para cada destinatario, y el audit trail del documento gana exactamente una entrada `REVISION_PERIODICA_VENCIDA` con actor `"Sistema"`
+
+#### Scenario: Repetir el escaneo en el mismo ciclo no duplica notificaciones ni la entrada de audit trail
+- **WHEN** el escaneo se ejecuta dos veces seguidas sin que cambie `FechaRevisionProxima`
+- **THEN** la segunda ejecución no crea notificaciones adicionales ni una segunda entrada `REVISION_PERIODICA_VENCIDA`, incluso si un nuevo `JEFE_CALIDAD_SYST` se incorporó a la empresa entre ambas corridas
+
+#### Scenario: Confirmar la vigencia con una fecha nueva vuelve a habilitar los avisos del ciclo siguiente
+- **WHEN** un documento ya generó sus avisos de preaviso y/o vencido para una `FechaRevisionProxima`, y luego se confirma la revisión periódica con una `FechaRevisionProxima` distinta
+- **THEN** cuando esa nueva fecha entra en la ventana de 30 días, el escaneo vuelve a generar el preaviso correspondiente — sin borrar las notificaciones del ciclo anterior
+
+#### Scenario: Documentos en BORRADOR, OBSOLETO o EN_REVISION_PERIODICA no generan avisos
+- **WHEN** un documento en `BORRADOR`, `EN_REVISION`, `EN_APROBACION`, `OBSOLETO` o `EN_REVISION_PERIODICA` tiene `fechaRevisionProxima` dentro de la ventana de 30 días (heredada de un ciclo anterior)
+- **THEN** el escaneo lo omite sin generar ninguna notificación ni entrada de audit trail
 
 #### Scenario: Documento sin fechaRevisionProxima nunca dispara este escaneo
 - **WHEN** un documento tiene `fechaRevisionProxima` nula (p.ej. tipo `INF` sin revisión periódica)
 - **THEN** el escaneo lo omite sin evaluarlo
 
-#### Scenario: El escaneo evalúa documentos en cualquier estado, no solo PUBLICADO
-- **WHEN** un documento en `BORRADOR` ya tiene `fechaRevisionProxima` asignada (posible desde que `fechaVigencia` tiene valor, RN-DOC-020) y esa fecha cae dentro de la ventana de 30 días
-- **THEN** el escaneo lo evalúa igual que a un documento `PUBLICADO` y genera la notificación correspondiente si no existe una previa
+#### Scenario: El escaneo ejecuta dentro del mismo BackgroundService
+- **WHEN** corre `VencimientoScanService`
+- **THEN** evalúa Acciones Correctivas y Documentos en la misma corrida, sin un proceso separado
 
 ### Requirement: Listado de notificaciones scoped por empresa activa
 El sistema SHALL exponer `GET /api/notifications`, sin restricción de rol, requiriendo empresa activa en la sesión del actor (`401 "Sesión sin empresa activa"` si no hay). SHALL devolver únicamente las notificaciones con `UsuarioId == actor.Id AND EmpresaId == empresaActivaDelActor`, ordenadas por `CreatedAt` descendente.
@@ -145,3 +168,34 @@ El sistema SHALL exponer `PATCH /api/notifications/marcar-todas-leidas`, requiri
 #### Scenario: No afecta notificaciones de otra empresa del mismo usuario
 - **WHEN** el actor tiene una notificación no leída en una empresa distinta de su empresa activa
 - **THEN** esa notificación permanece `leida: false` tras `PATCH /api/notifications/marcar-todas-leidas`
+
+### Requirement: Escaneo idempotente del plazo para vincular un QE a un incidente (RN-INC-006)
+El `VencimientoScanner` SHALL evaluar, en cada corrida, los incidentes activos sin QE: `QeId` nulo, no eliminados y en un estado distinto de `CERRADO`/`ANULADO`. Lo hace contra el plazo de su tipo (ACCIDENTE 24 h, INCIDENTE 48 h, CUASI_ACCIDENTE 72 h, CONDICION_INSEGURA 48 h), en horas corridas desde `FechaEvento` en UTC, con dos ramas excluyentes:
+- **Preaviso:** transcurrido ≥ 75 % y < 100 %. `CicloClave = "QE_PREAVISO"`, mensaje "El incidente {numero} ({tipo}) vence en {X} h su plazo para vincular un Quality Event.".
+- **Vencido:** transcurrido ≥ 100 %. `CicloClave = "QE_VENCIDO"`, mensaje "El incidente {numero} ({tipo}) superó su plazo de {plazo} h para vincular un Quality Event.". Esta rama además agrega al audit trail del incidente `PLAZO_QE_VENCIDO`, con `ValorNuevo = "{plazo} h"`, actor "Sistema" y `GeneradoPorIA = true`.
+
+Destinatarios y formato:
+- Destinatarios: los `UsuariosEmpresa` en estado `ACTIVO` de la empresa del incidente con rol `JEFE_CALIDAD_SYST` o `SUPERVISOR`, sin duplicados.
+- Notificación: `Tipo = VENCIMIENTO`, `EntidadTipo = INCIDENTE`, `EntidadCodigo` = número y `link = /incidents/{id}`.
+
+Idempotencia: SHALL evaluarse por incidente y `CicloClave` antes de generar el lote, de modo que una segunda corrida no duplique notificaciones ni la entrada de audit.
+
+#### Scenario: Preaviso de un ACCIDENTE
+- **WHEN** un ACCIDENTE sin QE lleva 19 h desde `FechaEvento`
+- **THEN** cada JCA y SUP activo de la empresa recibe una notificación `VENCIMIENTO` con `CicloClave = QE_PREAVISO`, y no se agrega audit trail
+
+#### Scenario: Vencido de un ACCIDENTE
+- **WHEN** un ACCIDENTE sin QE lleva 25 h desde `FechaEvento`
+- **THEN** cada JCA y SUP activo recibe una notificación con `CicloClave = QE_VENCIDO`, y el incidente tiene una entrada `PLAZO_QE_VENCIDO` con actor Sistema
+
+#### Scenario: Segunda corrida no duplica
+- **WHEN** el escaneo se ejecuta dos veces seguidas sobre el mismo incidente vencido
+- **THEN** la segunda corrida no crea notificaciones ni audit trail nuevos
+
+#### Scenario: Incidentes excluidos
+- **WHEN** el incidente tiene QE, está eliminado o está `ANULADO`
+- **THEN** el escaneo no genera nada para él
+
+#### Scenario: Destinatarios inactivos o de otra empresa
+- **WHEN** hay un SUPERVISOR inactivo en la empresa y un JCA activo en otra empresa
+- **THEN** ninguno de los dos recibe la notificación

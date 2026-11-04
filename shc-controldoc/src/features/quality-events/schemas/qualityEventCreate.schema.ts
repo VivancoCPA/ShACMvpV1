@@ -29,6 +29,8 @@ const baseFields = {
     .min(1, 'La fecha y hora del evento es requerida')
     .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Fecha/hora inválida (dd/mm/yyyy hh:mm)'),
   mineralInvolucrado: z.string().optional(),
+  // Opcional al crear; obligatorio recién para ABIERTO → EN_INVESTIGACION (qe-precarga-incidente-responsable).
+  responsableInvestigacionId: z.string().optional(),
 }
 
 export const qualityEventCreateSchema = z

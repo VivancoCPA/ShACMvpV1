@@ -34,18 +34,19 @@ export function DocumentSignatureModal({ documentId, onClose }: DocumentSignatur
     resolver: zodResolver(signatureSchema),
   })
 
-  // Focus trap
+  // Focus trap. Los enfocables se recalculan en cada Tab: el contenido cambia si el PIN se
+  // resetea a mitad de sesión (pinResetMidSession oculta el input) — pin-olvidado-pista D4.
   useEffect(() => {
     const el = modalRef.current
     if (!el) return
-    const focusable = el.querySelectorAll<HTMLElement>(
-      'button, input, [tabindex]:not([tabindex="-1"])',
-    )
-    focusable[0]?.focus()
+    const getFocusable = () =>
+      el.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]:not([tabindex="-1"])')
+    getFocusable()[0]?.focus()
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { onClose(); return }
       if (e.key !== 'Tab') return
+      const focusable = getFocusable()
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
       if (e.shiftKey) {
@@ -105,7 +106,7 @@ export function DocumentSignatureModal({ documentId, onClose }: DocumentSignatur
         {noPinConfigured ? (
           <div className="mb-5 rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-body dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark">
             <p className="mb-1.5">{t('signature.noPinConfigured')}</p>
-            <Link to="/perfil" className="font-medium text-coral hover:underline">
+            <Link to="/perfil#pin-firma" className="font-medium text-coral hover:underline">
               {t('signature.configurePinLink')}
             </Link>
           </div>
@@ -135,6 +136,12 @@ export function DocumentSignatureModal({ documentId, onClose }: DocumentSignatur
                   {errors.pin.message}
                 </p>
               )}
+              <Link
+                to="/perfil#pin-firma"
+                className="mt-1.5 inline-block text-xs text-coral hover:underline dark:text-coral"
+              >
+                {t('signature.forgotPinLink')}
+              </Link>
             </div>
           )}
 

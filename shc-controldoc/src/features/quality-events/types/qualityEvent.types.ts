@@ -139,6 +139,10 @@ export interface QualityEvent {
   // trail (`campoModificado: 'responsableInvestigacionId'`), nunca como campo vivo del tipo — se
   // agrega aquí porque puedeVincularDocumentos (qualityEventPermissions.ts) lo necesita real.
   responsableInvestigacionId?: string
+  // Nombre resuelto por el backend con LEFT JOIN (qe-precarga-incidente-responsable D6) — un
+  // SUPERVISOR no puede listar usuarios, así que el frontend no lo resuelve por su cuenta.
+  responsableInvestigacionNombre?: string
+  responsableInvestigacionAvatarUrl?: string
   hallazgoCodigo?: string
   normativaVinculada?: NormativaVinculada
   reporteExternoRef?: ReporteExternoRef
@@ -187,6 +191,8 @@ export interface QEStatusTransitionInput {
   firmaPin?: string
 }
 
+// causaRaizAprobadaPorId/causaRaizFirmadaEn fuera: solo los escribe POST /:id/aprobar-causa-raiz
+// con PIN verificado en el servidor (qe-analisis-causa-raiz-fix).
 export type QualityEventUpdateInput = Partial<Pick<QualityEvent,
   | 'descripcion'
   | 'areaId'
@@ -197,9 +203,62 @@ export type QualityEventUpdateInput = Partial<Pick<QualityEvent,
   | 'cincoPorques'
   | 'ishikawa'
   | 'causaRaizDefinitiva'
-  | 'causaRaizAprobadaPorId'
-  | 'causaRaizFirmadaEn'
   | 'resultadoCierre'
   | 'plazoVerificacionDias'
   | 'fechaVerificacionProgramada'
->>
+>> & {
+  /** qe-asistente-ia: qué valores enviados vienen de una sugerencia del asistente IA (audit trail). */
+  origenIA?: OrigenIA
+}
+
+// ─── Asistente IA (qe-asistente-ia, PRD §1.7) ─────────────────────────────────
+
+/** 'IA' = valor tal cual lo sugirió la IA; 'IA_EDITADO' = el usuario lo modificó después de usarlo. */
+export type OrigenIAValor = 'IA' | 'IA_EDITADO'
+
+export interface OrigenIA {
+  causaRaiz?: OrigenIAValor
+  cincoPorques?: OrigenIAValor
+  ishikawa?: OrigenIAValor
+}
+
+/**
+ * GET /api/config/funcionalidades — asistenteIA es false si el servidor no tiene clave configurada
+ * (salvo en modo simulado, que no la necesita). asistenteIASimulado es true solo con
+ * Anthropic:Proveedor = "Simulado": la sugerencia es fija, no real.
+ */
+export interface Funcionalidades {
+  asistenteIA: boolean
+  asistenteIASimulado: boolean
+}
+
+export type TipoAccionSugeridaIA = 'CORRECTIVA' | 'PREVENTIVA' | 'MEJORA'
+
+export interface AccionSugeridaIA {
+  descripcion: string
+  tipo: TipoAccionSugeridaIA
+  rolResponsableSugerido: string
+  plazoDiasHabiles: number
+}
+
+/**
+ * POST /api/quality-events/:id/asistente-ia — nunca se guarda sola en el QE. Solo trae la lista
+ * del método pedido (qe-asistente-ia-ishikawa); la otra llega como null.
+ */
+export interface SugerenciaCausaRaizIA {
+  causaRaizProbable: string
+  cincoPorques?: CincoPorques[] | null
+  ishikawa?: Ishikawa[] | null
+  accionesSugeridas: AccionSugeridaIA[]
+  modelo: string
+  generadoEn: string
+}
+
+// GET /api/quality-events/candidatos-responsable — SUPERVISOR y JEFE_CALIDAD_SYST activos de la
+// empresa (qe-precarga-incidente-responsable).
+export interface CandidatoResponsableQE {
+  id: string
+  nombreCompleto: string
+  rol: 'SUPERVISOR' | 'JEFE_CALIDAD_SYST'
+  avatarUrl?: string | null
+}

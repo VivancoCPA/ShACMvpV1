@@ -94,7 +94,7 @@ El sistema SHALL exponer `GET /api/incidents/:id`.
 - **THEN** el sistema responde 404, nunca 403
 
 ### Requirement: Actualización de campos de investigación
-El sistema SHALL exponer `PATCH /api/incidents/:id` para actualizar campos de investigación (parcial), registrando una entrada `CAMPO_EDITADO` en el audit trail. Los campos aceptados incluyen `condicionesEntorno`, `localId`, `zonaId`, `ubicacion`, `qeId`, `testigos`, `personalInvolucrado`, `equiposInvolucrados`, `atencionMedicaRequerida`, `atencionMedicaDescripcion`, `notificacionAmbientalRequerida`, y `evidencias` (URLs ya subidas vía `POST /api/incidents/evidencias`) — el formulario de escritorio (`IncidentForm.tsx`) permite adjuntar evidencia nueva tanto al crear como al editar el incidente, así que este endpoint también la acepta.
+El sistema SHALL exponer `PATCH /api/incidents/:id` para actualizar campos de investigación (parcial), registrando una entrada `CAMPO_EDITADO` en el audit trail. Los campos aceptados incluyen `condicionesEntorno`, `localId`, `zonaId`, `ubicacion`, `testigos`, `personalInvolucrado`, `equiposInvolucrados`, `atencionMedicaRequerida`, `atencionMedicaDescripcion`, `notificacionAmbientalRequerida`, y `evidencias` (URLs ya subidas vía `POST /api/incidents/evidencias`). El formulario de escritorio (`IncidentForm.tsx`) permite adjuntar evidencia nueva tanto al crear como al editar el incidente, así que este endpoint también la acepta. El endpoint SHALL NOT modificar `qeId`: la vinculación con el Quality Event la gestiona exclusivamente la creación, eliminación y reactivación del QE. Si el request trae un `qeId` distinto del actual, el sistema SHALL responder 422 con `errorCode: QE_VINCULO_GESTIONADO_POR_QE`, sin modificar el incidente. Si el `qeId` es igual al actual, se ignora.
 
 #### Scenario: Actualización parcial exitosa
 - **WHEN** un usuario envía un subconjunto de campos de investigación a `PATCH /api/incidents/:id` de un incidente de su empresa
@@ -108,16 +108,24 @@ El sistema SHALL exponer `PATCH /api/incidents/:id` para actualizar campos de in
 - **WHEN** un usuario envía `{ evidencias: [...evidencias existentes del incidente, nuevaEvidencia] }` a `PATCH /api/incidents/:id` (el frontend siempre envía la lista completa, existentes + nuevas)
 - **THEN** el sistema agrega únicamente la evidencia cuya `url` todavía no está persistida en el incidente, sin duplicar las ya existentes
 
-### Requirement: Transición de estado validada server-side
-El sistema SHALL exponer `PATCH /api/incidents/:id/status`, validando la transición contra la máquina de estados `ABIERTO → {EN_INVESTIGACION, ANULADO}`, `EN_INVESTIGACION → ANALISIS_COMPLETADO`, `ANALISIS_COMPLETADO → EN_EJECUCION`, `EN_EJECUCION → PENDIENTE_CIERRE`, `PENDIENTE_CIERRE → CERRADO`, `CERRADO → (terminal)`, `ANULADO → (terminal)`.
+#### Scenario: Intento de vincular un QE por este endpoint
+- **WHEN** se envía `PATCH /api/incidents/:id { qeId: '<otro-id>' }` y el incidente tiene `qeId` distinto (o nulo)
+- **THEN** el sistema responde 422 con `errorCode: QE_VINCULO_GESTIONADO_POR_QE` y no modifica el incidente
 
-#### Scenario: Transición válida
-- **WHEN** un incidente en `ABIERTO` recibe `PATCH /:id/status` con `{ estado: 'EN_INVESTIGACION' }`
+### Requirement: Transición de estado validada server-side
+El sistema SHALL exponer `PATCH /api/incidents/:id/status` únicamente para anular un incidente: solo SHALL aceptar `ABIERTO → ANULADO`, y solo si el incidente no tiene `qeId`. Cualquier otra transición, o una anulación de un incidente con QE vinculado, SHALL responder 422 con `errorCode: ESTADO_GOBERNADO_POR_QE` y el mensaje "El estado del incidente lo determina su Quality Event.", sin modificar el incidente. El resto del ciclo de vida (`EN_INVESTIGACION` … `CERRADO`) lo gobierna exclusivamente el Quality Event vinculado (ver `incident-qe-sync`). Una anulación válida registra `ESTADO_CAMBIADO` con `estadoAnterior`/`estadoNuevo`.
+
+#### Scenario: Anulación sin QE
+- **WHEN** un incidente en `ABIERTO` sin `qeId` recibe `PATCH /:id/status` con `{ estado: 'ANULADO' }`
 - **THEN** el sistema responde 200, actualiza `estado` y agrega una entrada `ESTADO_CAMBIADO` con `estadoAnterior`/`estadoNuevo`
 
-#### Scenario: Transición inválida
-- **WHEN** un incidente en `ABIERTO` recibe `PATCH /:id/status` con `{ estado: 'CERRADO' }`
-- **THEN** el sistema responde 422 sin modificar el incidente
+#### Scenario: Avance manual rechazado
+- **WHEN** un incidente en `ABIERTO` recibe `PATCH /:id/status` con `{ estado: 'EN_INVESTIGACION' }`
+- **THEN** el sistema responde 422 con `errorCode: ESTADO_GOBERNADO_POR_QE` sin modificar el incidente
+
+#### Scenario: Anulación con QE vinculado rechazada
+- **WHEN** un incidente con `qeId` recibe `PATCH /:id/status` con `{ estado: 'ANULADO' }`
+- **THEN** el sistema responde 422 con `errorCode: ESTADO_GOBERNADO_POR_QE`
 
 ### Requirement: Notificación best-effort tras transición de estado
 El sistema SHALL calcular los destinatarios de notificación (reportante + responsables de acciones correctivas no cerradas, excluyendo al actor que hizo el cambio) tras cada transición de estado válida, sin bloquear la respuesta si el envío falla o si la infraestructura de notificaciones no está disponible.
@@ -221,3 +229,52 @@ El sistema SHALL exponer `PATCH /api/incidents/:incidenteId/acciones/:acId/cerra
 #### Scenario: Cierre de una acción inexistente
 - **WHEN** `:acId` no corresponde a ninguna acción del incidente indicado
 - **THEN** el sistema responde 404
+
+### Requirement: Nombres resueltos en la lectura de Incidentes
+`GET /api/incidents/:id` y `GET /api/incidents` SHALL incluir en cada incidente los campos de solo lectura `reportadoPorNombre` (nombre y apellido de quien reportó, sin espacios sobrantes), `localNombre` y `zonaNombre`. Se resuelven con `LEFT JOIN` a usuarios, locales y zonas. No se persisten en la tabla `incidentes` y no requieren migración. El filtro multi-empresa (`empresa_id` de la sesión) y el 404 para incidentes de otra empresa SHALL mantenerse sin cambios. Los endpoints de escritura MAY devolver estos campos en `null`.
+
+#### Scenario: Detalle con nombres
+- **WHEN** se solicita `GET /api/incidents/:id` de un incidente de la empresa activa con `reportadoPorId`, `localId` y `zonaId` válidos
+- **THEN** la respuesta 200 incluye `reportadoPorNombre`, `localNombre` y `zonaNombre` con los nombres correspondientes
+
+#### Scenario: Detalle sin local ni zona
+- **WHEN** se solicita el detalle de un incidente sin `localId` ni `zonaId`
+- **THEN** el sistema responde 200 con `localNombre` y `zonaNombre` en `null`
+
+#### Scenario: Listado con nombres y filtros intactos
+- **WHEN** se solicita `GET /api/incidents` con cualquier combinación de `tipo`, `fechaDesde`, `fechaHasta`, `search`, `showDeleted`, `page` y `pageSize`
+- **THEN** cada item incluye los tres nombres y el resultado filtrado y paginado es el mismo que antes de agregar los JOIN (sin errores de columna ambigua)
+
+#### Scenario: Incidente de otra empresa sigue en 404
+- **WHEN** se solicita el detalle de un incidente que pertenece a otra empresa
+- **THEN** el sistema responde 404
+
+#### Scenario: Ubicación en el plano persistida y leída
+- **WHEN** se crea un incidente con `ubicacionX = 40` y `ubicacionY = 25` y luego se solicita su detalle
+- **THEN** la respuesta incluye `ubicacion: { x: 40, y: 25 }`
+
+### Requirement: Notificación best-effort al crear un incidente
+Tras confirmar la transacción de `POST /api/incidents`, el sistema SHALL notificar la creación a los usuarios con rol `JEFE_CALIDAD_SYST` o `SUPERVISOR` en estado `ACTIVO` de la empresa del incidente. Si la severidad es `ALTA` o `CRITICA`, también SHALL notificar a los `ALTA_DIRECCION` activos. Reglas de la notificación:
+- se excluye al actor y no se repiten destinatarios;
+- el tipo es `SEVERIDAD_CRITICA` si la severidad es `CRITICA`, y `CAMBIO_ESTADO` en los demás casos;
+- `EntidadTipo = INCIDENTE`;
+- el mensaje es "Nuevo {tipo} {numero} reportado (severidad {severidad}).";
+- `link` es `/incidents/{id}`.
+
+Un fallo del envío SHALL registrarse en el log y SHALL NOT impedir la respuesta 201. Esto cubre también los incidentes que llegan por la sincronización offline, que usa el mismo endpoint.
+
+#### Scenario: Incidente de severidad MEDIA
+- **WHEN** un SUPERVISOR crea un incidente con severidad `MEDIA`
+- **THEN** los JEFE_CALIDAD_SYST y los demás SUPERVISOR activos de la empresa reciben una notificación `CAMBIO_ESTADO`, ningún ALTA_DIRECCION la recibe y el actor no se notifica a sí mismo
+
+#### Scenario: Incidente de severidad CRITICA
+- **WHEN** se crea un incidente con severidad `CRITICA`
+- **THEN** los JCA, SUP y ALTA_DIRECCION activos reciben una notificación de tipo `SEVERIDAD_CRITICA`
+
+#### Scenario: Usuarios inactivos o de otra empresa
+- **WHEN** existe un JEFE_CALIDAD_SYST inactivo en la empresa y otro activo en una empresa distinta
+- **THEN** ninguno de los dos recibe la notificación
+
+#### Scenario: Fallo de notificación no bloquea la creación
+- **WHEN** la persistencia de la notificación lanza una excepción
+- **THEN** `POST /api/incidents` igual responde 201 con el incidente creado

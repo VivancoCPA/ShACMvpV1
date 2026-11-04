@@ -100,3 +100,25 @@ describe('QEAuditTrail — EXPORTACION_PDF entry', () => {
     expect(screen.queryByText('detail.auditTrail.generadoPorIA')).not.toBeInTheDocument()
   })
 })
+
+describe('QEAuditTrail — asistente IA (qe-asistente-ia)', () => {
+  it('shows the consultation entry with the Generado por IA badge', () => {
+    mockEntries = [makeEntry({ accion: 'ASISTENTE_IA_CONSULTADO', valorNuevo: 'claude-sonnet-5-5', generadoPorIA: true })]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+    // Con el t() identidad, describeEntry cae al literal de accion.
+    expect(screen.getByText('ASISTENTE_IA_CONSULTADO')).toBeInTheDocument()
+    expect(screen.getByText('detail.auditTrail.generadoPorIA')).toBeInTheDocument()
+  })
+
+  it('flags a field saved from an edited AI suggestion', () => {
+    mockEntries = [
+      makeEntry({
+        accion: 'CAMPO_EDITADO',
+        campoModificado: 'cincoPorques',
+        valorNuevo: '5 Porqués actualizado (5 de 5 respuestas completas) (sugerencia IA editada)',
+      }),
+    ]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+    expect(screen.getByText(/detail.auditTrail.sugerenciaIAEditada/)).toBeInTheDocument()
+  })
+})

@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getValidQETransitions } from '../utils/qualityEventTransitions'
-import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
+import {
+  esResponsableInvestigacion,
+  getQualityEventPermissions,
+  puedeAsignarResponsable,
+} from '../utils/qualityEventPermissions'
+import { QEAsignarResponsableModal } from './QEAsignarResponsableModal'
 import { useTransitionQEStatus } from '../hooks/useTransitionQEStatus'
 import { QE_STATUS_LABELS } from '../../../constants/shared.constants'
 import type { QualityEvent, QEStatus } from '../types/qualityEvent.types'
@@ -10,15 +16,17 @@ import type { UserRole } from '../../../types/auth.types'
 interface QEStatusTransitionPanelProps {
   qe: QualityEvent
   rol: UserRole
+  usuarioId: string
 }
 
 const EXCLUDED_TARGETS: QEStatus[] = ['CERRADO', 'EN_VERIFICACION', 'VERIFICADO', 'REABIERTO']
 
-export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProps) {
+export function QEStatusTransitionPanel({ qe, rol, usuarioId }: QEStatusTransitionPanelProps) {
   const { t } = useTranslation('qualityEvents')
   const { mutate, isPending } = useTransitionQEStatus()
+  const [asignarOpen, setAsignarOpen] = useState(false)
 
-  const permissions = getQualityEventPermissions(qe.estado, rol, false)
+  const permissions = getQualityEventPermissions(qe.estado, rol, esResponsableInvestigacion(qe, { id: usuarioId }))
   const validTargets = getValidQETransitions(qe.estado).filter(
     (target) => !EXCLUDED_TARGETS.includes(target) && permissions.puedeAvanzarEstado,
   )
@@ -70,6 +78,36 @@ export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProp
           )
         }
 
+        // PRD §1.3 (1 → 2): requiere responsable de investigación (espejo de QE_SIN_RESPONSABLE).
+        // Solo desde ABIERTO — la reapertura no se bloquea.
+        if (qe.estado === 'ABIERTO' && target === 'EN_INVESTIGACION' && !qe.responsableInvestigacionId) {
+          return (
+            <span key={target} className="inline-flex items-center gap-2">
+              <button
+                type="button"
+                disabled
+                title={t('errors.QE_SIN_RESPONSABLE')}
+                aria-describedby="qe-sin-responsable-hint"
+                className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-muted opacity-60 dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark-soft"
+              >
+                {QE_STATUS_LABELS[target]}
+              </button>
+              <span id="qe-sin-responsable-hint" className="sr-only">
+                {t('errors.QE_SIN_RESPONSABLE')}
+              </span>
+              {puedeAsignarResponsable(qe, rol) && (
+                <button
+                  type="button"
+                  onClick={() => setAsignarOpen(true)}
+                  className="text-sm font-medium text-coral hover:underline dark:text-coral"
+                >
+                  {t('detail.responsable.asignarPrimero')}
+                </button>
+              )}
+            </span>
+          )
+        }
+
         if (target === 'EN_EJECUCION' && !qe.causaRaizFirmadaEn) {
           return (
             <button
@@ -96,6 +134,7 @@ export function QEStatusTransitionPanel({ qe, rol }: QEStatusTransitionPanelProp
           </button>
         )
       })}
+      {asignarOpen && <QEAsignarResponsableModal qe={qe} onClose={() => setAsignarOpen(false)} />}
     </div>
   )
 }

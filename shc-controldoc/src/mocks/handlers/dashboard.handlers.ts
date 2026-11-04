@@ -16,6 +16,7 @@ import {
 } from '../../features/dashboard/constants/kpi.constants'
 import { getDashboardDataTypeForRole } from '../../features/dashboard/utils/dashboardRoleMapping'
 import { contarDiasHabiles } from '../../utils/businessDays'
+import { getIncidentQEAlertLevel, PLAZO_QE_HORAS } from '../../features/incidents/utils/incidentQEAlert'
 import type { KpiId, KpiResult } from '../../features/dashboard/types/kpi.types'
 import type {
   OperarioDashboardData,
@@ -635,6 +636,14 @@ function buildJefeCalidadData(): JefeCalidadDashboardData {
     )
     .map(({ ac, origenTipo, origenId }) => toACResumen(ac, origenTipo, origenId))
 
+  // RN-INC-006 (incidentes-qe-estado-alertas D8): mismo criterio que el badge "Sin QE vinculado";
+  // del más vencido al menos (vencimiento = fechaEvento + plazo del tipo).
+  const ahora = new Date()
+  const vencimiento = (inc: Incidente) => new Date(inc.fechaEvento).getTime() + PLAZO_QE_HORAS[inc.tipo] * 3_600_000
+  const incidentesSinQeVencidos = incidentes
+    .filter((inc) => getIncidentQEAlertLevel(inc, ahora) === 'ROJO')
+    .sort((a, b) => vencimiento(a) - vencimiento(b))
+
   return {
     kpis: calcularKpis(currentPeriodo()),
     qeCriticosAbiertos,
@@ -644,6 +653,8 @@ function buildJefeCalidadData(): JefeCalidadDashboardData {
     accionesCorrectivasPorVencer,
     tendenciaMensualVolumen: buildTendenciaMensualVolumen(qes),
     tendenciaMensualKpis: buildTendenciaMensualKpis(qes, ncs, incidentes),
+    incidentesSinQeVencidos: incidentesSinQeVencidos.slice(0, 10).map(toIncidenteResumen),
+    incidentesSinQeVencidosTotal: incidentesSinQeVencidos.length,
   }
 }
 

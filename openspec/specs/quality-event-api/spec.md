@@ -5,9 +5,7 @@
 Pure Axios client for the Quality Event resource. Exposes five side-effect-free functions in `src/features/quality-events/api/quality-events.api.ts`, each returning `Promise<ApiResponse<T>>` via the shared `api` instance from `src/lib/axios.ts`. No TanStack Query logic lives here — that belongs to `quality-event-hooks`.
 
 ---
-
 ## Requirements
-
 ### Requirement: Cliente Axios puro para Quality Event
 El sistema SHALL exponer 5 funciones Axios puras en `src/features/quality-events/api/quality-events.api.ts`, sin lógica de TanStack Query ni efectos secundarios. Cada función retorna `Promise<ApiResponse<T>>` usando la instancia `api` de `src/lib/axios.ts`.
 
@@ -77,3 +75,38 @@ El sistema SHALL definir el tipo `QEStatusTransitionInput = { nuevoEstado: QESta
 #### Scenario: Uso del tipo en el cliente
 - **WHEN** se llama `transitionQEStatus(id, { nuevoEstado: 'EN_EJECUCION', firmaPin: '1234' })`
 - **THEN** TypeScript acepta la llamada sin errores de tipo
+
+### Requirement: aprobarCausaRaiz pure function
+`src/features/quality-events/api/quality-events.api.ts` SHALL export `aprobarCausaRaiz(id: string, pin: string): Promise<QualityEvent>`, which calls `POST /api/quality-events/:id/aprobar-causa-raiz` with body `{ pin }` and returns the updated QE from the `ApiResponse` envelope.
+
+#### Scenario: Sends only the PIN
+- **WHEN** `aprobarCausaRaiz('qe-1', '1234')` is called
+- **THEN** a `POST /api/quality-events/qe-1/aprobar-causa-raiz` request is sent with body `{ pin: '1234' }`
+
+### Requirement: QualityEventUpdateInput excludes the approval fields
+`QualityEventUpdateInput` in `qualityEvent.types.ts` SHALL NOT include `causaRaizAprobadaPorId` or `causaRaizFirmadaEn`. Those fields remain on `QualityEvent` as read-only data written only by the approval endpoint.
+
+#### Scenario: Type rejects approval fields
+- **WHEN** a developer passes `{ causaRaizFirmadaEn: '...' }` as `QualityEventUpdateInput`
+- **THEN** `tsc --noEmit` reports a type error
+
+### Requirement: getFuncionalidades and asistirCausaRaizIA pure functions
+`src/features/quality-events/api/quality-events.api.ts` SHALL export two functions, both returning `data` from the `ApiResponse` envelope:
+- `getFuncionalidades(): Promise<Funcionalidades>`, which calls `GET /api/config/funcionalidades`;
+- `asistirCausaRaizIA(id: string): Promise<SugerenciaCausaRaizIA>`, which calls `POST /api/quality-events/:id/asistente-ia` with no body.
+
+The types SHALL be:
+- `SugerenciaCausaRaizIA = { causaRaizProbable: string; cincoPorques: CincoPorques[]; accionesSugeridas: AccionSugeridaIA[]; modelo: string; generadoEn: string }`;
+- `AccionSugeridaIA = { descripcion: string; tipo: 'CORRECTIVA' | 'PREVENTIVA' | 'MEJORA'; rolResponsableSugerido: string; plazoDiasHabiles: number }`.
+
+#### Scenario: Calls the assistant endpoint
+- **WHEN** `asistirCausaRaizIA('qe-1')` is called
+- **THEN** a `POST /api/quality-events/qe-1/asistente-ia` request is sent
+
+### Requirement: QualityEventUpdateInput carries origenIA
+`QualityEventUpdateInput` SHALL include an optional `origenIA?: { causaRaiz?: OrigenIAValor; cincoPorques?: OrigenIAValor }`, with `OrigenIAValor = 'IA' | 'IA_EDITADO'`.
+
+#### Scenario: Type accepts origenIA
+- **WHEN** a developer passes `{ causaRaizDefinitiva: '...', origenIA: { causaRaiz: 'IA' } }` as `QualityEventUpdateInput`
+- **THEN** `tsc --noEmit` reports no error
+

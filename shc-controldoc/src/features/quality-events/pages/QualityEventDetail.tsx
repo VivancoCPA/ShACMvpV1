@@ -87,7 +87,7 @@ export function QualityEventDetail() {
 
         <div className="space-y-4">
           <QEHeaderSection qe={qe} />
-          {user && !isDeleted && <QEStatusTransitionPanel qe={qe} rol={user.rol} />}
+          {user && !isDeleted && <QEStatusTransitionPanel qe={qe} rol={user.rol} usuarioId={user.id} />}
         </div>
         <QEInvestigationSection qe={qe} />
         <QEACSection

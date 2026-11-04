@@ -26,6 +26,8 @@ El worker de pdf.js SHALL configurarse para Vite vía `pdfjs.GlobalWorkerOptions
 
 Mientras la primera carga está en curso, el componente SHALL mostrar un estado "Generando vista previa…" con un spinner. Si la solicitud falla, SHALL mostrar el mensaje de error correspondiente (incluyendo el caso "el documento aún no tiene archivo para visualizar" cuando el backend responde 404 por falta de archivo original).
 
+**fix-log-refresco-inmediato:** tras una carga exitosa del blob, el componente SHALL invalidar la query `documents.detail(documentoId)` exactamente una vez por apertura — para que la entrada `VISUALIZACION` registrada por el backend aparezca en el audit trail del detalle sin recargar la página. Esta invalidación SHALL NOT disparar una segunda solicitud del propio visor (su query, `['documents', 'visor', documentoId]`, es independiente de `documents.detail`).
+
 #### Scenario: Carga exitosa usa blob autenticado
 - **WHEN** `DocumentViewer` se monta para un documento con acceso
 - **THEN** se realiza un `GET /api/documents/:id/visor` con `responseType: 'blob'` a través de `api`, y el PDF se renderiza desde el blob resultante
@@ -41,6 +43,14 @@ Mientras la primera carga está en curso, el componente SHALL mostrar un estado 
 #### Scenario: Error genérico muestra un estado de error
 - **WHEN** la solicitud del PDF falla por cualquier otra razón
 - **THEN** el visor muestra un estado de error, sin quedar en el spinner de carga indefinidamente
+
+#### Scenario: Carga exitosa invalida el detalle del documento exactamente una vez
+- **WHEN** el visor carga el PDF exitosamente
+- **THEN** la query `documents.detail(documentoId)` se invalida exactamente una vez, y `getDocumentVisorBlob` no se vuelve a invocar como consecuencia de esa invalidación
+
+#### Scenario: Carga fallida no invalida el detalle
+- **WHEN** la solicitud del PDF falla (403/404/422)
+- **THEN** `documents.detail(documentoId)` no se invalida
 
 ### Requirement: Sin descarga, sin capa de texto, sin menú contextual
 `DocumentViewer` SHALL NOT renderizar ningún botón de descarga del PDF, para ningún rol. Cada `<Page>` SHALL renderizarse con `renderTextLayer={false}` y `renderAnnotationLayer={false}` (sin capa de texto seleccionable ni anotaciones interactivas). El contenedor del visor SHALL deshabilitar el menú contextual del navegador (`onContextMenu` con `preventDefault`).

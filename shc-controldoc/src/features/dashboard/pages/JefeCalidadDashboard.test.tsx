@@ -96,6 +96,8 @@ describe('JefeCalidadDashboard', () => {
           'KPI-04': [{ periodo: '2026-07', valor: 2 }],
           'KPI-05': [{ periodo: '2026-07', valor: 90 }],
         },
+        incidentesSinQeVencidos: [],
+        incidentesSinQeVencidosTotal: 0,
       },
     }
     renderDashboard()

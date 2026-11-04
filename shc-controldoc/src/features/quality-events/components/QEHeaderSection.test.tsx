@@ -162,3 +162,46 @@ describe('QEHeaderSection — reportadoPor muestra el nombre resuelto (nombres-u
     expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
   })
 })
+
+// qe-precarga-incidente-responsable — fila de responsable de investigación.
+vi.mock('./QEAsignarResponsableModal', () => ({
+  QEAsignarResponsableModal: () => <div data-testid="asignar-responsable-modal" />,
+}))
+
+describe('QEHeaderSection — responsable de investigación', () => {
+  it('muestra "Sin asignar" y el botón Asignar para el JCA', () => {
+    currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
+    render(<QEHeaderSection qe={makeQE({})} />)
+
+    expect(screen.getByText('detail.responsable.sinAsignar')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'detail.responsable.asignar' }))
+    expect(screen.getByTestId('asignar-responsable-modal')).toBeInTheDocument()
+  })
+
+  it('otro rol ve "Sin asignar" pero no el botón', () => {
+    currentUser = makeUser({ rol: 'SUPERVISOR' })
+    render(<QEHeaderSection qe={makeQE({})} />)
+
+    expect(screen.getByText('detail.responsable.sinAsignar')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'detail.responsable.asignar' })).not.toBeInTheDocument()
+  })
+
+  it('con responsable muestra su nombre y el JCA ve "Cambiar"', () => {
+    currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
+    render(
+      <QEHeaderSection
+        qe={makeQE({ responsableInvestigacionId: 'user-sup-001', responsableInvestigacionNombre: 'Sara Supervisora' })}
+      />,
+    )
+
+    expect(screen.getByText('Sara Supervisora')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'detail.responsable.cambiar' })).toBeInTheDocument()
+  })
+
+  it('no ofrece asignar en un QE cerrado', () => {
+    currentUser = makeUser({ rol: 'JEFE_CALIDAD_SYST' })
+    render(<QEHeaderSection qe={makeQE({ estado: 'CERRADO' })} />)
+
+    expect(screen.queryByRole('button', { name: 'detail.responsable.asignar' })).not.toBeInTheDocument()
+  })
+})

@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AlertTriangle } from 'lucide-react'
 import { SearchableSelect } from '../../../components/shared/SearchableSelect'
@@ -16,8 +16,11 @@ import { useCreateQualityEvent } from '../hooks/useCreateQualityEvent'
 import { useQualityEvent } from '../hooks/useQualityEvent'
 import { useEditarReporteInicial } from '../hooks/useEditarReporteInicial'
 import { useEditarSeveridad } from '../hooks/useEditarSeveridad'
-import { getIncidents } from '../../incidents/api/incidents.api'
-import { useVincularQE } from '../../incidents/hooks/useIncidents'
+import { getIncident, getIncidents } from '../../incidents/api/incidents.api'
+import { INCIDENT_QUERY_KEYS, useIncident } from '../../incidents/hooks/useIncidents'
+import type { Incidente } from '../../incidents/types/incident.types'
+import { useCandidatosResponsableQE } from '../hooks/useCandidatosResponsableQE'
+import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../../utils/datetimeLocal'
 import { getNonconformities } from '../../nonconformities/api/nonconformities.api'
 import { useVincularNC } from '../../nonconformities/hooks/useNonconformities'
 import { PageWrapper } from '../../../components/layout/PageWrapper'
@@ -57,6 +60,22 @@ type QEFormValues = {
     nombreCliente: string
     fechaRecepcion: string
   }
+  responsableInvestigacionId: string
+}
+
+// Campos que se copian del incidente de origen (qe-precarga-incidente-responsable D1/D8).
+const PRECARGA_FIELDS = ['descripcion', 'fechaHoraEvento', 'turno', 'areaId', 'severidad', 'tipo'] as const
+
+function valoresDesdeIncidente(inc: Incidente): Pick<QEFormValues, (typeof PRECARGA_FIELDS)[number]> {
+  return {
+    descripcion: inc.descripcion,
+    fechaHoraEvento: toDatetimeLocalValue(inc.fechaEvento),
+    // IncidentTurno admite 'TODOS', que el QE no tiene — en ese caso el usuario elige el turno.
+    turno: inc.turno === 'TODOS' ? '' : inc.turno,
+    areaId: inc.areaId,
+    severidad: inc.severidad,
+    tipo: 'SST',
+  }
 }
 
 function SkeletonBlock() {
@@ -73,14 +92,25 @@ interface QualityEventFormBodyProps {
   qe?: QualityEvent
   access: QEEditAccess | null
   isEditMode: boolean
+  /** Incidente de la URL (`?incidenteId=`), ya cargado por la página — fuente de la precarga inicial. */
+  incidenteInicial?: Incidente
 }
 
-function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyProps) {
+function QualityEventFormBody({ qe, access, isEditMode, incidenteInicial }: QualityEventFormBodyProps) {
   const { t } = useTranslation('qualityEvents')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
+  const user = useAuthStore((s) => s.user)
+  const esJca = user?.rol === 'JEFE_CALIDAD_SYST'
+  const { data: candidatosResponsable = [] } = useCandidatosResponsableQE(!isEditMode && esJca)
+  // Incidente cuyos datos se copiaron al formulario (nota "Datos copiados…") y el que espera
+  // confirmación de reemplazo — estado de UI, no derivado.
+  const [incidentePrecargado, setIncidentePrecargado] = useState<{ id: string; numero: string } | null>(
+    incidenteInicial ? { id: incidenteInicial.id, numero: incidenteInicial.numero } : null,
+  )
+  const [reemplazoPendiente, setReemplazoPendiente] = useState<Incidente | null>(null)
   const { mutate: mutateCreate, isPending: isPendingCreate } = useCreateQualityEvent()
-  const { mutate: mutateVincularQE, isPending: isPendingVincularQE } = useVincularQE()
   const { mutate: mutateVincularNC, isPending: isPendingVincularNC } = useVincularNC()
   const { mutate: mutateEditReporteInicial, isPending: isPendingEditReporteInicial } = useEditarReporteInicial()
   const { mutate: mutateEditSeveridad, isPending: isPendingEditSeveridad } = useEditarSeveridad()
@@ -120,8 +150,9 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
     watch,
     setValue,
     setError,
+    resetField,
     control,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<QEFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: isEditMode ? undefined : (zodResolver(qualityEventCreateSchema) as any),
@@ -133,13 +164,14 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           descripcion: qe.descripcion,
           areaId: qe.areaId,
           turno: qe.turno,
-          fechaHoraEvento: qe.fechaHoraEvento.slice(0, 16),
+          fechaHoraEvento: toDatetimeLocalValue(qe.fechaHoraEvento),
           mineralInvolucrado: qe.mineralInvolucrado ?? '',
           incidenteId: qe.incidenteId ?? '',
           ncId: qe.ncId ?? '',
           hallazgoCodigo: qe.hallazgoCodigo ?? '',
           normativaVinculada: qe.normativaVinculada,
           reporteExternoRef: qe.reporteExternoRef ?? { nombreCliente: '', fechaRecepcion: '' },
+          responsableInvestigacionId: qe.responsableInvestigacionId ?? '',
         }
       : {
           origen: initialOrigen,
@@ -149,12 +181,14 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           areaId: initialOrigenEntidad?.area ?? '',
           turno: '',
           fechaHoraEvento: '',
+          ...(incidenteInicial ? valoresDesdeIncidente(incidenteInicial) : {}),
           mineralInvolucrado: '',
           incidenteId: initialOrigen === 'O1_INCIDENTE_CAMPO' ? initialIncidenteId : '',
           ncId: initialOrigen === 'O2_NC_DETECTADA' ? initialNcId : '',
           hallazgoCodigo: '',
           normativaVinculada: undefined,
           reporteExternoRef: { nombreCliente: '', fechaRecepcion: '' },
+          responsableInvestigacionId: '',
         },
   })
 
@@ -203,6 +237,27 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const showAreaDivergeWarning =
     !!origenEntidad && !!areaIdValue && areaIdValue !== origenEntidad.area
 
+  // resetField con defaultValue: los campos precargados quedan "no tocados", así un segundo cambio
+  // de incidente sin ediciones del usuario reemplaza directo, sin volver a pedir confirmación.
+  const aplicarPrecarga = (inc: Incidente) => {
+    const valores = valoresDesdeIncidente(inc)
+    for (const campo of PRECARGA_FIELDS) resetField(campo, { defaultValue: valores[campo] })
+    setIncidentePrecargado({ id: inc.id, numero: inc.numero })
+  }
+
+  const handleIncidenteSeleccionado = (id: string) => {
+    void queryClient
+      .fetchQuery({ queryKey: INCIDENT_QUERY_KEYS.detail(id), queryFn: () => getIncident(id) })
+      .then((inc) => {
+        const tocados = PRECARGA_FIELDS.some((campo) => dirtyFields[campo])
+        if (tocados) setReemplazoPendiente(inc)
+        else aplicarPrecarga(inc)
+      })
+      .catch(() => {
+        // Sin detalle del incidente: el formulario queda como estaba (solo cambia el vínculo).
+      })
+  }
+
   const clearOriginFields = () => {
     setValue('incidenteId', '')
     setValue('ncId', '')
@@ -231,25 +286,18 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
     // Convert datetime-local (YYYY-MM-DDTHH:mm) to ISO 8601 UTC
     const payload = {
       ...data,
-      fechaHoraEvento: data.fechaHoraEvento ? new Date(data.fechaHoraEvento).toISOString() : '',
+      fechaHoraEvento: data.fechaHoraEvento ? fromDatetimeLocalValue(data.fechaHoraEvento) : '',
       mineralInvolucrado: data.mineralInvolucrado || undefined,
+      responsableInvestigacionId: data.responsableInvestigacionId || undefined,
     } as unknown as QualityEventCreateInput
 
     mutateCreate(payload, {
       onSuccess: (created) => {
-        // RN-QE-001 — vincula el Incidente origen al QE recién creado antes de navegar, para
-        // que canCrearQE (incidentPermissions.ts) deje de habilitar "Crear QE" al volver a su
-        // detalle. Se navega en onSettled: un fallo en el vínculo no debe bloquear al usuario
-        // de llegar al QE que sí se creó — useVincularQE ya notifica el error por separado.
-        if (payload.origen === 'O1_INCIDENTE_CAMPO' && payload.incidenteId) {
-          mutateVincularQE(
-            { id: payload.incidenteId, qeId: created.id },
-            { onSettled: () => navigate(`/quality-events/${created.id}`) },
-          )
-          return
-        }
-        // RN-QE-013 — mismo patrón que arriba, pero para la NC origen (O2_NC_DETECTADA): vincula
-        // nc.qeGeneradoId antes de navegar, para que canCrearQE deje de habilitar "Crear QE" al
+        // RN-QE-001 — el Incidente origen (O1_INCIDENTE_CAMPO) ya queda vinculado por el backend
+        // en la misma transacción que la creación del QE (incidentes-qe-estado-alertas D3);
+        // useCreateQualityEvent invalida la caché de incidentes, así que se navega directo.
+        // RN-QE-013 — la NC origen (O2_NC_DETECTADA) todavía se vincula con un segundo request
+        // (nc.qeGeneradoId) antes de navegar, para que canCrearQE deje de habilitar "Crear QE" al
         // volver al detalle de la NC. Un fallo en el vínculo no bloquea navegar al QE ya creado
         // — useVincularNC ya notifica el error por separado.
         if (payload.origen === 'O2_NC_DETECTADA' && payload.ncId) {
@@ -279,13 +327,13 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
       return
     }
 
-    // datetime-local has no timezone info, so compare it against the anterior value in the
-    // same truncated local format before round-tripping through Date/ISO — otherwise an
-    // untouched field would spuriously "change" by the local UTC offset on every submit.
-    const fechaHoraEventoChanged = data.fechaHoraEvento !== qe.fechaHoraEvento.slice(0, 16)
+    // datetime-local has no timezone info, so compare it against the anterior value converted to
+    // the same local format (toDatetimeLocalValue) — otherwise an untouched field would spuriously
+    // "change" by the local UTC offset on every submit.
+    const fechaHoraEventoChanged = data.fechaHoraEvento !== toDatetimeLocalValue(qe.fechaHoraEvento)
     const fechaHoraEventoIso =
       fechaHoraEventoChanged && data.fechaHoraEvento
-        ? new Date(data.fechaHoraEvento).toISOString()
+        ? fromDatetimeLocalValue(data.fechaHoraEvento)
         : qe.fechaHoraEvento
 
     const candidate: Record<string, unknown> = {
@@ -362,7 +410,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
   const onSubmit = isEditMode ? onSubmitEdit : onSubmitCreate
   const isPending = isEditMode
     ? isPendingEditReporteInicial || isPendingEditSeveridad
-    : isPendingCreate || isPendingVincularQE || isPendingVincularNC
+    : isPendingCreate || isPendingVincularNC
   const showSeveridadField = !isEditMode || Boolean(access?.severidad)
 
   const inputClass =
@@ -461,8 +509,7 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
                     value={field.value || undefined}
                     onChange={(id) => {
                       field.onChange(id ?? '')
-                      const inc = incidents.find((i) => i.id === id)
-                      if (inc) setValue('areaId', inc.areaId)
+                      if (id && id !== incidentePrecargado?.id) handleIncidenteSeleccionado(id)
                     }}
                   />
                 )}
@@ -470,6 +517,34 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
             )}
             {errors.incidenteId && (
               <p className={errorClass}>{errors.incidenteId.message as string}</p>
+            )}
+            {reemplazoPendiente && (
+              <div
+                role="alertdialog"
+                aria-labelledby="qe-reemplazo-incidente-text"
+                className="mt-2 flex flex-wrap items-center gap-3 rounded-md border border-amber/40 bg-amber/10 px-4 py-3 dark:border-amber/30 dark:bg-amber/10"
+              >
+                <p id="qe-reemplazo-incidente-text" className="flex-1 text-sm text-body dark:text-on-dark">
+                  {t('form.confirmReemplazoIncidente', { numero: reemplazoPendiente.numero })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    aplicarPrecarga(reemplazoPendiente)
+                    setReemplazoPendiente(null)
+                  }}
+                  className="rounded-md bg-coral px-3 py-1.5 text-sm font-medium text-white hover:bg-coral-dark dark:bg-coral dark:hover:bg-coral-dark"
+                >
+                  {t('form.confirmReemplazoAcciones.reemplazar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReemplazoPendiente(null)}
+                  className="rounded-md border border-hairline bg-canvas px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
+                >
+                  {t('form.confirmReemplazoAcciones.mantener')}
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -661,6 +736,14 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           {errors.descripcion && (
             <p className={errorClass}>{errors.descripcion.message as string}</p>
           )}
+          {!isEditMode &&
+            origenValue === 'O1_INCIDENTE_CAMPO' &&
+            incidentePrecargado &&
+            incidentePrecargado.id === incidenteIdValue && (
+              <p className="mt-1.5 text-xs text-muted dark:text-on-dark-soft">
+                {t('form.precargaIncidente', { numero: incidentePrecargado.numero })}
+              </p>
+            )}
         </div>
 
         {/* ── Área afectada (full width) ── */}
@@ -766,6 +849,33 @@ function QualityEventFormBody({ qe, access, isEditMode }: QualityEventFormBodyPr
           )}
         </div>
 
+        {/* ── Responsable de investigación (full width, opcional, solo JCA en alta) ── */}
+        {!isEditMode && esJca && (
+          <div className="md:col-span-2">
+            <label className={labelClass} htmlFor="responsableInvestigacionId">
+              {t('form.fields.responsableInvestigacion')}
+            </label>
+            <Controller
+              name="responsableInvestigacionId"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  id="responsableInvestigacionId"
+                  ariaLabel={t('form.fields.responsableInvestigacion')}
+                  placeholder={t('form.placeholders.responsableInvestigacion')}
+                  options={candidatosResponsable.map((c) => ({
+                    id: c.id,
+                    label: c.nombreCompleto,
+                    sublabel: t(`roles.${c.rol}`),
+                  }))}
+                  value={field.value || undefined}
+                  onChange={(id) => field.onChange(id ?? '')}
+                />
+              )}
+            />
+          </div>
+        )}
+
         {/* ── Footer buttons (full width) ── */}
         <div className="md:col-span-2 flex items-center justify-end gap-3 border-t border-hairline pt-4 dark:border-hairline/20">
           <button
@@ -799,6 +909,13 @@ export function QualityEventForm() {
   const { data: qe, isLoading: qeLoading } = useQualityEvent(id ?? '')
   const access = qe && user ? resolveQEEditAccess(qe, user) : null
 
+  // D1/D8 — el incidente de la URL se carga aquí, antes de cualquier return, para que el body
+  // nazca con la precarga en sus defaultValues (sin useEffect que sincronice el formulario).
+  const [searchParams] = useSearchParams()
+  const incidenteIdParam =
+    !isEditMode && searchParams.get('origen') === 'O1_INCIDENTE_CAMPO' ? (searchParams.get('incidenteId') ?? '') : ''
+  const { data: incidenteInicial, isLoading: incidenteLoading } = useIncident(incidenteIdParam)
+
   if (isEditMode) {
     if (qeLoading) {
       return (
@@ -815,9 +932,23 @@ export function QualityEventForm() {
     }
   }
 
+  if (incidenteIdParam && incidenteLoading) {
+    return (
+      <PageWrapper title={t('form.createTitle')}>
+        <SkeletonBlock />
+      </PageWrapper>
+    )
+  }
+
   return (
     <PageWrapper title={isEditMode ? t('form.editTitle') : t('form.createTitle')}>
-      <QualityEventFormBody key={qe?.id ?? 'create'} qe={qe} access={access} isEditMode={isEditMode} />
+      <QualityEventFormBody
+        key={qe?.id ?? 'create'}
+        qe={qe}
+        access={access}
+        isEditMode={isEditMode}
+        incidenteInicial={incidenteInicial}
+      />
     </PageWrapper>
   )
 }

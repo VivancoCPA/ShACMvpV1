@@ -6,7 +6,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { QualityEventForm } from './QualityEventForm'
 import { useAuthStore } from '../../../stores/authStore'
 import { createMockUser } from '../../../mocks/fixtures/mockUser'
-import { getIncidents } from '../../incidents/api/incidents.api'
+import { getIncident, getIncidents } from '../../incidents/api/incidents.api'
+import type { Incidente } from '../../incidents/types/incident.types'
+import { toDatetimeLocalValue } from '../../../utils/datetimeLocal'
 import { getNonconformities } from '../../nonconformities/api/nonconformities.api'
 import type { QualityEvent } from '../types/qualityEvent.types'
 
@@ -28,6 +30,15 @@ vi.mock('../../../components/layout/PageWrapper', () => ({
 
 vi.mock('../../incidents/api/incidents.api', () => ({
   getIncidents: vi.fn().mockResolvedValue({ items: [] }),
+  getIncident: vi.fn(),
+  updateIncident: (...args: unknown[]) => updateIncidentSpy(...args),
+}))
+
+const candidatosMock = [
+  { id: 'user-sup-001', nombreCompleto: 'Sara Supervisora', rol: 'SUPERVISOR' as const, avatarUrl: null },
+]
+vi.mock('../hooks/useCandidatosResponsableQE', () => ({
+  useCandidatosResponsableQE: () => ({ data: candidatosMock }),
 }))
 vi.mock('../../nonconformities/api/nonconformities.api', () => ({
   getNonconformities: vi.fn().mockResolvedValue({ items: [] }),
@@ -50,10 +61,9 @@ vi.mock('../hooks/useCreateQualityEvent', () => ({
   useCreateQualityEvent: () => ({ mutate: createMutate, isPending: false }),
 }))
 
-const vincularQEMutate = vi.fn()
-vi.mock('../../incidents/hooks/useIncidents', () => ({
-  useVincularQE: () => ({ mutate: vincularQEMutate, isPending: false }),
-}))
+// incidentes-qe-estado-alertas (D3) — la vinculación Incidente → QE es atómica en el backend; el
+// formulario ya no dispara ningún PATCH /api/incidents/:id. Espía de la API para comprobarlo.
+const updateIncidentSpy = vi.fn()
 
 const vincularNCMutate = vi.fn()
 vi.mock('../../nonconformities/hooks/useNonconformities', () => ({
@@ -150,6 +160,12 @@ describe('QualityEventForm — edit mode', () => {
     expect(screen.getByRole('textbox', { name: /form.fields.hallazgoCodigo/i })).toHaveValue('HAL-2026-001')
     expect(screen.getByRole('combobox', { name: /form.fields.normaVinculada/i })).toHaveValue('ISO_9001_2015')
     expect(screen.getByRole('combobox', { name: 'form.fields.clausula' })).toHaveValue('8.4.1')
+  })
+
+  it('muestra fechaHoraEvento en hora local, sin corrimiento de zona horaria', () => {
+    renderEditRoute()
+
+    expect(document.getElementById('fechaHoraEvento')).toHaveValue(toDatetimeLocalValue(baseQE.fechaHoraEvento))
   })
 
   it('renders protected fields as read-only text with no editable control', () => {
@@ -314,12 +330,119 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
           descripcion: 'Incidente de prueba',
           areaId: 'area-019',
         },
+        {
+          id: 'inc-004',
+          numero: 'INC-2026-004',
+          descripcion: 'Otro incidente',
+          areaId: 'area-002',
+        },
       ],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
+    vi.mocked(getIncident).mockImplementation(async (id: string) => INCIDENTES_DETALLE[id])
   })
 
   afterEach(() => cleanup())
+
+  // qe-precarga-incidente-responsable — detalle completo que devuelve getIncident.
+  const INCIDENTES_DETALLE: Record<string, Incidente> = {
+    'inc-003': {
+      id: 'inc-003',
+      numero: 'INC-2026-003',
+      descripcion: 'Derrame de concentrado en la faja 3',
+      areaId: 'area-019',
+      turno: 'NOCHE',
+      severidad: 'ALTA',
+      fechaEvento: '2026-10-20T15:30:00Z',
+    } as Incidente,
+    'inc-004': {
+      id: 'inc-004',
+      numero: 'INC-2026-004',
+      descripcion: 'Caída de material en la zona de carga',
+      areaId: 'area-002',
+      turno: 'TARDE',
+      severidad: 'MEDIA',
+      fechaEvento: '2026-10-21T18:00:00Z',
+    } as Incidente,
+  }
+
+  async function elegirIncidente(numero: RegExp) {
+    await userEvent.click(await screen.findByRole('combobox', { name: 'form.fields.incidenteId' }))
+    await userEvent.click(await screen.findByRole('option', { name: numero }))
+  }
+
+  it('precarga desde el incidente de la URL: descripción, fecha local, turno, área, severidad y tipo SST', async () => {
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+
+    expect(await screen.findByDisplayValue('Derrame de concentrado en la faja 3')).toBeInTheDocument()
+    // Hora local del navegador, no el ISO UTC recortado (sin corrimiento de zona horaria).
+    expect(document.getElementById('fechaHoraEvento')).toHaveValue(toDatetimeLocalValue('2026-10-20T15:30:00Z'))
+    expect(screen.getByRole('combobox', { name: /form.fields.turno/i })).toHaveValue('NOCHE')
+    expect(screen.getByRole('combobox', { name: /form.fields.areaAfectada/i })).toHaveValue('area-019')
+    expect(screen.getByRole('combobox', { name: /form.fields.severidad/i })).toHaveValue('ALTA')
+    expect(screen.getByRole('combobox', { name: /form.fields.tipo/i })).toHaveValue('SST')
+    expect(screen.getByText('form.precargaIncidente')).toBeInTheDocument()
+    // Sigue editable.
+    expect(screen.getByLabelText(/form.fields.descripcion/i)).not.toHaveAttribute('readonly')
+  })
+
+  it('al elegir otro incidente sin cambios previos, reemplaza los datos directamente', async () => {
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+    await screen.findByDisplayValue('Derrame de concentrado en la faja 3')
+
+    await elegirIncidente(/INC-2026-004/)
+
+    expect(await screen.findByDisplayValue('Caída de material en la zona de carga')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /form.fields.turno/i })).toHaveValue('TARDE')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('con cambios previos, pide confirmación antes de reemplazar', async () => {
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+    const descripcion = await screen.findByDisplayValue('Derrame de concentrado en la faja 3')
+    await userEvent.type(descripcion, ' — corregido')
+
+    await elegirIncidente(/INC-2026-004/)
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Derrame de concentrado en la faja 3 — corregido')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'form.confirmReemplazoAcciones.reemplazar' }))
+
+    expect(await screen.findByDisplayValue('Caída de material en la zona de carga')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('el campo responsable de investigación no aparece para un SUPERVISOR', () => {
+    renderCreateRoute()
+
+    expect(screen.queryByRole('combobox', { name: 'form.fields.responsableInvestigacion' })).not.toBeInTheDocument()
+  })
+
+  it('el JCA ve el campo responsable y lo envía solo si lo elige', async () => {
+    useAuthStore.setState({
+      user: createMockUser({ id: 'user-jc', nombre: 'Jefa', apellido: 'Calidad', email: 'j@shac.internal', rol: 'JEFE_CALIDAD_SYST' }),
+    })
+    renderCreateRoute(
+      '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
+    )
+    await screen.findByDisplayValue('Derrame de concentrado en la faja 3')
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'form.fields.responsableInvestigacion' }))
+    await userEvent.click(await screen.findByRole('option', { name: /Sara Supervisora/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
+
+    expect(createMutate).toHaveBeenCalledTimes(1)
+    const [payload] = createMutate.mock.calls[0] as [{ responsableInvestigacionId?: string; fechaHoraEvento: string }]
+    expect(payload.responsableInvestigacionId).toBe('user-sup-001')
+    expect(payload.fechaHoraEvento).toBe('2026-10-20T15:30:00.000Z')
+  })
 
   it('prefills origen and ncId from O2 query params', async () => {
     renderCreateRoute(
@@ -334,6 +457,8 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     renderCreateRoute(
       '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
+    // Con ?incidenteId= la página muestra el skeleton hasta cargar el incidente (precarga D8).
+    await screen.findByRole('combobox', { name: /form\.fields\.origen\b/i })
 
     expect(screen.getByRole('combobox', { name: /form\.fields\.origen\b/i })).toHaveValue('O1_INCIDENTE_CAMPO')
     expect(await screen.findByDisplayValue('INC-2026-003')).toBeInTheDocument()
@@ -383,6 +508,8 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     renderCreateRoute(
       '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
+    // Con ?incidenteId= la página muestra el skeleton hasta cargar el incidente (precarga D8).
+    await screen.findByRole('combobox', { name: /form\.fields\.origen\b/i })
 
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: /form.fields.areaAfectada/i }),
@@ -411,36 +538,23 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
     expect(payload.areaId).toBe('area-015')
   })
 
-  it('links the created QE to its origin Incidente (RN-QE-001) before navigating to the detail page', async () => {
+  it('creating a QE O1 navigates straight to its detail without a second PATCH to the incident', async () => {
     createMutate.mockImplementation(
       (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
         opts?.onSuccess?.({ id: 'qe-2026-999', numero: 'QE-2026-999' }),
     )
-    vincularQEMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
 
     renderCreateRoute(
       '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
+    // Con ?incidenteId= la página muestra el skeleton hasta cargar el incidente (precarga D8).
+    await screen.findByRole('combobox', { name: /form\.fields\.origen\b/i })
     await fillRequiredFields()
     await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
 
-    expect(vincularQEMutate).toHaveBeenCalledTimes(1)
-    expect(vincularQEMutate.mock.calls[0][0]).toEqual({ id: 'inc-003', qeId: 'qe-2026-999' })
-    expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
-  })
-
-  it('does not call useVincularQE when the QE origin is not O1_INCIDENTE_CAMPO', async () => {
-    createMutate.mockImplementation(
-      (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
-        opts?.onSuccess?.({ id: 'qe-2026-998', numero: 'QE-2026-998' }),
-    )
-    vincularNCMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
-
-    renderCreateRoute('?origen=O2_NC_DETECTADA&ncId=nc-014&ncNumero=NC-2026-014&ncArea=area-001')
-    await fillRequiredFields()
-    await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
-
-    expect(vincularQEMutate).not.toHaveBeenCalled()
+    expect(createMutate).toHaveBeenCalledTimes(1)
+    expect(updateIncidentSpy).not.toHaveBeenCalled()
+    expect(vincularNCMutate).not.toHaveBeenCalled()
     expect(await screen.findByTestId('detail-page')).toBeInTheDocument()
   })
 
@@ -465,11 +579,12 @@ describe('QualityEventForm — create mode / RN-QE-013 vinculación query params
       (_payload: unknown, opts?: { onSuccess?: (created: { id: string; numero: string }) => void }) =>
         opts?.onSuccess?.({ id: 'qe-2026-996', numero: 'QE-2026-996' }),
     )
-    vincularQEMutate.mockImplementation((_vars: unknown, opts?: { onSettled?: () => void }) => opts?.onSettled?.())
 
     renderCreateRoute(
       '?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=area-019',
     )
+    // Con ?incidenteId= la página muestra el skeleton hasta cargar el incidente (precarga D8).
+    await screen.findByRole('combobox', { name: /form\.fields\.origen\b/i })
     await fillRequiredFields()
     await userEvent.click(screen.getByRole('button', { name: 'form.actions.submit' }))
 

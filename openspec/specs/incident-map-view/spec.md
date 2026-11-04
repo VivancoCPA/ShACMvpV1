@@ -43,28 +43,38 @@ The system SHALL render a `<select>` dropdown at the top of `IncidentMapView` po
 ---
 
 ### Requirement: IncidentMapCanvas renders the PNG floor plan as a responsive background
-`IncidentMapCanvas` SHALL be defined in `src/features/incidents/components/IncidentMapCanvas.tsx`. It SHALL render the selected `local.planoPngUrl` via an `<img>` element inside a `position: relative` container. The `<img>` SHALL have `object-fit: contain` and SHALL fill the container width while preserving aspect ratio. The container SHALL have `overflow: hidden`. All marker `div` elements SHALL be siblings of the `<img>` inside the same `position: relative` container, with `position: absolute`.
+`IncidentMapCanvas` SHALL be defined in `src/features/incidents/components/IncidentMapCanvas.tsx`. Its root container SHALL be `position: relative` with `overflow: hidden`, and SHALL center its content (`flex items-center justify-center`). The selected local's floor plan SHALL render via an `<img>` placed inside an inner wrapper (`relative inline-block max-w-full`) whose box matches the image exactly. The `<img>` SHALL be `block h-auto w-auto max-w-full max-h-[70vh]`, so the full floor plan is visible, never exceeds 70% of the viewport height or the available width, and preserves its aspect ratio. It SHALL NOT use `object-fit: contain`, because the letterbox bands would misalign the markers. All marker elements and their hover tooltips SHALL be descendants of that inner wrapper, with `position: absolute` and `left`/`top` expressed as a percentage of the wrapper, which is the percentage of the rendered image. The "plan unavailable" and "no incidents" overlays MAY remain in the root container.
+
+The plan image SHALL NOT be loaded from `local.planoPngUrl` as a static URL passed directly to `<img src>`. Instead, the component (or a parent hook) SHALL request `GET /api/locales/{id}/plano` through the authenticated `api` instance with `{ responseType: 'blob' }` (`private-file-storage`), and render the `<img>` from the resulting object URL (`URL.createObjectURL`), revoked on unmount/local change.
 
 #### Scenario: Canvas container has position relative and overflow hidden
 - **WHEN** `IncidentMapCanvas` renders
 - **THEN** the root container element has CSS classes that result in `position: relative` and `overflow: hidden`
 
-#### Scenario: PNG image has object-fit contain
+#### Scenario: PNG image is capped at 70vh without object-contain
 - **WHEN** `IncidentMapCanvas` renders with a valid `planoPngUrl`
-- **THEN** the `<img>` element has the CSS class for `object-fit: contain`
+- **THEN** the `<img>` element has the `max-h-[70vh]` and `max-w-full` classes and does not have `object-contain`
+
+#### Scenario: Object URL is revoked when the local changes
+- **WHEN** the user switches to a different local
+- **THEN** the previous plan's object URL is revoked and a new authenticated request is made for the new local's plano
+
+#### Scenario: Markers are positioned over the image wrapper
+- **WHEN** `IncidentMapCanvas` renders with a valid `planoPngUrl` and at least one geolocated incident
+- **THEN** each marker is a descendant of the same wrapper element that contains the `<img>`
 
 ---
 
 ### Requirement: IncidentMapCanvas shows empty state when PNG is null or fails to load
-If `local.planoPngUrl` is `null`, `undefined`, or the `<img>` fires an `onError` event, `IncidentMapCanvas` SHALL replace the image with a centered empty state displaying the text from `t('incidents:map.planUnavailable')`. No markers SHALL be rendered in this state.
+If the selected local has no plano (the authenticated request responds `404`), or the resulting `<img>` fires an `onError` event, `IncidentMapCanvas` SHALL replace the image with a centered empty state displaying the text from `t('incidents:map.planUnavailable')`. No markers SHALL be rendered in this state.
 
-#### Scenario: Null planoPngUrl shows localized empty state
-- **WHEN** `IncidentMapCanvas` receives `planoPngUrl={null}`
-- **THEN** the image element is not rendered and `t('incidents:map.planUnavailable')` text is visible
+#### Scenario: Local without a plano shows localized empty state
+- **WHEN** the selected local's `GET /api/locales/{id}/plano` responds `404`
+- **THEN** `IncidentMapCanvas` shows the empty state text instead of an image, and no markers are rendered
 
-#### Scenario: Image load error shows localized empty state
-- **WHEN** the `<img>` element fires an `onError` event
-- **THEN** the image is hidden and `t('incidents:map.planUnavailable')` text is visible
+#### Scenario: Image load error shows empty state
+- **WHEN** the resolved object URL fails to render (`onError`)
+- **THEN** `IncidentMapCanvas` shows the empty state text instead of an image
 
 ---
 
@@ -222,3 +232,10 @@ When `useLocales()` returns 2 active locals and the incident fixture contains in
 #### Scenario: Local B incidents only appear on Local B map
 - **WHEN** the user selects Local B in the dropdown
 - **THEN** only incidents with `localId === localB.id` and defined `ubicacion` appear as markers
+
+### Requirement: IncidentMapView limits the map height
+`IncidentMapView` SHALL use a minimum height of `min-h-[320px]` for the canvas + side panel row, which covers the state without a floor plan, instead of `min-h-[500px]`. `IncidentMapSidePanel` SHALL be capped at `max-h-[70vh]` and keep its internal scroll, so it never grows taller than the floor plan.
+
+#### Scenario: Side panel capped
+- **WHEN** a marker group is selected and `IncidentMapSidePanel` renders
+- **THEN** its root element has the `max-h-[70vh]` class

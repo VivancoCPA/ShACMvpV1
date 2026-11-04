@@ -88,3 +88,10 @@ El sistema SHALL implementar `useTransitionQEStatus()` usando `useMutation`. En 
 #### Scenario: Test unitario de useTransitionQEStatus con error 422
 - **WHEN** el test renderiza el hook con `renderHook`, llama `mutate({ id: 'qe-2026-001', data: { nuevoEstado: 'EN_EJECUCION' } })` y MSW intercepta con status 422
 - **THEN** `toast.error` es llamado con un string que contiene `'RN-QE-002'`
+
+### Requirement: Hook useAprobarCausaRaiz
+`src/features/quality-events/hooks/useAprobarCausaRaiz.ts` SHALL export `useAprobarCausaRaiz()`, a `useMutation` over `aprobarCausaRaiz(id, pin)`. On success, it SHALL invalidate `['quality-events', 'list']`, `QE_QUERY_KEYS.detail(id)` and `QE_AUDIT_TRAIL_QUERY_KEY(id)`. It SHALL NOT show its own error toast: the caller (`QEInvestigationSection`) decides between inline and toast errors according to the `errorCode`.
+
+#### Scenario: Success invalidates detail and audit trail
+- **WHEN** the mutation succeeds for `qe-1`
+- **THEN** the detail, list and audit trail queries for `qe-1` are invalidated

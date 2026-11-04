@@ -35,3 +35,15 @@ export function getIncidentQEAlertLevel(
   if (elapsedHoras >= plazoHoras * UMBRAL_AMARILLO) return 'AMARILLO'
   return 'NONE'
 }
+
+// RN-INC-006 — detalle del plazo para el tooltip del badge "Sin QE vinculado". Misma
+// fórmula de horas transcurridas que getIncidentQEAlertLevel, separada para no tocar
+// la firma que consume notificationGeneration.ts. horasRestantes < 0 → plazo vencido.
+export function getIncidentQEPlazoInfo(
+  incidente: Pick<Incidente, 'tipo' | 'fechaEvento'>,
+  now: Date = new Date(),
+): { plazoHoras: number; horasRestantes: number } {
+  const plazoHoras = PLAZO_QE_HORAS[incidente.tipo]
+  const elapsedHoras = (now.getTime() - new Date(incidente.fechaEvento).getTime()) / (60 * 60 * 1000)
+  return { plazoHoras, horasRestantes: Math.floor(plazoHoras - elapsedHoras) }
+}

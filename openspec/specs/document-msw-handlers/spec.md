@@ -221,3 +221,158 @@ The `documentHandlers` array SHALL include the `POST`/`DELETE /api/documents/:id
 #### Scenario: nc-vinculadas handlers are active when MSW starts
 - **WHEN** the MSW worker is started in development
 - **THEN** `POST`/`DELETE /api/documents/:id/nc-vinculadas[...]` are intercepted without 'unhandled request' warnings
+
+### Requirement: PATCH /api/documents/:id/status transition handler notifies the right person per transition
+Beyond the existing rejection notification (`notificarAutor`), the `PATCH /api/documents/:id/status` handler SHALL create a notification for every other successful transition that has a clear next responsible person, using the same `createAsignacionNotification`/`createCambioEstadoNotification` helpers as the rest of the module, excluding the acting user and skipping any `null` recipient: `BORRADOR → EN_REVISION` creates an `ASIGNACION` notification for `revisorId`; `EN_REVISION → EN_APROBACION` creates an `ASIGNACION` notification for `aprobadorId`; `EN_REVISION → BORRADOR` without `motivo` (cancel review) creates `CAMBIO_ESTADO` notifications for `autorId` and `revisorId`; `PUBLICADO → EN_REVISION_PERIODICA` creates a `CAMBIO_ESTADO` notification for `autorId`. Each notification's `link` SHALL be `/documentos/{id}`.
+
+#### Scenario: Sending to review notifies the assigned reviewer
+- **WHEN** `PATCH /api/documents/:id/status` transitions a `BORRADOR` document with `revisorId` set (distinct from the acting user) to `EN_REVISION`
+- **THEN** an `ASIGNACION` notification is created for `revisorId`
+
+#### Scenario: Approving review notifies the assigned approver
+- **WHEN** `PATCH /api/documents/:id/status` transitions an `EN_REVISION` document with `aprobadorId` set (distinct from the acting user) to `EN_APROBACION`
+- **THEN** an `ASIGNACION` notification is created for `aprobadorId`
+
+#### Scenario: Cancelling review (no motivo) notifies author and reviewer
+- **WHEN** `PATCH /api/documents/:id/status` transitions an `EN_REVISION` document to `BORRADOR` without a `motivo` field
+- **THEN** `CAMBIO_ESTADO` notifications are created for `autorId` and `revisorId`, excluding the acting user if it matches either
+
+#### Scenario: Starting periodic review notifies the author
+- **WHEN** `PATCH /api/documents/:id/status` transitions a `PUBLICADO` document to `EN_REVISION_PERIODICA`
+- **THEN** a `CAMBIO_ESTADO` notification is created for `autorId`
+
+#### Scenario: Acting user never notifies themselves
+- **WHEN** the acting user is also the `revisorId`, `aprobadorId`, or `autorId` targeted by any of these transitions
+- **THEN** no notification is created for that match
+
+### Requirement: POST /api/documents/:id/sign handler publishes and notifies
+When `POST /api/documents/:id/sign` transitions a document to `PUBLICADO`, the handler SHALL, in addition to its existing publish/obsolete-previous-version behavior, create `CAMBIO_ESTADO` notifications for the document's `autorId` and `revisorId`, excluding the acting user and skipping any `null` recipient.
+
+#### Scenario: Publishing notifies author and reviewer
+- **WHEN** `POST /api/documents/:id/sign` successfully publishes a document with `autorId` and `revisorId` both distinct from the acting (approving) user
+- **THEN** `CAMBIO_ESTADO` notifications are created for both
+
+### Requirement: POST /api/documents/:id/nueva-version handler notifies inherited assignees
+When `POST /api/documents/:id/nueva-version` creates a new version that inherits `revisorId`/`aprobadorId` from the origin document, the handler SHALL create an `ASIGNACION` notification for each of them (excluding the acting user and any `null` value), referencing the new version's `codigo` and `version`.
+
+#### Scenario: New version notifies inherited reviewer and approver
+- **WHEN** a new version is created inheriting `revisorId` and `aprobadorId` from the origin document, both distinct from the acting user
+- **THEN** `ASIGNACION` notifications are created for both, referencing the new document
+
+### Requirement: GET /api/documents/pendientes/count — count pending docs for current user
+The system SHALL provide an MSW v2 handler for `GET /api/documents/pendientes/count` that applies the exact same pendientes rule as `filterPendientes` used by `GET /api/documents?pendientes=true`, scoped to `empresaId` matching the session's active empresa and `deletedAt` absent, AND the same confidencialidad rule already applied by the list handler (`CONFIDENCIAL`/`RESTRINGIDO` visibility by role/`rolesAutorizados`). There SHALL be no role-based early return to `{ count: 0 }` — every role is evaluated through the same assignment-based rule.
+
+#### Scenario: Count matches the filtered list
+- **WHEN** the same session requests `GET /api/documents/pendientes/count` and then `GET /api/documents?pendientes=true`
+- **THEN** `count` equals the number of items returned by the list
+
+#### Scenario: Confidencialidad-restricted documents are excluded from the count
+- **WHEN** a document would otherwise count as pendiente for the actor but is `RESTRINGIDO` without the actor's role in `rolesAutorizados`
+- **THEN** it is not included in `count`
+
+#### Scenario: No role returns zero unconditionally anymore
+- **WHEN** an `OPERARIO` who authored a `BORRADOR` document requests `GET /api/documents/pendientes/count`
+- **THEN** the count reflects that `BORRADOR`, not `0`
+
+### Requirement: filterPendientes applies assignment-only rules
+`filterPendientes(docs, userId, userRole)` SHALL compute pendientes using only direct assignment on each document, equally for every role: `estado === 'BORRADOR' && autorId === userId`; `estado === 'EN_REVISION' && revisorId === userId`; `estado === 'EN_APROBACION' && aprobadorId === userId`. The only role-dependent branch SHALL be `estado === 'EN_REVISION_PERIODICA'`, included for `JEFE_CALIDAD_SYST` and `JEFE_CONTROL_DOCUMENTARIO` only. The previous `SUPERVISOR`-only EN_REVISION branch, the `NON_PENDING_ROLES` short-circuit, and the "JEFE_CALIDAD_SYST sees every EN_REVISION" branch SHALL be removed.
+
+#### Scenario: Author sees their own BORRADOR
+- **WHEN** `filterPendientes` runs for the `autorId` of a `BORRADOR` document, regardless of their `UserRole`
+- **THEN** that document is included
+
+#### Scenario: AUDITOR_INTERNO sees their assigned EN_REVISION
+- **WHEN** `filterPendientes` runs for an `AUDITOR_INTERNO` who is the `revisorId` of an `EN_REVISION` document
+- **THEN** that document is included
+
+#### Scenario: ALTA_DIRECCION sees their assigned EN_APROBACION
+- **WHEN** `filterPendientes` runs for an `ALTA_DIRECCION` who is the `aprobadorId` of an `EN_APROBACION` document
+- **THEN** that document is included
+
+#### Scenario: JEFE_CALIDAD_SYST without assignment no longer sees every EN_REVISION
+- **WHEN** `filterPendientes` runs for a `JEFE_CALIDAD_SYST` who is not the `revisorId` of an `EN_REVISION` document
+- **THEN** that document is NOT included solely by virtue of their role
+
+### Requirement: PATCH /api/documents/:id/restaurar restricted by role
+The MSW handler for `PATCH /api/documents/:id/restaurar` SHALL verify the acting user's role from the session before restoring the document: only `JEFE_CALIDAD_SYST` and `ALTA_DIRECCION` SHALL be allowed. Any other role SHALL receive a 403 response, with the document left unchanged (still `deletedAt` set).
+
+#### Scenario: JEFE_CALIDAD_SYST can restore
+- **WHEN** a `JEFE_CALIDAD_SYST` requests `PATCH /api/documents/:id/restaurar` on a deleted document of their empresa
+- **THEN** the response status is 200 and the document's `deletedAt` is cleared
+
+#### Scenario: Non-authorized role cannot restore
+- **WHEN** a `JEFE_CONTROL_DOCUMENTARIO`, `OPERARIO`, `SUPERVISOR`, or `AUDITOR_INTERNO` requests `PATCH /api/documents/:id/restaurar`
+- **THEN** the response status is 403 and the document remains deleted
+
+### Requirement: MSW endpoint POST /api/documents/:id/sign validates a per-user PIN
+`documents.handlers.ts` SHALL register `http.post('/api/documents/:id/sign', ...)`, accepting `{ pin }`. It SHALL look up the authenticated user via the cross-domain mutable store `getUsersStore()` (from `auth.fixtures.ts`), never a static import. If that user's `pin` is `undefined` (no PIN configured), the handler SHALL respond 422 with `errorCode: 'PIN_NO_CONFIGURADO'`, without publishing the document. If `pin` is configured but `body.pin` does not match it, the handler SHALL respond 401. Only when `body.pin === user.pin` SHALL the handler proceed with the existing publish logic (estado `EN_APROBACION` required, obsoletize the previous `PUBLICADO` version of the same `codigo`, etc.). The handler SHALL NOT compare against any fixed module-level constant (e.g. a hardcoded `MOCK_PIN`).
+
+#### Scenario: User without a configured PIN cannot sign
+- **WHEN** `POST /api/documents/:id/sign` is requested by a user whose `MockUser.pin` is `undefined`
+- **THEN** the response status is 422 with `errorCode: 'PIN_NO_CONFIGURADO'`, and the document's `estado` does not change
+
+#### Scenario: Wrong PIN is rejected
+- **WHEN** `POST /api/documents/:id/sign` is requested with a `pin` that does not match the signing user's configured `pin`
+- **THEN** the response status is 401, and the document's `estado` does not change
+
+#### Scenario: Correct PIN signs and publishes
+- **WHEN** `POST /api/documents/:id/sign` is requested with a `pin` that matches the signing user's configured `pin`, for a document in `EN_APROBACION`
+- **THEN** the response is 200 with `estado: 'PUBLICADO'`
+
+### Requirement: PATCH /api/documents/:id/status transition handler
+The system SHALL provide an MSW v2 handler for `PATCH /api/documents/:id/status` (the handler actually used by the frontend's status-change actions, including `DocumentRejectModal` — see `document-approval-flow`) that accepts `{ estado, motivo?, notificarAutor? }`, validates the transition using `DOC_STATUS_TRANSITIONS`, and records an `AuditTrailEntry` for each successful transition. For the three transitions that land on `BORRADOR`, it SHALL record the entry with the action matching the real transition, with `motivo` stored in a `motivo` field (never in `valorAnterior`):
+- `EN_REVISION → BORRADOR` with `motivo` present → `accion: 'RECHAZADO_EN_REVISION'`.
+- `EN_APROBACION → BORRADOR` → `accion: 'RECHAZADO_EN_APROBACION'`.
+- `EN_REVISION → BORRADOR` without `motivo` → `accion: 'REVISION_CANCELADA'`, no `motivo`.
+
+All other transitions SHALL keep recording `accion: 'ESTADO_CAMBIADO'` as before. All responses SHALL be delayed by 400 ms (`LATENCY`).
+
+#### Scenario: Valid non-rejection transition still records ESTADO_CAMBIADO
+- **WHEN** `PATCH /api/documents/doc-borrador-id/status` is requested with `{ estado: 'EN_REVISION' }`
+- **THEN** the response status is 200, `data.estado` is `'EN_REVISION'`, and `data.auditTrail` contains a new entry with `accion: 'ESTADO_CAMBIADO'`
+
+#### Scenario: Rejection from EN_REVISION with motivo records RECHAZADO_EN_REVISION
+- **WHEN** `PATCH /api/documents/:id/status` is requested with `{ estado: 'BORRADOR', motivo: 'Falta evidencia fotográfica.', notificarAutor: true }` on a document in `EN_REVISION`
+- **THEN** the response status is 200 and `data.auditTrail` contains a new entry with `accion: 'RECHAZADO_EN_REVISION'`, `estadoAnterior: 'EN_REVISION'`, `estadoNuevo: 'BORRADOR'`, and `motivo: 'Falta evidencia fotográfica.'`
+
+#### Scenario: Rejection from EN_APROBACION records RECHAZADO_EN_APROBACION
+- **WHEN** `PATCH /api/documents/:id/status` is requested with `{ estado: 'BORRADOR', motivo: 'Documento incompleto.', notificarAutor: true }` on a document in `EN_APROBACION`
+- **THEN** the response status is 200 and `data.auditTrail` contains a new entry with `accion: 'RECHAZADO_EN_APROBACION'`, `estadoAnterior: 'EN_APROBACION'`, `estadoNuevo: 'BORRADOR'`, and the given `motivo`
+
+#### Scenario: Cancellation from EN_REVISION without motivo records REVISION_CANCELADA
+- **WHEN** `PATCH /api/documents/:id/status` is requested with `{ estado: 'BORRADOR' }` (no `motivo`) on a document in `EN_REVISION`
+- **THEN** the response status is 200 and `data.auditTrail` contains a new entry with `accion: 'REVISION_CANCELADA'`, `estadoAnterior: 'EN_REVISION'`, `estadoNuevo: 'BORRADOR'`, and no `motivo` field
+
+#### Scenario: Invalid transition rejects with 422
+- **WHEN** `PATCH /api/documents/doc-borrador-id/status` is requested with `{ estado: 'PUBLICADO' }` (BORRADOR → PUBLICADO is not a valid transition)
+- **THEN** the response status is 422 and `success` is `false`
+
+#### Scenario: Rejection with notificarAutor true creates a real notification for the author
+- **WHEN** `PATCH /api/documents/:id/status` is requested with `{ estado: 'BORRADOR', motivo: 'Falta evidencia', notificarAutor: true }` on a document in `EN_REVISION`
+- **THEN** a `CAMBIO_ESTADO` notification is created with `usuarioId` equal to the document's `autorId`, referencing the document's `codigo`
+
+### Requirement: Periodic review actions are role-gated in MSW
+`PATCH /api/documents/:id/status` with `{ estado: 'EN_REVISION_PERIODICA' }` (from `PUBLICADO`) or `{ estado: 'BORRADOR' }` (from `EN_REVISION_PERIODICA`), and `PATCH /api/documents/:id/confirmar-revision`, SHALL reject with `403` when the requesting user (resolved via `getUserFromRequest`) does not have role `JEFE_CALIDAD_SYST` or `JEFE_CONTROL_DOCUMENTARIO` — mirroring `canManagePeriodicReview` from `permissions.ts`. This gate applies regardless of the requesting user's relationship (autor/revisor/aprobador) to the document. Before this requirement, neither handler validated any permission for these transitions.
+
+#### Scenario: JEFE_CONTROL_DOCUMENTARIO who is the document's aprobador starts periodic review
+- **WHEN** a `JEFE_CONTROL_DOCUMENTARIO` who is the document's `aprobadorId` sends `PATCH /:id/status` with `{ estado: 'EN_REVISION_PERIODICA' }` on a `PUBLICADO` document
+- **THEN** the handler responds `200`
+
+#### Scenario: SUPERVISOR cannot start periodic review via MSW
+- **WHEN** a `SUPERVISOR` sends `PATCH /:id/status` with `{ estado: 'EN_REVISION_PERIODICA' }` on a `PUBLICADO` document
+- **THEN** the handler responds `403`
+
+#### Scenario: OPERARIO cannot confirm periodic review via MSW
+- **WHEN** an `OPERARIO` sends `PATCH /:id/confirmar-revision`
+- **THEN** the handler responds `403`
+
+#### Scenario: JEFE_CALIDAD_SYST who is the document's autor confirms periodic review
+- **WHEN** a `JEFE_CALIDAD_SYST` who is the document's `autorId` sends `PATCH /:id/confirmar-revision` on a `PUBLICADO` document
+- **THEN** the handler responds `200`
+
+### Requirement: Mock de firma de documento devuelve PIN_INCORRECTO
+El handler MSW `POST /api/documents/:id/sign` SHALL responder 401 con `errorCode: "PIN_INCORRECTO"` cuando el PIN enviado no coincide con el PIN mock del usuario, igual que el backend real.
+
+#### Scenario: PIN incorrecto en el mock
+- **WHEN** con MSW activo un aprobador firma con un PIN distinto del suyo
+- **THEN** el handler responde 401 con `errorCode: "PIN_INCORRECTO"`

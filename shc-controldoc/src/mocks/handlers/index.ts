@@ -10,6 +10,7 @@ import { userHandlers } from './users.handlers'
 import { notificationHandlers } from './notifications.handlers'
 import { areaHandlers } from './areas.handlers'
 import { empresasHandlers } from './empresas.handlers'
+import { sesionHandlers } from './sesion.handlers'
 
 export const handlers: RequestHandler[] = [
   ...authHandlers,
@@ -23,4 +24,5 @@ export const handlers: RequestHandler[] = [
   ...notificationHandlers,
   ...areaHandlers,
   ...empresasHandlers,
+  ...sesionHandlers,
 ]

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
@@ -17,12 +17,15 @@ import { useAuthStore } from '../../../stores/authStore'
 import { useIncident, useDeleteIncident, useEvidenciaBlob } from '../hooks/useIncidents'
 import { useLocales, usePlanoBlob } from '../hooks/useLocales'
 import { getIncidentPermissions } from '../utils/incidentPermissions'
+import { getIncidentQEAlertLevel } from '../utils/incidentQEAlert'
 import { getPlazoInvestigacion } from '../utils/incidentPlazoInvestigacion'
 import { SeverityBadge } from '../../../components/shared/SeverityBadge'
 import { IncidentStatusBadge } from '../components/IncidentStatusBadge'
 import { IncidentTypeBadge } from '../components/IncidentTypeBadge'
 import { EscaladoBanner } from '../components/EscaladoBanner'
 import { IncidentACSection } from '../components/IncidentACSection'
+import { IncidentSinQEBadge } from '../components/IncidentSinQEBadge'
+import { useQualityEvent } from '../../quality-events/hooks/useQualityEvent'
 import { formatShortDate } from '../../../utils/date.utils'
 import { CONDICION_ENTORNO_LABELS } from '../../../constants/shared.constants'
 import { useArea } from '../../areas/hooks/useAreas'
@@ -203,8 +206,20 @@ export function IncidentDetailPage() {
 
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const deleteMutation = useDeleteIncident()
-  const { locales } = useLocales()
+  const { locales, isLoading: localesLoading } = useLocales()
   const { data: area } = useArea(incident?.areaId ?? '')
+  // Antes de cualquier return anticipado: si este hook se llamara después del skeleton de carga,
+  // el primer render (sin datos) registraría un hook menos que el siguiente y React lanzaría
+  // "Rendered more hooks than during the previous render" (fix-incidentes-detalle-nombres-ubicacion).
+  const selectedLocal = locales.find((l) => l.id === incident?.localId)
+  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
+  // directamente; se resuelve como blob autenticado.
+  const { planoUrl: selectedLocalPlanoUrl, isLoading: planoLoading } = usePlanoBlob(
+    selectedLocal?.planoPngUrl ? selectedLocal.id : undefined,
+  )
+  // incidentes-qe-estado-alertas (D11): número del QE para el aviso de estado gobernado por el
+  // QE — también antes de cualquier return anticipado (misma lección que usePlanoBlob).
+  const { data: qualityEventVinculado } = useQualityEvent(incident?.qeId ?? '')
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [investigacionOpen, setInvestigacionOpen] = useState(true)
@@ -242,10 +257,9 @@ export function IncidentDetailPage() {
   const hasEvidencias = (incident.evidencias?.length ?? 0) > 0
   const missingInformeMedico = incident.tipo === 'ACCIDENTE' && !incident.informeMedicoAdjunto
   const missingEvidencias = incident.tipo === 'ACCIDENTE' && !hasEvidencias
-  const selectedLocal = locales.find((l) => l.id === incident.localId)
-  // proteccion-documental (design.md D7) — el plano ya no es una URL estática servible
-  // directamente; se resuelve como blob autenticado.
-  const { planoUrl: selectedLocalPlanoUrl } = usePlanoBlob(selectedLocal?.planoPngUrl ? selectedLocal.id : undefined)
+  const planoPendiente = localesLoading || (!!selectedLocal?.planoPngUrl && planoLoading)
+  // RN-INC-006: con qeId el nivel es siempre NONE, así que el badge y el aviso son excluyentes.
+  const qeAlertLevel = getIncidentQEAlertLevel(incident)
 
   const handleDelete = () => {
     deleteMutation.mutate(incident.id, {
@@ -303,6 +317,7 @@ export function IncidentDetailPage() {
           {/* Acción buttons */}
           {!isAnulado && permissions && (
             <div className="flex items-center gap-2">
+              <IncidentSinQEBadge nivel={qeAlertLevel} incidente={incident} />
               {permissions.canCrearQE && (
                 <button
                   type="button"
@@ -340,6 +355,24 @@ export function IncidentDetailPage() {
           )}
         </div>
 
+        {/* incidentes-qe-estado-alertas (D11): el estado lo gobierna el QE vinculado */}
+        {incident.qeId && (
+          <div
+            role="status"
+            className="mb-4 flex items-center gap-2 rounded-md border border-teal/30 bg-teal/10 px-4 py-3 text-sm text-body dark:border-teal/30 dark:bg-teal/10 dark:text-on-dark-soft"
+          >
+            <Info size={16} className="shrink-0 text-teal dark:text-teal" />
+            <Link
+              to={`/quality-events/${incident.qeId}`}
+              className="underline-offset-2 hover:underline dark:text-on-dark-soft"
+            >
+              {qualityEventVinculado?.numero
+                ? t('detail.qeGobiernaEstado', { numero: qualityEventVinculado.numero })
+                : t('detail.qeGobiernaEstadoSinNumero')}
+            </Link>
+          </div>
+        )}
+
         {/* Escalado banner */}
         <EscaladoBanner severidad={incident.severidad} />
 
@@ -364,7 +397,9 @@ export function IncidentDetailPage() {
             </div>
             <div>
               <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.reportadoPor')}</dt>
-              <dd className="mt-0.5 text-sm text-body dark:text-on-dark">{incident.reportadoPorId}</dd>
+              <dd className="mt-0.5 text-sm text-body dark:text-on-dark">
+                {incident.reportadoPorNombre ?? t('detail.fields.usuarioDesconocido')}
+              </dd>
             </div>
           </dl>
         </div>
@@ -505,36 +540,48 @@ export function IncidentDetailPage() {
               <div>
                 <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.local')}</dt>
                 <dd className="mt-0.5 text-sm text-body dark:text-on-dark">
-                  {incident.localNombre ?? incident.localId}
+                  {incident.localNombre ?? '—'}
                 </dd>
               </div>
               {incident.zonaId && (
                 <div>
                   <dt className="text-xs text-muted dark:text-on-dark-soft">{t('detail.fields.zona')}</dt>
                   <dd className="mt-0.5 text-sm text-body dark:text-on-dark">
-                    {incident.zonaNombre ?? incident.zonaId}
+                    {incident.zonaNombre ?? '—'}
                   </dd>
                 </div>
               )}
             </dl>
-            {selectedLocal?.planoPngUrl && selectedLocalPlanoUrl && incident.ubicacion && (
-              <div className="mt-4">
+            <div className="mt-4">
+              {planoPendiente ? (
                 <div
-                  className="relative overflow-hidden rounded-md border border-hairline dark:border-hairline/20"
-                  style={{ maxWidth: '240px' }}
-                >
-                  <img
-                    src={selectedLocalPlanoUrl}
-                    alt={incident.localNombre ?? incident.localId}
-                    className="w-full"
-                  />
-                  <div
-                    className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-coral shadow-md"
-                    style={{ left: `${incident.ubicacion.x}%`, top: `${incident.ubicacion.y}%` }}
-                  />
-                </div>
-              </div>
-            )}
+                  data-testid="plano-skeleton"
+                  className="aspect-[4/3] w-full max-w-[480px] animate-pulse rounded-md bg-hairline dark:bg-surface-dark-soft"
+                />
+              ) : selectedLocal?.planoPngUrl && selectedLocalPlanoUrl ? (
+                <>
+                  <div className="relative w-full max-w-[480px] overflow-hidden rounded-md border border-hairline dark:border-hairline/20">
+                    <img
+                      src={selectedLocalPlanoUrl}
+                      alt={incident.localNombre ?? t('detail.fields.local')}
+                      className="w-full"
+                    />
+                    {incident.ubicacion && (
+                      <div
+                        data-testid="plano-pin"
+                        className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-coral shadow-md dark:border-surface-dark"
+                        style={{ left: `${incident.ubicacion.x}%`, top: `${incident.ubicacion.y}%` }}
+                      />
+                    )}
+                  </div>
+                  {!incident.ubicacion && (
+                    <p className="mt-2 text-xs text-muted dark:text-on-dark-soft">{t('detail.ubicacion.sinPunto')}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted dark:text-on-dark-soft">{t('detail.ubicacion.sinPlano')}</p>
+              )}
+            </div>
           </div>
         )}
 

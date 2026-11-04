@@ -3,6 +3,7 @@ import { AppShell } from '../components/layout/AppShell'
 import { MobileShell } from '../components/layout/MobileShell'
 import { RoleGuard } from './RoleGuard'
 import { DocumentEditGuard } from './DocumentEditGuard'
+import { LegacyRedirect } from './LegacyRedirect'
 import { getDefaultRouteForRole } from './getDefaultRoute'
 import { ROUTE_ROLE_GROUPS } from './routeAccess'
 import { useAuthStore } from '../stores/authStore'
@@ -38,6 +39,7 @@ import { ProfilePage } from '../features/users/pages/ProfilePage'
 import { UsersListPage } from '../features/users/pages/UsersListPage'
 import { EmpresasAdminPage } from '../features/empresas/pages/EmpresasAdminPage'
 import { EmpresaUsuariosPage } from '../features/empresas/pages/EmpresaUsuariosPage'
+import { ParametrosSesionPage } from '../features/sesion/pages/ParametrosSesionPage'
 
 function DefaultRouteRedirect() {
   const user = useAuthStore((state) => state.user)
@@ -82,6 +84,10 @@ export const router = createBrowserRouter([
           },
           // English-path aliases used by form navigation
           { path: '/documents', element: <Navigate to="/documentos" replace /> },
+          // Rutas en español heredadas de notificaciones viejas (notification-links) — sin
+          // RoleGuard propio: el guard del destino decide el acceso.
+          { path: '/incidentes/:id', element: <LegacyRedirect to="/incidents" /> },
+          { path: '/no-conformidades/:id', element: <LegacyRedirect to="/nonconformities" /> },
           {
             element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.documentsCreate} />,
             children: [
@@ -239,6 +245,16 @@ export const router = createBrowserRouter([
                 path: '/admin/empresas/:id/usuarios',
                 element: <EmpresaUsuariosPage />,
                 handle: { breadcrumb: 'empresas' },
+              },
+            ],
+          },
+          {
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.parametrosSesion} />,
+            children: [
+              {
+                path: '/admin/parametros-sesion',
+                element: <ParametrosSesionPage />,
+                handle: { breadcrumb: 'parametrosSesion' },
               },
             ],
           },

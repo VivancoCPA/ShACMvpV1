@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { listVisible, retry as retryQueueEntry, type QueuedIncident } from '../../../lib/offlineQueue'
+import { useAuthStore } from '../../../stores/authStore'
 
 interface OfflineQueueState {
   items: QueuedIncident[]
@@ -39,7 +40,8 @@ export const useOfflineQueueStore = create<OfflineQueueState & OfflineQueueActio
   ...initialState,
 
   refresh: async () => {
-    const items = await listVisible()
+    // Solo las entradas del usuario logueado (sesion-timeout-inactividad design.md D13).
+    const items = await listVisible(useAuthStore.getState().user?.id)
     const syncing = items.find((item) => item.status === 'syncing')
     set({
       items,

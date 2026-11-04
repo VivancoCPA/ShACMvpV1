@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Ban, RotateCcw, Users as UsersIcon, Building2 } from 'lucide-react'
+import { Pencil, Ban, RotateCcw, Users as UsersIcon, Building2, ShieldCheck } from 'lucide-react'
 import { useEmpresas, useUpdateEmpresa } from '../hooks/useEmpresas'
 import { FilterBar } from '../../../components/shared/FilterBar'
 import { Pagination } from '../../../components/shared/Pagination'
@@ -14,11 +14,14 @@ type EstadoFilter = 'TODAS' | 'ACTIVAS' | 'INACTIVAS'
 
 interface EmpresaListProps {
   onEdit: (empresa: Empresa) => void
+  /** Abre la configuración de seguridad de sesión de la empresa (sesion-timeout-inactividad). */
+  onSeguridadSesion?: (empresa: Empresa) => void
   canAdminister: boolean
 }
 
-export function EmpresaList({ onEdit, canAdminister }: EmpresaListProps) {
+export function EmpresaList({ onEdit, onSeguridadSesion, canAdminister }: EmpresaListProps) {
   const { t, i18n } = useTranslation('empresas')
+  const { t: tSesion } = useTranslation('sesion')
   const { data: empresas, isLoading } = useEmpresas()
   const updateMutation = useUpdateEmpresa()
   const [toggleTarget, setToggleTarget] = useState<Empresa | null>(null)
@@ -174,6 +177,17 @@ export function EmpresaList({ onEdit, canAdminister }: EmpresaListProps) {
                           >
                             <Pencil size={16} />
                           </button>
+                          {onSeguridadSesion && (
+                            <button
+                              type="button"
+                              onClick={() => onSeguridadSesion(empresa)}
+                              aria-label={tSesion('empresa.action')}
+                              title={tSesion('empresa.action')}
+                              className="rounded p-1.5 text-muted hover:bg-hairline hover:text-ink dark:text-on-dark-soft dark:hover:bg-surface-dark-soft dark:hover:text-on-dark"
+                            >
+                              <ShieldCheck size={16} />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setToggleTarget(empresa)}

@@ -68,7 +68,7 @@ The system SHALL register `PATCH /api/quality-events/:id/cerrar` in `src/mocks/h
 ---
 
 ### Requirement: First signature (JEFE_CALIDAD_SYST) via PIN modal
-`QECierreSection` SHALL render a "Firmar como Jefe de Calidad" button visible only to role `JEFE_CALIDAD_SYST` when `qe.resultadoCierre` is set and `qe.cerradoPorId` is empty. Clicking it SHALL open a PIN modal that validates only the PIN's format client-side (exactly 4 numeric digits, `/^\d{4}$/`) — malformed input shows an inline error and does not submit. The system SHALL NOT compare the entered PIN against any hardcoded or mock value; any well-formed PIN SHALL be submitted to the backend via `useFirmarCierre().mutate({ id: qe.id, data: { rol: 'JEFE_CALIDAD_SYST', pin } })`, invoking `PATCH /api/quality-events/:id/firmar-cierre`. The backend is the sole source of truth for whether the PIN is correct — an incorrect PIN SHALL surface as a toast error sourced from the backend's 401 response (via `useFirmarCierre`'s existing `onError`), and the modal SHALL remain open for retry.
+`QECierreSection` SHALL render a "Firmar como Jefe de Calidad" button visible only to role `JEFE_CALIDAD_SYST` when `qe.resultadoCierre` is set and `qe.cerradoPorId` is empty. Clicking it SHALL open a PIN modal (`PinModal`). When the current user's `tienePinFirma` (from `useAuthStore`) is `false`, `PinModal` SHALL NOT render the PIN input — instead it SHALL show a notice (`qualityEvents:detail.cierre.pinModal.noPinConfigured`) with a link to `/perfil`, and the confirm button SHALL be disabled. When `tienePinFirma` is `true`, the modal validates only the PIN's format client-side (exactly 4 numeric digits, `/^\d{4}$/`) — malformed input shows an inline error and does not submit. The system SHALL NOT compare the entered PIN against any hardcoded or mock value; any well-formed PIN SHALL be submitted to the backend via `useFirmarCierre().mutate({ id: qe.id, data: { rol: 'JEFE_CALIDAD_SYST', pin } })`, invoking `PATCH /api/quality-events/:id/firmar-cierre`. The backend is the sole source of truth for whether the PIN is correct. `useFirmarCierre`'s `onError` SHALL distinguish `errorCode === 'PIN_NO_CONFIGURADO'` (switch the modal to the same notice described above, instead of a generic toast) from any other error (toast with the backend's message, as it already does) — an incorrect PIN (401) SHALL surface as a toast error sourced from the backend's response, and the modal SHALL remain open for retry in every error case.
 
 #### Scenario: Button hidden before resultadoCierre is set
 - **WHEN** `qe.resultadoCierre` is undefined
@@ -90,10 +90,18 @@ The system SHALL register `PATCH /api/quality-events/:id/cerrar` in `src/mocks/h
 - **WHEN** the backend responds 401 to `PATCH /:id/firmar-cierre` because the PIN is incorrect
 - **THEN** a toast error is shown with the backend's message and the PIN modal remains open for the user to retry
 
+#### Scenario: User without a configured PIN sees the setup notice instead of the field
+- **WHEN** the current user's `tienePinFirma` is `false` and they open the PIN modal
+- **THEN** no PIN input is rendered; instead a notice with a link to `/perfil` is shown, and the confirm button is disabled
+
+#### Scenario: PIN reset mid-session surfaces the same notice
+- **WHEN** the backend responds to `PATCH /:id/firmar-cierre` with `errorCode: 'PIN_NO_CONFIGURADO'`
+- **THEN** the modal shows the same "no PIN configured" notice with a link to `/perfil`, instead of the generic error toast
+
 ---
 
 ### Requirement: Second signature role is resolved per the same-user escalation rule
-`QECierreSection` SHALL compute the required second-signature role by calling `resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)` (from `qualityEventPermissions.ts`) once `qe.cerradoPorId` is set and `qe.cierreFirmaSupervisorId` is empty, and SHALL render a "Firmar como Supervisor" or "Firmar como Alta Dirección" button (matching the resolved role) visible only to the current user whose own `rol` equals the resolved role. Clicking it SHALL open the same PIN-modal pattern described in "First signature (JEFE_CALIDAD_SYST) via PIN modal" (format-only client-side validation, no hardcoded or mock PIN comparison) and, on a well-formed PIN, call `useFirmarCierre().mutate({ id: qe.id, data: { rol: <resolvedRole>, pin } })`.
+`QECierreSection` SHALL compute the required second-signature role by calling `resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)` (from `qualityEventPermissions.ts`) once `qe.cerradoPorId` is set and `qe.cierreFirmaSupervisorId` is empty, and SHALL render a "Firmar como Supervisor" or "Firmar como Alta Dirección" button (matching the resolved role) visible only to the current user whose own `rol` equals the resolved role. Clicking it SHALL open the same `PinModal` described in "First signature (JEFE_CALIDAD_SYST) via PIN modal" — including its "no PIN configured" notice, format-only client-side validation, and `PIN_NO_CONFIGURADO`/401/generic error handling — and, on a well-formed PIN, call `useFirmarCierre().mutate({ id: qe.id, data: { rol: <resolvedRole>, pin } })`.
 
 #### Scenario: Normal case shows Firmar como Supervisor
 - **WHEN** `resolveRolSegundaFirma` returns `'SUPERVISOR'` for the current QE
@@ -174,3 +182,14 @@ When the second signature transitions a QE to `CERRADO`, the client SHALL show a
 #### Scenario: CRITICA closure toast does not claim Gerencia was notified
 - **WHEN** the second signature succeeds for a QE with `severidad: 'CRITICA'`
 - **THEN** the signer's toast confirms the closure but does not itself assert Gerencia was notified — that is instead verifiable via a real notification created for `ALTA_DIRECCION` users
+
+### Requirement: Pista "¿Olvidaste tu PIN?" en el PinModal de cierre
+Mientras el input del PIN esté visible, el `PinModal` de `QECierreSection` SHALL mostrar debajo del input un enlace con el texto `qualityEvents:detail.cierre.pinModal.forgotPinLink` hacia `/perfil#pin-firma`. El enlace `configurePinLink` del estado sin PIN SHALL apuntar a `/perfil#pin-firma`. El PIN incorrecto SHALL seguir notificándose como toast desde `useFirmarCierre`.
+
+#### Scenario: Pista visible en el modal de firma de cierre
+- **WHEN** un firmante con PIN configurado abre el modal de firma del cierre de un QE
+- **THEN** se ve el enlace "¿Olvidaste tu PIN?" con `href="/perfil#pin-firma"`
+
+#### Scenario: Enlace de configurar PIN con ancla
+- **WHEN** el firmante no tiene PIN configurado
+- **THEN** no se ve la pista, y el enlace de configurar PIN apunta a `/perfil#pin-firma`

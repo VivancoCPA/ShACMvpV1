@@ -61,7 +61,7 @@ The system SHALL render a `QEHeaderSection` component at `src/features/quality-e
 - A metadata grid with `areaAfectada`, `mineralInvolucrado` (only when present), `turno`, `fechaHoraEvento`, `fechaHoraReporte` (both formatted via `Intl.DateTimeFormat`), the reporting user's display name, and a "Reincidencia ×N" badge when `ciclo > 1` (N = `ciclo`).
 - When `qe.fechaCierre` is set: `fechaCierre`, `resultadoCierre`, `plazoVerificacionDias`, and a countdown to `fechaVerificacionProgramada` (days remaining, formatted via a `DeadlineBadge`-style indicator, or "Vencido" when the deadline has passed and `fechaVerificacionRealizada` is absent).
 
-The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via `resolveUserDisplayName` (from `src/mocks/fixtures/userIdentity.fixtures.ts`), and SHALL resolve correctly for any real, non-legacy `authFixtures` account, not only ids that happened to also exist in the removed `src/mocks/fixtures/users.fixtures.ts` catalog.
+The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via the `useUserNames` hook (`user-names-lookup`, calling the real `GET /api/users/nombres` endpoint) — not via `resolveUserDisplayName` from `src/mocks/fixtures/userIdentity.fixtures.ts`. It SHALL resolve correctly for any real user known to the backend, including a deactivated one, and SHALL show the generic "Usuario no disponible" text (never the raw id) if the backend does not resolve it.
 
 #### Scenario: Header shows all badges and metadata
 - **WHEN** `QEHeaderSection` renders a `QualityEvent` with `numero: 'QE-2026-005'`
@@ -91,11 +91,13 @@ The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via
 - **WHEN** `QEHeaderSection` renders a `QualityEvent` with `fechaVerificacionProgramada` in the past and `fechaVerificacionRealizada` absent
 - **THEN** the countdown displays "Vencido" instead of a day count
 
-#### Scenario: Reportado por resolves for a real, non-legacy account
-- **WHEN** `QEHeaderSection` renders a `QualityEvent` with `reportadoPorId: 'user-supervisor-002'`, an id present in `authFixtures` but absent from the removed `users.fixtures.ts` catalog
+#### Scenario: Reportado por resolves a real user name from the backend
+- **WHEN** `QEHeaderSection` renders a `QualityEvent` with `reportadoPorId` set to a real user id and `GET /api/users/nombres` resolves it
 - **THEN** the metadata grid shows the resolved display name, not a blank value and not the raw id
 
----
+#### Scenario: Reportado por shows the generic fallback when unresolved
+- **WHEN** `qe.reportadoPorId` does not resolve via `GET /api/users/nombres`
+- **THEN** the metadata grid shows the generic "Usuario no disponible" text, not the raw id
 
 ### Requirement: QEHeaderSection origin-conditional block
 `QEHeaderSection` SHALL render an origin-specific block based on `origen`:
@@ -138,6 +140,8 @@ The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via
 ### Requirement: QEHeaderSection gates the export action by puedeExportarPDF
 `QEHeaderSection`'s top row (the `flex flex-wrap items-center gap-2.5` row holding `numero` and the status/type/origin/severity badges) SHALL additionally render the "Exportar PDF" button described in `quality-event-pdf-export`, positioned after the badges, but only when `puedeExportarPDF(rol)` evaluates to `true` for the current authenticated user. This requirement defines placement and visibility gating; the click behavior and PDF generation are defined in `quality-event-pdf-export`.
 
+On click, `QEHeaderSection` SHALL resolve `reportadoPorNombre` (and, when `qe.causaRaizAprobadaPorId` is set, `causaRaizAprobadaPorNombre`) via its own `useUserNames` call and pass them as part of the `QEExportMeta` argument to `buildQualityEventPdf` (`quality-event-pdf-export`), which no longer resolves user names internally.
+
 #### Scenario: Export button appears after the badge row for an authorized role
 - **WHEN** a `SUPERVISOR` user renders `QEHeaderSection` for a loaded QE
 - **THEN** the "Exportar PDF" button renders within the same header row as `numero` and the badges, after them
@@ -146,7 +150,9 @@ The reporting user's display name SHALL be resolved from `qe.reportadoPorId` via
 - **WHEN** a user with role `JEFE_CONTROL_DOCUMENTARIO` renders `QEHeaderSection`
 - **THEN** no "Exportar PDF" button is rendered anywhere in the header
 
----
+#### Scenario: Export passes resolved names to buildQualityEventPdf
+- **WHEN** a user with `puedeExportarPDF` clicks "Exportar PDF" for a QE with both `reportadoPorId` and `causaRaizAprobadaPorId` set
+- **THEN** `buildQualityEventPdf` is called with a `meta` object whose `reportadoPorNombre` and `causaRaizAprobadaPorNombre` are the names already resolved by `QEHeaderSection`'s `useUserNames` call, not re-resolved inside `buildQualityEventPdf`
 
 ### Requirement: QEStatusTransitionPanel renders role-filtered valid transitions
 The system SHALL render a `QEStatusTransitionPanel` component at `src/features/quality-events/components/QEStatusTransitionPanel.tsx` that computes valid target states via `getValidQETransitions(qe.estado)`, computes the current user's `QEPermissions` via `getQualityEventPermissions(qe.estado, rol, esResponsable)`, and renders one button per valid transition the current role is permitted to trigger (`puedeAvanzarEstado`), matched to the target state. The panel SHALL exclude the targets `CERRADO`, `EN_VERIFICACION`, `VERIFICADO`, and `REABIERTO` from its rendered buttons entirely — those transitions are driven exclusively by `QECierreSection` and `QEVerificacionSection` (per `quality-event-cierre` and `quality-event-verificacion`), not by a generic advance button.
@@ -234,3 +240,29 @@ The transition from `EN_INVESTIGACION` to `ANALISIS_COMPLETADO` SHALL be rendere
 #### Scenario: Section is read-only for roles without link permission
 - **WHEN** the current user's role is not `JEFE_CALIDAD_SYST` and they are not the responsible `SUPERVISOR`
 - **THEN** the section renders the linked documents list without the combobox to add more
+
+### Requirement: QEHeaderSection muestra y permite asignar el responsable de investigación
+`QEHeaderSection` SHALL renderizar la fila `t('qualityEvents:detail.responsable.label')` con avatar (foto o iniciales) y `qe.responsableInvestigacionNombre`. Sin responsable SHALL mostrar `t('qualityEvents:detail.responsable.sinAsignar')` en ámbar. Si el usuario es `JEFE_CALIDAD_SYST` y el estado no es `CERRADO`, `EN_VERIFICACION` ni `VERIFICADO`, SHALL mostrar el botón `asignar` (sin responsable) o `cambiar` (con responsable), que abre un modal con el `SearchableSelect` de candidatos y llama a `PATCH /api/quality-events/{id}/responsable`; al terminar SHALL invalidar el detalle y el audit trail del QE.
+
+#### Scenario: Sin responsable, visto por JCA
+- **WHEN** un JCA abre un QE ABIERTO sin responsable
+- **THEN** ve "Sin asignar" y el botón "Asignar"
+
+#### Scenario: Visto por otro rol
+- **WHEN** un SUPERVISOR abre el mismo QE
+- **THEN** ve "Sin asignar" y no ve el botón
+
+#### Scenario: Asignación exitosa
+- **WHEN** el JCA elige un candidato y confirma
+- **THEN** la cabecera muestra el nombre del responsable
+
+### Requirement: QEStatusTransitionPanel bloquea EN_INVESTIGACION sin responsable
+Cuando `EN_INVESTIGACION` es un destino válido y `qe.responsableInvestigacionId` está vacío, `QEStatusTransitionPanel` SHALL renderizar ese botón deshabilitado con el tooltip `t('qualityEvents:errors.QE_SIN_RESPONSABLE')`. Si el usuario es JCA, SHALL ofrecer un enlace que abre el mismo modal de asignación de la cabecera. Si el servidor responde `errorCode = QE_SIN_RESPONSABLE`, SHALL mostrar ese mismo mensaje traducido.
+
+#### Scenario: Botón deshabilitado
+- **WHEN** un QE ABIERTO no tiene responsable
+- **THEN** el botón EN_INVESTIGACION está deshabilitado con el tooltip
+
+#### Scenario: Error del servidor
+- **WHEN** la transición devuelve `QE_SIN_RESPONSABLE`
+- **THEN** el toast muestra el mensaje traducido de `errors.QE_SIN_RESPONSABLE`

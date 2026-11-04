@@ -187,7 +187,7 @@ El sistema SHALL definir `PASSWORD_RULES` como constante exportable y aplicar su
 ---
 
 ### Requirement: MSW auth handlers interceptan todos los endpoints de autenticación
-El sistema SHALL tener handlers MSW para `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `POST /auth/switch-empresa`, `POST /auth/forgot-password` y `POST /auth/reset-password`. `POST /auth/login` SHALL resolver la empresa activa y el rol efectivo del usuario contra `UsuarioEmpresa` según las reglas de `empresa-session` (autoselección con una sola empresa asignada, o `requiresEmpresaSelection` con más de una). `POST /auth/refresh` SHALL leer el `empresaActivaId` persistido para restaurar el rol efectivo correcto.
+El sistema SHALL tener handlers MSW para `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `POST /auth/switch-empresa`, `POST /auth/forgot-password` y `POST /auth/reset-password`. `POST /auth/login` SHALL resolver la empresa activa y el rol efectivo del usuario contra `UsuarioEmpresa` según las reglas de `empresa-session` (autoselección con una sola empresa asignada, o `requiresEmpresaSelection` con más de una). `POST /auth/refresh` SHALL leer el `empresaActivaId` persistido para restaurar el rol efectivo correcto. Además SHALL existir handlers para `POST /auth/actividad` y `GET /auth/politica-sesion`; el login SHALL registrar `sesionIniciadaEn`/`ultimaActividadEn` de la sesión mock, cada rotación de refresh SHALL heredarlos, y `POST /auth/refresh` y `POST /auth/actividad` SHALL responder 401 con `errorCode: 'SESION_MAXIMA_ALCANZADA'` o `'SESION_INACTIVA'` aplicando la misma política efectiva (empresa → global, con ajuste a límites) que el backend real.
 
 #### Scenario: Login con credenciales válidas de usuario mono-empresa retorna token, usuario y empresa
 - **WHEN** MSW recibe `POST /auth/login` con email y password de un fixture asignado a una sola empresa
@@ -225,6 +225,14 @@ El sistema SHALL tener handlers MSW para `POST /auth/login`, `POST /auth/logout`
 - **WHEN** MSW recibe `POST /auth/forgot-password` con cualquier email
 - **THEN** responde con status 200 (no revela si el email existe)
 
+#### Scenario: Refresh mock con inactividad vencida
+- **WHEN** MSW recibe `POST /auth/refresh` de una sesión mock cuya `ultimaActividadEn` es anterior a `ahora − inactividadMinutos` de su empresa activa
+- **THEN** responde 401 con `{ success: false, errorCode: 'SESION_INACTIVA' }` e invalida esa sesión mock
+
+#### Scenario: Actividad mock extiende la ventana
+- **WHEN** MSW recibe `POST /auth/actividad` de una sesión mock vigente
+- **THEN** actualiza su `ultimaActividadEn` y responde con la política efectiva y las marcas de tiempo de la sesión
+
 ---
 
 ### Requirement: MockUser registra fecha de creación de cuenta y último acceso
@@ -241,3 +249,48 @@ El sistema SHALL tener handlers MSW para `POST /auth/login`, `POST /auth/logout`
 #### Scenario: Usuario que nunca inició sesión en el mock no tiene lastLogin
 - **WHEN** se inspecciona `authFixtures` para un usuario que no ha iniciado sesión desde que se agregó el campo
 - **THEN** su `lastLogin` es `undefined`
+
+### Requirement: Sesión mock expone tienePinFirma
+El `User` resuelto por `login`, `refresh` y `switch-empresa` en MSW SHALL incluir `tienePinFirma: boolean`, calculado a partir del campo `pin` (en texto plano, mismo patrón que `password`) del `MockUser` correspondiente en `authFixtures`: `true` si `pin` está definido, `false` en caso contrario.
+
+#### Scenario: Usuario sin PIN configurado
+- **WHEN** MSW resuelve la sesión de un usuario cuyo `MockUser.pin` es `undefined`
+- **THEN** el `user` de la respuesta tiene `tienePinFirma: false`
+
+#### Scenario: Usuario con PIN configurado
+- **WHEN** MSW resuelve la sesión de un usuario cuyo `MockUser.pin` es un string de 4 dígitos
+- **THEN** el `user` de la respuesta tiene `tienePinFirma: true`
+
+### Requirement: MSW handler POST /api/auth/set-pin
+El sistema SHALL registrar `http.post('/api/auth/set-pin', ...)` en `auth.handlers.ts`, siguiendo el mismo patrón que `POST /api/auth/change-password`: resolver el usuario autenticado desde el header de acceso (`readAccessUserId`), validar `password` contra `user.password`, y validar que `pin` cumpla exactamente `^\d{4}$`. Si ambas validaciones pasan, SHALL asignar `user.pin = body.pin` en el store mutable de `authFixtures` (`getUsersStore()`), reemplazando cualquier PIN previo.
+
+#### Scenario: Configuración exitosa
+- **WHEN** un usuario autenticado envía `POST /api/auth/set-pin` con su contraseña correcta y `pin: '4821'`
+- **THEN** la respuesta es 200 y una llamada posterior a un endpoint de firma con `pin: '4821'` para ese usuario es aceptada
+
+#### Scenario: Contraseña incorrecta
+- **WHEN** se envía `POST /api/auth/set-pin` con una `password` que no coincide con `user.password`
+- **THEN** la respuesta es 401 y `user.pin` no se modifica
+
+#### Scenario: Formato de PIN inválido
+- **WHEN** se envía `POST /api/auth/set-pin` con un `pin` que no son exactamente 4 dígitos numéricos
+- **THEN** la respuesta es 400 y `user.pin` no se modifica
+
+#### Scenario: Sesión expirada
+- **WHEN** se envía `POST /api/auth/set-pin` sin un header de acceso resoluble a un usuario de `authFixtures`
+- **THEN** la respuesta es 401
+
+### Requirement: El interceptor no refresca la sesión ante credenciales incorrectas
+El interceptor de respuesta de Axios (`lib/axios.ts`) SHALL rechazar directamente todo 401 cuyo `errorCode` sea `PIN_INCORRECTO` o `CONTRASENA_INCORRECTA` (`CREDENTIAL_ERROR_CODES`). En ese caso SHALL NOT llamar a `refreshToken()`, SHALL NOT reenviar la petición y SHALL NOT llamar a `endSession`. El refresh con reintento único ante un 401 sin `errorCode`, y el cierre por política (`SESION_INACTIVA` / `SESION_MAXIMA_ALCANZADA`), SHALL seguir funcionando igual.
+
+#### Scenario: PIN incorrecto no dispara refresh
+- **WHEN** una petición autenticada recibe 401 con `errorCode: "PIN_INCORRECTO"`
+- **THEN** la promesa se rechaza con ese error, `refreshToken()` no se llama y la petición se envió una sola vez
+
+#### Scenario: Contraseña incorrecta no dispara refresh
+- **WHEN** `POST /api/auth/set-pin` recibe 401 con `errorCode: "CONTRASENA_INCORRECTA"`
+- **THEN** la promesa se rechaza, `refreshToken()` no se llama, la petición se envió una sola vez y la sesión sigue activa
+
+#### Scenario: 401 sin código sigue refrescando
+- **WHEN** una petición autenticada recibe 401 sin `errorCode`
+- **THEN** el interceptor llama a `refreshToken()` y reenvía la petición una vez con el token nuevo

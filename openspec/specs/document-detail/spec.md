@@ -105,6 +105,13 @@ Contextual banners (OBSOLETO, QE-vinculados, RESTRINGIDO, falta de asignación, 
 - OBSOLETO banner (bg-error/10 border-error/30) when `estado === 'OBSOLETO'`.
 - QE-vinculados banner (bg-amber/10 border-amber/30) when `qeVinculados.length > 0`, listing the linked QEs' `numero` (not raw ids — `qeVinculados` is a populated `QeVinculadoResumen[]`, see `document-types`).
 - RESTRINGIDO info banner (bg-teal/10 border-teal/30) listing `rolesAutorizados` when `confidencialidad === 'RESTRINGIDO'`, visible only to users with role `JEFE_CONTROL_DOCUMENTARIO` or `ALTA_DIRECCION`.
+- Rechazo banner (bg-error/10 border-error/30) when `estado === 'BORRADOR'` and the most recent `auditTrail` entry among `accion` in (`RECHAZADO_EN_REVISION`, `RECHAZADO_EN_APROBACION`, `REVISION_CANCELADA`) has `accion` `RECHAZADO_EN_REVISION` or `RECHAZADO_EN_APROBACION` — never for `REVISION_CANCELADA`. It SHALL show who rejected it (`realizadoPorNombre`), when (`timestamp`, Intl.DateTimeFormat with locale), and the full `motivo`. Visible to every role with read access to the document (author, Jefe Calidad, Jefe Control Documentario, and other read-only roles) — it is information about the document itself, not a restricted action.
+- Revisión periódica banner, visible to any user who can read the document, when `estado === 'PUBLICADO'` and `fechaRevisionProxima` is set:
+  - Amber (bg-warning/10 border-warning/30), when the alert level (shared `getRevisionPeriodicaNivel` helper, `document-revision-periodica`) is `'proximo'`: "Pendiente de revisión periódica — vence el {fecha} (en N días)."
+  - Red (bg-error/10 border-error/30), when the alert level is `'vencido'`: "Revisión periódica vencida desde el {fecha} (hace N días). Este documento sigue vigente, pero debe revisarse."
+- Revisión periódica informational banner (bg-teal/10 border-teal/30), when `estado === 'EN_REVISION_PERIODICA'`: "En revisión periódica desde el {fecha}, iniciada por {nombre}" — fecha y nombre tomados de la entrada `REVISION_PERIODICA_INICIADA` más reciente del `auditTrail`.
+
+The revisión periódica banners SHALL NOT include their own action button — the existing "Iniciar revisión periódica" button (`DocumentActionPanel`, gated to `JEFE_CALIDAD_SYST`/`JEFE_CONTROL_DOCUMENTARIO`) already renders next to the page title, visible alongside these banners.
 
 #### Scenario: Banners render below the sticky header, not inside it
 - **WHEN** the document detail page renders with at least one applicable banner
@@ -130,14 +137,47 @@ Contextual banners (OBSOLETO, QE-vinculados, RESTRINGIDO, falta de asignación, 
 - **WHEN** `documento.confidencialidad === 'RESTRINGIDO'` and the user has role `JEFE_CALIDAD_SYST` or `AUDITOR_INTERNO`
 - **THEN** the teal banner is NOT displayed
 
+#### Scenario: Rejection banner appears after a rechazo with motivo
+- **WHEN** `documento.estado === 'BORRADOR'` and the most recent of the three relevant entries is `accion: 'RECHAZADO_EN_REVISION'` or `'RECHAZADO_EN_APROBACION'`
+- **THEN** a red banner is displayed showing who rejected it, when, and the full `motivo`
+
+#### Scenario: Rejection banner does not appear for a mere cancellation
+- **WHEN** `documento.estado === 'BORRADOR'` and the most recent of the three relevant entries is `accion: 'REVISION_CANCELADA'`
+- **THEN** the rejection banner is NOT displayed
+
+#### Scenario: Rejection banner disappears after resubmission
+- **WHEN** the document is sent back to `EN_REVISION` after a rejection (a newer `ESTADO_CAMBIADO`/`EN_REVISION` entry now exists, and `documento.estado` is no longer `BORRADOR`)
+- **THEN** the rejection banner is NOT displayed
+
+#### Scenario: Rejection banner visible to read-only roles
+- **WHEN** a user with read-only access to the document (e.g. `AUDITOR_INTERNO`) views a rejected `BORRADOR` document
+- **THEN** the rejection banner is displayed to them the same as to the author or Jefe Calidad
+
+#### Scenario: Amber banner for a PUBLICADO document within 30 days of its next review
+- **WHEN** `documento.estado === 'PUBLICADO'` and `fechaRevisionProxima` is 20 days away
+- **THEN** an amber banner shows the review date and "en 20 días"
+
+#### Scenario: Red banner for an overdue PUBLICADO document
+- **WHEN** `documento.estado === 'PUBLICADO'` and `fechaRevisionProxima` is in the past
+- **THEN** a red banner shows the review date and "hace N días"
+
+#### Scenario: Informational banner while EN_REVISION_PERIODICA
+- **WHEN** `documento.estado === 'EN_REVISION_PERIODICA'`
+- **THEN** a teal informational banner shows the date and `realizadoPorNombre` of the most recent `REVISION_PERIODICA_INICIADA` audit trail entry
+
+#### Scenario: No revisión periódica banner outside PUBLICADO/EN_REVISION_PERIODICA
+- **WHEN** `documento.estado` is `BORRADOR`, `EN_REVISION`, `EN_APROBACION` or `OBSOLETO`
+- **THEN** none of the revisión periódica banners render, regardless of `fechaRevisionProxima`
+
 ### Requirement: DocumentDetailHeader file access buttons
 The system SHALL render the document's read actions in the sidebar's "Acciones de lectura" card (corrected from an earlier, stale version of this requirement that described three actions named "Ver documento"/"Ver archivo"/"Exportar PDF controlado" and placed them in `DocumentActionPanel` as an inline row — the real code only ever had two actions, now renamed and relocated; the requirement name is kept unchanged so archiving replaces it correctly):
 
 - **"Ver documento"** (primary action, full-width button): visible whenever `getDocumentPermissions(estado, docRole).canRead` is true for the current user — including the CA-34 exception for `OBSOLETO` documents (`document-viewer-api`) — and gated by confidencialidad access (`canAccessDocument`). Opens the embedded `DocumentViewer` (`document-viewer`) in a modal, without leaving the page. Does not require `documento.archivoUrl` to be present.
-- **"Descargar copia (PDF)"** (secondary action, full-width button, with a help line explaining it is an uncontrolled copy): visible when `(estado === 'PUBLICADO' || estado === 'EN_REVISION_PERIODICA') && hasFileAccess && perms.canRead`. Shows a cosmetic metadata-preview confirmation modal, then downloads the returned watermarked, hashed PDF blob via `<a download>`. The backend registers `DESCARGA` in the audit trail — the frontend makes no separate audit call.
+- **"Descargar copia (PDF)"** (secondary action, full-width button; replaces both the former "Exportar PDF controlado" button and the "Descargar PDF de distribución" button, with a help text near it reading "La copia descargada lleva tu nombre y la fecha; es una COPIA NO CONTROLADA"): visible when `(estado === 'PUBLICADO' || estado === 'EN_REVISION_PERIODICA') && hasFileAccess && perms.canRead` — it SHALL NOT depend on `documento.archivoUrl` (the backend resolves what to export by `estado`, via `POST /api/documents/:id/exportar-pdf`, see `document-copia-controlada`). Shows a cosmetic metadata-preview confirmation modal, then downloads the returned watermarked, hashed PDF blob via `<a download>`. The backend registers `DESCARGA` in the audit trail — the frontend makes no separate audit call, but (fix-log-refresco-inmediato) SHALL invalidate `documents.detail(id)` right after triggering the download, so that `DESCARGA` entry appears in the detail's audit trail without reloading the page.
 - **"Emitir copia controlada"**: additionally visible to `JEFE_CONTROL_DOCUMENTARIO` only when the `copias-controladas` tab feature flag is enabled (see "Copias tab is gated behind a feature flag") — while the flag is off, this button is not rendered at all.
+- **"Ver archivo"** (removed — see `document-copia-controlada`, "Circuito de URL firmada retirado"): the button and its underlying hook no longer exist; `GET /:id/archivo` is retired.
 
-Both always-available actions SHALL render as full-width buttons stacked vertically in the sidebar's first card, "Ver documento" visually emphasized (primary button style) over "Descargar copia (PDF)" (secondary/outline style). Visibility conditions for both are unchanged from before this redesign — only their location and the corrected naming change.
+Both always-available actions SHALL render as full-width buttons stacked vertically in the sidebar's first card, "Ver documento" visually emphasized (primary button style) over "Descargar copia (PDF)" (secondary/outline style). Visibility conditions for both are unchanged from before this redesign — only their location and the corrected naming change. In `OBSOLETO`, only "Ver documento" SHALL be shown — no download action is available (RN-DOC-003).
 
 #### Scenario: Both actions visible when access allows
 - **WHEN** the user has confidencialidad access, `canRead` is true, and the document is `PUBLICADO`
@@ -155,13 +195,29 @@ Both always-available actions SHALL render as full-width buttons stacked vertica
 - **WHEN** the document's `confidencialidad` is `CONFIDENCIAL` and the user's role is `OPERARIO`
 - **THEN** neither "Ver documento" nor "Descargar copia (PDF)" is rendered
 
-#### Scenario: Descargar copia downloads a blob and is audited server-side
+#### Scenario: Descargar copia downloads a watermarked blob, is audited server-side, and invalidates the detail
 - **WHEN** the user confirms "Descargar copia (PDF)"
-- **THEN** a watermarked PDF blob downloads via `<a download>`, and the document's audit trail gains a `DESCARGA` entry registered by the backend
+- **THEN** a watermarked PDF blob downloads via `<a download>`, the document's audit trail gains a `DESCARGA` entry registered by the backend, and `documents.detail(id)` is invalidated so that entry appears without reloading
 
 #### Scenario: Ver documento triggers no separate audit call from the frontend
 - **WHEN** the user clicks "Ver documento" and the embedded viewer loads successfully
-- **THEN** the frontend does not call any separate audit endpoint — `GET /:id/visor` registers its own `VISUALIZACION` entry server-side (see `document-viewer-api`)
+- **THEN** the frontend does not call any separate audit endpoint — `GET /:id/visor` registers its own `VISUALIZACION` entry server-side (see `document-viewer-api`), and `document-viewer` invalidates the detail itself
+
+#### Scenario: Descargar copia visible in EN_REVISION_PERIODICA
+- **WHEN** the user has confidencialidad access and `canRead` is true for a document in `EN_REVISION_PERIODICA`
+- **THEN** "Descargar copia (PDF)" is visible
+
+#### Scenario: Descargar copia hidden for a document in process
+- **WHEN** a document is `BORRADOR`, `EN_REVISION`, or `EN_APROBACION`
+- **THEN** "Descargar copia (PDF)" is not rendered, regardless of `canRead`
+
+#### Scenario: OBSOLETO shows only Ver documento, no download
+- **WHEN** a user with access views a document in `OBSOLETO`
+- **THEN** "Ver documento" is visible and "Descargar copia (PDF)" is not rendered
+
+#### Scenario: Help text explains the watermark
+- **WHEN** "Descargar copia (PDF)" is visible
+- **THEN** a help text reading "La copia descargada lleva tu nombre y la fecha; es una COPIA NO CONTROLADA" is visible near the button
 
 ### Requirement: DocumentDetailHeader management actions
 `DocumentDetailHeader` SHALL render the document's management actions — nueva versión, enviar a revisión, aprobar, rechazar, firmar, iniciar revisión periódica, cancelar revisión periódica, eliminar — sourced from `useDocumentActionsAvailability(documento, user)`, a hook extracted unchanged (no permission logic altered) from the booleans previously computed inline in `DocumentActionPanel`. At most 2 buttons render inline in the header, chosen by this fixed priority order (highest first): firmar (`canSign`) > aprobar (`canApproveReview`) > rechazar (`canRejectReview || canRejectAprobacion`) > enviar a revisión (`canSendToReview` or its disabled variant `canSendToReviewBloqueadoPorAsignacion`) > continuar revisión periódica con nueva versión (`canStartNewVersion`) > nueva versión (`canCreateVersion`) > iniciar revisión periódica (`canStartPeriodic`) > cancelar revisión periódica (`canCancelReview`) > eliminar (`canDelete`). Any further available action renders as an item in an overflow menu button labeled "⋯". When no management action is available, neither the inline buttons nor the "⋯" menu render. The resulting set of available actions (inline + overflow) for any given `(estado, rol)` combination SHALL be identical to the set `DocumentActionPanel` exposed before this redesign — only the split between "visible inline" and "behind ⋯" is new.
@@ -194,14 +250,14 @@ The system SHALL export `useDocumentActionsAvailability(documento: Documento, us
 - **THEN** no permission/availability condition from this list is computed a second time independently inside `DocumentDetailHeader` or the sidebar components
 
 ### Requirement: Sidebar ficha metadata card
-The sidebar's second card ("Ficha") SHALL render, in a two-column grid: Versión vigente and Publicado (the date of the most recent `PUBLICADO` transition found in `auditTrail`, or "—" if the document has never been published); Tipo and Área; Próx. revisión and Confidencialidad; and a "Responsables" block listing autor, revisor, and aprobador, each with `UserAvatar` (photo if `getUser(id)?.avatarUrl` resolves, initials fallback otherwise), the resolved name (`getName`), and their role label in the document. When `revisorId` or `aprobadorId` is absent, that row SHALL show "Sin asignar" in muted text instead of an avatar/name pair.
+The sidebar's second card ("Ficha") SHALL render, in a two-column grid: Versión vigente and Publicado (the `fecha` resolved by the shared `getDatosPublicacion(documento)` helper — see "getDatosPublicacion shared publication-data helper" — or "—" if it returns `undefined`); Tipo and Área; Próx. revisión and Confidencialidad; and a "Responsables" block listing autor, revisor, and aprobador, each with `UserAvatar` (photo if `getUser(id)?.avatarUrl` resolves, initials fallback otherwise), the resolved name (`getName`), and their role label in the document. When `revisorId` or `aprobadorId` is absent, that row SHALL show "Sin asignar" in muted text instead of an avatar/name pair.
 
 #### Scenario: Ficha shows versión vigente and publication date
-- **WHEN** a `PUBLICADO` document's sidebar renders
-- **THEN** "Versión vigente" shows `documento.version` and "Publicado" shows the date of its most recent `PUBLICADO` transition
+- **WHEN** a `PUBLICADO` document's sidebar renders and `getDatosPublicacion` resolves a `fecha`
+- **THEN** "Versión vigente" shows `documento.version` and "Publicado" shows that `fecha`
 
 #### Scenario: Publicado shows a dash when never published
-- **WHEN** a `BORRADOR` document that has never been published renders its sidebar
+- **WHEN** `getDatosPublicacion(documento)` returns `undefined`
 - **THEN** "Publicado" shows "—"
 
 #### Scenario: Responsables show avatar and name
@@ -294,6 +350,14 @@ The `DocumentConfidencialidadBadge` component SHALL render a pill badge with a l
 - **WHEN** the Historial tab's count badge is computed
 - **THEN** it equals `getHistorialEntries(documento).length`, the same filtered list `DocumentHistorial` renders — never `documento.historialVersiones` (which does not exist)
 
+#### Scenario: Historial shows the rejection label and motivo
+- **WHEN** the Historial section renders an entry with `accion: 'RECHAZADO_EN_REVISION'` or `'RECHAZADO_EN_APROBACION'` that has a `motivo`
+- **THEN** the entry shows the localized rejection label and the `motivo` text beneath it
+
+#### Scenario: Historial shows the cancellation label without a motivo
+- **WHEN** the Historial section renders an entry with `accion: 'REVISION_CANCELADA'`
+- **THEN** the entry shows the localized "Revisión cancelada" label and no motivo text
+
 ### Requirement: DocumentVersionesTab highlighted card
 `DocumentVersionesTab` SHALL render as the content of its own Versiones tab panel — no longer a permanently-visible highlighted card positioned between Historial and Audit trail sections, since those sections are now tabs of their own. A badge SHALL indicate the version currently being viewed as vigente, consistent with the "Versión actual" indicator already produced by `DocumentVersionesTab`.
 
@@ -345,8 +409,8 @@ The Vínculos tab panel SHALL render an "NC vinculadas" subsection immediately a
 
 ### Requirement: DocumentAuditTrail section
 `DocumentAuditTrail` SHALL render as the content of the Log tab panel — the last tab in the tab list, no longer a collapsible panel on the page itself. Its content SHALL display `auditTrail` entries in descending order by timestamp, with the same visual pattern as `QEAuditTrail` (`QualityEventDetail` → "Historial de Auditoría"): a `divide-y` list where each entry is icon + text on the left, timestamp on the right, with no numbering or bullet markers beyond that layout. Each entry SHALL show:
-- An icon on the left, mapped from `accion` via an icon lookup table analogous to `QEAuditTrail`'s `ACCION_ICONS`, reusing the same icon for semantically equivalent action types (an arrows icon for `ESTADO_CAMBIADO`, a pencil icon for `CAMPO_EDITADO`, a check/shield icon for `FIRMA_REGISTRADA`, a file-plus icon for `DOCUMENTO_CREADO`), a closest-semantic icon for M1-only types that have an obvious equivalent even without a QE counterpart (a download icon for `DESCARGA`/`DESCARGA_ARCHIVO_ORIGINAL`, an eye icon for `VISUALIZACION`), and a generic document/file icon as fallback for the remaining M1-specific action types with no direct or close semantic equivalent (`NUEVA_VERSION_INICIADA`, `REVISION_PERIODICA_CONFIRMADA`, `DOCUMENTO_ELIMINADO`, `RESTAURADO`, `ARCHIVO_ORIGINAL_ACTUALIZADO`, `ARCHIVO_ORIGINAL_CONGELADO`, `ARCHIVO_ORIGINAL_COPIADO_A_VERSION`, `ARCHIVO_DISTRIBUCION_GENERADO`).
-- A bold entry title/description above (accion label, including diff fields such as campoModificado/valorAnterior/valorNuevo when applicable) and `realizadoPorNombre` in secondary/muted text below — same typography as `QEAuditTrail`.
+- An icon on the left, mapped from `accion` via an icon lookup table analogous to `QEAuditTrail`'s `ACCION_ICONS`, reusing the same icon for semantically equivalent action types (an arrows icon for `ESTADO_CAMBIADO`, a pencil icon for `CAMPO_EDITADO`, a check/shield icon for `FIRMA_REGISTRADA`, a file-plus icon for `DOCUMENTO_CREADO`), a closest-semantic icon for M1-only types that have an obvious equivalent even without a QE counterpart (a download icon for `DESCARGA`/`DESCARGA_ARCHIVO_ORIGINAL`, an eye icon for `VISUALIZACION`), a distinguishable rejection/cancel icon (e.g. an X-circle) for `RECHAZADO_EN_REVISION`, `RECHAZADO_EN_APROBACION`, and `REVISION_CANCELADA` — distinct from the `ESTADO_CAMBIADO` arrows icon — and a generic document/file icon as fallback for the remaining M1-specific action types with no direct or close semantic equivalent (`NUEVA_VERSION_INICIADA`, `REVISION_PERIODICA_CONFIRMADA`, `REVISION_PERIODICA_INICIADA`, `REVISION_PERIODICA_VENCIDA`, `DOCUMENTO_ELIMINADO`, `RESTAURADO`, `ARCHIVO_ORIGINAL_ACTUALIZADO`, `ARCHIVO_ORIGINAL_CONGELADO`, `ARCHIVO_ORIGINAL_COPIADO_A_VERSION`, `ARCHIVO_DISTRIBUCION_GENERADO`).
+- A bold entry title/description above (accion label, including diff fields such as campoModificado/valorAnterior/valorNuevo when applicable, and the `motivo` — when present — shown as a separate line beneath the description for `RECHAZADO_EN_REVISION`/`RECHAZADO_EN_APROBACION`/`REVISION_CANCELADA`) and `realizadoPorNombre` in secondary/muted text below — same typography as `QEAuditTrail`. `realizadoPorNombre` SHALL render as plain text for every entry, including the system actor ("Sistema") of automated entries — it SHALL NOT be resolved through `useUserNames`.
 - The timestamp (Intl.DateTimeFormat with locale and timezone) aligned to the right, same typography and color as `QEAuditTrail`'s timestamp.
 
 Entries SHALL include DESCARGA and VISUALIZACION actions (RN-DOC-008). Pagination SHALL load 20 entries at a time with a "Ver más" button. No additional API call is needed — it uses data already loaded from the document query.
@@ -386,3 +450,121 @@ Entries SHALL include DESCARGA and VISUALIZACION actions (RN-DOC-008). Paginatio
 #### Scenario: No API call for audit trail
 - **WHEN** the Log tab is opened
 - **THEN** no new network request is made; the data comes from the already-loaded document object
+
+#### Scenario: RECHAZADO_EN_REVISION entry shows its own icon, label and motivo
+- **WHEN** an audit trail entry with `accion: 'RECHAZADO_EN_REVISION'` and a `motivo` renders
+- **THEN** it shows the rejection icon, the localized "Rechazado en revisión" label, and the `motivo` text beneath the description
+
+#### Scenario: RECHAZADO_EN_APROBACION entry shows its own icon, label and motivo
+- **WHEN** an audit trail entry with `accion: 'RECHAZADO_EN_APROBACION'` and a `motivo` renders
+- **THEN** it shows the rejection icon, the localized "Rechazado en aprobación" label, and the `motivo` text beneath the description
+
+#### Scenario: REVISION_CANCELADA entry shows its own icon and label without a motivo line
+- **WHEN** an audit trail entry with `accion: 'REVISION_CANCELADA'` renders
+- **THEN** it shows the rejection icon, the localized "Revisión cancelada" label, and no motivo line beneath the description
+
+#### Scenario: System-generated entries show "Sistema" as the actor
+- **WHEN** an audit trail entry was generated automatically (`accion: 'REVISION_PERIODICA_VENCIDA'`, `realizadoPorNombre: 'Sistema'`)
+- **THEN** "Sistema" renders as plain text below the entry's description, exactly like a human actor's name — no user lookup is attempted
+
+### Requirement: DocumentDetailPage issues a single names request for header and action panel
+`DocumentDetailPage` SHALL call `useUserNames` exactly once with `[documento.autorId, documento.revisorId, documento.aprobadorId]` and pass the resulting `getName` resolver down to both `DocumentDetailHeader` and `DocumentActionPanel` as a prop. Neither child component SHALL call `useUserNames` independently for these ids — this keeps Documentos' name resolution to one HTTP request per page load regardless of how many of these ids a given child needs.
+
+#### Scenario: One request covers both the header and the action panel's PDF preview
+- **WHEN** `DocumentDetailPage` renders a document with distinct `autorId`, `revisorId`, and `aprobadorId`
+- **THEN** exactly one `GET /api/users/nombres` request is made for the page, and both `DocumentDetailHeader`'s metadata grid and `DocumentActionPanel`'s PDF preview show names resolved from that same request
+
+### Requirement: DocumentActionPanel PDF preview resolves the aprobador's real name
+The "Exportar PDF controlado" preview rendered by `DocumentActionPanel` SHALL show the aprobador's resolved display name (via the `getName` prop from `DocumentDetailPage`) in its "Aprobado por" field, instead of importing `resolveUserDisplayName` from `src/mocks/`.
+
+#### Scenario: PDF preview shows the aprobador's real name
+- **WHEN** a user with `canExportarPdf` opens the PDF preview for a `PUBLICADO` document with `aprobadorId` set
+- **THEN** the "Aprobado por" field in the preview shows the resolved display name, not the raw `aprobadorId`
+
+#### Scenario: PDF preview shows the generic fallback for an unresolved aprobador
+- **WHEN** the document's `aprobadorId` does not resolve via `GET /api/users/nombres`
+- **THEN** the "Aprobado por" field shows the generic "Usuario no disponible" text, not the raw id
+
+### Requirement: REVISION_PERIODICA_INICIADA y REVISION_PERIODICA_VENCIDA en el historial de estados
+`DocumentHistorial` SHALL incluir `REVISION_PERIODICA_INICIADA` y `REVISION_PERIODICA_VENCIDA` en su conjunto de acciones relevantes (`ACCIONES_RELEVANTES`), mostrando el `motivo`/detalle de la entrada igual que las demás acciones con motivo.
+
+#### Scenario: REVISION_PERIODICA_INICIADA aparece en el historial
+- **WHEN** el `auditTrail` del documento tiene una entrada `REVISION_PERIODICA_INICIADA`
+- **THEN** `DocumentHistorial` la muestra con su motivo ("Revisión programada...", "Revisión anticipada...", o "Revisión sin fecha programada")
+
+#### Scenario: REVISION_PERIODICA_VENCIDA aparece en el historial
+- **WHEN** el `auditTrail` del documento tiene una entrada `REVISION_PERIODICA_VENCIDA`
+- **THEN** `DocumentHistorial` la muestra con el actor "Sistema" y la fecha de revisión vencida
+
+### Requirement: getDatosPublicacion shared publication-data helper
+The system SHALL export `getDatosPublicacion(documento: Documento): { firmadoPorId: string; fecha: string; hash?: string } | undefined` from `features/documents/utils/publicacion.ts`, a pure function with no React/query dependency. It SHALL resolve, in order:
+1. The most recent `FIRMA_REGISTRADA` entry in `documento.auditTrail` (by `timestamp`, descending) → `{ firmadoPorId: realizadoPorId, fecha: timestamp, hash: valorNuevo }`.
+2. If none exists, the most recent `ESTADO_CAMBIADO` entry whose `estadoNuevo === 'PUBLICADO'` → `{ firmadoPorId: realizadoPorId, fecha: timestamp, hash: undefined }`.
+3. If neither exists, and both `documento.aprobadorId` and `documento.fechaEmision` are set → `{ firmadoPorId: aprobadorId, fecha: fechaEmision, hash: undefined }`.
+4. Otherwise `undefined`.
+
+Both the Resumen tab's "Documento publicado" card and the sidebar's Ficha card (`Sidebar ficha metadata card`) SHALL consume this single helper instead of each resolving the publication date independently.
+
+#### Scenario: Resolves from the latest FIRMA_REGISTRADA entry
+- **WHEN** `documento.auditTrail` contains one or more `FIRMA_REGISTRADA` entries
+- **THEN** `getDatosPublicacion` returns the most recent one's `realizadoPorId`, `timestamp`, and `valorNuevo` as `firmadoPorId`, `fecha`, and `hash`
+
+#### Scenario: Falls back to ESTADO_CAMBIADO → PUBLICADO when no FIRMA_REGISTRADA exists
+- **WHEN** `documento.auditTrail` has no `FIRMA_REGISTRADA` entry but has an `ESTADO_CAMBIADO` entry with `estadoNuevo === 'PUBLICADO'`
+- **THEN** `getDatosPublicacion` returns that entry's `realizadoPorId`/`timestamp` with `hash: undefined`
+
+#### Scenario: Falls back to aprobadorId + fechaEmision as a last resort
+- **WHEN** `documento.auditTrail` has neither a `FIRMA_REGISTRADA` nor an `ESTADO_CAMBIADO → PUBLICADO` entry, but `aprobadorId` and `fechaEmision` are both set
+- **THEN** `getDatosPublicacion` returns `{ firmadoPorId: aprobadorId, fecha: fechaEmision, hash: undefined }`
+
+#### Scenario: Returns undefined when nothing resolves
+- **WHEN** none of the three sources above is available
+- **THEN** `getDatosPublicacion` returns `undefined` and callers render their own "never published" fallback
+
+### Requirement: Resumen tab publication content
+The Resumen tab panel SHALL render, below the description, in this order:
+1. **Documento publicado card** — only when `documento.estado` is `PUBLICADO`, `EN_REVISION_PERIODICA`, or `OBSOLETO`, and `getDatosPublicacion(documento)` resolves: a PDF icon with the filename `{codigo} v{version}.pdf`; a line "Firmado por {nombre} · {fecha y hora} · hash `{primeros 4}…{últimos 4}`" where `{nombre}` comes from `getName(firmadoPorId)` and the hash segment (including its copy button and full-hash tooltip) is omitted entirely when `getDatosPublicacion` returns no `hash`; a "Ver" button using the same visibility condition and action as the sidebar's "Ver documento" (`availability.canVerDocumento` → `controller.setShowVisor(true)`), with no new permission logic; and, only when `documento.estado === 'OBSOLETO'` and `documento.fechaObsolescencia` is set, an additional line "Versión obsoleta desde {fechaObsolescencia}".
+2. **Motivo del cambio (v{version})** — `documento.motivoVersion`, when present, regardless of `estado`.
+3. **Vigente desde** — `documento.fechaVigencia` as a calendar date (`formatCalendarDateMedium`), only when `estado` is `PUBLICADO` or `EN_REVISION_PERIODICA` and the field is set.
+
+None of these three blocks render in `BORRADOR`, `EN_REVISION`, or `EN_APROBACION`. The archivo original section (`showArchivoSection`) keeps its existing position and visibility condition, unaffected by this requirement.
+
+#### Scenario: Documento publicado card shows signer, date, and abbreviated hash
+- **WHEN** a `PUBLICADO` document's Resumen tab renders and `getDatosPublicacion` resolves a `FIRMA_REGISTRADA` entry with a hash
+- **THEN** the card shows the filename, "Firmado por {nombre} · {fecha y hora} · {hash abreviado}", the full hash in a tooltip with a copy button, and a "Ver" button
+
+#### Scenario: Documento publicado card omits the hash line when none is available
+- **WHEN** `getDatosPublicacion` resolves without a `hash` (fallback 2 or 3)
+- **THEN** the card shows "Firmado por {nombre} · {fecha y hora}" with no hash segment and no copy button, and renders without error
+
+#### Scenario: Obsoleto adds the obsolescence date line
+- **WHEN** `documento.estado === 'OBSOLETO'` and `documento.fechaObsolescencia` is set
+- **THEN** the card includes "Versión obsoleta desde {fechaObsolescencia}" below the signer line
+
+#### Scenario: No publicado card in draft-like states
+- **WHEN** `documento.estado` is `BORRADOR`, `EN_REVISION`, or `EN_APROBACION`
+- **THEN** the Resumen tab renders no "Documento publicado" card
+
+#### Scenario: Ver button reuses the existing Ver documento action
+- **WHEN** the user clicks "Ver" on the Documento publicado card
+- **THEN** the same embedded `DocumentViewer` modal opens as when clicking "Ver documento" in the sidebar, with no separate audit call issued by the frontend
+
+#### Scenario: Motivo del cambio shown when present
+- **WHEN** `documento.motivoVersion` is set
+- **THEN** "Motivo del cambio (v{version})" renders with that text, in any `estado`
+
+#### Scenario: Motivo del cambio absent when not set
+- **WHEN** `documento.motivoVersion` is not set
+- **THEN** no "Motivo del cambio" section renders
+
+#### Scenario: Vigente desde shown for active published states
+- **WHEN** `documento.estado` is `PUBLICADO` or `EN_REVISION_PERIODICA` and `fechaVigencia` is set
+- **THEN** "Vigente desde" renders `fechaVigencia` as a calendar date
+
+#### Scenario: Vigente desde absent outside published states
+- **WHEN** `documento.estado` is `OBSOLETO`, `BORRADOR`, `EN_REVISION`, or `EN_APROBACION`
+- **THEN** "Vigente desde" does not render, even if `fechaVigencia` is set
+
+#### Scenario: Missing description shows a muted placeholder
+- **WHEN** `documento.descripcion` is empty or not set
+- **THEN** the Resumen tab shows "Sin descripción" in muted text instead of a bare dash

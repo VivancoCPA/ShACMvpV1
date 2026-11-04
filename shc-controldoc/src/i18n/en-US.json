@@ -263,6 +263,7 @@
       "errorGeneric": "Could not register the signature. Please try again.",
       "noPinConfigured": "You haven't set up your signing PIN yet.",
       "configurePinLink": "Set up PIN in My Profile",
+      "forgotPinLink": "Forgot your PIN? Change it in My Profile with your password",
       "successMessage": "Document signed and published successfully."
     },
     "reject": {
@@ -608,7 +609,8 @@
     "empresaSwitcher": {
       "label": "Switch company",
       "switchError": "Could not switch company. Please try again."
-    }
+    },
+    "parametrosSesion": "Session parameters"
   },
   "qualityEvents": {
     "list": {
@@ -691,7 +693,8 @@
         "fechaRecepcion": "Report Reception Date",
         "numero": "Number",
         "fechaHoraReporte": "Report Date",
-        "reportadoPor": "Reported By"
+        "reportadoPor": "Reported By",
+        "responsableInvestigacion": "Investigation lead"
       },
       "placeholders": {
         "select": "Select…",
@@ -699,7 +702,8 @@
         "descripcion": "Describe the event in detail (min. 10 characters)…",
         "mineralInvolucrado": "Specify mineral…",
         "nombreCliente": "Client or company name",
-        "normaOtraDetalle": "E.g. MINEM Audit, SUNAT…"
+        "normaOtraDetalle": "E.g. MINEM Audit, SUNAT…",
+        "responsableInvestigacion": "Unassigned (assigned by the Quality Manager)"
       },
       "turno": {
         "DIA": "Day",
@@ -710,6 +714,12 @@
         "submit": "Save QE",
         "submitting": "Saving…",
         "cancel": "Cancel"
+      },
+      "precargaIncidente": "Data copied from incident {{numero}}. You can adjust it.",
+      "confirmReemplazoIncidente": "Replace the data with incident {{numero}}'s?",
+      "confirmReemplazoAcciones": {
+        "reemplazar": "Replace",
+        "mantener": "Keep my data"
       }
     },
     "editSeveridadMineralModal": {
@@ -788,7 +798,6 @@
         "aprobarCausaRaiz": "Approve root cause",
         "aprobadoPor": "Approved by {{nombre}} on {{fecha}}",
         "asistirIA": "Assist with AI",
-        "asistirIATooltip": "Coming soon",
         "switchToastMessage": "Switch analysis tool? Data from the current tool will be lost.",
         "confirmarCambio": "Confirm change",
         "pinModal": {
@@ -797,10 +806,39 @@
           "placeholder": "PIN",
           "confirm": "Confirm",
           "cancel": "Cancel",
-          "error": "Incorrect PIN."
+          "error": "The PIN must be 4 digits.",
+          "noPinConfigured": "You haven't set up your signing PIN yet.",
+          "configurePinLink": "Set up PIN in My Profile",
+          "forgotPinLink": "Forgot your PIN? Change it in My Profile with your password"
         },
         "errors": {
-          "causaRaizLength": "The root cause must be between 100 and 500 characters."
+          "causaRaizLength": "The root cause must be between 100 and 500 characters.",
+          "PIN_INCORRECTO": "Incorrect PIN.",
+          "generico": "The operation could not be completed."
+        },
+        "guardado": "Analysis saved.",
+        "pendienteAprobacion": "Pending Quality Manager approval.",
+        "ia": {
+          "etiqueta": "AI-generated suggestion — requires validation",
+          "simulado": "(simulated mode — not a real suggestion)",
+          "analizando": "Analyzing…",
+          "usar": "Use",
+          "descartar": "Discard",
+          "crearAC": "Create CA",
+          "marca": "AI",
+          "marcaEditada": "AI (edited)",
+          "confirmarReemplazo": "Replace the current 5 Whys with the suggestion?",
+          "confirmarReemplazoIshikawa": "Replace the current Ishikawa diagram with the suggestion?",
+          "confirmarCambioMetodo": "The suggestion is for {{metodo}}; switch method?",
+          "bloqueIshikawa": "Suggested Ishikawa diagram",
+          "causaRaizProbable": "Probable root cause",
+          "accionesSugeridas": "Suggested actions",
+          "ayudaAC": "AI suggestion: {{tipo}} · suggested owner: {{rol}} · estimated deadline: {{dias}} business days",
+          "tipoAccion": {
+            "CORRECTIVA": "Corrective",
+            "PREVENTIVA": "Preventive",
+            "MEJORA": "Improvement"
+          }
         }
       },
       "acSection": {
@@ -924,8 +962,12 @@
           "AC_AJUSTE_PLAZO_SOLICITADO": "Deadline extension requested",
           "AC_AJUSTE_PLAZO_APROBADO": "Deadline extension approved",
           "AC_AJUSTE_PLAZO_RECHAZADO": "Deadline extension rejected",
-          "EXPORTACION_PDF": "PDF exported"
-        }
+          "EXPORTACION_PDF": "PDF exported",
+          "RESPONSABLE_ASIGNADO": "Lead assigned",
+          "RESPONSABLE_CAMBIADO": "Lead changed",
+          "ASISTENTE_IA_CONSULTADO": "AI assistant consulted"
+        },
+        "sugerenciaIAEditada": "edited AI suggestion"
       },
       "notFound": {
         "title": "Quality Event not found",
@@ -966,7 +1008,8 @@
           "cancel": "Cancel",
           "error": "Incorrect PIN.",
           "noPinConfigured": "You haven't set up your signing PIN yet.",
-          "configurePinLink": "Set up PIN in My Profile"
+          "configurePinLink": "Set up PIN in My Profile",
+          "forgotPinLink": "Forgot your PIN? Change it in My Profile with your password"
         },
         "summary": {
           "resultado": "Closure result",
@@ -1004,6 +1047,20 @@
           "verificado": "Verification recorded: the Quality Event has been VERIFIED.",
           "reapertura": "The Quality Event was reopened."
         }
+      },
+      "responsable": {
+        "label": "Investigation lead",
+        "sinAsignar": "Unassigned",
+        "asignar": "Assign",
+        "cambiar": "Change",
+        "modalTitle": "Investigation lead",
+        "guardar": "Save",
+        "guardando": "Saving…",
+        "cancelar": "Cancel",
+        "cerrar": "Close",
+        "exito": "Investigation lead assigned",
+        "error": "Could not assign the investigation lead",
+        "asignarPrimero": "Assign lead"
       }
     },
     "delete": {
@@ -1044,6 +1101,19 @@
         "desvinculado": "Link removed.",
         "desvincularError": "Could not remove the link."
       }
+    },
+    "errors": {
+      "QE_SIN_RESPONSABLE": "Assign an investigation lead before starting the investigation.",
+      "CAUSA_RAIZ_FIRMADA": "The root cause is already approved and can't be changed.",
+      "CAUSA_RAIZ_INVALIDA": "The root cause must be 100 to 500 characters.",
+      "ANALISIS_NO_EDITABLE": "The analysis can only be edited during investigation or once the analysis is completed.",
+      "IA_LIMITE_DIARIO": "The daily AI query limit for this QE was reached.",
+      "IA_NO_DISPONIBLE": "The assistant is not available right now. You can complete the analysis manually.",
+      "IA_NO_CONFIGURADA": "The AI assistant is not configured on this server."
+    },
+    "roles": {
+      "SUPERVISOR": "Supervisor",
+      "JEFE_CALIDAD_SYST": "Quality & OHS Manager"
     }
   },
   "incidents": {
@@ -1074,8 +1144,12 @@
       "sinQEBadge": {
         "label": "No QE linked",
         "tooltip": {
-          "AMARILLO": "This incident is approaching its investigation deadline without a linked Quality Event.",
-          "ROJO": "This incident passed its investigation deadline without a linked Quality Event."
+          "AMARILLO": "Deadline to link a QE: {{plazo}} h · due in {{restante}}",
+          "ROJO": "Deadline to link a QE: {{plazo}} h · overdue by {{vencido}}"
+        },
+        "duracion": {
+          "horas": "{{h}} h",
+          "diasHoras": "{{d}} d {{h}} h"
         }
       }
     },
@@ -1138,12 +1212,13 @@
       "acUpdated": "Corrective action updated.",
       "acUpdateError": "Failed to update the corrective action.",
       "acCerrada": "Corrective action closed.",
-      "acCerrarError": "Failed to close the corrective action.",
-      "vincularQEError": "The Quality Event was created, but could not be linked to the incident. Refresh the page to check."
+      "acCerrarError": "Failed to close the corrective action."
     },
     "errors": {
       "notFound": "Incident not found.",
-      "acNotFound": "Corrective action not found."
+      "acNotFound": "Corrective action not found.",
+      "ESTADO_GOBERNADO_POR_QE": "The incident’s status is determined by its Quality Event.",
+      "QE_VINCULO_GESTIONADO_POR_QE": "The link to the Quality Event is managed by the Quality Event itself."
     },
     "tipo": {
       "ACCIDENTE": "Accident",
@@ -1208,7 +1283,8 @@
       },
       "ubicacion": {
         "clickHint": "Click on the floor plan to mark the incident location",
-        "limpiar": "Clear location"
+        "limpiar": "Clear location",
+        "sinPlano": "This site has no floor plan uploaded; the location can't be marked."
       },
       "severidad": {
         "autocalculada": "(auto-calculated)"
@@ -1260,7 +1336,8 @@
         "atencionMedica": "Medical attention",
         "informeMedico": "Medical report",
         "local": "Facility",
-        "zona": "Zone"
+        "zona": "Zone",
+        "usuarioDesconocido": "User not available"
       },
       "investigacion": {
         "plazoDias": "Maximum investigation period: {{dias}} business days"
@@ -1276,7 +1353,13 @@
       },
       "evidencias": {
         "title": "Attached evidence"
-      }
+      },
+      "ubicacion": {
+        "sinPunto": "No location was marked on the floor plan.",
+        "sinPlano": "This site has no floor plan uploaded."
+      },
+      "qeGobiernaEstado": "This incident’s status is updated by QE {{numero}}.",
+      "qeGobiernaEstadoSinNumero": "This incident’s status is updated by its linked Quality Event."
     },
     "acSection": {
       "title": "Corrective Actions",
@@ -1380,6 +1463,13 @@
             "error": "Error"
           }
         }
+      }
+    },
+    "auditTrail": {
+      "acciones": {
+        "ESTADO_SINCRONIZADO_QE": "Status synced with QE",
+        "PLAZO_QE_VENCIDO": "Deadline to link a QE expired",
+        "QE_VINCULADO": "QE linked"
       }
     }
   },
@@ -2035,6 +2125,11 @@
           }
         }
       }
+    },
+    "incidentesSinQeVencidos": {
+      "title": "Incidents without QE past deadline",
+      "empty": "No incidents past their deadline.",
+      "vencidoHace": "Overdue by {{duracion}}"
     }
   },
   "locations": {
@@ -2155,6 +2250,7 @@
       },
       "pinSection": {
         "title": "Signing PIN",
+        "forgotHint": "Forgot your PIN? You don't need the old one: confirm your password and set a new one.",
         "configured": "Configured",
         "notConfigured": "Not configured",
         "currentPassword": "Confirm your current password",
@@ -2521,6 +2617,62 @@
       "validation": {
         "usuarioRequired": "You must select a user"
       }
+    }
+  },
+  "sesion": {
+    "warning": {
+      "title": "Are you still there?",
+      "message": "Your session will end due to inactivity in {{seconds}} s",
+      "stayConnected": "Stay signed in",
+      "logout": "Sign out",
+      "stayError": "Could not keep your session. Please sign in again."
+    },
+    "loginNotice": {
+      "INACTIVIDAD": "Your session ended due to inactivity",
+      "SESION_MAXIMA": "Your session reached its maximum duration; please sign in again"
+    },
+    "config": {
+      "title": "Session security",
+      "description": "Defines when sessions of this company's users end automatically.",
+      "inactividadLabel": "Inactivity timeout (minutes)",
+      "inactividadHelp": "Allowed range: {{min}}–{{max}} min · System value: {{global}} min",
+      "sesionMaximaLabel": "Maximum session duration (hours)",
+      "sesionMaximaHelp": "Allowed range: {{min}}–{{max}} h · System value: {{global}} h",
+      "useDefault": "Use system default value",
+      "effective": "Current policy: {{inactividad}} min of inactivity · {{horas}} h maximum session",
+      "lastChange": "Last change: {{nombre}}, {{fecha}}",
+      "neverChanged": "No changes recorded: system default values apply.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Session settings updated",
+      "saveError": "Could not save session settings",
+      "loading": "Loading settings…",
+      "loadError": "Could not load session settings"
+    },
+    "global": {
+      "title": "Global session parameters",
+      "description": "Default values for companies without their own settings, and the limits within which each company can set its own.",
+      "inactividadSection": "Inactivity timeout (minutes)",
+      "sesionMaximaSection": "Maximum session duration (hours)",
+      "default": "Default value",
+      "min": "Minimum allowed",
+      "max": "Maximum allowed",
+      "absoluteHelp": "System absolute limit: {{min}}–{{max}}",
+      "saved": "Global session parameters updated",
+      "saveError": "Could not save global parameters"
+    },
+    "empresa": {
+      "action": "Session security",
+      "modalTitle": "Session security — {{empresa}}",
+      "close": "Close"
+    },
+    "errors": {
+      "required": "Enter a value",
+      "integer": "Must be a whole number",
+      "outOfRange": "Outside the allowed range",
+      "sesionMenorQueInactividad": "Maximum duration cannot be shorter than the inactivity timeout",
+      "maxMenorQueMin": "Maximum cannot be lower than minimum",
+      "defaultFueraDeLimites": "Default value must be between minimum and maximum"
     }
   }
 }

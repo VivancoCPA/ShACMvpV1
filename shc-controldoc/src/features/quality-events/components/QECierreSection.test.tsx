@@ -134,6 +134,32 @@ describe('QECierreSection — PinModal de firma', () => {
     expect(screen.queryByText('detail.cierre.pinModal.noPinConfigured')).not.toBeInTheDocument()
   })
 
+  // pin-olvidado-pista: pista "¿Olvidaste tu PIN?" bajo el input.
+  it('shows the forgot-PIN link to /perfil#pin-firma when the signer has a PIN', () => {
+    setUser(true)
+    renderSection(makeQE())
+
+    fireEvent.click(screen.getByRole('button', { name: 'detail.cierre.firstSignature.button' }))
+
+    expect(screen.getByRole('link', { name: 'detail.cierre.pinModal.forgotPinLink' })).toHaveAttribute(
+      'href',
+      '/perfil#pin-firma',
+    )
+  })
+
+  it('points the setup link to /perfil#pin-firma and hides the forgot-PIN link without a PIN', () => {
+    setUser(false)
+    renderSection(makeQE())
+
+    fireEvent.click(screen.getByRole('button', { name: 'detail.cierre.firstSignature.button' }))
+
+    expect(screen.getByRole('link', { name: 'detail.cierre.pinModal.configurePinLink' })).toHaveAttribute(
+      'href',
+      '/perfil#pin-firma',
+    )
+    expect(screen.queryByRole('link', { name: 'detail.cierre.pinModal.forgotPinLink' })).not.toBeInTheDocument()
+  })
+
   it('registers the first signature on a valid PIN', async () => {
     setUser(true)
     firmarCierreMock.mockResolvedValueOnce(makeQE({ cerradoPorId: 'user-jefe' }))

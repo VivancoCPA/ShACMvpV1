@@ -5,9 +5,10 @@ import { resetStore as resetIncidentsStore } from './handlers/incidents.handlers
 import { resetStore as resetLocalesStore } from './handlers/locales.handlers'
 import { resetStore as resetNotificationsStore } from './handlers/notifications.handlers'
 import { resetStore as resetAreasStore } from './handlers/areas.handlers'
+import { resetSesionStores } from './fixtures/sesion.fixtures'
 
 // Dominios cubiertos hoy: documents, quality-events, nonconformities, incidents,
-// locales (locales+zonas), notifications, areas. Al agregar un store mutable nuevo en
+// locales (locales+zonas), notifications, areas, sesion (política de sesión). Al agregar un store mutable nuevo en
 // otro dominio, exportar su propio `resetStore()` (ver documents.handlers.ts
 // como referencia) y registrarlo aquí — de lo contrario ese dominio no se
 // reiniciará desde /dev/reset-mocks. No incluye `authFixtures`/usuarios (fuera
@@ -20,4 +21,5 @@ export function resetAllMockStores(): void {
   resetLocalesStore()
   resetNotificationsStore()
   resetAreasStore()
+  resetSesionStores()
 }

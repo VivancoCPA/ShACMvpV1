@@ -11,6 +11,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  Timer,
 } from 'lucide-react'
 import { useUIStore } from '../../stores/uiStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -78,6 +79,12 @@ const NAV_ITEMS: NavItem[] = [
     key: 'empresas',
     path: '/admin/empresas',
     icon: Building2,
+    roles: ['SUPERADMIN'],
+  },
+  {
+    key: 'parametrosSesion',
+    path: '/admin/parametros-sesion',
+    icon: Timer,
     roles: ['SUPERADMIN'],
   },
 ]

@@ -5,6 +5,7 @@ import { AccionesRequeridasWidget } from '../components/AccionesRequeridasWidget
 import { KpiGridWidget } from '../components/KpiGridWidget'
 import { QEPorEstadoWidget } from '../components/QEPorEstadoWidget'
 import { ACsPorVencerWidget } from '../components/ACsPorVencerWidget'
+import { IncidentesSinQeVencidosWidget } from '../components/IncidentesSinQeVencidosWidget'
 import { TendenciaMensualWidget } from '../components/TendenciaMensualWidget'
 import { HeatmapIncidentesWidget } from '../components/HeatmapIncidentesWidget'
 import { ExportButton } from '../components/ExportButton'
@@ -40,6 +41,10 @@ export function JefeCalidadDashboard() {
           <KpiGridWidget kpis={data.data.kpis} />
           <QEPorEstadoWidget qePorEstado={data.data.qePorEstado} />
           <ACsPorVencerWidget accionesCorrectivasPorVencer={data.data.accionesCorrectivasPorVencer} />
+          <IncidentesSinQeVencidosWidget
+            incidentesSinQeVencidos={data.data.incidentesSinQeVencidos}
+            incidentesSinQeVencidosTotal={data.data.incidentesSinQeVencidosTotal}
+          />
           <TendenciaMensualWidget
             tendenciaMensualVolumen={data.data.tendenciaMensualVolumen}
             tendenciaMensualKpis={data.data.tendenciaMensualKpis}

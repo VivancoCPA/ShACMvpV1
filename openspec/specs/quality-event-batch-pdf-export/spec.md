@@ -9,7 +9,9 @@ Batch PDF export from `QEList`: exports each selected Quality Event through the 
 ## Requirements
 
 ### Requirement: Batch export produces one PDF per selected QE, packaged into a single zip
-When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selected QEs (1 ≤ N ≤ 50), the system SHALL, for each selected QE sequentially: invoke the `useExportQualityEventPdf`-equivalent call (`exportQualityEventPdf`, same endpoint used by the individual export, registering its own `EXPORTACION_PDF` audit trail entry — the backend responds `204 No Content`, with no `QualityEvent` in the body) together with `getQualityEvent(qeId)` (`GET /api/quality-events/:id`) to obtain the QE's current data, then call `buildQualityEventPdf` with the QE returned by `getQualityEvent` — never with the export call's result — and `meta = { exportadoPorNombre: <current user's full name>, generadoEn: new Date() }`, convert the resulting document to a `Blob` via `doc.output('blob')`, and add it to a `JSZip` instance under the filename `${qe.numero}.pdf`. Once all N QEs are processed, the system SHALL generate the zip via `zip.generateAsync({ type: 'blob' })` and trigger a single browser download named `quality-events-export-<YYYYMMDD-HHmm>.zip`, using the project's established Blob-download pattern (`<a download>` + `URL.createObjectURL`/`revokeObjectURL`).
+When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selected QEs (1 ≤ N ≤ 50), the system SHALL, for each selected QE sequentially: invoke the `useExportQualityEventPdf`-equivalent call (`exportQualityEventPdf`, same endpoint used by the individual export, registering its own `EXPORTACION_PDF` audit trail entry — the backend responds `204 No Content`, with no `QualityEvent` in the body) together with `getQualityEvent(qeId)` (`GET /api/quality-events/:id`) to obtain the QE's current data, then call `buildQualityEventPdf` with the QE returned by `getQualityEvent` — never with the export call's result — and `meta = { exportadoPorNombre: <current user's full name>, generadoEn: new Date(), reportadoPorNombre: <resolved>, causaRaizAprobadaPorNombre: <resolved, when applicable> }`, convert the resulting document to a `Blob` via `doc.output('blob')`, and add it to a `JSZip` instance under the filename `${qe.numero}.pdf`. Once all N QEs are processed, the system SHALL generate the zip via `zip.generateAsync({ type: 'blob' })` and trigger a single browser download named `quality-events-export-<YYYYMMDD-HHmm>.zip`, using the project's established Blob-download pattern (`<a download>` + `URL.createObjectURL`/`revokeObjectURL`).
+
+Before processing any QE, `QEList` SHALL resolve `reportadoPorNombre`/`causaRaizAprobadaPorNombre` for every selected QE with a single `useUserNames` call covering the union of all `reportadoPorId`/`causaRaizAprobadaPorId` across the N selected QEs (already loaded as part of the list data) — not one `useUserNames` call per QE — so the batch export issues at most one names request regardless of N.
 
 #### Scenario: Batch export of 3 QEs produces a zip with 3 correctly-named PDFs
 - **WHEN** a user selects `QE-2026-001`, `QE-2026-002`, and `QE-2026-003` in `QEList` and clicks "Exportar seleccionados"
@@ -27,7 +29,9 @@ When the user clicks "Exportar seleccionados" in `QEList`'s toolbar with N selec
 - **WHEN** the batch export processes a selected QE and `exportQualityEventPdf` resolves against the real backend (`204 No Content`)
 - **THEN** the PDF for that QE is still built and added to the zip, using the `QualityEvent` obtained from the separate `getQualityEvent` call — no `TypeError` on `undefined`
 
----
+#### Scenario: One names request resolves reportadoPorNombre for every QE in the batch
+- **WHEN** a batch export of 5 QEs with 5 distinct `reportadoPorId` values is triggered
+- **THEN** exactly one `GET /api/users/nombres` request is made covering all 5 ids, before any `buildQualityEventPdf` call, and each generated PDF's cabecera shows the correct reporter name for its own QE
 
 ### Requirement: Batch export is capped at 50 QEs (RN-QE-020)
 `QEList`'s "Exportar seleccionados" button SHALL be disabled whenever the current selection count exceeds 50, and SHALL display a message stating the 50-QE maximum. The button SHALL remain enabled for any selection count from 1 to 50 inclusive.

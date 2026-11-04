@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +45,19 @@ export function ProfilePage() {
     reset,
     formState: { errors },
   } = useForm<ChangePasswordInput>({ resolver: zodResolver(changePasswordSchema) })
+
+  // pin-olvidado-pista (design.md D3): la pista "¿Olvidaste tu PIN?" de los modales de firma
+  // enlaza a /perfil#pin-firma — llevar al usuario directo a la sección y al campo que debe llenar.
+  const { hash } = useLocation()
+  const pinSectionRef = useRef<HTMLElement>(null)
+  const hasUser = user !== null
+  useEffect(() => {
+    if (hash !== '#pin-firma' || !hasUser) return
+    const section = pinSectionRef.current
+    if (!section) return
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    section.querySelector<HTMLInputElement>('#pinPassword')?.focus({ preventScroll: true })
+  }, [hash, hasUser])
 
   if (!user) return null
 
@@ -245,7 +258,11 @@ export function ProfilePage() {
           </form>
         </section>
 
-        <section className="rounded-lg bg-surface-card p-6 dark:bg-surface-dark-elevated">
+        <section
+          id="pin-firma"
+          ref={pinSectionRef}
+          className="scroll-mt-6 rounded-lg bg-surface-card p-6 dark:bg-surface-dark-elevated"
+        >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">
               {t('profile.pinSection.title')}
@@ -260,6 +277,12 @@ export function ProfilePage() {
               {user.tienePinFirma ? t('profile.pinSection.configured') : t('profile.pinSection.notConfigured')}
             </span>
           </div>
+
+          {user.tienePinFirma && (
+            <p className="-mt-2 mb-4 text-sm text-muted dark:text-on-dark-soft">
+              {t('profile.pinSection.forgotHint')}
+            </p>
+          )}
 
           <form onSubmit={handleSubmitPin(onSubmitPin)} noValidate className="space-y-4">
             <div>

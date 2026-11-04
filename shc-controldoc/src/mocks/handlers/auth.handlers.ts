@@ -3,6 +3,13 @@ import { authFixtures, getUsersStore, MOCK_RESET_TOKEN, type MockUser } from '..
 import { getEmpresasActivasForUsuario, getRolEfectivo } from '../fixtures/empresas.fixtures'
 import type { Empresa } from '../../features/empresas/types/empresa.types'
 import type { User } from '../../types/auth.types'
+import {
+  cerrarSesionMock,
+  iniciarSesionMock,
+  isRefreshTokenRevocadoMock,
+  rotarSesionMock,
+  verificarSesionMock,
+} from './sesion.handlers'
 
 const LATENCY = 400
 // MSW's Service Worker can't set a real httpOnly cookie from a synthetic
@@ -17,8 +24,8 @@ function ok<T>(data: T, status = 200, headers?: HeadersInit) {
   return HttpResponse.json({ success: true, data }, { status, headers })
 }
 
-function err(message: string, status: number) {
-  return HttpResponse.json({ success: false, message }, { status })
+function err(message: string, status: number, errorCode?: string) {
+  return HttpResponse.json({ success: false, message, ...(errorCode ? { errorCode } : {}) }, { status })
 }
 
 function issueRefreshToken(userId: string): string {
@@ -125,32 +132,49 @@ export const authHandlers = [
     // seguiría devolviendo el valor stale de antes de este login.
     user.lastLogin = new Date().toISOString()
     resolved.user.lastLogin = user.lastLogin
+    const mockRefreshToken = issueRefreshToken(user.id)
+    // sesion-timeout-inactividad: nace la sesión original (SesionIniciadaEn/UltimaActividadEn).
+    iniciarSesionMock(mockRefreshToken, user.id)
     return ok({
       accessToken: `mock-access-token-${user.id}-${Date.now()}`,
-      mockRefreshToken: issueRefreshToken(user.id),
+      mockRefreshToken,
       user: resolved.user,
       empresaActivaId: resolved.empresaActivaId,
       empresasDisponibles: resolved.empresasDisponibles,
     })
   }),
 
-  http.post('/api/auth/logout', async () => {
+  http.post('/api/auth/logout', async ({ request }) => {
     await delay(LATENCY)
+    cerrarSesionMock(request.headers.get(REFRESH_HEADER))
     return ok(null)
   }),
 
   http.post('/api/auth/refresh', async ({ request }) => {
     await delay(LATENCY)
+    const refreshToken = request.headers.get(REFRESH_HEADER)
     const userId = readRefreshUserId(request)
     const user = userId ? authFixtures.find((u) => u.id === userId) : undefined
-    if (!user) {
+    if (!user || !refreshToken || isRefreshTokenRevocadoMock(refreshToken)) {
       return err('Sesión expirada', 401)
     }
 
+    // sesion-timeout-inactividad: misma política que SesionPoliticaEnforcer — sesión máxima e
+    // inactividad, con la empresa activa (o global para SUPERADMIN); la rotación hereda la sesión.
+    const rotar = (empresaId: string | null) => {
+      const verificacion = verificarSesionMock(refreshToken, empresaId)
+      if (!verificacion.ok) return { error: err(verificacion.message, 401, verificacion.errorCode) }
+      const nuevo = issueRefreshToken(user.id)
+      rotarSesionMock(refreshToken, nuevo, user.id)
+      return { nuevo }
+    }
+
     if (user.esSuperadminMultiempresa) {
+      const rotacion = rotar(null)
+      if ('error' in rotacion) return rotacion.error
       return ok({
         accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
-        mockRefreshToken: issueRefreshToken(user.id),
+        mockRefreshToken: rotacion.nuevo,
         user: { ...toUserDto(user), rol: 'SUPERADMIN' },
         empresaActivaId: null,
         empresasDisponibles: [],
@@ -171,9 +195,12 @@ export const authHandlers = [
       return err('Sesión expirada', 401)
     }
 
+    const rotacion = rotar(empresaActivaId)
+    if ('error' in rotacion) return rotacion.error
+
     return ok({
       accessToken: `mock-access-token-refreshed-${user.id}-${Date.now()}`,
-      mockRefreshToken: issueRefreshToken(user.id),
+      mockRefreshToken: rotacion.nuevo,
       user: { ...toUserDto(user), rol },
       empresaActivaId,
       empresasDisponibles,
@@ -255,7 +282,7 @@ export const authHandlers = [
     }
     const body = (await request.json()) as { password?: string; pin?: string }
     if (body.password !== user.password) {
-      return err('Contraseña actual incorrecta', 401)
+      return err('Contraseña actual incorrecta', 401, 'CONTRASENA_INCORRECTA')
     }
     if (!body.pin || !/^\d{4}$/.test(body.pin)) {
       return err('El PIN debe tener exactamente 4 dígitos numéricos', 400)

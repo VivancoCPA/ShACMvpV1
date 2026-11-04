@@ -47,3 +47,16 @@ export function persistActiveEmpresaId(id: string | null): void {
 export function readActiveEmpresaId(): string | null {
   return localStorage.getItem(ACTIVE_EMPRESA_ID_KEY)
 }
+
+// Headers mock-only que /api/auth/refresh ya enviaba a mano (ver authStore.ts), compartidos con
+// los otros endpoints que identifican la sesión por la "cookie" de refresh: /api/auth/actividad y
+// /api/auth/politica-sesion (sesion-timeout-inactividad). Vacío contra el backend real — ahí
+// viaja la cookie httpOnly de verdad (Path=/api/auth).
+export function mockSessionHeaders(): Record<string, string> {
+  const refreshToken = readMockRefreshToken()
+  const activeEmpresaId = readActiveEmpresaId()
+  return {
+    ...(refreshToken ? { 'X-Mock-Refresh-Token': refreshToken } : {}),
+    ...(activeEmpresaId ? { 'X-Mock-Empresa-Activa': activeEmpresaId } : {}),
+  }
+}

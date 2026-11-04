@@ -555,7 +555,7 @@ export function IncidentList() {
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1">
                         <IncidentStatusBadge status={inc.estado} />
-                        <IncidentSinQEBadge nivel={getIncidentQEAlertLevel(inc)} />
+                        <IncidentSinQEBadge nivel={getIncidentQEAlertLevel(inc)} incidente={inc} />
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted dark:text-on-dark-soft">

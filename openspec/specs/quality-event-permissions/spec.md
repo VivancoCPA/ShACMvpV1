@@ -302,3 +302,14 @@ The system SHALL export a pure function `puedeExportarPDF(rol: UserRole): boolea
 #### Scenario: Result does not depend on estado
 - **WHEN** a developer calls `puedeExportarPDF('JEFE_CALIDAD_SYST')` for a QE in `'ABIERTO'` and separately for a QE in `'VERIFICADO'`
 - **THEN** both calls return `true`, since `estado` is not a parameter of this function
+
+### Requirement: esResponsable se deriva del responsable de investigación del QE
+Todo consumidor de `getQualityEventPermissions` que dependa del responsable de la investigación SHALL calcular `esResponsable` como `qe.responsableInvestigacionId === usuario.id` (helper `esResponsableInvestigacion(qe, usuario)`), nunca con un literal `false`. Los consumidores que usan otro concepto de "responsable" (p. ej. `QEVerificacionSection` con `auditorAsignadoId`) SHALL conservarlo.
+
+#### Scenario: SUPERVISOR responsable
+- **WHEN** un SUPERVISOR es el `responsableInvestigacionId` de un QE en ABIERTO
+- **THEN** `getQualityEventPermissions` devuelve `puedeEditarCabecera = true` para él
+
+#### Scenario: SUPERVISOR no responsable
+- **WHEN** el SUPERVISOR no es el responsable
+- **THEN** `puedeEditarCabecera = false`, y `puedeAvanzarEstado` sigue siendo `true` en ABIERTO

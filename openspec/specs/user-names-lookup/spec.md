@@ -45,3 +45,48 @@ Unlike `documentos-candidatos-asignacion` (which requires an active user with an
 #### Scenario: Resolves the name of a user with an inactive company assignment
 - **WHEN** `ids` includes a user id whose `usuarios_empresa` row for the caller's active empresa has `estado` other than `'ACTIVO'`
 - **THEN** that user's name is still resolved and included
+
+### Requirement: Request validation — id count limit and malformed ids
+`GET /api/users/nombres` SHALL respond `400` when the `ids` query parameter contains more than 100 ids, and SHALL respond `400` when any single id is not a well-formed GUID. Both checks SHALL happen before any database query.
+
+#### Scenario: Rejects a request exceeding the id limit
+- **WHEN** `ids` contains 101 distinct ids
+- **THEN** the response is `400` with a clear validation message, and no database query for user names is executed
+
+#### Scenario: Rejects a malformed id
+- **WHEN** `ids` contains a value that is not a valid GUID (e.g. `"not-a-guid"`)
+- **THEN** the response is `400`
+
+### Requirement: useUserNames shared hook resolves a set of ids in one request
+The system SHALL export `useUserNames(ids: (string | null | undefined)[])` from `src/features/users/hooks/useUserNames.ts` (never from `src/mocks/`), built on TanStack Query. It SHALL filter out `null`/`undefined` entries, deduplicate the remaining ids, and sort them before building the query key, so that two calls requesting the same set of ids in a different order share the same cached request. It SHALL return a `getName(id?: string | null): string` resolver and an `isLoading` boolean. While the underlying query is loading, `getName` SHALL return a short placeholder (not the raw id). For an id the backend did not resolve (omitted from the response — different empresa, inexistent, or not yet loaded for another reason), `getName` SHALL return a generic i18n string (e.g. `t('common:userNames.noDisponible')`) — never the raw GUID. The hook SHALL use a generous `staleTime` (names change rarely).
+
+#### Scenario: Deduplicates and orders ids for a stable query key
+- **WHEN** `useUserNames(['id-b', 'id-a', 'id-a'])` and `useUserNames(['id-a', 'id-b'])` are both called
+- **THEN** both calls produce the same query key and share one underlying request
+
+#### Scenario: getName returns a placeholder while loading
+- **WHEN** the underlying query is still `isLoading`
+- **THEN** `getName(anyId)` returns a short placeholder, not the raw id and not `undefined`
+
+#### Scenario: getName returns a generic fallback for an unresolved id
+- **WHEN** the query has resolved and the requested id is not present in the response (e.g. it belongs to another empresa)
+- **THEN** `getName(thatId)` returns the generic "Usuario no disponible" i18n string, never the raw GUID
+
+#### Scenario: getName returns the resolved name once loaded
+- **WHEN** the query has resolved and includes `{ id: 'user-x', nombreCompleto: 'Ana Pérez' }`
+- **THEN** `getName('user-x')` returns `'Ana Pérez'`
+
+#### Scenario: Null and undefined ids are filtered without affecting the query
+- **WHEN** `useUserNames([undefined, 'user-x', null])` is called
+- **THEN** the underlying request only asks for `['user-x']`, and `getName(undefined)` / `getName(null)` return the generic fallback without throwing
+
+### Requirement: MSW handler mirrors the real endpoint's inclusion rule
+`src/mocks/handlers/users.handlers.ts` SHALL include a handler for `GET /api/users/nombres` that: parses the comma-separated `ids` parameter, returns `400` for more than 100 ids or any malformed id, and resolves names from `getUsersStore()` filtered to users with at least one `usuarios_empresa` row (active or inactive) for the caller's active empresa — never filtering by the mock user's `activo` flag or the assignment's `estado`, consistent with the real backend's inclusion rule.
+
+#### Scenario: Mock handler resolves an inactive mock user's name
+- **WHEN** MSW is active and `ids` includes a mock user with `activo: false` who has a company assignment (active or inactive) in the active empresa
+- **THEN** the mock response includes that user's `nombreCompleto`
+
+#### Scenario: Mock handler omits a mock user from another empresa
+- **WHEN** MSW is active and `ids` includes a user id assigned only to a different empresa than the active one
+- **THEN** the mock response omits that id, same as the real backend

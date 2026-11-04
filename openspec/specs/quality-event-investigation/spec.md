@@ -5,23 +5,29 @@
 `QEInvestigationSection` — root-cause analysis workspace within the Quality Event detail page. Supports 5 Porqués and Ishikawa tools with confirm-before-clear tool switching, causa raíz approval with PIN confirmation, and a disabled AI-assist placeholder.
 
 ---
-
 ## Requirements
-
 ### Requirement: QEInvestigationSection editability is gated by role and estado
-The system SHALL render a `QEInvestigationSection` component at `src/features/quality-events/components/QEInvestigationSection.tsx`. Its fields (tool toggle, 5 Porqués/Ishikawa inputs, causa raíz definitiva textarea) SHALL be editable only when the current user's role is `JEFE_CALIDAD_SYST` AND `qe.estado` is `EN_INVESTIGACION` or `ANALISIS_COMPLETADO`. For any other role or state, all fields render read-only.
+The system SHALL render a `QEInvestigationSection` component at `src/features/quality-events/components/QEInvestigationSection.tsx`. Its analysis fields (tool toggle, 5 Porqués/Ishikawa inputs) SHALL be editable only when `qe.deletedAt` is empty, `qe.estado` is `EN_INVESTIGACION` or `ANALISIS_COMPLETADO`, AND the current user is either `JEFE_CALIDAD_SYST` or the QE's assigned investigator (`qe.responsableInvestigacionId === user.id`). The causa raíz definitiva textarea SHALL follow the same rule and additionally require `qe.causaRaizFirmadaEn` to be empty. For any other user, role or state, all fields render read-only.
 
 #### Scenario: JEFE_CALIDAD_SYST sees editable fields in EN_INVESTIGACION
 - **WHEN** `QEInvestigationSection` renders for a `QualityEvent` in `EN_INVESTIGACION` with role `JEFE_CALIDAD_SYST`
 - **THEN** the tool toggle, analysis inputs, and causa raíz textarea are editable
 
-#### Scenario: SUPERVISOR sees read-only fields
-- **WHEN** `QEInvestigationSection` renders for any `QualityEvent` with role `SUPERVISOR`
+#### Scenario: Assigned SUPERVISOR sees editable fields
+- **WHEN** `QEInvestigationSection` renders for a `QualityEvent` in `EN_INVESTIGACION` whose `responsableInvestigacionId` is the current `SUPERVISOR`
+- **THEN** the tool toggle, analysis inputs, and causa raíz textarea are editable
+
+#### Scenario: Non-assigned SUPERVISOR sees read-only fields
+- **WHEN** `QEInvestigationSection` renders for a `QualityEvent` with role `SUPERVISOR` and a `responsableInvestigacionId` other than the current user
 - **THEN** all investigation fields render as read-only text, with no toggle or textareas
 
 #### Scenario: JEFE_CALIDAD_SYST sees read-only fields once EN_EJECUCION
 - **WHEN** `QEInvestigationSection` renders for a `QualityEvent` in `EN_EJECUCION` with role `JEFE_CALIDAD_SYST`
 - **THEN** all investigation fields render as read-only
+
+#### Scenario: Causa raíz read-only once firmed
+- **WHEN** `qe.causaRaizFirmadaEn` is set and the QE is still in `ANALISIS_COMPLETADO`
+- **THEN** the causa raíz renders read-only while the analysis inputs remain editable for the JCA or the assigned investigator
 
 ---
 
@@ -82,22 +88,49 @@ When `metodoAnalisis === 'ISHIKAWA'`, `QEInvestigationSection` SHALL render six 
 ---
 
 ### Requirement: Guardar investigación persists investigation fields
-`QEInvestigationSection` SHALL render a "Guardar investigación" button, visible to `JEFE_CALIDAD_SYST` while `qe.estado` is `EN_INVESTIGACION` or `ANALISIS_COMPLETADO`. Clicking it SHALL call `useUpdateQualityEvent().mutate({ id: qe.id, data })` with `data` containing `metodoAnalisis`, `cincoPorques` or `ishikawa` (whichever is active), and `causaRaizDefinitiva`, sent via `PATCH /api/quality-events/:id`.
+`QEInvestigationSection` SHALL render a "Guardar investigación" button whenever the analysis fields are editable (per the editability requirement). Clicking it SHALL call `useUpdateQualityEvent().mutate({ id: qe.id, data })` via `PATCH /api/quality-events/:id`. `data` SHALL contain:
+- `metodoAnalisis`;
+- only the active tool's list (`cincoPorques` or `ishikawa`);
+- `causaRaizDefinitiva`, but only while the causa raíz is not firmed;
+- `origenIA` (see `quality-event-asistente-ia`), when a value sent in that call was filled from an AI suggestion.
+
+On success it SHALL show `toast.success(t('qualityEvents:detail.investigation.guardado'))`. On error it SHALL show the server's translated `errorCode` (`qualityEvents:errors.<errorCode>`) when one exists, otherwise the server `message`.
 
 #### Scenario: Guardar investigación calls the update mutation
 - **WHEN** `JEFE_CALIDAD_SYST` edits the causa raíz textarea and clicks "Guardar investigación"
 - **THEN** `useUpdateQualityEvent().mutate` is called with `{ id: qe.id, data: { ...} }` including the updated `causaRaizDefinitiva`
 
+#### Scenario: Only the active tool is sent
+- **WHEN** the active tool is `ISHIKAWA` and the user saves
+- **THEN** `data` includes `ishikawa` and does not include `cincoPorques`
+
+#### Scenario: AI origin is sent with the saved value
+- **WHEN** the user applied the AI causa raíz suggestion without editing it and saves
+- **THEN** `data.origenIA` equals `{ causaRaiz: 'IA' }`
+
+#### Scenario: Success toast
+- **WHEN** the save succeeds
+- **THEN** the toast "Análisis guardado." is shown
+
+#### Scenario: Saved analysis survives a reload
+- **WHEN** the user saves 5 Porqués answers and the detail is refetched
+- **THEN** the textareas show the saved answers
+
 #### Scenario: Button hidden outside allowed states
 - **WHEN** `qe.estado` is `EN_EJECUCION`
 - **THEN** the "Guardar investigación" button is not rendered
 
----
-
 ### Requirement: Aprobar causa raíz requires PIN confirmation
-`QEInvestigationSection` SHALL render an "Aprobar causa raíz" button visible only to `JEFE_CALIDAD_SYST` when `causaRaizDefinitiva` is non-empty and `causaRaizFirmadaEn` is empty. Clicking it SHALL open a modal prompting for a PIN that validates only the PIN's format client-side (exactly 4 numeric digits, `/^\d{4}$/`) — malformed input shows an inline error and does not submit. The system SHALL NOT compare the entered PIN against any hardcoded or mock value. On a well-formed PIN, the system SHALL call `useUpdateQualityEvent().mutate({ id: qe.id, data: { causaRaizDefinitiva, causaRaizFirmadaEn: <ISO timestamp>, causaRaizAprobadaPorId: <current user id> } })`.
+`QEInvestigationSection` SHALL render an "Aprobar causa raíz" button only to `JEFE_CALIDAD_SYST`, while the analysis is editable, `causaRaizDefinitiva` is non-empty and `causaRaizFirmadaEn` is empty. A user who can edit but is not JCA SHALL instead see `t('qualityEvents:detail.investigation.pendienteAprobacion')` while the causa raíz is unfirmed.
 
-This confirmation SHALL NOT be treated as a backend-verified signature unless a dedicated signing endpoint for causa raíz approval is confirmed to exist on the real backend (see `design.md` Decision D3) — as of this change, `causaRaizAprobadaPorId`/`causaRaizFirmadaEn` are set client-side and persisted through the same role- and JWT-protected `PATCH /api/quality-events/:id` used for other QE field edits, with the PIN serving as a UX confirmation step rather than a value verified by the backend.
+Clicking the button SHALL first validate the 100–500 character length client-side. If the form has unsaved analysis or causa raíz changes, it SHALL save them through `useUpdateQualityEvent` and open the PIN modal only after that save succeeds, since the server approves what it has stored. The PIN modal SHALL validate only the format client-side (`/^\d{4}$/`). On a well-formed PIN, it SHALL call `useAprobarCausaRaiz().mutate({ id: qe.id, pin })`, which sends only `{ pin }` to `POST /api/quality-events/:id/aprobar-causa-raiz`, never a timestamp or approver id.
+
+The modal SHALL handle errors in place:
+- `errorCode = PIN_INCORRECTO` keeps the modal open with `t('qualityEvents:detail.investigation.errors.PIN_INCORRECTO')` inline;
+- `PIN_NO_CONFIGURADO` shows the notice with a link to `/perfil#pin-firma`, the same pattern as the document signature modal and `QECierreSection`;
+- other errors close the modal and show a toast with the translated `errorCode` or the message.
+
+The modal SHALL always render a "¿Olvidaste tu PIN?" link to `/perfil#pin-firma`. On success it SHALL close the modal and invalidate the QE detail, the list and the audit trail.
 
 #### Scenario: Button hidden when causaRaizDefinitiva is empty
 - **WHEN** `causaRaizDefinitiva` is an empty string
@@ -107,32 +140,44 @@ This confirmation SHALL NOT be treated as a backend-verified signature unless a 
 - **WHEN** `causaRaizFirmadaEn` is already set
 - **THEN** the "Aprobar causa raíz" button is not rendered
 
+#### Scenario: Assigned SUPERVISOR does not see Aprobar
+- **WHEN** the assigned `SUPERVISOR` views an editable QE with a non-empty causa raíz
+- **THEN** the "Aprobar causa raíz" button is not rendered and "Pendiente de aprobación del Jefe de Calidad." is shown
+
 #### Scenario: Malformed PIN blocks submission client-side
 - **WHEN** the user enters a value that is not exactly 4 numeric digits (e.g. `12`, `12a4`, empty) and confirms
-- **THEN** an inline format error is shown and `useUpdateQualityEvent().mutate` is not called
+- **THEN** an inline format error is shown and no request is sent
 
-#### Scenario: Any well-formed PIN confirms and stamps approval
+#### Scenario: Well-formed PIN calls the approval endpoint
 - **WHEN** the user enters a 4-digit PIN (e.g. `9081`) and confirms
-- **THEN** `useUpdateQualityEvent().mutate` is called with `causaRaizFirmadaEn` set to a current ISO 8601 timestamp and `causaRaizAprobadaPorId` set to the current user's id, regardless of the specific digits entered
+- **THEN** `POST /api/quality-events/:id/aprobar-causa-raiz` is called with body `{ pin: '9081' }` and nothing else
+
+#### Scenario: Incorrect PIN shown inside the modal
+- **WHEN** the endpoint responds `errorCode = PIN_INCORRECTO`
+- **THEN** the modal stays open and shows "PIN incorrecto."
+
+#### Scenario: PIN not configured
+- **WHEN** the endpoint responds `errorCode = PIN_NO_CONFIGURADO`
+- **THEN** the modal shows the notice with a link to `/perfil#pin-firma`
+
+#### Scenario: Unsaved changes are saved before the PIN modal
+- **WHEN** the JCA edited the causa raíz without saving and clicks "Aprobar causa raíz"
+- **THEN** the PATCH is sent first and the PIN modal opens only after it succeeds
 
 ---
 
 ### Requirement: Approved causa raíz renders read-only with an approval seal
-Once `causaRaizFirmadaEn` is set, the causa raíz block SHALL render read-only with a seal reading "Aprobado por [nombre] el [fecha]", using `causaRaizAprobadaPorId` resolved to a display name via `resolveUserDisplayName` (from `src/mocks/fixtures/userIdentity.fixtures.ts`) and `causaRaizFirmadaEn` formatted via `Intl.DateTimeFormat`. The name SHALL resolve correctly for any real, non-legacy `authFixtures` account, not only ids that happened to also exist in the removed `src/mocks/fixtures/users.fixtures.ts` catalog.
+Once `causaRaizFirmadaEn` is set, the causa raíz block SHALL render read-only with a seal reading "Aprobado por [nombre] el [fecha]", using `causaRaizAprobadaPorId` resolved to a display name via the `useUserNames` hook (`user-names-lookup`, calling the real `GET /api/users/nombres` endpoint) and `causaRaizFirmadaEn` formatted via `Intl.DateTimeFormat`. The name SHALL resolve correctly for any real user known to the backend, including a deactivated one, and SHALL show the generic "Usuario no disponible" text (never the raw id) if the backend does not resolve it.
 
 #### Scenario: Approval seal shown after firming
 - **WHEN** `causaRaizFirmadaEn` is set and `causaRaizAprobadaPorId` resolves to a known user
 - **THEN** the causa raíz block is read-only and shows "Aprobado por [nombre] el [fecha]"
 
-#### Scenario: Approval seal resolves for a real, non-legacy account
-- **WHEN** `causaRaizFirmadaEn` is set and `causaRaizAprobadaPorId: 'user-jefecalidad-001'`, an id present in `authFixtures` but absent from the removed `users.fixtures.ts` catalog
+#### Scenario: Approval seal resolves a real user name from the backend
+- **WHEN** `causaRaizFirmadaEn` is set and `causaRaizAprobadaPorId` is a real user id resolved by `GET /api/users/nombres`
 - **THEN** the seal shows the resolved display name, not a blank value and not the raw id
 
----
+#### Scenario: Approval seal shows the generic fallback when unresolved
+- **WHEN** `causaRaizAprobadaPorId` does not resolve via `GET /api/users/nombres`
+- **THEN** the seal shows the generic "Usuario no disponible" text, not the raw id
 
-### Requirement: Asistir con IA placeholder button
-`QEInvestigationSection` SHALL render an "Asistir con IA" button that is always disabled, with a tooltip reading "Próximamente disponible". No AI logic SHALL be implemented behind this button.
-
-#### Scenario: IA button always disabled
-- **WHEN** `QEInvestigationSection` renders for any role or state
-- **THEN** the "Asistir con IA" button is present and disabled, with the "Próximamente disponible" tooltip

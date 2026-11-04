@@ -344,7 +344,7 @@ The system SHALL render `QualityEventForm` at the route `/quality-events/:id/edi
 ---
 
 ### Requirement: QualityEventForm edit mode locks protected fields as read-only text
-In edit mode, `numero`, `origen`, `tipo`, `fechaHoraReporte` (labeled "Fecha de reporte"), and the reporter's display name (`reportadoPorId` resolved to a name) SHALL render as read-only text, never as an editable input, `<select>`, or a `disabled` form control that still appears in the submitted payload's shape. The reporter's display name SHALL be resolved via `resolveUserDisplayName` (from `src/mocks/fixtures/userIdentity.fixtures.ts`), and SHALL resolve correctly for any real, non-legacy `authFixtures` account, not only ids that happened to also exist in the removed `src/mocks/fixtures/users.fixtures.ts` catalog.
+In edit mode, `numero`, `origen`, `tipo`, `fechaHoraReporte` (labeled "Fecha de reporte"), and the reporter's display name (`reportadoPorId` resolved to a name) SHALL render as read-only text, never as an editable input, `<select>`, or a `disabled` form control that still appears in the submitted payload's shape. The reporter's display name SHALL be resolved via the `useUserNames` hook (`user-names-lookup`, calling the real `GET /api/users/nombres` endpoint), not via `resolveUserDisplayName` from `src/mocks/fixtures/userIdentity.fixtures.ts`. It SHALL resolve correctly for any real user known to the backend, including a deactivated one, and SHALL show the generic "Usuario no disponible" text (never the raw id) if the backend does not resolve it.
 
 #### Scenario: numero renders as read-only text in edit mode
 - **WHEN** `QualityEventForm` renders in edit mode for a QE with `numero: 'QE-2026-010'`
@@ -354,11 +354,13 @@ In edit mode, `numero`, `origen`, `tipo`, `fechaHoraReporte` (labeled "Fecha de 
 - **WHEN** `QualityEventForm` renders in edit mode
 - **THEN** `origen`, `tipo`, `fechaHoraReporte`, and the reporter's name are all displayed as plain text with no editable controls
 
-#### Scenario: Reportado por resolves for a real, non-legacy account in edit mode
-- **WHEN** `QualityEventForm` renders in edit mode for a QE with `reportadoPorId: 'user-supervisor-002'`, an id present in `authFixtures` but absent from the removed `users.fixtures.ts` catalog
+#### Scenario: Reportado por resolves a real user name from the backend in edit mode
+- **WHEN** `QualityEventForm` renders in edit mode for a QE with `reportadoPorId` set to a real user id resolved by `GET /api/users/nombres`
 - **THEN** the read-only "Reportado por" text shows the resolved display name, not the raw id
 
----
+#### Scenario: Reportado por shows the generic fallback when unresolved in edit mode
+- **WHEN** `reportadoPorId` does not resolve via `GET /api/users/nombres`
+- **THEN** the read-only "Reportado por" text shows the generic "Usuario no disponible" string, not the raw id
 
 ### Requirement: QualityEventForm edit mode unlocks the RN-QE-014 field subset plus origin-specific fields
 In edit mode, the system SHALL render editable controls for `descripcion`, `areaAfectada`, `turno`, `fechaHoraEvento`, and `mineralInvolucrado`, plus the origin-specific field(s) matching the QE's existing `origen` (`incidenteId` for O1, `ncId` for O2, `hallazgoCodigo` and `normativaVinculada` for O3, `reporteExternoRef` for O4) — the same conditional-section components used in create mode, but never allowing `origen` itself to change. The `severidad` field SHALL remain absent from edit mode unless `resolveQEEditAccess(qe, usuario).severidad` is also `true` (the double-role case), in which case a `severidad` select SHALL additionally render.
@@ -391,3 +393,53 @@ On a successful edit submission, the system SHALL append one `QEAuditTrailEntry`
 #### Scenario: Multiple changed fields produce one entry each
 - **WHEN** a user edits both `descripcion` and `turno` and submits
 - **THEN** two `QEAuditTrailEntry` records with `accion: 'QE_REPORTE_INICIAL_EDITADO'` are appended, one per field
+
+### Requirement: Crear un QE O1 no dispara un segundo request de vinculación
+Al crear con éxito un QE con `origen: 'O1_INCIDENTE_CAMPO'`, `QualityEventForm` SHALL navegar directo a `/quality-events/{id}`, sin llamar a `PATCH /api/incidents/:id` (la vinculación es atómica en el backend), y SHALL invalidar `INCIDENT_QUERY_KEYS.all` (que cubre el detalle y la lista). El hook `useVincularQE` de incidentes SHALL eliminarse si no le queda ningún consumidor.
+
+#### Scenario: Sin segundo PATCH
+- **WHEN** el usuario crea un QE O1 desde "Crear QE" de un incidente
+- **THEN** solo se emite `POST /api/quality-events`, ningún `PATCH /api/incidents/:id`, y la caché de incidentes queda invalidada
+
+### Requirement: Mutaciones de QE que afectan al incidente invalidan su caché
+Toda mutación de QE que pueda cambiar el estado o el vínculo del incidente SHALL invalidar `INCIDENT_QUERY_KEYS.all` cuando el QE tiene `incidenteId`. Esto incluye transicionar, cambiar el estado de una AC, firmar el cierre, verificar la eficacia, forzar el vencimiento, eliminar y reactivar.
+
+#### Scenario: Eliminar el QE refresca el incidente
+- **WHEN** se elimina un QE con `incidenteId`
+- **THEN** la caché de incidentes se invalida y el detalle del incidente vuelve a mostrar "Crear QE"
+
+### Requirement: QualityEventForm precarga los datos del incidente de origen
+En modo creación, cuando `origen === 'O1_INCIDENTE_CAMPO'` y hay un `incidenteId` (del query param o elegido en el `SearchableSelect`), el formulario SHALL obtener el incidente con `useIncident(incidenteId)` y SHALL completar con `setValue`: `descripcion` ← `incidente.descripcion`; `fechaHoraEvento` ← `incidente.fechaEvento` convertido a hora local `yyyy-MM-ddTHH:mm` con `toDatetimeLocalValue` (nunca `.slice(0, 16)` sobre el ISO UTC); `turno` ← `incidente.turno`; `areaId` ← `incidente.areaId`; `severidad` ← `incidente.severidad`; `tipo` ← `'SST'`. Todos los campos SHALL seguir editables. Mientras haya datos precargados, SHALL mostrarse bajo la descripción `t('qualityEvents:form.precargaIncidente', { numero })`.
+
+#### Scenario: Precarga desde la URL
+- **WHEN** se navega a `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=…`
+- **THEN** descripción, fecha/hora (en hora local, sin corrimiento), turno, área, severidad y tipo SST quedan precargados y editables, y se muestra la nota de precarga
+
+#### Scenario: Precarga al elegir el incidente en el combo
+- **WHEN** el usuario elige un incidente en el combo sin haber modificado los campos precargables
+- **THEN** los campos se completan directamente con los datos del incidente elegido
+
+### Requirement: QualityEventForm pide confirmación antes de reemplazar datos modificados
+Al cambiar el incidente seleccionado, si alguno de los campos precargables (`descripcion`, `fechaHoraEvento`, `turno`, `areaId`, `severidad`, `tipo`) está en `formState.dirtyFields`, el formulario SHALL pedir confirmación con `t('qualityEvents:form.confirmReemplazoIncidente', { numero })` mediante un diálogo propio (nunca `window.confirm`). Si el usuario confirma, SHALL sobrescribir los campos; si cancela, SHALL conservar sus valores y mantener el nuevo incidente seleccionado.
+
+#### Scenario: Cambio con datos modificados
+- **WHEN** el usuario editó la descripción y luego elige otro incidente
+- **THEN** se muestra el diálogo de confirmación y los campos solo se reemplazan si confirma
+
+### Requirement: QualityEventForm permite elegir el responsable de investigación al crear (solo JCA)
+En modo creación, el formulario SHALL mostrar un `SearchableSelect` opcional "Responsable de investigación" (`t('qualityEvents:form.fields.responsableInvestigacion')`) con los candidatos de `useCandidatosResponsableQE`, mostrando nombre y rol, solo cuando el usuario autenticado es `JEFE_CALIDAD_SYST`. El payload SHALL incluir `responsableInvestigacionId` solo si se eligió.
+
+#### Scenario: JCA ve el campo
+- **WHEN** un JCA abre el formulario de alta
+- **THEN** ve el campo "Responsable de investigación" opcional
+
+#### Scenario: Otro rol no ve el campo
+- **WHEN** un SUPERVISOR abre el formulario de alta
+- **THEN** el campo no se renderiza
+
+### Requirement: QualityEventForm muestra la fecha del evento en hora local en edición
+En modo edición, `fechaHoraEvento` SHALL inicializarse con `toDatetimeLocalValue(qe.fechaHoraEvento)` y la detección de cambios al enviar SHALL comparar contra ese mismo valor convertido, de modo que abrir y guardar sin tocar la fecha no genere un cambio.
+
+#### Scenario: Edición sin corrimiento
+- **WHEN** se edita un QE cuyo `fechaHoraEvento` es `2026-10-20T15:30:00Z` en un navegador UTC-5
+- **THEN** el input muestra `2026-10-20T10:30`, igual que el detalle

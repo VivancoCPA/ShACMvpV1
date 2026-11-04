@@ -48,6 +48,9 @@ export interface JefeCalidadDashboardData {
   accionesCorrectivasPorVencer: AccionCorrectivaResumen[]
   tendenciaMensualVolumen: TendenciaMensualVolumenEntry[]
   tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', TendenciaMensualKpiEntry[]>
+  // RN-INC-006 (incidentes-qe-estado-alertas D8): máximo 10, del más vencido al menos.
+  incidentesSinQeVencidos: IncidenteResumen[]
+  incidentesSinQeVencidosTotal: number
 }
 
 export interface AltaDireccionDashboardData {

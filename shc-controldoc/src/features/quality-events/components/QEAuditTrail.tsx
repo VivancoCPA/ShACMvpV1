@@ -16,6 +16,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   FileDown,
+  UserCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQEAuditTrail } from '../hooks/useQEAuditTrail'
@@ -37,7 +38,13 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   AC_AJUSTE_PLAZO_APROBADO: ThumbsUp,
   AC_AJUSTE_PLAZO_RECHAZADO: ThumbsDown,
   EXPORTACION_PDF: FileDown,
+  RESPONSABLE_ASIGNADO: UserCheck,
+  RESPONSABLE_CAMBIADO: UserCheck,
+  ASISTENTE_IA_CONSULTADO: Sparkles,
 }
+
+// Sufijo que agrega el backend (y MSW) al guardar una sugerencia IA editada (qe-asistente-ia D8).
+const SUFIJO_IA_EDITADA = '(sugerencia IA editada)'
 
 interface QEAuditTrailProps {
   qeId: string
@@ -58,7 +65,10 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
     return `${label}: ${anterior} → ${nuevo}`
   }
   if (entry.accion === 'CAMPO_EDITADO' && entry.campoModificado) {
-    return `${label} (${entry.campoModificado})`
+    const iaEditada = entry.valorNuevo?.endsWith(SUFIJO_IA_EDITADA)
+      ? ` — ${t('detail.auditTrail.sugerenciaIAEditada')}`
+      : ''
+    return `${label} (${entry.campoModificado})${iaEditada}`
   }
   if (entry.accion === 'QE_REPORTE_INICIAL_EDITADO' && entry.campoModificado) {
     const campoKey = `form.fields.${entry.campoModificado}`
@@ -76,6 +86,12 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
   }
   if (entry.accion === 'AC_AJUSTE_PLAZO_RECHAZADO') {
     return `${label}: ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'RESPONSABLE_ASIGNADO') {
+    return `${label}: ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'RESPONSABLE_CAMBIADO') {
+    return `${label}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
   }
   if (entry.accion === 'EXPORTACION_PDF') {
     return `${label} — ${entry.realizadoPorNombre}`

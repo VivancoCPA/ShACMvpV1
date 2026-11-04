@@ -71,6 +71,7 @@ export {
   solicitarACEnQE,
   cerrarQE,
   firmarCierre,
+  aprobarCausaRaiz,
   forzarVencimientoVerificacion,
   registrarVerificacionEficacia,
 } from './api/quality-events.api'
@@ -91,6 +92,7 @@ export { useQEAuditTrail } from './hooks/useQEAuditTrail'
 export { useSolicitarACEnQE } from './hooks/useSolicitarACEnQE'
 export { useCerrarQE } from './hooks/useCerrarQE'
 export { useFirmarCierre } from './hooks/useFirmarCierre'
+export { useAprobarCausaRaiz } from './hooks/useAprobarCausaRaiz'
 export { useForzarVencimientoVerificacion } from './hooks/useForzarVencimientoVerificacion'
 export { useVerificacionEficacia } from './hooks/useVerificacionEficacia'
 

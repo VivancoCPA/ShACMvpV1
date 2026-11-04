@@ -70,7 +70,7 @@ function PinModal({
         {noPinConfigured ? (
           <div className="mb-4 rounded-md border border-hairline bg-surface-card px-3.5 py-2.5 text-sm text-body dark:border-hairline/20 dark:bg-surface-dark-elevated dark:text-on-dark">
             <p className="mb-1.5">{t('detail.cierre.pinModal.noPinConfigured')}</p>
-            <Link to="/perfil" className="font-medium text-coral hover:underline">
+            <Link to="/perfil#pin-firma" className="font-medium text-coral hover:underline">
               {t('detail.cierre.pinModal.configurePinLink')}
             </Link>
           </div>
@@ -91,6 +91,12 @@ function PinModal({
               className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:border-coral focus:outline-none focus:ring-2 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
             />
             {error && <p className="mt-1 text-xs text-error">{t('detail.cierre.pinModal.error')}</p>}
+            <Link
+              to="/perfil#pin-firma"
+              className="mt-1.5 inline-block text-xs text-coral hover:underline dark:text-coral"
+            >
+              {t('detail.cierre.pinModal.forgotPinLink')}
+            </Link>
           </>
         )}
 

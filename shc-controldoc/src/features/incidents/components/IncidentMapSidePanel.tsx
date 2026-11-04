@@ -18,7 +18,7 @@ export function IncidentMapSidePanel({ group, onClose }: Props) {
   const isSingle = group.members.length === 1
 
   return (
-    <div className="flex h-full w-80 flex-shrink-0 flex-col overflow-hidden border-l border-hairline bg-canvas dark:border-hairline/20 dark:bg-surface-dark">
+    <div className="flex h-full max-h-[70vh] w-80 flex-shrink-0 flex-col overflow-hidden border-l border-hairline bg-canvas dark:border-hairline/20 dark:bg-surface-dark">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3 dark:border-hairline/20">
         <span className="text-sm font-medium text-ink dark:text-on-dark">

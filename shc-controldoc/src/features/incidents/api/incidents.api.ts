@@ -1,6 +1,6 @@
 import api from '../../../lib/axios'
 import type { PaginationMeta } from '../../../types/api.types'
-import type { Incidente, AccionCorrectivaIncidente } from '../types/incident.types'
+import type { Incidente, AccionCorrectivaIncidente, IncidenteUbicacion } from '../types/incident.types'
 import type { CreateIncidentInput, UpdateIncidentInvestigacionInput } from '../schemas/createIncident.schema'
 import type { CreateACIncidenteInput } from '../schemas/createAC.schema'
 import type { CerrarACIncidenteInput } from '../schemas/cerrarAC.schema'
@@ -45,8 +45,19 @@ export async function getEvidenciaBlob(incidenteId: string, evidenciaId: string)
   return response.data
 }
 
+// El backend recibe la ubicación sobre el plano como campos planos (UbicacionX/UbicacionY en
+// CrearIncidenteCommand/ActualizarInvestigacionCommand), pero la devuelve anidada como
+// `ubicacion: { x, y }`. Formularios y schemas trabajan con la forma anidada; la traducción vive
+// solo aquí (fix-incidentes-detalle-nombres-ubicacion design D5).
+export function toUbicacionPayload<T extends { ubicacion?: IncidenteUbicacion }>(
+  data: T,
+): Omit<T, 'ubicacion'> & { ubicacionX?: number; ubicacionY?: number } {
+  const { ubicacion, ...rest } = data
+  return ubicacion ? { ...rest, ubicacionX: ubicacion.x, ubicacionY: ubicacion.y } : rest
+}
+
 export async function createIncident(data: CreateIncidentInput): Promise<Incidente> {
-  const response = await api.post<Incidente>('/api/incidents', data)
+  const response = await api.post<Incidente>('/api/incidents', toUbicacionPayload(data))
   return response.data
 }
 
@@ -82,7 +93,7 @@ export async function createIncidentOfflineSync(
   data: CreateIncidentInput,
   empresaId: string,
 ): Promise<Incidente> {
-  const response = await api.post<Incidente>('/api/incidents', { ...data, empresaId })
+  const response = await api.post<Incidente>('/api/incidents', { ...toUbicacionPayload(data), empresaId })
   return response.data
 }
 
@@ -90,7 +101,7 @@ export async function updateIncident(
   id: string,
   data: Partial<UpdateIncidentInvestigacionInput>,
 ): Promise<Incidente> {
-  const response = await api.patch<Incidente>(`/api/incidents/${id}`, data)
+  const response = await api.patch<Incidente>(`/api/incidents/${id}`, toUbicacionPayload(data))
   return response.data
 }
 
@@ -109,11 +120,6 @@ export async function deleteIncident(id: string): Promise<Incidente> {
 
 export async function restoreIncident(id: string): Promise<Incidente> {
   const response = await api.patch<Incidente>(`/api/incidents/${id}/restore`)
-  return response.data
-}
-
-export async function vincularQEIncidente(id: string, qeId: string): Promise<Incidente> {
-  const response = await api.patch<Incidente>(`/api/incidents/${id}`, { qeId })
   return response.data
 }
 

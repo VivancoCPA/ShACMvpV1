@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -7,7 +8,9 @@ import { contarDiasHabiles, formatNormativaVinculada } from '../utils/qualityEve
 import { useArea } from '../../areas/hooks/useAreas'
 import { useAuthStore } from '../../../stores/authStore'
 import { useExportQualityEventPdf } from '../hooks/useExportQualityEventPdf'
-import { puedeExportarPDF } from '../utils/qualityEventPermissions'
+import { puedeAsignarResponsable, puedeExportarPDF } from '../utils/qualityEventPermissions'
+import { UserAvatar } from '../../../components/ui/UserAvatar'
+import { QEAsignarResponsableModal } from './QEAsignarResponsableModal'
 import { buildQualityEventPdf } from '../export/buildQualityEventPdf'
 import { downloadBlob } from '../../../utils/downloadBlob'
 import { QEStatusBadge } from './QEStatusBadge'
@@ -31,10 +34,18 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   )
 }
 
+// El backend devuelve el nombre ya concatenado; UserAvatar arma las iniciales desde nombre/apellido.
+function splitNombre(nombreCompleto: string, avatarUrl?: string) {
+  const [nombre, ...resto] = nombreCompleto.split(' ')
+  return { nombre, apellido: resto.join(' ') || ' ', avatarUrl }
+}
+
 export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
   const user = useAuthStore((s) => s.user)
   const exportPdf = useExportQualityEventPdf(qe.id)
+  const [asignarOpen, setAsignarOpen] = useState(false)
+  const puedeAsignar = user ? puedeAsignarResponsable(qe, user.rol) : false
 
   const { data: area } = useArea(qe.areaId)
   // Una sola llamada cubre "Reportado por" y, si aplica, el nombre de quien aprobó la causa
@@ -145,6 +156,27 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
         <FieldRow label={t('detail.header.reportadoPor')}>
           {reportedByName}
         </FieldRow>
+        <FieldRow label={t('detail.responsable.label')}>
+          <div className="flex flex-wrap items-center gap-2">
+            {qe.responsableInvestigacionNombre ? (
+              <span className="inline-flex items-center gap-2">
+                <UserAvatar size="sm" user={splitNombre(qe.responsableInvestigacionNombre, qe.responsableInvestigacionAvatarUrl)} />
+                {qe.responsableInvestigacionNombre}
+              </span>
+            ) : (
+              <span className="font-medium text-amber dark:text-amber">{t('detail.responsable.sinAsignar')}</span>
+            )}
+            {puedeAsignar && (
+              <button
+                type="button"
+                onClick={() => setAsignarOpen(true)}
+                className="rounded-md border border-hairline bg-canvas px-2.5 py-1 text-xs font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
+              >
+                {qe.responsableInvestigacionId ? t('detail.responsable.cambiar') : t('detail.responsable.asignar')}
+              </button>
+            )}
+          </div>
+        </FieldRow>
 
         {qe.origen === 'O1_INCIDENTE_CAMPO' && qe.incidenteId && (
           <FieldRow label={t('detail.header.origenRef')}>
@@ -192,6 +224,7 @@ export function QEHeaderSection({ qe }: QEHeaderSectionProps) {
           </>
         )}
       </dl>
+      {asignarOpen && <QEAsignarResponsableModal qe={qe} onClose={() => setAsignarOpen(false)} />}
     </section>
   )
 }

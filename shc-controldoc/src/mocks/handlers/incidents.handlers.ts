@@ -34,6 +34,32 @@ function resetStore() {
   incidents = [...incidentFixtures]
 }
 
+// Paridad con el backend real (fix-incidentes-detalle-nombres-ubicacion): GET detalle/listado
+// devuelven los nombres resueltos (LEFT JOIN en ObtenerIncidenteHandler/ListarIncidentesHandler).
+// Se resuelven al responder, no se guardan en el store, para cubrir también los incidentes creados
+// en la sesión. Usuario desconocido → sin nombre (el backend devuelve null), nunca el id.
+function withNombres(inc: Incidente): Incidente {
+  const reportadoPorNombre = resolveUserDisplayName(inc.reportadoPorId)
+  return {
+    ...inc,
+    reportadoPorNombre: reportadoPorNombre !== inc.reportadoPorId ? reportadoPorNombre : undefined,
+    localNombre: inc.localId
+      ? (localFixtures.find((l) => l.id === inc.localId)?.nombre ?? inc.localNombre)
+      : undefined,
+    zonaNombre: inc.zonaId
+      ? (zonaFixtures.find((z) => z.id === inc.zonaId)?.nombre ?? inc.zonaNombre)
+      : undefined,
+  }
+}
+
+// El backend real recibe la ubicación como campos planos (UbicacionX/UbicacionY) y la devuelve
+// anidada como `ubicacion: { x, y }` — nunca lee `body.ubicacion`.
+function ubicacionFromBody(body: Record<string, unknown>): IncidenteUbicacion | undefined {
+  return typeof body.ubicacionX === 'number' && typeof body.ubicacionY === 'number'
+    ? { x: body.ubicacionX, y: body.ubicacionY }
+    : undefined
+}
+
 const VALID_TRANSITIONS: Record<IncidentStatus, IncidentStatus[]> = {
   ABIERTO: ['EN_INVESTIGACION', 'ANULADO'],
   EN_INVESTIGACION: ['ANALISIS_COMPLETADO'],
@@ -91,6 +117,11 @@ function err(message: string, status: number, errors?: string[]) {
   return HttpResponse.json({ success: false, data: null, message, errors }, { status })
 }
 
+// 422 con errorCode, espejo de BusinessRuleException(..., ruleCode) del backend.
+function errCode(message: string, errorCode: string) {
+  return HttpResponse.json({ success: false, data: null, message, errorCode }, { status: 422 })
+}
+
 export const incidentHandlers = [
   // GET /api/incidents — list with filters + pagination
   http.get('/api/incidents', async ({ request }) => {
@@ -141,7 +172,7 @@ export const incidentHandlers = [
     const start = (page - 1) * pageSize
     const items = filtered.slice(start, start + pageSize)
 
-    return ok({ items, pagination: { page, pageSize, totalItems, totalPages } })
+    return ok({ items: items.map(withNombres), pagination: { page, pageSize, totalItems, totalPages } })
   }),
 
   // GET /api/incidents/:id — detail (incluyendo eliminados)
@@ -151,7 +182,7 @@ export const incidentHandlers = [
     const inc = incidents.find((i) => i.id === params.id)
     if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
-    return ok(inc)
+    return ok(withNombres(inc))
   }),
 
   // GET /api/incidents/:incidenteId/evidencias/:evidenciaId/archivo — proteccion-documental
@@ -258,7 +289,7 @@ export const incidentHandlers = [
       turno: body.turno as IncidentTurno,
       fechaEvento,
       fechaReporte: now,
-      reportadoPorId: 'user-mock-001',
+      reportadoPorId: getUserFromRequest(request)?.id ?? 'user-mock-001',
       huboLesionados: body.huboLesionados as boolean,
       auditTrail,
       accionesCorrectivas: [],
@@ -281,7 +312,7 @@ export const incidentHandlers = [
         zonaId: body.zonaId as string,
         zonaNombre: zonaFixtures.find((z) => z.id === body.zonaId)?.nombre,
       } : {}),
-      ...(body.ubicacion ? { ubicacion: body.ubicacion as IncidenteUbicacion } : {}),
+      ...(ubicacionFromBody(body) ? { ubicacion: ubicacionFromBody(body) } : {}),
       ...(body.geoUbicacion ? { geoUbicacion: body.geoUbicacion as Incidente['geoUbicacion'] } : {}),
     }
 
@@ -298,11 +329,28 @@ export const incidentHandlers = [
     if (!inc || inc.empresaId !== getActiveEmpresaId()) return err('incidents:errors.notFound', 404)
 
     const body = await request.json() as Record<string, unknown>
+
+    // El vínculo con el QE lo gestiona el propio QE (incidentes-qe-estado-alertas D4): un qeId
+    // distinto del actual se rechaza; uno igual se ignora.
+    if (body.qeId !== undefined && body.qeId !== null && body.qeId !== inc.qeId) {
+      return errCode(
+        'La vinculación con el Quality Event la gestiona el propio Quality Event.',
+        'QE_VINCULO_GESTIONADO_POR_QE',
+      )
+    }
+
     const now = new Date().toISOString()
+    // Mismo criterio que ActualizarInvestigacionHandler: ubicacionX/Y nulos o ausentes no tocan la
+    // ubicación guardada.
+    const ubicacion = ubicacionFromBody(body)
+    const cambios = Object.fromEntries(
+      Object.entries(body).filter(([key]) => key !== 'ubicacionX' && key !== 'ubicacionY' && key !== 'qeId'),
+    )
 
     const updated: Incidente = {
       ...inc,
-      ...(body as Partial<Incidente>),
+      ...(cambios as Partial<Incidente>),
+      ...(ubicacion ? { ubicacion } : {}),
       actualizadoEn: now,
       auditTrail: [
         ...inc.auditTrail,
@@ -325,6 +373,12 @@ export const incidentHandlers = [
     const body = await request.json() as Record<string, unknown>
     const nuevoEstado = body.estado as IncidentStatus
     const comentario = body.comentario as string | undefined
+
+    // El ciclo EN_INVESTIGACION … CERRADO lo gobierna el QE vinculado; este endpoint solo anula
+    // un incidente sin QE (incidentes-qe-estado-alertas D4, espejo del backend).
+    if (nuevoEstado !== 'ANULADO' || inc.qeId) {
+      return errCode('El estado del incidente lo determina su Quality Event.', 'ESTADO_GOBERNADO_POR_QE')
+    }
 
     const valid = VALID_TRANSITIONS[inc.estado] ?? []
     if (!valid.includes(nuevoEstado)) {

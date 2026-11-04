@@ -24,11 +24,19 @@ El sistema SHALL proveer una vista de detalle en `/incidents/:id` accesible para
 - **THEN** el sistema redirige a `/incidents`
 
 ### Requirement: Cabecera del incidente con badges y metadatos
-La sección de cabecera SHALL mostrar: número del incidente en tipografía grande, `IncidentTypeBadge` + `IncidentStatusBadge` + `SeverityBadge` en línea horizontal, y los metadatos: fecha de evento, área, turno, reportado por, y fecha de reporte.
+La sección de cabecera SHALL mostrar: número del incidente en tipografía grande, `IncidentTypeBadge` + `IncidentStatusBadge` + `SeverityBadge` en línea horizontal, y los metadatos: fecha de evento, área, turno, reportado por, y fecha de reporte. "Reportado por" SHALL mostrar `reportadoPorNombre`. Si no viene, SHALL mostrar el texto `incidents:detail.fields.usuarioDesconocido` ("Usuario no disponible") y nunca `reportadoPorId`.
 
 #### Scenario: Cabecera con metadatos completos
 - **WHEN** se carga el detalle de un incidente
 - **THEN** el número, badges y todos los metadatos se muestran en la cabecera
+
+#### Scenario: Reportado por muestra el nombre
+- **WHEN** el incidente tiene `reportadoPorNombre = 'Juan Pérez'`
+- **THEN** "Reportado por" muestra "Juan Pérez" y el GUID de `reportadoPorId` no aparece en la página
+
+#### Scenario: Reportado por sin nombre
+- **WHEN** el incidente no trae `reportadoPorNombre`
+- **THEN** "Reportado por" muestra "Usuario no disponible" y nunca el GUID
 
 #### Scenario: Breadcrumb de navegación
 - **WHEN** se carga el detalle de un incidente INC-2026-003
@@ -84,7 +92,7 @@ El sistema SHALL renderizar un botón "Crear QE" en la cabecera de acciones de l
 - **THEN** el router navega a `/quality-events/nuevo?origen=O1_INCIDENTE_CAMPO&incidenteId=inc-003&incidenteNumero=INC-2026-003&incidenteArea=SyST`
 
 ### Requirement: Bloque "Descripción del evento" con datos del reporte
-La sección de detalle SHALL incluir un bloque "Descripción del evento" (expandido por defecto) con: `descripcion`, indicador de lesionados y número si aplica, `condicionesEntorno` como badges, `equiposInvolucrados` / `personalInvolucrado` / `testigos` cuando tienen valor, y `atencionMedicaRequerida` + `descripcionAtencionMedica` si aplica. Si `informeMedicoAdjunto` existe, se muestra como enlace de descarga con ícono FileText. Después de `condicionesEntorno`, SHALL renderizar un sub-bloque "Evidencias adjuntas" (solo si `incidente.evidencias?.length > 0`) con ícono Paperclip, grid de thumbnails 80×80 px para imágenes, y lista de PDFs con ícono FileText + nombre + peso en KB. Cuando una evidencia de imagen tiene `descripcion` (caption), SHALL mostrarse como texto pequeño bajo su thumbnail, truncado a 2 líneas si excede el ancho disponible; el `alt` del thumbnail SHALL seguir siendo `nombre` del archivo, no el caption. Si `tipo = ACCIDENTE` y no hay evidencias, SHALL mostrar alerta amarilla "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)".
+La sección de detalle SHALL incluir un bloque "Descripción del evento" (expandido por defecto) con: `descripcion`, indicador de lesionados y número si aplica, `condicionesEntorno` como badges, `equiposInvolucrados` / `personalInvolucrado` / `testigos` cuando tienen valor, y `atencionMedicaRequerida` + `descripcionAtencionMedica` si aplica. (`informeMedicoAdjunto`/el enlace de informe médico no se modifican en este change — confirmado que el campo no existe en el backend real, nunca se puebla, y el enlace nunca se renderiza en producción; fuera de alcance retirarlo, ver `private-file-storage`.) Después de `condicionesEntorno`, SHALL renderizar un sub-bloque "Evidencias adjuntas" (solo si `incidente.evidencias?.length > 0`) con ícono Paperclip, grid de thumbnails 80×80 px para imágenes, y lista de PDFs con ícono FileText + nombre + peso en KB. Cada evidencia (imagen o PDF) SHALL cargarse vía `GET /api/incidents/{incidenteId}/evidencias/{evidenciaId}/archivo` (autenticado, `private-file-storage`) en vez de usar `ev.url` directamente como `src`/`href` — el `<img>` del thumbnail y el `<a>` de descarga de PDF SHALL resolver un object URL (`URL.createObjectURL`) a partir del blob obtenido, revocado al desmontar. Cuando una evidencia de imagen tiene `descripcion` (caption), SHALL mostrarse como texto pequeño bajo su thumbnail, truncado a 2 líneas si excede el ancho disponible; el `alt` del thumbnail SHALL seguir siendo `nombre` del archivo, no el caption. Si `tipo = ACCIDENTE` y no hay evidencias, SHALL mostrar alerta amarilla "Sin evidencia fotográfica — requerida para cerrar este incidente (RN-INC-002)".
 
 #### Scenario: Descripción completa visible
 - **WHEN** se carga el detalle de un incidente con todos los campos de descripción
@@ -100,11 +108,11 @@ La sección de detalle SHALL incluir un bloque "Descripción del evento" (expand
 
 #### Scenario: Sub-bloque de evidencias para incidente con fotos
 - **WHEN** el incidente tiene `evidencias` con al menos 1 elemento
-- **THEN** se muestra el sub-bloque "Evidencias adjuntas" con ícono Paperclip, thumbnails 80×80 px para imágenes y lista de PDFs con nombre y peso en KB
+- **THEN** cada thumbnail se carga vía una petición autenticada a `GET /api/incidents/{incidenteId}/evidencias/{evidenciaId}/archivo`, no desde `ev.url` directamente
 
 #### Scenario: Lightbox al hacer clic en thumbnail de evidencia
 - **WHEN** el usuario hace clic en un thumbnail de imagen en el sub-bloque de evidencias
-- **THEN** se abre un lightbox con overlay oscuro mostrando la imagen a tamaño completo con botón cerrar
+- **THEN** el lightbox se abre mostrando el mismo object URL ya resuelto para el thumbnail, sin hacer una segunda solicitud
 
 #### Scenario: Alerta amarilla para ACCIDENTE sin evidencias
 - **WHEN** el incidente tiene `tipo = ACCIDENTE` y `evidencias` está vacío o ausente
@@ -112,20 +120,27 @@ La sección de detalle SHALL incluir un bloque "Descripción del evento" (expand
 
 #### Scenario: Sin alerta para CUASI_ACCIDENTE sin evidencias
 - **WHEN** el incidente tiene `tipo = CUASI_ACCIDENTE` y no tiene evidencias
-- **THEN** no se muestra ninguna alerta amarilla
+- **THEN** no se muestra ninguna alerta de evidencia faltante
 
-#### Scenario: Evidencia con caption muestra el texto bajo el thumbnail
+#### Scenario: Caption visible bajo el thumbnail cuando existe descripción
 - **WHEN** una evidencia de imagen tiene `descripcion` definida
-- **THEN** el texto de `descripcion` se muestra bajo su thumbnail de 80×80 px, sin reemplazar el `alt` del thumbnail (que sigue siendo el nombre del archivo)
+- **THEN** el texto de `descripcion` se muestra bajo el thumbnail, truncado a 2 líneas, sin afectar el `alt` (que sigue siendo `nombre`)
 
-#### Scenario: Evidencia sin caption no muestra texto adicional
+#### Scenario: Sin caption cuando no hay descripción
 - **WHEN** una evidencia de imagen no tiene `descripcion`
-- **THEN** su thumbnail se muestra igual que hoy, sin ningún texto adicional debajo
+- **THEN** no se muestra ningún texto bajo el thumbnail
 
 ### Requirement: Bloque "Ubicación" en detalle de incidente (ADD-03)
-La sección de detalle SHALL incluir un bloque "Ubicación" posicionado en la misma posición relativa que en el formulario (después del bloque "Descripción del evento" y antes de "Información de investigación"). El bloque SHALL renderizarse únicamente cuando `incidente.localId` tiene valor; si `localId` es `undefined`, el bloque no se muestra.
+La sección de detalle SHALL incluir un bloque "Ubicación" posicionado en la misma posición relativa que en el formulario (después del bloque "Descripción del evento" y antes de "Información de investigación"). El bloque SHALL renderizarse únicamente cuando `incidente.localId` tiene valor. Si `localId` es `undefined`, el bloque no se muestra.
 
-Cuando `localId` está presente, el bloque SHALL mostrar el nombre del local (`localNombre`) y, si `zonaId` está definido, el nombre de la zona (`zonaNombre`). Si el local tiene `planoPngUrl` Y `incidente.ubicacion` está definido, el bloque SHALL mostrar una miniatura del plano PNG con un pin posicionado mediante `position: absolute; left: x%; top: y%` usando los valores de `ubicacion.x` y `ubicacion.y`. El contenedor del plano SHALL tener `position: relative` para que el pin se posicione correctamente. El pin SHALL renderizarse como un punto con clase `bg-coral`. Si `localId` está definido pero `ubicacion` está ausente, el bloque muestra solo los nombres de local y zona sin imagen de plano.
+Cuando `localId` está presente, el bloque SHALL mostrar el nombre del local (`localNombre`) y, si `zonaId` está definido, el nombre de la zona (`zonaNombre`). Si alguno de los nombres no viene, SHALL mostrarse `—` en su lugar, nunca `localId` ni `zonaId`.
+
+El plano SHALL mostrarse según estos casos:
+- **Local con `planoPngUrl` y con `ubicacion`:** imagen del plano con un pin `bg-coral` posicionado mediante `position: absolute; left: x%; top: y%`, dentro de un contenedor `position: relative`.
+- **Local con `planoPngUrl` y sin `ubicacion`:** imagen del plano sin pin, con el texto `incidents:detail.ubicacion.sinPunto` debajo.
+- **Local sin `planoPngUrl`:** sin imagen, con el texto `incidents:detail.ubicacion.sinPlano`.
+
+La imagen del plano SHALL ocupar `w-full` con un ancho máximo de 480 px. Mientras se carga el blob autenticado del plano, SHALL mostrarse un skeleton con ese mismo tamaño máximo. El `alt` de la imagen SHALL ser `localNombre` o, si no viene, el texto `incidents:detail.fields.local`.
 
 #### Scenario: Bloque oculto sin localId
 - **WHEN** se carga el detalle de un incidente que no tiene `localId`
@@ -135,17 +150,29 @@ Cuando `localId` está presente, el bloque SHALL mostrar el nombre del local (`l
 - **WHEN** se carga el detalle de un incidente con `localId = 'loc-001'`, `localNombre = 'Almacén Principal'`, `zonaId = 'zon-001'`, `zonaNombre = 'Zona de Recepción'`
 - **THEN** el bloque muestra "Almacén Principal" y "Zona de Recepción"
 
+#### Scenario: Nombres ausentes no exponen GUIDs
+- **WHEN** el incidente tiene `localId` y `zonaId` pero no trae `localNombre` ni `zonaNombre`
+- **THEN** el bloque muestra `—` para local y zona, y ningún GUID
+
 #### Scenario: Solo nombre de local sin zona
 - **WHEN** se carga el detalle de un incidente con `localId` definido pero `zonaId` ausente
 - **THEN** el bloque muestra el `localNombre` sin ningún texto de zona
 
-#### Scenario: Miniatura con pin cuando hay ubicacion y planoPngUrl
+#### Scenario: Plano con pin
 - **WHEN** se carga el detalle de un incidente con `ubicacion = { x: 45, y: 30 }` y el local tiene `planoPngUrl`
-- **THEN** se muestra el PNG del plano con un punto `bg-coral` posicionado en `left: 45%; top: 30%` (position absolute dentro de contenedor relative)
+- **THEN** se muestra el plano (máx 480 px) con un punto `bg-coral` en `left: 45%; top: 30%`
 
-#### Scenario: Sin plano cuando ubicacion está ausente
-- **WHEN** se carga el detalle de un incidente con `localId` definido pero `ubicacion` ausente
-- **THEN** el bloque muestra el nombre del local/zona pero NO muestra la imagen del plano
+#### Scenario: Plano sin punto
+- **WHEN** el local tiene `planoPngUrl` y el incidente no tiene `ubicacion`
+- **THEN** se muestra el plano sin pin y debajo "No se marcó la ubicación en el plano."
+
+#### Scenario: Local sin plano
+- **WHEN** el local del incidente no tiene `planoPngUrl`
+- **THEN** no se muestra imagen y aparece "Este local no tiene plano cargado."
+
+#### Scenario: Skeleton mientras carga el plano
+- **WHEN** el local tiene `planoPngUrl` pero el blob del plano aún no está disponible
+- **THEN** se muestra un skeleton del tamaño del plano en lugar de la imagen
 
 ---
 
@@ -253,3 +280,39 @@ La página de detalle SHALL proveer un botón "Volver a Incidentes" que navega a
 #### Scenario: Botón volver funcional
 - **WHEN** el usuario hace clic en "Volver a Incidentes"
 - **THEN** el sistema navega a `/incidents`
+
+### Requirement: El detalle se renderiza sin error al pasar de carga a datos
+`IncidentDetailPage` (y los subcomponentes del mismo archivo) SHALL llamar todos sus hooks antes de cualquier `return` anticipado (skeleton de carga, error o incidente inexistente), para que el número de hooks no cambie entre renders. En particular, `usePlanoBlob` y el cálculo de `selectedLocal` SHALL ejecutarse con datos opcionales (`incident?.localId`) antes del primer `return`.
+
+#### Scenario: Transición de carga a datos
+- **WHEN** la página se renderiza primero con `isLoading = true` y luego con el incidente cargado
+- **THEN** la página muestra el detalle sin lanzar "Rendered more hooks than during the previous render"
+
+#### Scenario: Apertura directa por URL
+- **WHEN** el usuario abre `/incidents/:id` directamente (sin caché), por ejemplo justo después de crear el incidente o con F5
+- **THEN** el detalle se muestra sin error
+
+### Requirement: Badge "Sin QE vinculado" junto al botón "Crear QE"
+`IncidentDetailPage` SHALL mostrar `IncidentSinQEBadge` (con el mismo tooltip y `aria-label` del listado) junto al botón "Crear QE" cuando `getIncidentQEAlertLevel(incidente, now)` sea `AMARILLO` o `ROJO`. Todo hook que use la página SHALL invocarse antes de cualquier `return` temprano.
+
+#### Scenario: Incidente sin QE y vencido
+- **WHEN** un incidente ACCIDENTE sin `qeId` con `fechaEvento` de hace 30 h se abre en el detalle
+- **THEN** el badge "Sin QE vinculado" en rojo aparece junto al botón "Crear QE"
+
+#### Scenario: Incidente dentro del plazo sin alerta
+- **WHEN** el incidente sin QE está por debajo del 75 % de su plazo
+- **THEN** no se muestra el badge
+
+### Requirement: Aviso de estado gobernado por el Quality Event
+Cuando el incidente tenga `qeId`, `IncidentDetailPage` SHALL mostrar un aviso informativo con el texto `t('incidents:detail.qeGobiernaEstado', { numero })` y un enlace a `/quality-events/{qeId}`. En ese caso SHALL NOT mostrar el badge "Sin QE vinculado". El aviso SHALL verse correctamente en modo claro y oscuro.
+
+#### Scenario: Incidente con QE vinculado
+- **WHEN** se abre el detalle de un incidente vinculado al QE `QE-2026-010`
+- **THEN** se ve el aviso "El estado de este incidente se actualiza con el QE QE-2026-010." con enlace al QE, y no se ve el badge
+
+### Requirement: Etiquetas de las acciones de audit trail generadas por el sistema
+El audit trail del incidente SHALL mostrar etiquetas localizadas (`es-PE` y `en-US`) para las acciones `ESTADO_SINCRONIZADO_QE`, `PLAZO_QE_VENCIDO` y `QE_VINCULADO`.
+
+#### Scenario: Entrada de sincronización visible
+- **WHEN** el audit trail contiene una entrada `ESTADO_SINCRONIZADO_QE`
+- **THEN** se muestra con su etiqueta traducida y el actor "Sistema"

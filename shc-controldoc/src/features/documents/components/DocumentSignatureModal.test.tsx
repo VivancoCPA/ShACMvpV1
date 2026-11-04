@@ -164,6 +164,69 @@ describe('DocumentSignatureModal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  // pin-olvidado-pista: pista "¿Olvidaste tu PIN?" siempre visible bajo el campo PIN.
+  it('shows the forgot-PIN link to /perfil#pin-firma when the user has a PIN, with focus on the PIN input', () => {
+    setUser(true)
+    renderModal()
+
+    const link = screen.getByRole('link', { name: 'signature.forgotPinLink' })
+    expect(link).toHaveAttribute('href', '/perfil#pin-firma')
+    expect(screen.getByLabelText('signature.pinLabel')).toHaveFocus()
+  })
+
+  it('keeps the forgot-PIN link visible after a PIN_INCORRECTO error', async () => {
+    setUser(true)
+    signDocumentMock.mockRejectedValueOnce(
+      makeAxiosError(401, { success: false, message: 'PIN incorrecto', errorCode: 'PIN_INCORRECTO' }),
+    )
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText('signature.pinLabel'), { target: { value: '9999' } })
+    fireEvent.click(screen.getByRole('button', { name: 'signature.submit' }))
+
+    await waitFor(() => expect(screen.getByText('signature.errorInvalid')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'signature.forgotPinLink' })).toBeInTheDocument()
+  })
+
+  it('hides the forgot-PIN link when no PIN is configured; the setup link points to the anchor', () => {
+    setUser(false)
+    renderModal()
+
+    expect(screen.queryByRole('link', { name: 'signature.forgotPinLink' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'signature.configurePinLink' })).toHaveAttribute(
+      'href',
+      '/perfil#pin-firma',
+    )
+  })
+
+  it('keeps the Tab cycle closed with the forgot-PIN link between the input and the buttons', () => {
+    setUser(true)
+    renderModal()
+
+    const input = screen.getByLabelText('signature.pinLabel')
+    const link = screen.getByRole('link', { name: 'signature.forgotPinLink' })
+    const submit = screen.getByRole('button', { name: 'signature.submit' })
+
+    // El enlace queda en orden de documento justo después del input (Tab nativo lo alcanza).
+    expect(input.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(link.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    // El trap sigue cerrado: Tab desde el último vuelve al input; Shift+Tab desde el input va al último.
+    submit.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(input).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(submit).toHaveFocus()
+  })
+
+  it('treats links as focusable in the trap (setup link gets initial focus when there is no PIN)', () => {
+    setUser(false)
+    renderModal()
+
+    // Sin a[href] en el selector del trap, el foco inicial caería en el botón Cancelar.
+    expect(screen.getByRole('link', { name: 'signature.configurePinLink' })).toHaveFocus()
+  })
+
   it('closes and signs on a valid PIN', async () => {
     setUser(true)
     const onClose = vi.fn()

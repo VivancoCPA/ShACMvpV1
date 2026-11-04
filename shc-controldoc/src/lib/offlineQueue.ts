@@ -20,6 +20,12 @@ export interface QueuedIncident {
   photoCaptions?: (string | undefined)[]
   geoUbicacion?: IncidenteGeoUbicacion
   empresaId: string
+  // Usuario logueado al encolar (sesion-timeout-inactividad design.md D13). La cola sobrevive al
+  // cierre de sesión (por inactividad o manual) y solo la sincroniza/muestra ese mismo usuario
+  // al volver a entrar — nunca se envía con la identidad de otro usuario del mismo dispositivo.
+  // Opcional: una entrada persistida antes de este campo conserva el comportamiento previo (la
+  // procesa quien esté logueado).
+  usuarioId?: string
   status: OfflineIncidentStatus
   createdAt: string
   lastAttemptAt?: string
@@ -37,6 +43,7 @@ export interface EnqueueInput {
   photoCaptions?: (string | undefined)[]
   geoUbicacion?: IncidenteGeoUbicacion
   empresaId: string
+  usuarioId?: string
 }
 
 export class OfflineQueueError extends Error {
@@ -80,6 +87,7 @@ export async function enqueue(input: EnqueueInput): Promise<number> {
     photoCaptions: input.photoCaptions,
     geoUbicacion: input.geoUbicacion,
     empresaId: input.empresaId,
+    usuarioId: input.usuarioId,
     status: 'pending',
     createdAt: new Date().toISOString(),
     retryCount: 0,
@@ -98,20 +106,24 @@ export async function enqueue(input: EnqueueInput): Promise<number> {
   }
 }
 
-export async function listPending(): Promise<QueuedIncident[]> {
+function belongsTo(item: QueuedIncident, usuarioId: string | undefined): boolean {
+  return usuarioId === undefined || item.usuarioId === undefined || item.usuarioId === usuarioId
+}
+
+export async function listPending(usuarioId?: string): Promise<QueuedIncident[]> {
   const db = await getDB()
   const all = await db.getAllFromIndex(STORE_NAME, 'by-createdAt')
-  return all.filter((item) => PENDING_STATUSES.includes(item.status))
+  return all.filter((item) => PENDING_STATUSES.includes(item.status) && belongsTo(item, usuarioId))
 }
 
 // Para UI (badge/panel): a diferencia de `listPending`, incluye `syncing` —
 // un reporte en vuelo debe seguir visible en el panel mientras se sincroniza,
 // pero no debe volver a ofrecerse como candidato de un ciclo de sync (por eso
 // `listPending`, consumida por el ciclo FIFO, no lo incluye).
-export async function listVisible(): Promise<QueuedIncident[]> {
+export async function listVisible(usuarioId?: string): Promise<QueuedIncident[]> {
   const db = await getDB()
   const all = await db.getAllFromIndex(STORE_NAME, 'by-createdAt')
-  return all.filter((item) => VISIBLE_STATUSES.includes(item.status))
+  return all.filter((item) => VISIBLE_STATUSES.includes(item.status) && belongsTo(item, usuarioId))
 }
 
 export async function getById(localId: number): Promise<QueuedIncident | undefined> {

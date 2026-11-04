@@ -16,6 +16,7 @@ import { readActiveEmpresaId } from '../../../lib/mockSession'
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
+  const { t: tSesion } = useTranslation('sesion')
   const [showPassword, setShowPassword] = useState(false)
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | undefined>(undefined)
   const location = useLocation()
@@ -24,6 +25,9 @@ export function LoginPage() {
   const { mutate: login, isPending, data: loginData, reset: resetLogin } = loginMutation
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
+  // Motivo de un cierre forzado por política (sesion-timeout-inactividad design.md D11) — se
+  // limpia solo al iniciar sesión de nuevo (authStore.login).
+  const sessionEndReason = useAuthStore((state) => state.sessionEndReason)
 
   const {
     register,
@@ -106,6 +110,15 @@ export function LoginPage() {
             </h1>
             <p className="mt-1 text-sm text-muted dark:text-on-dark-soft">{t('login.subtitle')}</p>
           </div>
+
+          {sessionEndReason && (
+            <div
+              role="status"
+              className="mb-6 rounded-md border border-warning/40 bg-warning/10 px-3.5 py-2.5 text-sm text-body-strong dark:border-warning/30 dark:bg-warning/15 dark:text-on-dark"
+            >
+              {tSesion(`loginNotice.${sessionEndReason}`)}
+            </div>
+          )}
 
           {empresaSelection ? (
             <div className="space-y-4">

@@ -412,6 +412,14 @@ POST /auth/login → { accessToken, refreshToken (httpOnly cookie) }
 
 **Nota técnica — limitación de MSW con cookies httpOnly en el navegador:** MSW en modo Service Worker intercepta `fetch()` con una `Response` sintética; el navegador NO aplica el header `Set-Cookie` de esa respuesta sintética a la cookie jar real (limitación conocida de MSW — solo funciona de forma confiable con `msw/node`, que intercepta a nivel de módulo de red). Como aún no existe backend real, el refresh token del mock se persiste en `localStorage` (`src/lib/mockSession.ts`, clave `shac_mock_refresh_token`) y se envía explícitamente como header `X-Mock-Refresh-Token` en `/api/auth/refresh`, en vez de depender de una cookie. Este mecanismo queda inerte automáticamente ante un backend real sin necesitar una bandera de entorno: solo los handlers MSW devuelven el campo `mockRefreshToken` en el body; un backend .NET real nunca lo hará, así que `localStorage` nunca se llena. **El backend .NET real DEBE usar una cookie `httpOnly` verdadera** (ya está configurado `withCredentials: true` en `lib/axios.ts`) — nunca adaptar el backend real para devolver el refresh token en el body ni leerlo de `localStorage`.
 
+### Cierre de sesión por inactividad y duración máxima (sesion-timeout-inactividad)
+
+- **La protección real es del servidor.** `RefreshToken` guarda `SesionIniciadaEn` y `UltimaActividadEn`; cada rotación de `/api/auth/refresh` los **hereda** (nunca los reinicia). `/refresh` y `POST /api/auth/actividad` revocan y responden 401 con `errorCode` `SESION_MAXIMA_ALCANZADA` o `SESION_INACTIVA` (`SesionPoliticaEnforcer`). El access token dura **5 min** (`Jwt:AccessTokenExpirationMinutes`).
+- **Solo `POST /api/auth/actividad` cuenta como actividad.** Nunca marcar actividad desde el polling, SignalR ni `/refresh` — si contaran, la sesión no expiraría nunca. En el cliente, solo `SessionTimeoutManager` (eventos del DOM) llama a ese endpoint, como máximo 1 vez/min.
+- **Política efectiva** (`PoliticaSesionResolver` en backend / `features/sesion/utils/politicaSesion.ts` en frontend, espejos): valor de la empresa (`ConfiguracionSeguridadEmpresa`) o default global (`ParametrosSesionSistema`, fila única editable por SUPERADMIN), ajustado a los límites globales. SUPERADMIN (sin empresa activa) usa el global. Nunca leer esas tablas por fuera del resolver.
+- **Todo cierre de sesión pasa por `endSession(reason)`** (`lib/sessionEnd.ts`): logout en backend, `authStore.logout(reason)`, `queryClient.clear()` y aviso a las otras pestañas (`lib/sessionActivity.ts`). Nunca llamar `authStore.logout()` directo desde código de producción. Nunca borra la cola offline de incidentes (aislada por `usuarioId`).
+- `authStore.refreshToken()` es **single-flight** (+ Web Locks entre pestañas): con tokens de 5 min, dos refresh concurrentes rotarían la misma cookie y cerrarían la sesión por error.
+
 ### Roles RBAC
 
 ```typescript

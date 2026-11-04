@@ -5,9 +5,7 @@
 MSW v2 request handlers for the Quality Events module (`src/mocks/handlers/quality-events.handlers.ts`). Intercepts REST endpoints for quality events, applying in-memory filtering, correct server-side pagination, and audit trail updates so development works without a real backend.
 
 ---
-
 ## Requirements
-
 ### Requirement: MSW v2 syntax exclusively
 All handlers SHALL use `http.*` from `msw`. The `rest.*` API SHALL NOT be used. Simulated latency SHALL be `await delay(400)` at the start of every handler.
 
@@ -207,18 +205,26 @@ Every MSW handler in `quality-events.handlers.ts` that operates on an existing q
 ---
 
 ### Requirement: MSW endpoint PATCH /api/quality-events/:id/firmar-cierre
-`quality-events.handlers.ts` SHALL register `PATCH /api/quality-events/:id/firmar-cierre`, accepting `{ rol, pin }`. It SHALL return 404 for an unknown `:id`, and 422 (message tagged `QE-AC-006`) when: `resultadoCierre` is not yet set on the QE; `rol === 'JEFE_CALIDAD_SYST'` and `cerradoPorId` is already set; or `rol` is `'SUPERVISOR'`/`'ALTA_DIRECCION'` and `cerradoPorId` is empty. On a valid first signature it SHALL set `cerradoPorId` and append an audit entry without changing `estado`. On a valid second signature it SHALL set `cierreFirmaSupervisorId`, `cierreFirmaSupervisorRol`, transition `estado → 'CERRADO'`, stamp `fechaCierre`, compute `fechaVerificacionProgramada` as `fechaCierre` + `plazoVerificacionDias` days, and append audit entries for the signature and the `CERRADO` transition.
+`quality-events.handlers.ts` SHALL register `PATCH /api/quality-events/:id/firmar-cierre`, accepting `{ rol, pin }`. It SHALL return 404 for an unknown `:id`. Before any other check, it SHALL look up the authenticated signing user via the cross-domain mutable store `getUsersStore()` (from `auth.fixtures.ts`), never a static import: if that user's `pin` is `undefined` (no PIN configured), it SHALL respond 422 with `errorCode: 'PIN_NO_CONFIGURADO'`, without registering any signature; if `pin` is configured but `body.pin` does not match it, it SHALL respond 401, without registering any signature. Only when `body.pin === user.pin` SHALL it proceed with the existing signature-order checks: 422 (message tagged `QE-AC-006`) when `resultadoCierre` is not yet set on the QE; `rol === 'JEFE_CALIDAD_SYST'` and `cerradoPorId` is already set; or `rol` is `'SUPERVISOR'`/`'ALTA_DIRECCION'` and `cerradoPorId` is empty. On a valid first signature it SHALL set `cerradoPorId` and append an audit entry without changing `estado`. On a valid second signature it SHALL set `cierreFirmaSupervisorId`, `cierreFirmaSupervisorRol`, transition `estado → 'CERRADO'`, stamp `fechaCierre`, compute `fechaVerificacionProgramada` as `fechaCierre` + `plazoVerificacionDias` days, and append audit entries for the signature and the `CERRADO` transition. The handler SHALL NOT compare against any fixed module-level constant or accept any well-formed PIN as valid — it already did not validate the PIN at all before this change, a gap that let any 4-digit value close a QE.
+
+#### Scenario: User without a configured PIN cannot sign a closure
+- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested by a user whose `MockUser.pin` is `undefined`
+- **THEN** the response status is 422 with `errorCode: 'PIN_NO_CONFIGURADO'`, and no signature is registered
+
+#### Scenario: Wrong PIN is rejected before any signature-order check
+- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested with a `pin` that does not match the signing user's configured `pin`
+- **THEN** the response status is 401, and no signature is registered — even if the signature-order would otherwise have been valid
 
 #### Scenario: Second signature attempted before the first is rejected
-- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested with `{ rol: 'SUPERVISOR', pin: '1234' }` and `cerradoPorId` is empty
+- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested with `{ rol: 'SUPERVISOR', pin }` matching the signing user's configured `pin`, and `cerradoPorId` is empty
 - **THEN** the response status is 422, `success: false`, and the message references `QE-AC-006`
 
 #### Scenario: Valid first signature does not change estado
-- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested with `{ rol: 'JEFE_CALIDAD_SYST', pin: '1234' }` for a QE with `resultadoCierre` set and `cerradoPorId` empty
+- **WHEN** `PATCH /api/quality-events/:id/firmar-cierre` is requested with `{ rol: 'JEFE_CALIDAD_SYST', pin }` matching the signing user's configured `pin`, for a QE with `resultadoCierre` set and `cerradoPorId` empty
 - **THEN** the response is 200 with `data.cerradoPorId` set and `data.estado === 'PENDIENTE_CIERRE'`
 
 #### Scenario: Valid second signature transitions to CERRADO
-- **WHEN** the second valid signature is submitted for a QE with `cerradoPorId` already set and `plazoVerificacionDias: 30`
+- **WHEN** the second signature is submitted with a `pin` matching the signing user's configured `pin`, for a QE with `cerradoPorId` already set and `plazoVerificacionDias: 30`
 - **THEN** the response is 200 with `data.estado === 'CERRADO'`, `data.fechaCierre` set, and `data.fechaVerificacionProgramada` equal to `fechaCierre` + 30 days
 
 #### Scenario: Unknown id returns 404
@@ -466,3 +472,91 @@ The system SHALL provide an MSW v2 handler for `DELETE /api/quality-events/:id/d
 #### Scenario: documentos-vinculados handlers are active when MSW starts
 - **WHEN** the MSW worker is started in development
 - **THEN** `POST`/`DELETE /api/quality-events/:id/documentos-vinculados[...]` are intercepted without 'unhandled request' warnings
+
+### Requirement: Mock de firma de cierre devuelve PIN_INCORRECTO
+El handler MSW `PATCH /api/quality-events/:id/firmar-cierre` SHALL responder 401 con `errorCode: "PIN_INCORRECTO"` cuando el PIN enviado no coincide con el PIN mock del firmante, igual que el backend real.
+
+#### Scenario: PIN incorrecto en el mock de cierre
+- **WHEN** con MSW activo el firmante envía un PIN distinto del suyo
+- **THEN** el handler responde 401 con `errorCode: "PIN_INCORRECTO"`
+
+### Requirement: Atomic incident link on POST /api/quality-events (O1)
+When `POST /api/quality-events` creates a QE with `origen: 'O1_INCIDENTE_CAMPO'`, the handler MUST set `qeId` on the referenced incident in the mutable incidents store (`getIncidentsStore()`) in the same handler call, and append a `QE_VINCULADO` audit entry to the incident.
+
+#### Scenario: Incident linked in the same request
+- **WHEN** `POST /api/quality-events` succeeds with `origen: 'O1_INCIDENTE_CAMPO'` and `incidenteId: 'inc-003'`
+- **THEN** `getIncidentsStore()` shows `inc-003.qeId` equal to the new QE id, without any further request
+
+### Requirement: Incident estado follows QE estado in MSW
+Every MSW handler that changes a QE's `estado` MUST apply the same QE → incident mapping as the backend, via a shared helper, when the QE has `incidenteId`. Those handlers are: `/status`, the AC status change that reaches `PENDIENTE_CIERRE`, `firmar-cierre`, `verificacion-eficacia` and `forzar-vencimiento-verificacion`. When the mapped estado differs, the helper MUST append an `ESTADO_SINCRONIZADO_QE` audit entry with actor "Sistema". `DELETE /api/quality-events/:id` MUST clear the incident's `qeId` and record the reason. Reactivation MUST re-link the QE, or return 422 `INCIDENTE_YA_VINCULADO` if the incident is already linked to another QE.
+
+#### Scenario: QE transition updates the mocked incident
+- **WHEN** a mocked QE linked to `inc-003` transitions to `EN_INVESTIGACION`
+- **THEN** `inc-003.estado` is `EN_INVESTIGACION` and its audit trail has an `ESTADO_SINCRONIZADO_QE` entry
+
+#### Scenario: Deleting the QE frees the incident
+- **WHEN** `DELETE /api/quality-events/:id` deletes a QE linked to `inc-003`
+- **THEN** `inc-003.qeId` is undefined
+
+### Requirement: Dashboard summary exposes incidentesSinQeVencidos in MSW
+The MSW dashboard summary for `JEFE_CALIDAD` MUST include `incidentesSinQeVencidos` (at most 10, most overdue first) and `incidentesSinQeVencidosTotal`, computed with `getIncidentQEAlertLevel` over the empresa-scoped incidents store.
+
+#### Scenario: Summary includes the new field
+- **WHEN** a JEFE_CALIDAD_SYST requests `/api/dashboard/summary` in MSW
+- **THEN** the response includes `incidentesSinQeVencidos` as an array and `incidentesSinQeVencidosTotal` as a number
+
+### Requirement: MSW replica el responsable de investigación
+Los handlers de `quality-events.handlers.ts` SHALL implementar: `GET /api/quality-events/candidatos-responsable` (registrado antes de `/api/quality-events/:id`), devolviendo SUPERVISOR y JEFE_CALIDAD_SYST activos de los fixtures; `PATCH /api/quality-events/:id/responsable` con 403 para quien no es JCA, 422 `QE_CERRADO` en estados cerrados, 200 sin audit si no cambia y audit `RESPONSABLE_ASIGNADO`/`RESPONSABLE_CAMBIADO` con nombres; aceptación de `responsableInvestigacionId` en `POST /api/quality-events`; 422 `QE_SIN_RESPONSABLE` en `PATCH /:id/status` hacia EN_INVESTIGACION sin responsable; y `responsableInvestigacionNombre` en detalle y listado.
+
+#### Scenario: Transición sin responsable en el mock
+- **WHEN** con MSW activo se pide EN_INVESTIGACION para un QE sin responsable
+- **THEN** el handler responde 422 con `errorCode = QE_SIN_RESPONSABLE`
+
+#### Scenario: Asignación por no-JCA en el mock
+- **WHEN** un SUPERVISOR llama a `PATCH /:id/responsable`
+- **THEN** el handler responde 403
+
+### Requirement: MSW replica el análisis tipado y la aprobación con PIN
+`PATCH /api/quality-events/:id` en `quality-events.handlers.ts` SHALL aceptar `cincoPorques`/`ishikawa` como listas y devolverlas como listas. Al guardar con un `metodoAnalisis`, SHALL poner en null la lista de la otra herramienta, y SHALL ignorar `causaRaizAprobadaPorId` y `causaRaizFirmadaEn` del body.
+
+`POST /api/quality-events/:id/aprobar-causa-raiz` SHALL responder:
+- 404 si el QE no existe o es de otra empresa;
+- 403 si el usuario mock no es `JEFE_CALIDAD_SYST`;
+- 422 `CAUSA_RAIZ_INVALIDA` si la causa raíz guardada no tiene entre 100 y 500 caracteres;
+- 422 `CAUSA_RAIZ_FIRMADA` si ya está firmada;
+- 422 `PIN_NO_CONFIGURADO` si el firmante no tiene PIN en `getUsersStore()`;
+- 401 `PIN_INCORRECTO` si el PIN no coincide.
+
+En éxito, SHALL fijar `causaRaizAprobadaPorId` y `causaRaizFirmadaEn`, agregar `CAUSA_RAIZ_APROBADA` al audit trail y responder 200 con el QE. Los fixtures de QE SHALL mantener `cincoPorques` e `ishikawa` como arrays.
+
+#### Scenario: PIN del fixture
+- **WHEN** con MSW activo un JCA aprueba con el PIN de su usuario mock
+- **THEN** el handler responde 200 y el QE queda con `causaRaizFirmadaEn`
+
+#### Scenario: PIN distinto
+- **WHEN** se envía otro PIN
+- **THEN** el handler responde 401 con `errorCode = PIN_INCORRECTO`
+
+#### Scenario: No JCA
+- **WHEN** un SUPERVISOR llama al endpoint
+- **THEN** el handler responde 403
+
+#### Scenario: PATCH ignora la firma
+- **WHEN** el body de `PATCH /:id` trae `causaRaizFirmadaEn`
+- **THEN** el QE devuelto conserva el valor previo de `causaRaizFirmadaEn`
+
+### Requirement: MSW replica el asistente IA y las funcionalidades
+MSW SHALL manejar dos endpoints:
+- `GET /api/config/funcionalidades`, que devuelve `{ asistenteIA: true, asistenteIASimulado: false }`;
+- `POST /api/quality-events/:id/asistente-ia`, que después de `delay(800)` devuelve una sugerencia fija de ejemplo en español (causa de 100 a 500 caracteres, 5 porqués y 2 o 3 acciones), agrega `ASISTENTE_IA_CONSULTADO` (`generadoPorIA: true`) al audit trail del QE y no modifica sus campos.
+
+El handler de `asistente-ia` SHALL responder 404 si el QE no existe o es de otra empresa. Un toggle exportado desde los fixtures (`setAsistenteIAMockFalla(true)`) SHALL hacer que responda 503 con `errorCode = IA_NO_DISPONIBLE` y el mensaje del servidor. El PATCH genérico SHALL marcar `generadoPorIA` o agregar el sufijo según `origenIA`, igual que el backend.
+
+#### Scenario: Sugerencia mock
+- **WHEN** con MSW activo se llama al endpoint de un QE existente
+- **THEN** responde 200 con la sugerencia fija después de ~800 ms
+
+#### Scenario: Toggle de falla
+- **WHEN** `setAsistenteIAMockFalla(true)` está activo
+- **THEN** el handler responde 503 con `errorCode = IA_NO_DISPONIBLE`
+

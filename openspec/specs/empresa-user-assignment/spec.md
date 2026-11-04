@@ -44,3 +44,26 @@ La acción "Desactivar" por fila SHALL abrir un modal de confirmación mostrando
 #### Scenario: Confirmar desactiva solo esa fila
 - **WHEN** `SUPERADMIN` confirma la desactivación de la fila de `user-supervisor-001` en `empresa-002`
 - **THEN** esa fila pasa a `estado: 'INACTIVO'`; cualquier otra fila `UsuarioEmpresa` del mismo usuario en otras empresas no se modifica
+
+
+### Requirement: EmpresaUsuariosPage permite volver a la lista de empresas
+`EmpresaUsuariosPage` SHALL incluir un `Link` a `/admin/empresas` (no `navigate(-1)`) con el mismo patrón visual que las páginas de detalle (`ArrowLeft` + texto localizado), para que funcione también al entrar por deep link. Los filtros y la página de la lista se reinician al volver.
+
+#### Scenario: Volver desde un deep link
+- **WHEN** el admin abre directamente `/admin/empresas/:id/usuarios` y pulsa "Volver a empresas"
+- **THEN** navega a `/admin/empresas`
+
+### Requirement: Resetear PIN de un usuario asignado requiere confirmación
+`EmpresaUsuariosPage` SHALL render a "Resetear PIN" action per row, visible for every `UsuarioEmpresa` row regardless of `estado`. Clicking it SHALL open a confirmation modal (same `ConfirmModal` component used for "Desactivar"/"Reactivar") showing the user's name and the empresa, before executing. Confirming SHALL call `PATCH /api/empresas/{empresaId}/usuarios/{usuarioId}/reset-pin`. On success, the system SHALL show a toast explaining that the user's PIN was cleared and that they must configure a new one from `/perfil` before they can sign again.
+
+#### Scenario: Resetear PIN pide confirmación antes de ejecutar
+- **WHEN** `SUPERADMIN` hace click en "Resetear PIN" sobre una fila
+- **THEN** se abre un modal de confirmación con el nombre del usuario, y la petición NO se envía hasta confirmar
+
+#### Scenario: Confirmar llama al endpoint correcto
+- **WHEN** `SUPERADMIN` confirma el reset de PIN de la fila de `user-supervisor-001` en `empresa-002`
+- **THEN** el sistema llama `PATCH /api/empresas/empresa-002/usuarios/{usuarioId de user-supervisor-001}/reset-pin`
+
+#### Scenario: Reset exitoso muestra un toast explicativo
+- **WHEN** la respuesta del reset es exitosa
+- **THEN** el sistema muestra un toast indicando que el usuario deberá configurar un PIN nuevo antes de poder firmar

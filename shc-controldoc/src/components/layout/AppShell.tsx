@@ -3,6 +3,7 @@ import { useUIStore } from '../../stores/uiStore'
 import { useDarkMode } from '../../hooks/useDarkMode'
 import { Sidebar } from './Sidebar'
 import { TopNav } from './TopNav'
+import { SessionTimeoutManager } from '../../features/sesion/components/SessionTimeoutManager'
 
 export function AppShell() {
   useDarkMode()
@@ -29,6 +30,9 @@ export function AppShell() {
           </div>
         </div>
       )}
+
+      {/* Cierre por inactividad / duración máxima (sesion-timeout-inactividad) */}
+      <SessionTimeoutManager />
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">

@@ -5,6 +5,7 @@
   QEType,
   QEOrigin,
   QESeverity,
+  SugerenciaCausaRaizIA,
 } from '../../features/quality-events/types/qualityEvent.types'
 import { resolveUserDisplayName } from './userIdentity.fixtures'
 
@@ -2500,3 +2501,62 @@ export const qualityEventFixtures: QualityEvent[] = [...baseQualityEventFixtures
   ...qe,
   accionesCorrectivas: qeAccionesCorrectivas[qe.id] ?? qe.accionesCorrectivas,
 }))
+
+// ─── Asistente IA (qe-asistente-ia) ───────────────────────────────────────────
+
+// Sugerencia fija de ejemplo: el mock no llama a ninguna IA. Respeta las mismas restricciones que
+// valida el backend (causa 100–500, 5 porqués, 2–3 acciones de 50–500 caracteres).
+export const sugerenciaCausaRaizIAFixture: Omit<SugerenciaCausaRaizIA, 'generadoEn'> = {
+  causaRaizProbable:
+    'Ausencia de un control estandarizado de verificación previa a la operación: el procedimiento vigente no exige confirmar el estado del equipo ni registrar la verificación, por lo que la condición insegura no se detecta antes de iniciar el turno.',
+  cincoPorques: [
+    { pregunta: '¿Por qué ocurrió el evento?', respuesta: 'Porque el equipo operó con una condición fuera de especificación.' },
+    { pregunta: '¿Por qué operó fuera de especificación?', respuesta: 'Porque no se detectó la desviación antes de iniciar la operación.' },
+    { pregunta: '¿Por qué no se detectó la desviación?', respuesta: 'Porque la verificación previa no se realizó o no se registró.' },
+    { pregunta: '¿Por qué no se realizó la verificación?', respuesta: 'Porque el procedimiento no la define como paso obligatorio con registro.' },
+    { pregunta: '¿Por qué el procedimiento no la exige?', respuesta: 'Porque no se actualizó tras los cambios de equipos y de proceso del área.' },
+  ],
+  accionesSugeridas: [
+    {
+      descripcion: 'Actualizar el procedimiento operativo para incluir una verificación previa obligatoria del equipo, con registro firmado por turno.',
+      tipo: 'CORRECTIVA',
+      rolResponsableSugerido: 'Jefe de Control Documentario',
+      plazoDiasHabiles: 10,
+    },
+    {
+      descripcion: 'Capacitar al personal de los tres turnos en la nueva verificación previa y evaluar su aplicación con una inspección en campo.',
+      tipo: 'PREVENTIVA',
+      rolResponsableSugerido: 'Supervisor de área',
+      plazoDiasHabiles: 15,
+    },
+  ],
+  modelo: 'mock-asistente-ia',
+}
+
+// qe-asistente-ia-ishikawa — misma sugerencia con el método ISHIKAWA: las 6 categorías en lugar de
+// los 5 Porqués; MEDICION ejercita la frase de "no aplica".
+export const sugerenciaCausaRaizIshikawaIAFixture: Omit<SugerenciaCausaRaizIA, 'generadoEn'> = {
+  causaRaizProbable: sugerenciaCausaRaizIAFixture.causaRaizProbable,
+  cincoPorques: null,
+  ishikawa: [
+    { categoria: 'METODO', causa: 'El procedimiento operativo no exige una verificación previa del equipo con registro por turno.' },
+    { categoria: 'MAQUINA', causa: 'El equipo no tiene un plan de mantenimiento preventivo que detecte el desgaste antes de operar.' },
+    { categoria: 'MATERIAL', causa: 'El mineral no se inspecciona por humedad y granulometría antes de su almacenamiento.' },
+    { categoria: 'MANO_DE_OBRA', causa: 'El personal del turno no fue capacitado en este escenario ni reconoce las señales previas.' },
+    { categoria: 'MEDICION', causa: 'No se identifican causas en esta categoría para este evento.' },
+    { categoria: 'MEDIO_AMBIENTE', causa: 'El polvo y la iluminación insuficiente reducen la visibilidad durante la operación.' },
+  ],
+  accionesSugeridas: sugerenciaCausaRaizIAFixture.accionesSugeridas,
+  modelo: sugerenciaCausaRaizIAFixture.modelo,
+}
+
+// Toggle de desarrollo/tests para simular el 503 IA_NO_DISPONIBLE del backend.
+let asistenteIAMockFalla = false
+
+export function setAsistenteIAMockFalla(falla: boolean): void {
+  asistenteIAMockFalla = falla
+}
+
+export function getAsistenteIAMockFalla(): boolean {
+  return asistenteIAMockFalla
+}
