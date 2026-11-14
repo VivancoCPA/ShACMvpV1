@@ -3,6 +3,7 @@ import { setupServer } from 'msw/node'
 import { isAxiosError } from 'axios'
 import api from '../../lib/axios'
 import { qualityEventHandlers, getQeStore, resetStore } from './quality-events.handlers'
+import { accionesCorrectivasHandlers } from './acciones-correctivas.handlers'
 import { incidentHandlers, getIncidentsStore, resetStore as resetIncidentsStore } from './incidents.handlers'
 import { nonconformityHandlers, getNonconformitiesStore, resetStore as resetNonconformitiesStore } from './nonconformities.handlers'
 import { getDocumentsStore, resetStore as resetDocumentsStore } from './documents.handlers'
@@ -16,7 +17,7 @@ import type { QualityEvent } from '../../features/quality-events/types/qualityEv
 import type { Incidente } from '../../features/incidents/types/incident.types'
 import type { NoConformidad } from '../../features/nonconformities/types/nonconformity.types'
 
-const server = setupServer(...qualityEventHandlers, ...incidentHandlers, ...nonconformityHandlers)
+const server = setupServer(...qualityEventHandlers, ...incidentHandlers, ...nonconformityHandlers, ...accionesCorrectivasHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterAll(() => server.close())
@@ -177,6 +178,7 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
         responsableId: 'user-operario-001',
         plazoFecha: '2026-08-01',
         prioridad: 'MEDIA',
+        tipo: 'CORRECTIVA',
       }),
     )
     expect(status).toBe(201)
@@ -200,6 +202,7 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
             descripcion: 'AC de prueba',
             responsableId: 'user-operario-001',
             responsableNombre: 'Luis Quispe',
+            tipo: 'CORRECTIVA',
             plazoFecha: '2026-08-01',
             estado: 'PENDIENTE',
             creadoEn: '2026-01-01T00:00:00Z',
@@ -243,8 +246,13 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
             descripcion: 'Última AC pendiente',
             responsableId: 'user-operario-001',
             responsableNombre: 'Luis Quispe',
+            tipo: 'CORRECTIVA',
             plazoFecha: '2026-08-01',
-            estado: 'EN_EJECUCION',
+            estado: 'COMPLETADA',
+            descripcionEvidencia: 'Evidencia de cierre',
+            evidencias: [
+              { id: 'ev-1', nombreArchivo: 'acta.pdf', contentType: 'application/pdf', tamanioBytes: 1024, subidoEn: '2026-01-01T00:00:00Z' },
+            ],
             creadoEn: '2026-01-01T00:00:00Z',
             actualizadoEn: '2026-01-01T00:00:00Z',
             solicitudesAjustePlazo: [],
@@ -254,10 +262,7 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
     )
 
     const { status } = await call(
-      api.patch('/api/quality-events/qe-test-auto-transition/acciones-correctivas/ac-auto-1/status', {
-        estado: 'CERRADA',
-        descripcionEvidencia: 'Evidencia de cierre',
-      }),
+      api.post('/api/quality-events/qe-test-auto-transition/acciones-correctivas/ac-auto-1/verificar', { aprobada: true }),
     )
     expect(status).toBe(200)
     expect(getQeStore().find((q) => q.id === 'qe-test-auto-transition')?.estado).toBe('PENDIENTE_CIERRE')
@@ -295,8 +300,13 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
             descripcion: 'Última AC pendiente',
             responsableId: 'user-operario-101',
             responsableNombre: 'Operario E2',
+            tipo: 'CORRECTIVA',
             plazoFecha: '2026-08-01',
-            estado: 'EN_EJECUCION',
+            estado: 'COMPLETADA',
+            descripcionEvidencia: 'Evidencia de cierre',
+            evidencias: [
+              { id: 'ev-1', nombreArchivo: 'acta.pdf', contentType: 'application/pdf', tamanioBytes: 1024, subidoEn: '2026-01-01T00:00:00Z' },
+            ],
             creadoEn: '2026-01-01T00:00:00Z',
             actualizadoEn: '2026-01-01T00:00:00Z',
             solicitudesAjustePlazo: [],
@@ -306,10 +316,7 @@ describe('quality-events.handlers — AC sub-resource notifications', () => {
     )
 
     const { status } = await call(
-      api.patch('/api/quality-events/qe-test-empresa2-transition/acciones-correctivas/ac-e2-auto-1/status', {
-        estado: 'CERRADA',
-        descripcionEvidencia: 'Evidencia de cierre',
-      }),
+      api.post('/api/quality-events/qe-test-empresa2-transition/acciones-correctivas/ac-e2-auto-1/verificar', { aprobada: true }),
     )
     expect(status).toBe(200)
     expect(getQeStore().find((q) => q.id === 'qe-test-empresa2-transition')?.estado).toBe('PENDIENTE_CIERRE')
@@ -331,6 +338,7 @@ describe('quality-events.handlers — firmar-cierre notifications', () => {
     getQeStore().push(
       baseQE({
         id: 'qe-test-cierre',
+        areaId: 'area-010',
         numero: 'QE-TEST-CIERRE',
         estado: 'PENDIENTE_CIERRE',
         severidad: 'CRITICA',
@@ -751,6 +759,7 @@ describe('quality-events.handlers — sincronización de estado Incidente <- QE'
     getQeStore().push(
       baseQE({
         id: 'qe-sync-cerrado',
+        areaId: 'area-010',
         numero: 'QE-SYNC-CERRADO',
         estado: 'PENDIENTE_CIERRE',
         incidenteId: 'inc-sync-cerrado',
@@ -897,6 +906,7 @@ describe('quality-events.handlers — sincronización de estado NC <- QE (RN-QE-
     getQeStore().push(
       baseQE({
         id: 'qe-nc-sync-cerrada',
+        areaId: 'area-010',
         numero: 'QE-NC-SYNC-CERRADA',
         origen: 'O2_NC_DETECTADA',
         estado: 'PENDIENTE_CIERRE',
@@ -1413,5 +1423,370 @@ describe('quality-events.handlers — asistente IA (qe-asistente-ia)', () => {
 
     const entrada = data.auditTrail.find((e) => e.campoModificado === 'ishikawa')
     expect(entrada?.generadoPorIA).toBe(true)
+  })
+})
+
+describe('quality-events.handlers — supervisor del área y rechazo del cierre (qe-cierre-firma-supervisor-area)', () => {
+  const RESULTADO = 'Cierre de prueba con más de cien caracteres para pasar la validación mínima requerida por el formulario.'
+
+  it('exposes supervisoresArea and signer names in the PENDIENTE_CIERRE detail', async () => {
+    getQeStore().push(
+      baseQE({ id: 'qe-sup-detalle', estado: 'PENDIENTE_CIERRE', areaId: 'area-010', resultadoCierre: RESULTADO, cerradoPorId: 'user-jefecalidad-001' }),
+    )
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(api.get<QualityEvent>('/api/quality-events/qe-sup-detalle'))
+
+    expect(status).toBe(200)
+    expect(data.supervisoresArea?.map((s) => s.id)).toContain('user-supervisor-001')
+    expect(data.cerradoPorNombre).toBeTruthy()
+  })
+
+  it('rejects the second signature of a supervisor of another area with 403', async () => {
+    getQeStore().push(
+      baseQE({ id: 'qe-sup-otra-area', estado: 'PENDIENTE_CIERRE', areaId: 'area-001', resultadoCierre: RESULTADO, cerradoPorId: 'user-jefecalidad-001' }),
+    )
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+
+    const { status, data } = await call(
+      api.patch('/api/quality-events/qe-sup-otra-area/firmar-cierre', { rol: 'SUPERVISOR', pin: '1234' }),
+    )
+
+    expect(status).toBe(403)
+    expect((data as unknown as { errorCode: string }).errorCode).toBe('NO_ES_SUPERVISOR_DEL_AREA')
+  })
+
+  it('blocks starting the closure on an area without supervisors with 422', async () => {
+    getQeStore().push(baseQE({ id: 'qe-sin-sup', estado: 'PENDIENTE_CIERRE', areaId: 'area-sin-supervisor' }))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call(
+      api.patch('/api/quality-events/qe-sin-sup/cerrar', { resultadoCierre: RESULTADO, plazoVerificacionDias: 60 }),
+    )
+
+    expect(status).toBe(422)
+    expect((data as unknown as { errorCode: string }).errorCode).toBe('AREA_SIN_SUPERVISOR')
+  })
+
+  it('returns the QE to EN_EJECUCION when an area supervisor rejects the closure', async () => {
+    getQeStore().push(
+      baseQE({ id: 'qe-rechazo', estado: 'PENDIENTE_CIERRE', areaId: 'area-010', resultadoCierre: RESULTADO, cerradoPorId: 'user-jefecalidad-001' }),
+    )
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+
+    const { status, data } = await call(
+      api.post<QualityEvent>('/api/quality-events/qe-rechazo/rechazar-cierre', {
+        motivo: 'Falta evidencia fotográfica de la AC 2',
+      }),
+    )
+
+    expect(status).toBe(200)
+    expect(data.estado).toBe('EN_EJECUCION')
+    expect(data.cerradoPorId).toBeUndefined()
+    expect(data.resultadoCierre).toBe(RESULTADO)
+    expect(data.auditTrail.at(-1)).toMatchObject({ accion: 'CIERRE_RECHAZADO', valorNuevo: 'Falta evidencia fotográfica de la AC 2' })
+  })
+
+  it('rejects a rejection from a supervisor of another area with 403', async () => {
+    getQeStore().push(
+      baseQE({ id: 'qe-rechazo-403', estado: 'PENDIENTE_CIERRE', areaId: 'area-001', resultadoCierre: RESULTADO, cerradoPorId: 'user-jefecalidad-001' }),
+    )
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+
+    const { status } = await call(
+      api.post('/api/quality-events/qe-rechazo-403/rechazar-cierre', { motivo: 'Falta evidencia fotográfica de la AC 2' }),
+    )
+
+    expect(status).toBe(403)
+  })
+})
+
+describe('ac-tipo-responsables — tipo de acción y responsable por tipo (MSW)', () => {
+  const body = (overrides: Record<string, unknown>) => ({
+    descripcion: 'AC de prueba',
+    responsableId: 'user-operario-001',
+    plazoFecha: '2026-08-01',
+    prioridad: 'MEDIA',
+    ...overrides,
+  })
+
+  it.each([
+    ['QE', '/api/quality-events/qe-test-tipo/acciones-correctivas'],
+    ['NC', '/api/nonconformities/nc-test-tipo/acciones-correctivas'],
+    ['INCIDENTE', '/api/incidents/inc-test-tipo/acciones'],
+  ])('%s: POST sin tipo responde 400 y con responsable no permitido responde error en responsableId', async (origen, url) => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    if (origen === 'QE') getQeStore().push(baseQE({ id: 'qe-test-tipo', numero: 'QE-TEST-TIPO' }))
+    if (origen === 'NC') {
+      const base = getNonconformitiesStore()[0]
+      getNonconformitiesStore().push({ ...base, id: 'nc-test-tipo', empresaId: 'empresa-001', accionesCorrectivas: [] })
+    }
+    if (origen === 'INCIDENTE') {
+      const base = getIncidentsStore()[0]
+      getIncidentsStore().push({ ...base, id: 'inc-test-tipo', empresaId: 'empresa-001', accionesCorrectivas: [] })
+    }
+    const extra = origen === 'QE' ? {} : { titulo: 'AC de prueba' }
+
+    const sinTipo = await call(api.post(url, body(extra)))
+    expect(sinTipo.status).toBe(400)
+
+    const mejoraConOperario = await call<{ errors?: string[] }>(api.post(url, body({ ...extra, tipo: 'MEJORA' })))
+    expect(mejoraConOperario.status).toBe(400)
+    expect(mejoraConOperario.data.errors?.some((e) => e.startsWith('responsableId:'))).toBe(true)
+
+    const ok = await call<{ tipo: string }>(api.post(url, body({ ...extra, tipo: 'CORRECTIVA' })))
+    expect(ok.status).toBe(201)
+    expect(ok.data.tipo).toBe('CORRECTIVA')
+  })
+
+  it('GET candidatos-responsable?tipo=MEJORA devuelve solo JCA, JCD y DIR de la empresa', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status, data } = await call<{ rol: string }[]>(
+      api.get('/api/acciones-correctivas/candidatos-responsable', { params: { tipo: 'MEJORA' } }),
+    )
+
+    expect(status).toBe(200)
+    expect(data.length).toBeGreaterThan(0)
+    expect(
+      data.every((c) => ['JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'ALTA_DIRECCION'].includes(c.rol)),
+    ).toBe(true)
+  })
+
+  it('GET candidatos-responsable con tipo inválido responde 400', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status } = await call(api.get('/api/acciones-correctivas/candidatos-responsable', { params: { tipo: 'OTRO' } }))
+
+    expect(status).toBe(400)
+  })
+})
+
+describe('quality-events.handlers — ejecución y verificación de AC (ac-ejecucion-verificacion-evidencias)', () => {
+  const DESCRIPCION = 'Se reforzó la supervisión del uso de EPP en los tres turnos; se adjunta el acta firmada.'
+
+  function sembrarQE(estadoAC: 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA') {
+    getQeStore().push(
+      baseQE({
+        id: 'qe-test-flujo',
+        numero: 'QE-TEST-FLUJO',
+        estado: 'EN_EJECUCION',
+        accionesCorrectivas: [
+          {
+            id: 'ac-flujo-1',
+            qeId: 'qe-test-flujo',
+            descripcion: 'AC del flujo',
+            responsableId: 'user-operario-001',
+            responsableNombre: 'Luis Quispe',
+            tipo: 'CORRECTIVA',
+            plazoFecha: '2026-08-01',
+            estado: estadoAC,
+            evidencias: [],
+            creadoEn: '2026-01-01T00:00:00Z',
+            actualizadoEn: '2026-01-01T00:00:00Z',
+            solicitudesAjustePlazo: [],
+          },
+        ],
+      }),
+    )
+  }
+
+  const ruta = (sufijo: string) => `/api/quality-events/qe-test-flujo/acciones-correctivas/ac-flujo-1/${sufijo}`
+  const ac = () => getQeStore().find((q) => q.id === 'qe-test-flujo')!.accionesCorrectivas[0]
+  const errorCode = (data: unknown) => (data as { errorCode?: string }).errorCode
+  const multipart = { headers: { 'Content-Type': undefined } }
+
+  function archivo(nombre: string, type = 'application/pdf') {
+    const form = new FormData()
+    form.append('archivo', new File(['%PDF-1.4'], nombre, { type }), nombre)
+    return form
+  }
+
+  it('PATCH /status con CERRADA responde 422 USAR_FLUJO_VERIFICACION', async () => {
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    sembrarQE('EN_EJECUCION')
+
+    const { status, data } = await call(api.patch(ruta('status'), { estado: 'CERRADA', descripcionEvidencia: 'x' }))
+    expect(status).toBe(422)
+    expect(errorCode(data)).toBe('USAR_FLUJO_VERIFICACION')
+  })
+
+  it('un usuario que no es el responsable no puede iniciar (403 SOLO_RESPONSABLE_AC)', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    sembrarQE('PENDIENTE')
+
+    const { status, data } = await call(api.post(ruta('iniciar')))
+    expect(status).toBe(403)
+    expect(errorCode(data)).toBe('SOLO_RESPONSABLE_AC')
+    expect(ac().estado).toBe('PENDIENTE')
+  })
+
+  it('un SUPERVISOR no puede verificar (403 SOLO_JCA_VERIFICA)', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    sembrarQE('COMPLETADA')
+
+    const { status, data } = await call(api.post(ruta('verificar'), { aprobada: true }))
+    expect(status).toBe(403)
+    expect(errorCode(data)).toBe('SOLO_JCA_VERIFICA')
+  })
+
+  it('flujo completo: iniciar, subir, ejecutar, devolver, re-ejecutar y aprobar pasa el QE a PENDIENTE_CIERRE', async () => {
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    sembrarQE('PENDIENTE')
+
+    expect((await call(api.post(ruta('iniciar')))).status).toBe(200)
+    expect((await call(api.post(ruta('ejecutar'), { descripcionEvidencia: DESCRIPCION }))).status).toBe(422)
+
+    const subida = await call(api.post(ruta('evidencias'), archivo('acta.pdf'), multipart))
+    expect(subida.data).toEqual(expect.objectContaining({ id: expect.any(String) }))
+    expect(subida.status).toBe(201)
+    expect(ac().evidencias).toHaveLength(1)
+
+    expect((await call(api.post(ruta('ejecutar'), { descripcionEvidencia: 'corta' }))).status).toBe(400)
+    expect((await call(api.post(ruta('ejecutar'), { descripcionEvidencia: DESCRIPCION }))).status).toBe(200)
+    expect(ac().estado).toBe('COMPLETADA')
+    expect(getNotificationsStore().find((n) => n.usuarioId === 'user-005' && n.entidadId === 'qe-test-flujo')).toBeDefined()
+
+    setCurrentUser('user-005', 'JEFE_CALIDAD_SYST')
+    expect((await call(api.post(ruta('verificar'), { aprobada: false }))).status).toBe(400)
+    const devolver = await call(
+      api.post(ruta('verificar'), { aprobada: false, comentario: 'Falta la foto del después de la obra.' }),
+    )
+    expect(devolver.status).toBe(200)
+    expect(ac().estado).toBe('EN_EJECUCION')
+    expect(ac().motivoDevolucion).toBe('Falta la foto del después de la obra.')
+    expect(
+      getNotificationsStore().find(
+        (n) => n.usuarioId === 'user-operario-001' && n.entidadId === 'qe-test-flujo' && n.mensaje.includes('devuelta'),
+      ),
+    ).toBeDefined()
+
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    expect((await call(api.post(ruta('ejecutar'), { descripcionEvidencia: DESCRIPCION }))).status).toBe(200)
+
+    setCurrentUser('user-005', 'JEFE_CALIDAD_SYST')
+    expect((await call(api.post(ruta('verificar'), { aprobada: true }))).status).toBe(200)
+    expect(ac().estado).toBe('CERRADA')
+    expect(getQeStore().find((q) => q.id === 'qe-test-flujo')?.estado).toBe('PENDIENTE_CIERRE')
+  })
+
+  it('rechaza extensiones no permitidas y un sexto archivo', async () => {
+    setCurrentUser('user-operario-001', 'OPERARIO')
+    sembrarQE('EN_EJECUCION')
+
+    expect((await call(api.post(ruta('evidencias'), archivo('virus.exe', 'application/x-msdownload'), multipart))).status).toBe(400)
+    for (let i = 0; i < 5; i++) {
+      expect((await call(api.post(ruta('evidencias'), archivo(`ev-${i}.pdf`), multipart))).status).toBe(201)
+    }
+    expect((await call(api.post(ruta('evidencias'), archivo('sexta.pdf'), multipart))).status).toBe(422)
+  })
+})
+
+describe('quality-events.handlers — solicitudes de AC (solicitudes-ac-y-ac-del-qe-en-origen)', () => {
+  const MOTIVO = 'La solicitud duplica una AC ya registrada en el QE.'
+  const acBody = {
+    titulo: 'Reemplazar guarda',
+    descripcion: 'AC de prueba',
+    responsableId: 'user-operario-001',
+    plazoFecha: '2026-08-01',
+    prioridad: 'MEDIA',
+    tipo: 'CORRECTIVA',
+  }
+
+  function sembrar(overrides: Partial<QualityEvent> = {}) {
+    getQeStore().push(baseQE({ id: 'qe-test-sol', numero: 'QE-TEST-SOL', estado: 'EN_INVESTIGACION', ...overrides }))
+  }
+  const qe = () => getQeStore().find((q) => q.id === 'qe-test-sol')!
+
+  it('solicitar incrementa el contador y registra AC_SOLICITADA con el autor', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    sembrar()
+
+    const { status } = await call(api.patch('/api/quality-events/qe-test-sol/solicitar-ac'))
+
+    expect(status).toBe(200)
+    expect(qe().solicitudesAC).toBe(1)
+    expect(qe().auditTrail.at(-1)).toMatchObject({ accion: 'AC_SOLICITADA', realizadoPorId: 'user-supervisor-001' })
+  })
+
+  it('solicitar con un rol no permitido responde 403', async () => {
+    setCurrentUser('user-auditor-001', 'AUDITOR_INTERNO')
+    sembrar()
+
+    const { status, data } = await call<{ errorCode?: string }>(api.patch('/api/quality-events/qe-test-sol/solicitar-ac'))
+
+    expect(status).toBe(403)
+    expect(data.errorCode).toBe('SOLICITUD_AC_ROL_NO_PERMITIDO')
+  })
+
+  it('solicitar sobre un QE cerrado responde 422', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    sembrar({ estado: 'CERRADO' })
+
+    const { status, data } = await call<{ errorCode?: string }>(api.patch('/api/quality-events/qe-test-sol/solicitar-ac'))
+
+    expect(status).toBe(422)
+    expect(data.errorCode).toBe('SOLICITUD_AC_ESTADO_INVALIDO')
+  })
+
+  it('crear una AC descuenta la solicitud y registra SOLICITUD_AC_ATENDIDA', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    sembrar({ solicitudesAC: 1 })
+
+    const { status } = await call(api.post('/api/quality-events/qe-test-sol/acciones-correctivas', acBody))
+
+    expect(status).toBe(201)
+    const get = await call<QualityEvent>(api.get('/api/quality-events/qe-test-sol'))
+    expect(get.data.solicitudesAC).toBe(0)
+    expect(qe().auditTrail.some((a) => a.accion === 'SOLICITUD_AC_ATENDIDA' && a.valorAnterior === '1')).toBe(true)
+  })
+
+  it('crear una AC sin solicitudes no deja el contador negativo', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    sembrar()
+
+    await call(api.post('/api/quality-events/qe-test-sol/acciones-correctivas', acBody))
+
+    expect(qe().solicitudesAC).toBe(0)
+    expect(qe().auditTrail.some((a) => a.accion === 'SOLICITUD_AC_ATENDIDA')).toBe(false)
+  })
+
+  it('el JCA descarta con motivo: descuenta, audita y avisa al solicitante', async () => {
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    sembrar()
+    await call(api.patch('/api/quality-events/qe-test-sol/solicitar-ac'))
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { status } = await call(api.post('/api/quality-events/qe-test-sol/solicitudes-ac/descartar', { motivo: MOTIVO }))
+
+    expect(status).toBe(200)
+    const get = await call<QualityEvent>(api.get('/api/quality-events/qe-test-sol'))
+    expect(get.data.solicitudesAC).toBe(0)
+    expect(qe().auditTrail.at(-1)?.accion).toBe('SOLICITUD_AC_DESCARTADA')
+    const aviso = getNotificationsStore().find(
+      (n) => n.usuarioId === 'user-supervisor-001' && n.entidadId === 'qe-test-sol',
+    )
+    expect(aviso?.mensaje).toContain(MOTIVO)
+  })
+
+  it('descartar: SUPERVISOR 403, motivo corto 400, sin solicitudes 422', async () => {
+    sembrar({ solicitudesAC: 1 })
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+    const supervisor = await call<{ errorCode?: string }>(
+      api.post('/api/quality-events/qe-test-sol/solicitudes-ac/descartar', { motivo: MOTIVO }),
+    )
+    expect(supervisor.status).toBe(403)
+    expect(supervisor.data.errorCode).toBe('SOLO_JCA_DESCARTA_SOLICITUD')
+
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    const corto = await call(api.post('/api/quality-events/qe-test-sol/solicitudes-ac/descartar', { motivo: 'corto' }))
+    expect(corto.status).toBe(400)
+
+    await call(api.post('/api/quality-events/qe-test-sol/solicitudes-ac/descartar', { motivo: MOTIVO }))
+    const vacio = await call<{ errorCode?: string }>(
+      api.post('/api/quality-events/qe-test-sol/solicitudes-ac/descartar', { motivo: MOTIVO }),
+    )
+    expect(vacio.status).toBe(422)
+    expect(vacio.data.errorCode).toBe('SIN_SOLICITUDES_PENDIENTES')
   })
 })

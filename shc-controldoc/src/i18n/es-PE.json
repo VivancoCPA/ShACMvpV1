@@ -38,6 +38,22 @@
     },
     "session": {
       "restoring": "Restaurando sesión…"
+    },
+    "acTipo": {
+      "CORRECTIVA": "Correctiva",
+      "PREVENTIVA": "Preventiva",
+      "MEJORA": "Mejora"
+    },
+    "acEstado": {
+      "PENDIENTE": "Pendiente",
+      "EN_EJECUCION": "En ejecución",
+      "COMPLETADA": "Pendiente de verificación",
+      "CERRADA": "Cerrada",
+      "VENCIDA": "Vencida"
+    },
+    "acReadOnly": {
+      "verificadaPor": "Verificada por {{nombre}} · {{fecha}}",
+      "verEnQE": "Ver en el QE"
     }
   },
   "documents": {
@@ -605,6 +621,7 @@
     "logout": "Cerrar sesión",
     "myProfile": "Mi perfil",
     "toggleTheme": "Cambiar tema",
+    "userMenu": "Menú de usuario",
     "toggleLanguage": "Cambiar idioma",
     "empresaSwitcher": {
       "label": "Cambiar de empresa",
@@ -844,15 +861,15 @@
       "acSection": {
         "title": "Acciones Correctivas",
         "progreso": "{{cerradas}} de {{total}} ACs cerradas",
-        "solicitudesACBanner": "{{count}} solicitud(es) de nueva AC pendientes — registradas desde el origen del QE",
+        "solicitudesACBanner": "{{count}} solicitud(es) de nueva AC pendientes — registradas desde el origen del QE. Créala con «Nueva AC» o descártala.",
         "empty": "No hay acciones correctivas registradas.",
         "actions": {
           "add": "Nueva AC",
           "iniciar": "Iniciar",
-          "cerrar": "Cerrar con evidencia",
           "save": "Guardar",
           "cancel": "Cancelar",
-          "cerrarModal": "Confirmar cierre"
+          "marcarEjecutada": "Marcar como ejecutada",
+          "verificar": "Verificar"
         },
         "fields": {
           "titulo": "Título",
@@ -861,7 +878,7 @@
           "prioridad": "Prioridad",
           "plazoFecha": "Fecha de Vencimiento",
           "evidencia": "Descripción de Evidencia",
-          "evidenciaUrl": "URL de Evidencia (opcional)"
+          "tipo": "Tipo de acción"
         },
         "placeholders": {
           "titulo": "Título de la acción correctiva…",
@@ -869,7 +886,8 @@
           "responsable": "Selecciona el responsable…",
           "prioridad": "Selecciona la prioridad…",
           "evidencia": "Describe la evidencia que demuestra la efectividad de la acción…",
-          "evidenciaUrl": "https://…"
+          "tipo": "Selecciona el tipo de acción…",
+          "elegirTipoPrimero": "Elige primero el tipo de acción"
         },
         "prioridad": {
           "BAJA": "Baja",
@@ -880,17 +898,14 @@
         "acStatus": {
           "PENDIENTE": "Pendiente",
           "EN_EJECUCION": "En Ejecución",
-          "CERRADA": "Cerrada"
+          "CERRADA": "Cerrada",
+          "COMPLETADA": "Pendiente de verificación"
         },
         "agregarModal": {
           "title": "Agregar Acción Correctiva"
         },
-        "cerrarModal": {
-          "title": "Cerrar Acción Correctiva",
-          "body": "Registra la evidencia de que la acción fue completada satisfactoriamente."
-        },
         "errors": {
-          "evidenciaRequerida": "La descripción de la evidencia es obligatoria."
+          "tipoRequerido": "Selecciona el tipo de acción."
         },
         "autoTransitionToast": "Todas las acciones correctivas fueron cerradas — el QE pasó a Pendiente de Cierre.",
         "ajustePlazo": {
@@ -942,7 +957,58 @@
             "rechazado": "Solicitud de ajuste de plazo rechazada.",
             "responsableNotificado": "Se notificó al responsable de la acción correctiva."
           }
-        }
+        },
+        "sinCandidatos": "No hay usuarios activos que puedan ser responsables de este tipo de acción.",
+        "responsableNoValido": "{{nombre}} no puede ser responsable de una acción de tipo {{tipo}}.",
+        "sinCandidatosAdmin": "Revisa la configuración en Usuarios → Responsables de acciones correctivas.",
+        "sinCandidatosConsulta": "Consulta al administrador de tu empresa.",
+        "evidencias": {
+          "titulo": "Evidencias",
+          "elegir": "Elegir archivos",
+          "tomarFoto": "Tomar foto",
+          "ayuda": "PDF, JPG, PNG, MP4, DOCX o XLSX · máx. 50 MB · hasta 5 archivos",
+          "descripcion": "Describe qué demuestra la evidencia (50–300 caracteres)",
+          "subiendo": "Subiendo {{nombre}}…",
+          "quitar": "Quitar {{nombre}}",
+          "abrir": "Abrir en una pestaña nueva",
+          "errorTipo": "{{nombre}}: tipo de archivo no permitido.",
+          "errorTamano": "{{nombre}} supera los 50 MB.",
+          "errorMaximo": "Se permiten hasta 5 archivos por acción.",
+          "errorSubida": "No se pudo subir {{nombre}}.",
+          "errorAbrir": "No se pudo abrir la evidencia.",
+          "ver_one": "Ver evidencias ({{count}})",
+          "ver_other": "Ver evidencias ({{count}})",
+          "historica": "Ver evidencia (enlace histórico)"
+        },
+        "ejecutarModal": {
+          "title": "Marcar como ejecutada",
+          "body": "Adjunta la evidencia de que ejecutaste la acción. El Jefe de Calidad la verificará antes de cerrarla.",
+          "confirmar": "Confirmar ejecución",
+          "contador": "{{actual}} / {{min}}–{{max}}"
+        },
+        "verificar": {
+          "title": "Verificar acción correctiva",
+          "aprobar": "Aprobar y cerrar",
+          "devolver": "Devolver",
+          "motivo": "Motivo de la devolución",
+          "confirmarDevolucion": "Confirmar devolución",
+          "ejecutadaPor": "Ejecutada por {{nombre}} · {{fecha}}",
+          "sinEvidencias": "La acción no tiene archivos de evidencia."
+        },
+        "devuelta": "Devuelta por el Jefe de Calidad: {{motivo}}",
+        "verificadaPor": "Verificada por {{nombre}} · {{fecha}}",
+        "toasts": {
+          "iniciada": "Acción correctiva iniciada.",
+          "ejecutada": "Acción marcada como ejecutada. Quedó pendiente de verificación.",
+          "verificada": "Acción correctiva verificada y cerrada.",
+          "devuelta": "Acción correctiva devuelta al responsable.",
+          "error": "No se pudo actualizar la acción correctiva.",
+          "solicitudDescartada": "Solicitud de AC descartada."
+        },
+        "descartarSolicitud": "Descartar solicitud",
+        "descartarSolicitudBody": "La solicitud se cerrará sin crear una acción correctiva. Quien la hizo recibirá el motivo.",
+        "motivoDescarte": "Motivo del descarte",
+        "confirmarDescarte": "Descartar"
       },
       "auditTrail": {
         "title": "Historial de Auditoría",
@@ -965,7 +1031,19 @@
           "EXPORTACION_PDF": "PDF exportado",
           "RESPONSABLE_ASIGNADO": "Responsable asignado",
           "RESPONSABLE_CAMBIADO": "Responsable cambiado",
-          "ASISTENTE_IA_CONSULTADO": "Consulta al asistente IA"
+          "ASISTENTE_IA_CONSULTADO": "Consulta al asistente IA",
+          "FIRMA_CIERRE_JEFE_CALIDAD": "Firma de cierre — Jefe de Calidad",
+          "FIRMA_CIERRE_SUPERVISOR": "Firma de cierre — Supervisor",
+          "CIERRE_RECHAZADO": "Cierre rechazado",
+          "AC_INICIADA": "Acción correctiva iniciada",
+          "AC_EVIDENCIA_AGREGADA": "Evidencia de acción correctiva agregada",
+          "AC_EVIDENCIA_ELIMINADA": "Evidencia de acción correctiva eliminada",
+          "AC_EJECUTADA": "Acción correctiva ejecutada",
+          "AC_VERIFICADA_CERRADA": "Acción correctiva verificada y cerrada",
+          "AC_DEVUELTA": "Acción correctiva devuelta",
+          "AC_SOLICITADA": "Acción correctiva solicitada desde el origen",
+          "SOLICITUD_AC_ATENDIDA": "Solicitud de AC atendida",
+          "SOLICITUD_AC_DESCARTADA": "Solicitud de AC descartada"
         },
         "sugerenciaIAEditada": "sugerencia IA editada"
       },
@@ -996,7 +1074,8 @@
         },
         "secondSignature": {
           "buttonSupervisor": "Firmar como Supervisor",
-          "buttonAltaDireccion": "Firmar como Alta Dirección"
+          "buttonAltaDireccion": "Firmar como Alta Dirección",
+          "button": "Firmar cierre"
         },
         "pinModal": {
           "titleJefeCalidad": "Confirmar firma — Jefe de Calidad",
@@ -1017,8 +1096,24 @@
           "fechaCierre": "Fecha de cierre"
         },
         "toasts": {
-          "closed": "Quality Event cerrado exitosamente."
-        }
+          "closed": "Quality Event cerrado exitosamente.",
+          "rechazado": "Cierre rechazado. El Jefe de Calidad fue notificado.",
+          "rechazoError": "Error al rechazar el cierre"
+        },
+        "firma1": "Firma 1 — Jefe de Calidad",
+        "firma2": "Firma 2 — Supervisor de {{area}}",
+        "firmaHecha": "✓ {{nombre}} — {{fecha}}",
+        "pendiente": "Pendiente",
+        "puedenFirmar": "Pueden firmar: {{nombres}}.",
+        "avisoEnviado": "Se les envió un aviso.",
+        "esperaJCA": "Se habilita después de la firma del Jefe de Calidad.",
+        "noEsDelArea": "Solo los supervisores del área {{area}} pueden firmar este cierre.",
+        "rechazar": "Rechazar cierre",
+        "motivoRechazo": "Motivo del rechazo",
+        "motivoRechazoMin": "El motivo debe tener al menos 20 caracteres.",
+        "motivoRechazoMax": "El motivo no puede superar 500 caracteres.",
+        "rechazadoAviso": "Cierre rechazado por {{nombre}} el {{fecha}}: {{motivo}}",
+        "irAUsuarios": "Ir a Usuarios"
       },
       "verificacion": {
         "title": "Verificación de Eficacia",
@@ -1109,7 +1204,15 @@
       "ANALISIS_NO_EDITABLE": "El análisis solo se puede editar en investigación o con el análisis completado.",
       "IA_LIMITE_DIARIO": "Se alcanzó el límite diario de consultas a la IA para este QE.",
       "IA_NO_DISPONIBLE": "El asistente no está disponible en este momento. Puedes completar el análisis manualmente.",
-      "IA_NO_CONFIGURADA": "El asistente IA no está configurado en este servidor."
+      "IA_NO_CONFIGURADA": "El asistente IA no está configurado en este servidor.",
+      "AREA_SIN_SUPERVISOR": "El área {{area}} no tiene un supervisor activo asignado. Asigna uno en Usuarios antes de cerrar.",
+      "NO_ES_SUPERVISOR_DEL_AREA": "Solo un supervisor del área puede firmar o rechazar este cierre.",
+      "SOLO_RESPONSABLE_AC": "Solo el responsable asignado puede realizar esta acción.",
+      "SOLO_JCA_VERIFICA": "Solo el Jefe de Calidad puede verificar y cerrar la acción.",
+      "SIN_SOLICITUDES_PENDIENTES": "No hay solicitudes pendientes.",
+      "SOLO_JCA_DESCARTA_SOLICITUD": "Solo el Jefe de Calidad puede descartar solicitudes de AC.",
+      "SOLICITUD_AC_ROL_NO_PERMITIDO": "Tu rol no puede solicitar acciones correctivas en el QE.",
+      "SOLICITUD_AC_ESTADO_INVALIDO": "El QE ya no admite solicitudes de acción correctiva."
     },
     "roles": {
       "SUPERVISOR": "Supervisor",
@@ -1416,7 +1519,14 @@
       "verEnQE": "Ver en QE →",
       "toasts": {
         "solicitudEnviada": "Solicitud enviada — pendiente en el QE"
-      }
+      },
+      "delQE": "Acciones correctivas del {{numero}}",
+      "delQESinNumero": "Acciones correctivas del QE",
+      "anteriores": "Acciones correctivas anteriores (registradas en el incidente)",
+      "qeSinAC": "El QE aún no tiene acciones correctivas.",
+      "solicitudesPendientes": "Solicitudes pendientes en el QE: {{n}}",
+      "cargandoQE": "Cargando acciones correctivas del QE…",
+      "errorQE": "No se pudieron cargar las acciones correctivas del QE."
     },
     "mobile": {
       "form": {
@@ -1783,7 +1893,14 @@
       "verEnQE": "Ver en QE →",
       "toasts": {
         "solicitudEnviada": "Solicitud enviada — el Jefe de Calidad creará la AC en el QE"
-      }
+      },
+      "delQE": "Acciones correctivas del {{numero}}",
+      "delQESinNumero": "Acciones correctivas del QE",
+      "anteriores": "Acciones correctivas anteriores (registradas en la NC)",
+      "qeSinAC": "El QE aún no tiene acciones correctivas.",
+      "solicitudesPendientes": "Solicitudes pendientes en el QE: {{n}}",
+      "cargandoQE": "Cargando acciones correctivas del QE…",
+      "errorQE": "No se pudieron cargar las acciones correctivas del QE."
     },
     "errors": {
       "notFound": "No conformidad no encontrada.",
@@ -1822,15 +1939,22 @@
         "DOCUMENTO": "Documentos"
       },
       "tipo": {
-        "QE_CAUSA_RAIZ": "Definir causa raíz",
-        "QE_CERRAR": "Cerrar Quality Event",
+        "QE_INICIAR_INVESTIGACION": "Iniciar investigación",
+        "QE_COMPLETAR_ANALISIS": "Completar análisis",
+        "QE_ASIGNAR_RESPONSABLE": "Asignar responsable",
+        "QE_APROBAR_CAUSA_RAIZ": "Aprobar causa raíz",
+        "QE_REGISTRAR_CIERRE": "Registrar resultado de cierre",
+        "QE_FIRMAR_CIERRE_JCA": "Firmar cierre (Jefe de Calidad)",
         "QE_FIRMAR_CIERRE": "Firmar cierre",
         "QE_VERIFICAR": "Verificar eficacia",
         "AC_EJECUTAR": "Ejecutar acción correctiva",
         "DOC_REVISAR": "Revisar documento",
         "DOC_APROBAR": "Aprobar documento",
-        "DOC_REVISION_PERIODICA": "Revisión periódica"
-      }
+        "DOC_REVISION_PERIODICA": "Revisión periódica",
+        "AC_VERIFICAR": "Verificar acción correctiva"
+      },
+      "mostrando": "Mostrando: {{etiqueta}} ({{n}})",
+      "quitarFiltro": "Quitar filtro"
     },
     "semaforo": {
       "venceEn": "Vence en {{dias}}d",
@@ -2130,6 +2254,76 @@
       "title": "Incidentes sin QE vencidos",
       "empty": "No hay incidentes con el plazo vencido.",
       "vencidoHace": "Vencido hace {{duracion}}"
+    },
+    "layout": {
+      "zonas": {
+        "alertas": "Requiere atención",
+        "indicadores": "Indicadores",
+        "trabajo": "Mi trabajo y contexto",
+        "mapa": "Dónde ocurre"
+      },
+      "todoEnOrden": "Todo en orden",
+      "periodo": {
+        "label": "Período de los indicadores",
+        "mes": "Mes",
+        "trimestre": "Trimestre",
+        "anio": "Año"
+      }
+    },
+    "kpi": {
+      "meta": "meta {{op}} {{valor}}",
+      "datosIncompletos": "Datos incompletos",
+      "variacionSinCambio": "sin cambio",
+      "ariaLabel": "{{nombre}}: {{valor}}, {{meta}}, {{estado}}",
+      "semaforo": {
+        "VERDE": "en meta",
+        "AMARILLO": "en alerta",
+        "ROJO": "fuera de meta",
+        "INFORMATIVO": "informativo"
+      }
+    },
+    "alertas": {
+      "jefeCalidad": {
+        "acVencidas": "AC vencidas",
+        "incidentesSinQe": "Incidentes sin QE vencidos",
+        "aprobaciones": "Aprobaciones y cierres pendientes",
+        "qeCriticos": "QE críticos activos"
+      },
+      "altaDireccion": {
+        "qeCriticos": "QE críticos activos",
+        "reaperturas": "Reaperturas del período",
+        "extensiones": "Extensiones de plazo por aprobar"
+      },
+      "supervisor": {
+        "acVencidas": "AC vencidas de mi área",
+        "firmaCierre": "Esperan mi firma de cierre",
+        "incidentesRecientes": "Incidentes recientes de mi área (7 días)"
+      },
+      "auditor": {
+        "verificaciones": "Verificaciones asignadas pendientes",
+        "hallazgosAbiertos": "Hallazgos abiertos"
+      },
+      "operario": {
+        "acVencidas": "Mis AC vencidas",
+        "acPorVencer": "Mis AC por vencer en 5 días"
+      },
+      "jefeControlDoc": {
+        "revisionVencida": "Documentos con revisión vencida",
+        "revisionProxima": "Revisión en 30 días o menos"
+      },
+      "verLista": "ver →"
+    },
+    "acs": {
+      "title": "Acciones correctivas",
+      "tablist": "Acciones correctivas vencidas y por vencer",
+      "tabs": {
+        "vencidas": "Vencidas ({{n}})",
+        "porVencer": "Por vencer ({{n}})"
+      },
+      "empty": {
+        "vencidas": "No hay acciones correctivas vencidas",
+        "porVencer": "No hay acciones correctivas por vencer en los próximos 5 días hábiles"
+      }
     }
   },
   "locations": {
@@ -2372,6 +2566,27 @@
         "bajaError": "Error al dar de baja al usuario",
         "reactivarError": "Error al reactivar al usuario"
       }
+    },
+    "responsablesAc": {
+      "title": "Responsables de acciones correctivas",
+      "descripcion": "Elige qué roles pueden ser responsables de cada tipo de acción.",
+      "porDefecto": "Por defecto",
+      "alMenosUno": "Selecciona al menos un rol.",
+      "restablecer": "Restablecer valores por defecto",
+      "confirmarRestablecer": "¿Volver a la configuración por defecto?",
+      "notaAplicacion": "Los cambios aplican a las nuevas asignaciones. Las acciones correctivas existentes conservan a su responsable.",
+      "guardado": "Configuración guardada.",
+      "tipoColumna": "Tipo de acción",
+      "guardar": "Guardar",
+      "guardando": "Guardando…",
+      "cancelar": "Cancelar",
+      "confirmar": "Restablecer",
+      "cargando": "Cargando configuración…",
+      "errorCarga": "No se pudo cargar la configuración de responsables.",
+      "sinCambios": "Sin cambios registrados: se usan los valores por defecto.",
+      "accionEmpresa": "Responsables de AC",
+      "modalTitle": "Responsables de acciones correctivas — {{empresa}}",
+      "cerrar": "Cerrar"
     }
   },
   "notifications": {

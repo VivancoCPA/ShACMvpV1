@@ -1,3 +1,4 @@
+import type { AccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
 export type IncidentType =
   | 'ACCIDENTE'
   | 'INCIDENTE'
@@ -54,6 +55,8 @@ export interface AccionCorrectivaIncidente {
   responsableNombre: string
   plazoFecha: string
   prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
+  /** PRD §2.2 — obligatorio al crear, no editable (ac-tipo-responsables). */
+  tipo: AccionCorrectivaTipo
   estado: 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA'
   creadoEn: string
   actualizadoEn: string

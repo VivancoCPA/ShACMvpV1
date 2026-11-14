@@ -7,6 +7,7 @@ import type { QEStatusTransitionInput } from '../types/qualityEvent.types'
 import { QE_QUERY_KEYS } from './useQualityEvents'
 import { INCIDENT_QUERY_KEYS } from '../../incidents/hooks/useIncidents'
 import { QUERY_KEYS as NC_QUERY_KEYS } from '../../nonconformities/hooks/useNonconformities'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export function useTransitionQEStatus() {
   const queryClient = useQueryClient()
@@ -16,6 +17,7 @@ export function useTransitionQEStatus() {
     mutationFn: ({ id, data }: { id: string; data: QEStatusTransitionInput }) =>
       transitionQEStatus(id, data),
     onSuccess: (qe, { id }) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['quality-events', 'list'] })
       void queryClient.invalidateQueries({ queryKey: QE_QUERY_KEYS.detail(id) })
       // El Incidente/NC vinculado sigue el estado del QE (ver diagnóstico de sincronización de

@@ -11,6 +11,7 @@ import { notificationHandlers } from './notifications.handlers'
 import { areaHandlers } from './areas.handlers'
 import { empresasHandlers } from './empresas.handlers'
 import { sesionHandlers } from './sesion.handlers'
+import { accionesCorrectivasHandlers } from './acciones-correctivas.handlers'
 
 export const handlers: RequestHandler[] = [
   ...authHandlers,
@@ -25,4 +26,5 @@ export const handlers: RequestHandler[] = [
   ...areaHandlers,
   ...empresasHandlers,
   ...sesionHandlers,
+  ...accionesCorrectivasHandlers,
 ]

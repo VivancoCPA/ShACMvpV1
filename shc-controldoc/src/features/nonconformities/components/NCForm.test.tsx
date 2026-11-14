@@ -41,9 +41,12 @@ vi.mock('../hooks/useNonconformities', () => ({
   QUERY_KEYS: { nonconformities: { all: ['nonconformities'] } },
 }))
 
+vi.mock('../../users/hooks/useCandidatosUsuarios', () => ({
+  useCandidatosUsuarios: () => ({ data: [] }),
+}))
+
 vi.mock('../api/nonconformities.api', () => ({
   createNonconformity: vi.fn(),
-  getUsers: vi.fn().mockResolvedValue([]),
   deleteNonconformity: vi.fn(),
   restoreNonconformity: vi.fn(),
 }))

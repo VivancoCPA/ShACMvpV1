@@ -1,4 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
+import { validarTipoYResponsableAC } from './shared/candidatosUsuarios'
 import { jsPDF } from 'jspdf'
 import { buildMinimalPngBytes } from '../utils/minimalPng'
 import { incidentFixtures } from '../fixtures/incidents.fixtures'
@@ -496,6 +497,9 @@ export const incidentHandlers = [
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
     }
+    // ac-tipo-responsables: tipo obligatorio + responsable validado por tipo y empresa.
+    const validacion = validarTipoYResponsableAC(inc.empresaId, body)
+    if ('error' in validacion) return validacion.error
 
     const now = new Date().toISOString()
     const acId = `ac-inc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -511,6 +515,7 @@ export const incidentHandlers = [
       responsableNombre,
       plazoFecha: body.plazoFecha as string,
       prioridad: body.prioridad as AccionCorrectivaIncidente['prioridad'],
+      tipo: validacion.tipo,
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,

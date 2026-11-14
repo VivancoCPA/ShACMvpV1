@@ -7,6 +7,7 @@ import { QE_QUERY_KEYS } from './useQualityEvents'
 import { QE_AUDIT_TRAIL_QUERY_KEY } from './useQEAuditTrail'
 import { INCIDENT_QUERY_KEYS } from '../../incidents/hooks/useIncidents'
 import { QUERY_KEYS as NC_QUERY_KEYS } from '../../nonconformities/hooks/useNonconformities'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export function useVerificacionEficacia() {
   const queryClient = useQueryClient()
@@ -15,6 +16,7 @@ export function useVerificacionEficacia() {
     mutationFn: ({ id, data }: { id: string; data: VerificacionEficaciaInput }) =>
       registrarVerificacionEficacia(id, data),
     onSuccess: (qe, { id }) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['quality-events', 'list'] })
       void queryClient.invalidateQueries({ queryKey: QE_QUERY_KEYS.detail(id) })
       void queryClient.invalidateQueries({ queryKey: QE_AUDIT_TRAIL_QUERY_KEY(id) })

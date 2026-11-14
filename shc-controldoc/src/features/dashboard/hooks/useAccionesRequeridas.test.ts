@@ -124,13 +124,13 @@ function buildDocumento(overrides: Partial<Documento>): Documento {
 describe('extraerAccionesQE — evita el falso positivo de JEFE_CALIDAD_SYST en PENDIENTE_CIERRE', () => {
   const jefeCalidad = buildUser({ id: 'user-005', rol: 'JEFE_CALIDAD_SYST' })
 
-  it('incluye QE_CERRAR cuando aún no llenó el formulario de cierre', () => {
+  it('incluye QE_REGISTRAR_CIERRE cuando aún no llenó el formulario de cierre', () => {
     const qe = buildQE({ estado: 'PENDIENTE_CIERRE', resultadoCierre: undefined, cerradoPorId: undefined })
     const items = extraerAccionesQE([qe], jefeCalidad)
-    expect(items.some((i) => i.tipo === 'QE_CERRAR')).toBe(true)
+    expect(items.some((i) => i.tipo === 'QE_REGISTRAR_CIERRE')).toBe(true)
   })
 
-  it('omite QE_CERRAR una vez que ya firmó primero (la acción pendiente pasó a Supervisor)', () => {
+  it('omite los pendientes de cierre del JCA una vez que ya firmó primero (la acción pendiente pasó a Supervisor)', () => {
     const qe = buildQE({
       estado: 'PENDIENTE_CIERRE',
       resultadoCierre: 'Ya cerrado por Jefe de Calidad',
@@ -138,7 +138,7 @@ describe('extraerAccionesQE — evita el falso positivo de JEFE_CALIDAD_SYST en 
       cierreFirmaSupervisorId: undefined,
     })
     const items = extraerAccionesQE([qe], jefeCalidad)
-    expect(items.some((i) => i.tipo === 'QE_CERRAR')).toBe(false)
+    expect(items.some((i) => i.tipo === 'QE_REGISTRAR_CIERRE' || i.tipo === 'QE_FIRMAR_CIERRE_JCA')).toBe(false)
   })
 })
 
@@ -169,6 +169,7 @@ describe('extraerAccionesAC — acciones correctivas de los 3 orígenes', () => 
     descripcion: 'AC del QE',
     responsableId: 'user-002',
     responsableNombre: 'Carlos Mendoza',
+    tipo: 'CORRECTIVA',
     plazoFecha: '2099-01-01',
     estado: 'PENDIENTE',
     creadoEn: '2026-01-01T00:00:00Z',
@@ -181,6 +182,7 @@ describe('extraerAccionesAC — acciones correctivas de los 3 orígenes', () => 
     descripcion: 'AC de la NC',
     responsableId: 'user-002',
     responsableNombre: 'Carlos Mendoza',
+    tipo: 'CORRECTIVA',
     plazoFecha: '2099-01-01',
     estado: 'PENDIENTE',
     creadoEn: '2026-01-01T00:00:00Z',
@@ -192,6 +194,7 @@ describe('extraerAccionesAC — acciones correctivas de los 3 orígenes', () => 
     descripcion: 'AC del Incidente',
     responsableId: 'user-002',
     responsableNombre: 'Carlos Mendoza',
+    tipo: 'CORRECTIVA',
     plazoFecha: '2099-01-01',
     estado: 'EN_EJECUCION',
     creadoEn: '2026-01-01T00:00:00Z',
@@ -212,14 +215,50 @@ describe('extraerAccionesAC — acciones correctivas de los 3 orígenes', () => 
     expect(items.every((i) => i.dominio === 'AC')).toBe(true)
   })
 
-  it('excluye acciones correctivas ya con evidencia o de otro responsable', () => {
-    const conEvidencia = buildQE({
-      accionesCorrectivas: [{ ...acQE, descripcionEvidencia: 'Ya tiene evidencia' }],
-    })
+  it('excluye acciones correctivas de NC ya con evidencia o de otro responsable', () => {
+    const conEvidencia = buildNC({ accionesCorrectivas: [{ ...acNC, descripcionEvidencia: 'Ya tiene evidencia' }] })
     const otroResponsable = buildNC({ accionesCorrectivas: [{ ...acNC, responsableId: 'user-999' }] })
 
-    const items = extraerAccionesAC([conEvidencia], [otroResponsable], [], user)
+    const items = extraerAccionesAC([], [conEvidencia, otroResponsable], [], user)
     expect(items).toHaveLength(0)
+  })
+
+  // ac-ejecucion-verificacion-evidencias
+  it('una AC de QE devuelta (EN_EJECUCION con descripción) sigue pendiente para el responsable', () => {
+    const qe = buildQE({
+      accionesCorrectivas: [
+        { ...acQE, estado: 'EN_EJECUCION', descripcionEvidencia: 'Ejecución anterior', motivoDevolucion: 'Falta la foto.' },
+      ],
+    })
+    const items = extraerAccionesAC([qe], [], [], user)
+    expect(items.map((i) => i.tipo)).toEqual(['AC_EJECUTAR'])
+  })
+
+  it('una AC de QE en COMPLETADA no es AC_EJECUTAR para el responsable', () => {
+    const qe = buildQE({ accionesCorrectivas: [{ ...acQE, estado: 'COMPLETADA' }] })
+    expect(extraerAccionesAC([qe], [], [], user).some((i) => i.tipo === 'AC_EJECUTAR')).toBe(false)
+  })
+
+  it('el JCA ve AC_VERIFICAR por cada AC de QE en COMPLETADA, de cualquier responsable', () => {
+    const jca = buildUser({ id: 'user-jca', rol: 'JEFE_CALIDAD_SYST' })
+    const qe = buildQE({
+      accionesCorrectivas: [
+        { ...acQE, id: 'ac-a', estado: 'COMPLETADA' },
+        { ...acQE, id: 'ac-b', estado: 'COMPLETADA', responsableId: 'user-999' },
+        { ...acQE, id: 'ac-c', estado: 'EN_EJECUCION', responsableId: 'user-999' },
+      ],
+    })
+    const items = extraerAccionesAC([qe], [], [], jca)
+    expect(items.filter((i) => i.tipo === 'AC_VERIFICAR').map((i) => i.id)).toEqual([
+      'AC-AC_VERIFICAR-ac-a',
+      'AC-AC_VERIFICAR-ac-b',
+    ])
+  })
+
+  it('otros roles no ven AC_VERIFICAR', () => {
+    const supervisor = buildUser({ id: 'user-sup', rol: 'SUPERVISOR' })
+    const qe = buildQE({ accionesCorrectivas: [{ ...acQE, estado: 'COMPLETADA' }] })
+    expect(extraerAccionesAC([qe], [], [], supervisor)).toHaveLength(0)
   })
 })
 
@@ -244,5 +283,19 @@ describe('extraerAccionesDocumento — Documentos por rol', () => {
   it('no incluye nada cuando el usuario no tiene rol asignado sobre el documento', () => {
     const doc = buildDocumento({ revisorId: 'user-999', aprobadorId: 'user-999', estado: 'EN_REVISION' })
     expect(extraerAccionesDocumento([doc], user)).toHaveLength(0)
+  })
+})
+
+describe('extraerAccionesQE — firma de cierre solo para supervisores del área (qe-cierre-firma-supervisor-area)', () => {
+  const qe = buildQE({ estado: 'PENDIENTE_CIERRE', areaId: 'area-001', resultadoCierre: 'x', cerradoPorId: 'user-005' })
+
+  it('lists the pending signature for a supervisor of the area', () => {
+    const supervisor = buildUser({ id: 'user-sup', rol: 'SUPERVISOR', areaIds: ['area-001'] })
+    expect(extraerAccionesQE([qe], supervisor).some((i) => i.tipo === 'QE_FIRMAR_CIERRE')).toBe(true)
+  })
+
+  it('does not list it for a supervisor of another area', () => {
+    const supervisor = buildUser({ id: 'user-sup', rol: 'SUPERVISOR', areaIds: ['area-002'] })
+    expect(extraerAccionesQE([qe], supervisor).some((i) => i.tipo === 'QE_FIRMAR_CIERRE')).toBe(false)
   })
 })

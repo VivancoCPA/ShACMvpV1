@@ -28,8 +28,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 // el intento de refresh automático del interceptor de axios no tiene
 // `authHandlers` registrado para responder.
 beforeEach(() => {
-  const mockUser = authFixtures.find((u) => u.email === 'admin@shac.pe')
-  if (!mockUser) throw new Error('Fixture no encontrado: admin@shac.pe')
+  const mockUser = authFixtures.find((u) => u.email === 'admin.empresa@shac.pe')
+  if (!mockUser) throw new Error('Fixture no encontrado: admin.empresa@shac.pe')
   const { password: _password, ...user } = mockUser
   const empresasDisponibles = getEmpresasActivasForUsuario(user.id)
   useAuthStore.setState({

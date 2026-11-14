@@ -1,4 +1,4 @@
-import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -31,6 +31,18 @@ vi.mock('../hooks/useAccionesRequeridas', () => ({
   useAccionesRequeridas: () => ({ items: [], isLoading: false }),
 }))
 
+// Los anillos salen de GET /api/dashboard/kpis (useDashboardKpis), no del summary.
+vi.mock('../hooks/useDashboardKpis', () => ({
+  useDashboardKpis: () => ({
+    data: [
+      { kpiId: 'KPI-01', valor: 92, meta: 90, metaTipo: 'ABSOLUTO', semaforo: 'VERDE', periodo: '2026-11', calculadoEn: '2026-11-06T00:00:00Z', valorPeriodoAnterior: 90 },
+      { kpiId: 'KPI-04', valor: 8, meta: 10, metaTipo: 'REDUCCION_INTERANUAL', semaforo: 'VERDE', periodo: '2026-11', calculadoEn: '2026-11-06T00:00:00Z' },
+      { kpiId: 'KPI-05', valor: 88, meta: 85, metaTipo: 'ABSOLUTO', semaforo: 'VERDE', periodo: '2026-11', calculadoEn: '2026-11-06T00:00:00Z' },
+    ],
+    isLoading: false,
+  }),
+}))
+
 function renderDashboard() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -53,10 +65,10 @@ describe('AltaDireccionDashboard', () => {
     mockIsLoading = true
     const { container } = renderDashboard()
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
-    expect(screen.queryByText(i18n.t('dashboard:altaDireccion.kpisEjecutivos.title'))).not.toBeInTheDocument()
+    expect(screen.queryByTestId('kpi-card-qes-abiertos')).not.toBeInTheDocument()
   })
 
-  it('renders the 6 widgets, in order, once useDashboardSummary resolves', async () => {
+  it('renders the widgets in their zones, in order, once useDashboardSummary resolves', async () => {
     mockIsLoading = false
     mockData = {
       rol: 'ALTA_DIRECCION',
@@ -103,6 +115,19 @@ describe('AltaDireccionDashboard', () => {
             ciclo: 2,
             fechaReapertura: '2026-05-01T09:00:00Z',
           },
+          {
+            id: 'qe-2026-006',
+            numero: 'QE-2026-006',
+            estado: 'REABIERTO',
+            severidad: 'MEDIA',
+            tipo: 'CALIDAD',
+            origen: 'O2_NC_DETECTADA',
+            areaId: 'area-001',
+            fechaHoraReporte: '2026-01-10T09:30:00Z',
+            ciclo: 2,
+            // Siempre dentro del mes actual: cuenta en "Reaperturas del período" (mes por defecto).
+            fechaReapertura: new Date().toISOString(),
+          },
         ],
         acsConSolicitudAjustePlazo: [
           {
@@ -124,11 +149,44 @@ describe('AltaDireccionDashboard', () => {
               },
             ],
           },
+          // Solicitud que no requiere a Gerencia: no cuenta en la tarjeta ni aparece en la lista.
+          {
+            qeId: 'qe-2026-007',
+            qeNumero: 'QE-2026-007',
+            qeSeveridad: 'BAJA',
+            acId: 'ac-qe-007-1',
+            acDescripcion: 'Rotulado de pasillos',
+            plazoFechaActual: '2026-03-15',
+            solicitudesAjustePlazo: [
+              {
+                id: 'sol-ac-qe-007-1-1',
+                fechaSolicitada: '2026-04-01',
+                justificacion: 'Proveedor demorado.',
+                estado: 'PENDIENTE',
+                solicitadoPorId: 'user-operario-001',
+                solicitadoEn: '2026-03-05T09:00:00Z',
+                requiereAprobacionGerencia: false,
+              },
+            ],
+          },
         ],
+        tendenciaMensualKpis: {
+          'KPI-01': [{ periodo: '2026-10', valor: 90 }, { periodo: '2026-11', valor: 92 }],
+          'KPI-04': [],
+          'KPI-05': [],
+        },
       },
     }
     renderDashboard()
-    expect(screen.getByText(i18n.t('dashboard:altaDireccion.kpisEjecutivos.title'))).toBeInTheDocument()
+    expect(screen.getByTestId('kpi-card-qes-abiertos')).toHaveTextContent('12')
+    expect(screen.getByTestId('kpi-card-KPI-01').querySelector('polyline')).not.toBeNull()
+    expect(screen.getByRole('link', { name: `1 ${i18n.t('dashboard:alertas.altaDireccion.qeCriticos')}` })).toHaveAttribute('href', '/quality-events?severidad=CRITICA')
+    expect(screen.getByRole('link', { name: `1 ${i18n.t('dashboard:alertas.altaDireccion.reaperturas')}` })).toHaveAttribute('href', '/quality-events?soloReincidencias=true')
+    // Extensiones: la tarjeta cuenta lo mismo que muestra ACsExtensionPlazoWidget (solo las de Gerencia).
+    const extensiones = screen.getByRole('button', { name: `1 ${i18n.t('dashboard:alertas.altaDireccion.extensiones')}` })
+    expect(within(document.getElementById('acs-extension-plazo')!).getAllByRole('button')).toHaveLength(1)
+    fireEvent.click(extensiones)
+    expect(extensiones).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText(i18n.t('dashboard:altaDireccion.comparativaMensual.title'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t('dashboard:altaDireccion.qesCriticos.title'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t('dashboard:altaDireccion.reaperturas.title'))).toBeInTheDocument()
@@ -142,12 +200,15 @@ describe('AltaDireccionDashboard', () => {
       .getAllByRole('heading', { level: 2 })
       .map((el) => el.textContent)
     expect(titles).toEqual([
+      i18n.t('dashboard:layout.zonas.alertas'),
+      i18n.t('dashboard:layout.zonas.indicadores'),
+      i18n.t('dashboard:layout.zonas.trabajo'),
       i18n.t('dashboard:accionesRequeridas.title'),
-      i18n.t('dashboard:altaDireccion.kpisEjecutivos.title'),
       i18n.t('dashboard:altaDireccion.comparativaMensual.title'),
       i18n.t('dashboard:altaDireccion.qesCriticos.title'),
       i18n.t('dashboard:altaDireccion.reaperturas.title'),
       i18n.t('dashboard:altaDireccion.acsExtensionPlazo.title'),
+      i18n.t('dashboard:layout.zonas.mapa'),
       i18n.t('dashboard:heatmapIncidentes.title'),
     ])
   })

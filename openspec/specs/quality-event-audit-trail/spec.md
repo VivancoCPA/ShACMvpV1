@@ -6,6 +6,7 @@ Reverse-chronological audit trail timeline for the Quality Event detail page, ba
 
 ---
 ## Requirements
+
 ### Requirement: GET /api/quality-events/:id/audit-trail endpoint
 The system SHALL register a `GET /api/quality-events/:id/audit-trail` handler in `src/mocks/handlers/quality-events.handlers.ts` that returns the matching QE's `auditTrail` array (`QEAuditTrailEntry[]`) sorted by `timestamp` descending (most recent first). An unknown `:id` SHALL return 404 with `success: false`.
 
@@ -127,3 +128,13 @@ When a `CAMPO_EDITADO` entry's `valorNuevo` ends with the server suffix "(sugere
 - **WHEN** `QEAuditTrail` renders a `CAMPO_EDITADO` entry whose `valorNuevo` ends with "(sugerencia IA editada)"
 - **THEN** the description includes "sugerencia IA editada"
 
+### Requirement: QEAuditTrail renders the closure signature and rejection accion types
+`QEAuditTrail` SHALL recognize the `accion` values `FIRMA_CIERRE_JEFE_CALIDAD` (`t('qualityEvents:detail.auditTrail.acciones.FIRMA_CIERRE_JEFE_CALIDAD')`, "Firma de cierre — Jefe de Calidad"), `FIRMA_CIERRE_SUPERVISOR` ("Firma de cierre — Supervisor") and `CIERRE_RECHAZADO` ("Cierre rechazado"). `CIERRE_RECHAZADO` SHALL show the motivo (`valorNuevo`) in its description. Legacy `FIRMA_REGISTRADA` entries SHALL keep rendering as before.
+
+#### Scenario: Signature entries show their label
+- **WHEN** `QEAuditTrail` renders entries with `accion: 'FIRMA_CIERRE_JEFE_CALIDAD'` and `accion: 'FIRMA_CIERRE_SUPERVISOR'`
+- **THEN** they show "Firma de cierre — Jefe de Calidad" and "Firma de cierre — Supervisor"
+
+#### Scenario: Rejection entry shows the motivo
+- **WHEN** `QEAuditTrail` renders an entry with `accion: 'CIERRE_RECHAZADO'`, `valorNuevo: 'Falta evidencia de la AC 2 en campo'`
+- **THEN** it shows "Cierre rechazado" and the motivo

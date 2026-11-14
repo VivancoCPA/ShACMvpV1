@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { SemaforoRow } from '../../../components/shared/SemaforoRow'
 import { calcularEstadoSemaforoDesdeFecha } from '../utils/semaforoPendientes'
+import { FiltroAlertaChip } from './layout/FiltroAlertaChip'
 import type { AccionCorrectivaResumen } from '../types/dashboardSummary.types'
 
 const ORIGEN_ROUTE: Record<AccionCorrectivaResumen['origenTipo'], string> = {
@@ -12,9 +13,13 @@ const ORIGEN_ROUTE: Record<AccionCorrectivaResumen['origenTipo'], string> = {
 
 interface MisACsWidgetProps {
   accionesCorrectivasAsignadas: AccionCorrectivaResumen[]
+  // Con una tarjeta de alerta seleccionada, la página pasa el arreglo ya filtrado (el mismo que
+  // cuenta la tarjeta) y la etiqueta del chip (dashboard-alertas-coherentes D2).
+  etiquetaFiltro?: string
+  onQuitarFiltro?: () => void
 }
 
-export function MisACsWidget({ accionesCorrectivasAsignadas }: MisACsWidgetProps) {
+export function MisACsWidget({ accionesCorrectivasAsignadas, etiquetaFiltro, onQuitarFiltro }: MisACsWidgetProps) {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
 
@@ -23,6 +28,9 @@ export function MisACsWidget({ accionesCorrectivasAsignadas }: MisACsWidgetProps
       <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">
         {t('operario.misACs.title')}
       </h2>
+      {etiquetaFiltro && (
+        <FiltroAlertaChip etiqueta={etiquetaFiltro} n={accionesCorrectivasAsignadas.length} onQuitar={onQuitarFiltro} />
+      )}
       <div className="overflow-x-auto rounded-lg border border-hairline dark:border-hairline/20">
         {accionesCorrectivasAsignadas.length === 0 ? (
           <p className="px-4 py-12 text-center text-sm text-muted dark:text-on-dark-soft">

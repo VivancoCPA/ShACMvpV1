@@ -8,7 +8,8 @@ import { Plus, X, CheckCircle, Play, ArrowUpRight, Check } from 'lucide-react'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
 import { useUpdateAccionCorrectiva, useCerrarAccionCorrectiva } from '../hooks/useNonconformities'
 import { cerrarACSchema, type CerrarACInput } from '../schemas/cerrarAC.schema'
-import { qualityEventFixtures } from '../../../mocks/fixtures/quality-events.fixtures'
+import { AccionesCorrectivasDelQE } from '../../../components/shared/AccionesCorrectivasDelQE'
+import { useQualityEvent } from '../../quality-events/hooks/useQualityEvent'
 import { useSolicitarACEnQE } from '../../quality-events/hooks/useSolicitarACEnQE'
 import type { AccionCorrectiva, NCStatus } from '../types/nonconformity.types'
 
@@ -127,6 +128,24 @@ function CerrarACModal({ onConfirm, onClose, isPending }: CerrarACModalProps) {
   )
 }
 
+// ─── VerQELink ───────────────────────────────────────────────────────────────
+
+// Número del QE vía la API (nunca importando fixtures MSW en el componente — regla 13).
+function VerQELink({ qeId }: { qeId: string }) {
+  const { t } = useTranslation('nonconformities')
+  const { data: qe } = useQualityEvent(qeId)
+
+  return (
+    <Link
+      to={`/quality-events/${qeId}`}
+      className="mt-1 inline-flex items-center gap-1 text-xs text-coral hover:underline dark:text-coral"
+    >
+      <ArrowUpRight size={12} />
+      {t('acSection.verQE', { numero: qe?.numero ?? '' })}
+    </Link>
+  )
+}
+
 // ─── ACSection ───────────────────────────────────────────────────────────────
 
 interface ACSectionProps {
@@ -157,7 +176,6 @@ export function ACSection({
   const solicitarACEnQE = useSolicitarACEnQE()
 
   const isTerminal = TERMINAL_NC.includes(ncEstado)
-  const isQELinked = !!qeGeneradoId
 
   const onTransition = (acId: string, newEstado: string) => {
     updateAC.mutate({ acId, data: { estado: newEstado as AccionCorrectiva['estado'] } })
@@ -182,7 +200,7 @@ export function ACSection({
   }
 
   const solicitarACButton =
-    isQELinked && canAsignarAC ? (
+    qeGeneradoId && canAsignarAC ? (
       solicitadoExitoso ? (
         <span className="flex items-center gap-1.5 text-xs font-medium text-success">
           <Check size={14} />
@@ -200,6 +218,21 @@ export function ACSection({
         </button>
       )
     ) : null
+
+  // solicitudes-ac-y-ac-del-qe-en-origen: con QE generado se muestran las AC del QE en solo lectura.
+  if (qeGeneradoId) {
+    return (
+      <section aria-labelledby="ac-section-title">
+        <AccionesCorrectivasDelQE
+          qeId={qeGeneradoId}
+          namespace="nonconformities"
+          titleId="ac-section-title"
+          accionesPropias={accionesCorrectivas}
+          solicitarACButton={solicitarACButton}
+        />
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby="ac-section-title">
@@ -223,33 +256,14 @@ export function ACSection({
             </span>
           )}
         </h3>
-
-        {isQELinked && (
-          <div className="flex items-center gap-3">
-            {accionesCorrectivas.length === 0 && solicitarACButton}
-            <Link
-              to={`/quality-events/${qeGeneradoId}`}
-              className="flex items-center gap-1 text-xs font-medium text-coral hover:underline"
-            >
-              <ArrowUpRight size={14} />
-              {t('acSection.actions.verQE')}
-            </Link>
-          </div>
-        )}
       </div>
 
-      {!isQELinked && (
-        <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
-          {t('acSection.qeRequerido')}
-        </p>
-      )}
+      <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
+        {t('acSection.qeRequerido')}
+      </p>
 
       {/* AC List */}
-      {accionesCorrectivas.length === 0 ? (
-        isQELinked && (
-          <p className="py-4 text-sm text-muted dark:text-on-dark-soft">{t('acSection.empty')}</p>
-        )
-      ) : (
+      {accionesCorrectivas.length > 0 && (
         <ul className="divide-y divide-hairline dark:divide-hairline/20">
           {accionesCorrectivas.map((ac) => (
             <li key={ac.id} className="py-3">
@@ -283,21 +297,11 @@ export function ACSection({
                       {ac.descripcionEvidencia}
                     </p>
                   )}
-                  {ac.qeId && (
-                    <Link
-                      to={`/quality-events/${ac.qeId}`}
-                      className="mt-1 inline-flex items-center gap-1 text-xs text-coral hover:underline"
-                    >
-                      <ArrowUpRight size={12} />
-                      {t('acSection.verQE', {
-                        numero: qualityEventFixtures.find((qe) => qe.id === ac.qeId)?.numero ?? ac.qeId,
-                      })}
-                    </Link>
-                  )}
+                  {ac.qeId && <VerQELink qeId={ac.qeId} />}
                 </div>
 
                 {/* Transition buttons */}
-                {!isTerminal && !isQELinked && (
+                {!isTerminal && (
                   <div className="shrink-0">
                     {ac.estado === 'PENDIENTE' && (
                       <button
@@ -326,10 +330,6 @@ export function ACSection({
             </li>
           ))}
         </ul>
-      )}
-
-      {accionesCorrectivas.length > 0 && solicitarACButton && (
-        <div className="mt-3 flex justify-end">{solicitarACButton}</div>
       )}
     </section>
   )

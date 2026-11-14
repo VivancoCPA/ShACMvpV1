@@ -1,6 +1,5 @@
 import api from '../../../lib/axios'
 import type { PaginationMeta } from '../../../types/api.types'
-import type { User } from '../../../types/auth.types'
 import type {
   NoConformidad,
   NCFilters,
@@ -109,10 +108,5 @@ export async function cerrarAccionCorrectiva(
     `/api/nonconformities/${ncId}/acciones-correctivas/${acId}/cerrar`,
     data,
   )
-  return response.data
-}
-
-export async function getUsers(): Promise<User[]> {
-  const response = await api.get<User[]>('/api/users')
   return response.data
 }

@@ -41,6 +41,7 @@ const baseData: JefeCalidadDashboardData = {
     REABIERTO: 0,
   },
   accionesCorrectivasPorVencer: [],
+  accionesCorrectivasVencidas: [],
   tendenciaMensualVolumen: [
     { periodo: '2026-05', abiertos: 3, cerrados: 2 },
     { periodo: '2026-06', abiertos: 4, cerrados: 3 },
@@ -67,7 +68,7 @@ const accionesRequeridas: AccionRequerida[] = [
   {
     id: 'ar-1',
     dominio: 'QE',
-    tipo: 'QE_CAUSA_RAIZ',
+    tipo: 'QE_APROBAR_CAUSA_RAIZ',
     codigo: 'QE-2026-001',
     descripcion: 'Definir causa raíz',
     fechaLimite: '2026-07-15T00:00:00Z',

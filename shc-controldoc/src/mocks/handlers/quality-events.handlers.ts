@@ -1,4 +1,5 @@
 ﻿import { http, HttpResponse, delay } from 'msw'
+import { validarTipoYResponsableAC } from './shared/candidatosUsuarios'
 import {
   qualityEventFixtures,
   sugerenciaCausaRaizIAFixture,
@@ -17,10 +18,11 @@ import { linkIncidentToQE, syncOrigenFromQEEstado, unlinkIncidentFromQE } from '
 import { PLAZO_MINIMO_DIAS_HABILES } from '../../features/quality-events/constants/plazoAjuste.constants'
 import { calcularRequiereAprobacionGerencia } from '../../features/quality-events/constants/plazoAjuste.utils'
 import { contarDiasHabiles } from '../../utils/businessDays'
+import { EVIDENCIA_AC_MAX_ARCHIVOS, EVIDENCIA_AC_MAX_BYTES } from '../../features/quality-events/constants/evidenciaAC.constants'
 import { getSessionUserUnchecked } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
-import type { QualityEvent, QEStatus, AccionCorrectivaQE, QEAuditTrailEntry, SolicitudAjustePlazoAC, CandidatoResponsableQE, QualityEventUpdateInput, OrigenIAValor } from '../../features/quality-events/types/qualityEvent.types'
+import type { QualityEvent, QEStatus, AccionCorrectivaQE, EvidenciaACQE, QEAuditTrailEntry, SolicitudAjustePlazoAC, CandidatoResponsableQE, QualityEventUpdateInput, OrigenIAValor } from '../../features/quality-events/types/qualityEvent.types'
 import type { QeVinculadoResumen } from '../../types/documents.types'
 
 const LATENCY = 400
@@ -155,6 +157,217 @@ function conResponsable(qe: QualityEvent): QualityEvent {
   }
 }
 
+// qe-cierre-firma-supervisor-area — espejo de SupervisoresAreaResolver: SUPERVISOR activo en la
+// empresa del QE con el área en areaIds (no se usa areaId, el departamento propio).
+function getSupervisoresArea(qe: QualityEvent): { id: string; nombreCompleto: string; avatarUrl?: string }[] {
+  return getUsersStore()
+    .filter(
+      (u) =>
+        u.activo &&
+        getRolEfectivo(u.id, qe.empresaId) === 'SUPERVISOR' &&
+        (u.areaIds ?? []).includes(qe.areaId),
+    )
+    .map((u) => ({ id: u.id, nombreCompleto: `${u.nombre} ${u.apellido}`.trim(), avatarUrl: u.avatarUrl }))
+}
+
+// Detalle: nombres de los firmantes y, en PENDIENTE_CIERRE, quién puede dar la segunda firma.
+function conCierre(qe: QualityEvent): QualityEvent {
+  return {
+    ...qe,
+    cerradoPorNombre: qe.cerradoPorId ? resolveUserDisplayName(qe.cerradoPorId) : undefined,
+    cierreFirmaSupervisorNombre: qe.cierreFirmaSupervisorId ? resolveUserDisplayName(qe.cierreFirmaSupervisorId) : undefined,
+    supervisoresArea: qe.estado === 'PENDIENTE_CIERRE' ? getSupervisoresArea(qe) : null,
+  }
+}
+
+function areaSinSupervisorResponse() {
+  return HttpResponse.json(
+    {
+      success: false,
+      data: null,
+      message: 'AREA_SIN_SUPERVISOR: El área no tiene un supervisor activo asignado. Asigna uno en Usuarios antes de cerrar.',
+      errorCode: 'AREA_SIN_SUPERVISOR',
+    },
+    { status: 422 },
+  )
+}
+
+function noEsSupervisorDelAreaResponse() {
+  return HttpResponse.json(
+    {
+      success: false,
+      data: null,
+      message: 'Solo un supervisor del área puede firmar o rechazar este cierre',
+      errorCode: 'NO_ES_SUPERVISOR_DEL_AREA',
+    },
+    { status: 403 },
+  )
+}
+
+// PRD §1.5 P1 — JCA + supervisores del área (CAMBIO_ESTADO genérico del mock).
+function notificarListoParaCierre(qe: QualityEvent, actorId: string): void {
+  const supervisores = getSupervisoresArea(qe).map((s) => s.id)
+  const jefes = getUsersStore()
+    .filter((u) => getRolEfectivo(u.id, qe.empresaId) === 'JEFE_CALIDAD_SYST')
+    .map((u) => u.id)
+  for (const destinatarioId of new Set([...jefes, ...supervisores])) {
+    createCambioEstadoNotification({
+      entidadTipo: 'QE',
+      entidadId: qe.id,
+      entidadCodigo: qe.numero,
+      empresaId: qe.empresaId,
+      estadoNuevo: 'PENDIENTE_CIERRE',
+      reportadoPorId: destinatarioId,
+      responsablesACActivas: [],
+      actorId,
+      link: `/quality-events/${qe.id}`,
+    })
+  }
+}
+
+// ─── ac-ejecucion-verificacion-evidencias ─────────────────────────────────────
+// Espejo de AccionCorrectivaQEAcceso / EvidenciaAcFormatos (backend): el responsable inicia, sube
+// evidencias y ejecuta; el JCA (rol efectivo en la empresa) verifica.
+
+const EVIDENCIA_CONTENT_TYPES: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.mp4': 'video/mp4',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
+// PNG de 1×1 para las evidencias de fixtures (no hay archivo real detrás).
+const PNG_PLACEHOLDER = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+  (c) => c.charCodeAt(0),
+)
+
+// Contenido de los archivos subidos en la sesión (el store de QE solo guarda los metadatos).
+const evidenciaBlobs = new Map<string, Blob>()
+
+function acError(status: number, message: string, errorCode?: string) {
+  return HttpResponse.json({ success: false, message, ...(errorCode ? { errorCode } : {}) }, { status })
+}
+
+// solicitudes-ac-y-ac-del-qe-en-origen: espejo de SolicitudesACContador del backend. Crear una AC
+// atiende una solicitud pendiente (D3) y el JCA puede descartarla con motivo (D4).
+const ROLES_SOLICITAR_AC = ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'ALTA_DIRECCION']
+const ESTADOS_SIN_SOLICITUDES: QEStatus[] = ['CERRADO', 'EN_VERIFICACION', 'VERIFICADO']
+
+function solicitudAuditEntry(
+  qe: QualityEvent,
+  accion: 'SOLICITUD_AC_ATENDIDA' | 'SOLICITUD_AC_DESCARTADA',
+  detalle: string,
+  actor: { id: string; nombre: string },
+  now: string,
+  offset = 1,
+): QEAuditTrailEntry {
+  return {
+    id: `aud-${qe.id}-${qe.auditTrail.length + offset}`,
+    entidadTipo: 'QualityEvent',
+    entidadId: qe.id,
+    accion,
+    campoModificado: 'solicitudesAC',
+    valorAnterior: String(qe.solicitudesAC),
+    valorNuevo: `${qe.solicitudesAC - 1} — ${detalle}`,
+    realizadoPorId: actor.id,
+    realizadoPorNombre: actor.nombre,
+    timestamp: now,
+    generadoPorIA: false,
+  }
+}
+
+// D2 (FIFO): las N pendientes son las últimas N entradas AC_SOLICITADA; la más antigua de ellas
+// es la que se atiende o descarta.
+function solicitanteMasAntiguo(qe: QualityEvent): string | undefined {
+  if (qe.solicitudesAC <= 0) return undefined
+  const pendientes = qe.auditTrail
+    .filter((a) => a.accion === 'AC_SOLICITADA')
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, qe.solicitudesAC)
+  return pendientes.at(-1)?.realizadoPorId
+}
+
+function soloResponsableResponse() {
+  return acError(403, 'Solo el responsable asignado puede realizar esta acción.', 'SOLO_RESPONSABLE_AC')
+}
+
+function estadoInvalidoResponse(ac: AccionCorrectivaQE, esperado: AccionCorrectivaQE['estado']) {
+  return acError(
+    422,
+    `AC_ESTADO_INVALIDO: La acción correctiva debe estar en ${esperado} (está en ${ac.estado}).`,
+    'AC_ESTADO_INVALIDO',
+  )
+}
+
+function tieneEvidencia(ac: AccionCorrectivaQE): boolean {
+  return !!ac.descripcionEvidencia?.trim() && ((ac.evidencias ?? []).length > 0 || !!ac.evidenciaUrl)
+}
+
+interface ACContexto {
+  idx: number
+  qe: QualityEvent
+  acIdx: number
+  ac: AccionCorrectivaQE
+}
+
+function cargarAC(qeId: string, acId: string): ACContexto | { error: Response } {
+  const idx = qeStore.findIndex((q) => q.id === qeId)
+  if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+    return { error: acError(404, 'Quality Event no encontrado') }
+  }
+  const qe = qeStore[idx]
+  const acIdx = qe.accionesCorrectivas.findIndex((a) => a.id === acId)
+  if (acIdx === -1) return { error: acError(404, 'Acción correctiva no encontrada') }
+  return { idx, qe, acIdx, ac: qe.accionesCorrectivas[acIdx] }
+}
+
+function guardarAC(
+  ctx: ACContexto,
+  updatedAC: AccionCorrectivaQE,
+  audit: Pick<QEAuditTrailEntry, 'accion' | 'estadoAnterior' | 'estadoNuevo' | 'valorNuevo'>,
+): QualityEvent {
+  const currentUser = getCurrentUser()
+  const now = new Date().toISOString()
+  const accionesCorrectivas = [...ctx.qe.accionesCorrectivas]
+  accionesCorrectivas[ctx.acIdx] = updatedAC
+  const entry: QEAuditTrailEntry = {
+    id: `aud-${ctx.qe.id}-${ctx.qe.auditTrail.length + 1}`,
+    entidadTipo: 'QualityEvent',
+    entidadId: ctx.qe.id,
+    ...audit,
+    realizadoPorId: currentUser.id,
+    realizadoPorNombre: currentUser.nombre,
+    timestamp: now,
+    generadoPorIA: false,
+  }
+  const updated: QualityEvent = {
+    ...ctx.qe,
+    accionesCorrectivas,
+    auditTrail: [...ctx.qe.auditTrail, entry],
+    actualizadoEn: now,
+  }
+  return commitQE(ctx.idx, ctx.qe, updated)
+}
+
+function iniciarAC(qeId: string, acId: string) {
+  const ctx = cargarAC(qeId, acId)
+  if ('error' in ctx) return ctx.error
+  if (ctx.ac.responsableId !== getCurrentUser().id) return soloResponsableResponse()
+  if (ctx.ac.estado !== 'PENDIENTE') return estadoInvalidoResponse(ctx.ac, 'PENDIENTE')
+  const updatedAC: AccionCorrectivaQE = { ...ctx.ac, estado: 'EN_EJECUCION', actualizadoEn: new Date().toISOString() }
+  guardarAC(ctx, updatedAC, {
+    accion: 'AC_INICIADA',
+    estadoAnterior: 'PENDIENTE',
+    estadoNuevo: 'EN_EJECUCION',
+    valorNuevo: ctx.ac.id,
+  })
+  return HttpResponse.json({ success: true, data: updatedAC })
+}
+
 function notificarResponsableAsignado(qe: QualityEvent, actorId: string): void {
   if (!qe.responsableInvestigacionId) return
   createAsignacionNotification({
@@ -249,7 +462,7 @@ export const qualityEventHandlers = [
         { status: 404 }
       )
     }
-    return HttpResponse.json({ success: true, data: conResponsable(qe) })
+    return HttpResponse.json({ success: true, data: conCierre(conResponsable(qe)) })
   }),
 
   http.patch('/api/quality-events/:id/responsable', async ({ params, request }) => {
@@ -656,6 +869,21 @@ export const qualityEventHandlers = [
       )
     }
 
+    // RN-QE-003 en la transición manual — espejo de TransicionarEstadoQEHandler (re-cierre tras rechazo).
+    if (
+      body.nuevoEstado === 'PENDIENTE_CIERRE' &&
+      qe.accionesCorrectivas.some((ac) => ac.estado !== 'CERRADA' || !ac.descripcionEvidencia?.trim())
+    ) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'RN-QE-003: todas las acciones correctivas deben estar cerradas con evidencia',
+          errorCode: 'RN-QE-003',
+        },
+        { status: 422 }
+      )
+    }
+
     if (body.nuevoEstado === 'CERRADO' && !qe.cierreFirmaSupervisorId) {
       return HttpResponse.json(
         { success: false, message: 'RN-QE-004: se requiere firma dual' },
@@ -685,6 +913,7 @@ export const qualityEventHandlers = [
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
+    if (body.nuevoEstado === 'PENDIENTE_CIERRE') notificarListoParaCierre(updated, currentUser.id)
     return HttpResponse.json({ success: true, data: updated })
   }),
 
@@ -834,6 +1063,9 @@ export const qualityEventHandlers = [
 
     const qe = qeStore[idx]
     const body = await request.json() as Record<string, unknown>
+    // ac-tipo-responsables: tipo obligatorio + responsable validado por tipo y empresa.
+    const validacion = validarTipoYResponsableAC(qe.empresaId, body)
+    if ('error' in validacion) return validacion.error
     const now = new Date().toISOString()
     const responsableId = body.responsableId as string
     const acId = `ac-qe-${qe.id}-${qe.accionesCorrectivas.length + 1}-${Date.now().toString(36)}`
@@ -847,9 +1079,11 @@ export const qualityEventHandlers = [
       responsableNombre: resolveUserDisplayName(responsableId),
       plazoFecha: body.plazoFecha as string,
       prioridad: body.prioridad as AccionCorrectivaQE['prioridad'],
+      tipo: validacion.tipo,
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,
+      evidencias: [],
       solicitudesAjustePlazo: [],
     }
 
@@ -866,10 +1100,16 @@ export const qualityEventHandlers = [
       generadoPorIA: false,
     }
 
+    const atendida =
+      qe.solicitudesAC > 0
+        ? solicitudAuditEntry(qe, 'SOLICITUD_AC_ATENDIDA', newAC.titulo ?? newAC.descripcion, currentUser, now, 2)
+        : null
+
     const updated: QualityEvent = {
       ...qe,
       accionesCorrectivas: [...qe.accionesCorrectivas, newAC],
-      auditTrail: [...qe.auditTrail, auditEntry],
+      auditTrail: atendida ? [...qe.auditTrail, auditEntry, atendida] : [...qe.auditTrail, auditEntry],
+      solicitudesAC: Math.max(0, qe.solicitudesAC - 1),
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
@@ -941,118 +1181,286 @@ export const qualityEventHandlers = [
     return HttpResponse.json({ success: true, data: updatedAC })
   }),
 
+  // ac-ejecucion-verificacion-evidencias D7: PATCH /status ya no cierra — solo EN_EJECUCION, con la
+  // misma regla que POST …/iniciar. Ejecutar/verificar/cerrar van por sus endpoints dedicados.
   http.patch('/api/quality-events/:id/acciones-correctivas/:acId/status', async ({ params, request }) => {
     await delay(LATENCY)
-    const idx = qeStore.findIndex(q => q.id === params.id)
-    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
-      return HttpResponse.json(
-        { success: false, message: 'Quality Event no encontrado' },
-        { status: 404 }
+    const body = (await request.json()) as { estado: AccionCorrectivaQE['estado'] }
+    if (body.estado !== 'EN_EJECUCION') {
+      return acError(
+        422,
+        'USAR_FLUJO_VERIFICACION: Para ejecutar, verificar o cerrar una acción correctiva usá el flujo de ejecución y verificación.',
+        'USAR_FLUJO_VERIFICACION',
       )
     }
+    return iniciarAC(params.id as string, params.acId as string)
+  }),
 
-    const qe = qeStore[idx]
-    const acIdx = qe.accionesCorrectivas.findIndex(a => a.id === params.acId)
-    if (acIdx === -1) {
+  http.post('/api/quality-events/:id/acciones-correctivas/:acId/iniciar', async ({ params }) => {
+    await delay(LATENCY)
+    return iniciarAC(params.id as string, params.acId as string)
+  }),
+
+  http.post('/api/quality-events/:id/acciones-correctivas/:acId/evidencias', async ({ params, request }) => {
+    await delay(LATENCY)
+    const ctx = cargarAC(params.id as string, params.acId as string)
+    if ('error' in ctx) return ctx.error
+    const currentUser = getCurrentUser()
+    if (ctx.ac.responsableId !== currentUser.id) return soloResponsableResponse()
+    if (ctx.ac.estado !== 'EN_EJECUCION') return estadoInvalidoResponse(ctx.ac, 'EN_EJECUCION')
+
+    const form = await request.formData()
+    const archivo = form.get('archivo')
+    // Sin instanceof File: en tests (jsdom) el File de request.formData() viene de otro realm.
+    if (!archivo || typeof archivo === 'string') return acError(400, "Falta el archivo 'archivo'")
+
+    const extension = archivo.name.slice(archivo.name.lastIndexOf('.')).toLowerCase()
+    // En Node (tests) el nombre del archivo llega como "blob" tras el viaje multipart; ahí se cae al
+    // MIME declarado (mismo criterio que validateArchivoOriginalFormato en documents.handlers.ts).
+    const contentType =
+      EVIDENCIA_CONTENT_TYPES[extension] ??
+      (Object.values(EVIDENCIA_CONTENT_TYPES).includes(archivo.type) ? archivo.type : undefined)
+    if (!contentType) return acError(400, 'La evidencia debe ser PDF, JPG, PNG, MP4, DOCX o XLSX.')
+    if (archivo.size === 0) return acError(400, 'El archivo de evidencia está vacío.')
+    if (archivo.size > EVIDENCIA_AC_MAX_BYTES) return acError(400, 'La evidencia no debe superar 50 MB.')
+    const actuales = ctx.ac.evidencias ?? []
+    if (actuales.length >= EVIDENCIA_AC_MAX_ARCHIVOS) {
+      return acError(422, 'MAX_EVIDENCIAS_AC: Se permiten hasta 5 evidencias por acción correctiva.', 'MAX_EVIDENCIAS_AC')
+    }
+
+    const now = new Date().toISOString()
+    const evidencia: EvidenciaACQE = {
+      id: `ev-${ctx.ac.id}-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+      nombreArchivo: archivo.name,
+      contentType,
+      tamanioBytes: archivo.size,
+      subidoEn: now,
+    }
+    evidenciaBlobs.set(evidencia.id, archivo)
+    guardarAC(ctx, { ...ctx.ac, evidencias: [...actuales, evidencia], actualizadoEn: now }, {
+      accion: 'AC_EVIDENCIA_AGREGADA',
+      valorNuevo: archivo.name,
+    })
+    return HttpResponse.json({ success: true, data: evidencia }, { status: 201 })
+  }),
+
+  http.delete('/api/quality-events/:id/acciones-correctivas/:acId/evidencias/:evId', async ({ params }) => {
+    await delay(LATENCY)
+    const ctx = cargarAC(params.id as string, params.acId as string)
+    if ('error' in ctx) return ctx.error
+    const currentUser = getCurrentUser()
+    if (ctx.ac.responsableId !== currentUser.id) return soloResponsableResponse()
+    if (ctx.ac.estado !== 'EN_EJECUCION') return estadoInvalidoResponse(ctx.ac, 'EN_EJECUCION')
+    const evidencia = (ctx.ac.evidencias ?? []).find((ev) => ev.id === params.evId)
+    if (!evidencia) return acError(404, 'Evidencia no encontrada')
+
+    evidenciaBlobs.delete(evidencia.id)
+    guardarAC(
+      ctx,
+      {
+        ...ctx.ac,
+        evidencias: (ctx.ac.evidencias ?? []).filter((ev) => ev.id !== evidencia.id),
+        actualizadoEn: new Date().toISOString(),
+      },
+      { accion: 'AC_EVIDENCIA_ELIMINADA', valorNuevo: evidencia.nombreArchivo },
+    )
+    return HttpResponse.json({ success: true, data: null })
+  }),
+
+  // Blob real (nunca una URL inventada, ver CLAUDE.md "descargas de archivo vía window.open"): el
+  // archivo subido en esta sesión, o un placeholder mínimo para las evidencias de los fixtures.
+  http.get('/api/quality-events/:id/acciones-correctivas/:acId/evidencias/:evId/archivo', async ({ params }) => {
+    await delay(LATENCY)
+    const ctx = cargarAC(params.id as string, params.acId as string)
+    if ('error' in ctx) return ctx.error
+    const evidencia = (ctx.ac.evidencias ?? []).find((ev) => ev.id === params.evId)
+    if (!evidencia) return acError(404, 'Evidencia no encontrada')
+    const blob =
+      evidenciaBlobs.get(evidencia.id) ??
+      new Blob([evidencia.contentType.startsWith('image/') ? PNG_PLACEHOLDER : '%PDF-1.4\n% placeholder MSW\n'], {
+        type: evidencia.contentType,
+      })
+    return new HttpResponse(blob, {
+      headers: {
+        'Content-Type': evidencia.contentType,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(evidencia.nombreArchivo)}`,
+      },
+    })
+  }),
+
+  http.post('/api/quality-events/:id/acciones-correctivas/:acId/ejecutar', async ({ params, request }) => {
+    await delay(LATENCY)
+    const ctx = cargarAC(params.id as string, params.acId as string)
+    if ('error' in ctx) return ctx.error
+    const currentUser = getCurrentUser()
+    if (ctx.ac.responsableId !== currentUser.id) return soloResponsableResponse()
+
+    const body = (await request.json()) as { descripcionEvidencia?: string }
+    const descripcion = body.descripcionEvidencia?.trim() ?? ''
+    if (descripcion.length < 50 || descripcion.length > 300) {
       return HttpResponse.json(
-        { success: false, message: 'Acción correctiva no encontrada' },
-        { status: 404 }
+        {
+          success: false,
+          message: 'Error de validación.',
+          errors: ['descripcionEvidencia: La descripción de la evidencia debe tener entre 50 y 300 caracteres.'],
+        },
+        { status: 400 },
       )
     }
-
-    const body = await request.json() as {
-      estado: AccionCorrectivaQE['estado']
-      descripcionEvidencia?: string
-      evidenciaUrl?: string
-    }
-
-    if (body.estado === 'CERRADA' && (!body.descripcionEvidencia || body.descripcionEvidencia.trim() === '')) {
-      return HttpResponse.json(
-        { success: false, message: 'descripcionEvidencia es obligatoria para cerrar la AC' },
-        { status: 422 }
+    if (ctx.ac.estado !== 'EN_EJECUCION') return estadoInvalidoResponse(ctx.ac, 'EN_EJECUCION')
+    if ((ctx.ac.evidencias ?? []).length === 0) {
+      return acError(
+        422,
+        'EVIDENCIA_REQUERIDA: Adjunta al menos un archivo de evidencia antes de marcar la acción como ejecutada.',
+        'EVIDENCIA_REQUERIDA',
       )
     }
 
     const now = new Date().toISOString()
-    const previous = qe.accionesCorrectivas[acIdx]
     const updatedAC: AccionCorrectivaQE = {
-      ...previous,
-      estado: body.estado,
+      ...ctx.ac,
+      estado: 'COMPLETADA',
+      descripcionEvidencia: descripcion,
+      ejecutadaEn: now,
+      ejecutadaPorNombre: currentUser.nombre,
       actualizadoEn: now,
-      ...(body.descripcionEvidencia ? { descripcionEvidencia: body.descripcionEvidencia } : {}),
-      ...(body.evidenciaUrl ? { evidenciaUrl: body.evidenciaUrl } : {}),
-      ...(body.estado === 'CERRADA' ? { fechaCierre: now } : {}),
     }
+    const updated = guardarAC(ctx, updatedAC, {
+      accion: 'AC_EJECUTADA',
+      estadoAnterior: 'EN_EJECUCION',
+      estadoNuevo: 'COMPLETADA',
+      valorNuevo: ctx.ac.id,
+    })
 
-    const accionesCorrectivas = [...qe.accionesCorrectivas]
-    accionesCorrectivas[acIdx] = updatedAC
+    const jefes = getUsersStore()
+      .filter((u) => getRolEfectivo(u.id, updated.empresaId) === 'JEFE_CALIDAD_SYST')
+      .map((u) => u.id)
+    for (const jefeId of jefes) {
+      createCambioEstadoNotification({
+        entidadTipo: 'QE',
+        entidadId: updated.id,
+        entidadCodigo: updated.numero,
+        empresaId: updated.empresaId,
+        estadoNuevo: 'COMPLETADA',
+        reportadoPorId: jefeId,
+        responsablesACActivas: [],
+        actorId: currentUser.id,
+        link: `/quality-events/${updated.id}`,
+        mensaje: `La AC "${ctx.ac.titulo ?? ctx.ac.descripcion}" del ${updated.numero} está lista para verificación.`,
+      })
+    }
+    return HttpResponse.json({ success: true, data: updatedAC })
+  }),
 
+  http.post('/api/quality-events/:id/acciones-correctivas/:acId/verificar', async ({ params, request }) => {
+    await delay(LATENCY)
+    const ctx = cargarAC(params.id as string, params.acId as string)
+    if ('error' in ctx) return ctx.error
     const currentUser = getCurrentUser()
-    const auditEntry: QEAuditTrailEntry = {
-      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
-      entidadTipo: 'QualityEvent',
-      entidadId: qe.id,
-      accion: 'AC_ESTADO_CAMBIADO',
-      estadoAnterior: previous.estado,
-      estadoNuevo: body.estado,
-      valorNuevo: updatedAC.id,
-      realizadoPorId: currentUser.id,
-      realizadoPorNombre: currentUser.nombre,
-      timestamp: now,
-      generadoPorIA: false,
+
+    const body = (await request.json()) as { aprobada: boolean; comentario?: string }
+    const comentario = body.comentario?.trim() ?? ''
+    if (!body.aprobada && (comentario.length < 20 || comentario.length > 500)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'Error de validación.',
+          errors: ['comentario: El motivo de la devolución debe tener entre 20 y 500 caracteres.'],
+        },
+        { status: 400 },
+      )
+    }
+    if (getRolEfectivo(currentUser.id, ctx.qe.empresaId) !== 'JEFE_CALIDAD_SYST') {
+      return acError(403, 'Solo el Jefe de Calidad puede verificar y cerrar la acción.', 'SOLO_JCA_VERIFICA')
+    }
+    if (ctx.ac.estado !== 'COMPLETADA') return estadoInvalidoResponse(ctx.ac, 'COMPLETADA')
+
+    const now = new Date().toISOString()
+    if (!body.aprobada) {
+      const devuelta: AccionCorrectivaQE = {
+        ...ctx.ac,
+        estado: 'EN_EJECUCION',
+        motivoDevolucion: comentario,
+        ejecutadaEn: null,
+        ejecutadaPorNombre: null,
+        actualizadoEn: now,
+      }
+      const updated = guardarAC(ctx, devuelta, {
+        accion: 'AC_DEVUELTA',
+        estadoAnterior: 'COMPLETADA',
+        estadoNuevo: 'EN_EJECUCION',
+        valorNuevo: comentario,
+      })
+      createCambioEstadoNotification({
+        entidadTipo: 'QE',
+        entidadId: updated.id,
+        entidadCodigo: updated.numero,
+        empresaId: updated.empresaId,
+        estadoNuevo: 'EN_EJECUCION',
+        reportadoPorId: ctx.ac.responsableId,
+        responsablesACActivas: [],
+        actorId: currentUser.id,
+        link: `/quality-events/${updated.id}`,
+        mensaje: `La AC "${ctx.ac.titulo ?? ctx.ac.descripcion}" del ${updated.numero} fue devuelta: ${comentario}`,
+      })
+      return HttpResponse.json({ success: true, data: devuelta })
     }
 
-    let auditTrail = [...qe.auditTrail, auditEntry]
-    let nuevoEstado: QEStatus = qe.estado
-
-    const todasCerradasConEvidencia = accionesCorrectivas.every(
-      (ac) => ac.estado === 'CERRADA' && !!ac.descripcionEvidencia && ac.descripcionEvidencia.trim() !== '',
-    )
-
-    if (qe.estado === 'EN_EJECUCION' && body.estado === 'CERRADA' && todasCerradasConEvidencia) {
-      nuevoEstado = 'PENDIENTE_CIERRE'
-      const transicionEntry: QEAuditTrailEntry = {
-        id: `aud-${qe.id}-${qe.auditTrail.length + 2}`,
+    const cerrada: AccionCorrectivaQE = {
+      ...ctx.ac,
+      estado: 'CERRADA',
+      verificadaEn: now,
+      verificadaPorNombre: currentUser.nombre,
+      fechaCierre: now,
+      actualizadoEn: now,
+    }
+    const accionesCorrectivas = [...ctx.qe.accionesCorrectivas]
+    accionesCorrectivas[ctx.acIdx] = cerrada
+    const auditBase = ctx.qe.auditTrail.length
+    let auditTrail: QEAuditTrailEntry[] = [
+      ...ctx.qe.auditTrail,
+      {
+        id: `aud-${ctx.qe.id}-${auditBase + 1}`,
         entidadTipo: 'QualityEvent',
-        entidadId: qe.id,
-        accion: 'TRANSICION_AUTOMATICA',
-        estadoAnterior: 'EN_EJECUCION',
-        estadoNuevo: 'PENDIENTE_CIERRE',
+        entidadId: ctx.qe.id,
+        accion: 'AC_VERIFICADA_CERRADA',
+        estadoAnterior: 'COMPLETADA',
+        estadoNuevo: 'CERRADA',
+        valorNuevo: cerrada.id,
         realizadoPorId: currentUser.id,
         realizadoPorNombre: currentUser.nombre,
         timestamp: now,
         generadoPorIA: false,
-      }
-      auditTrail = [...auditTrail, transicionEntry]
+      },
+    ]
+
+    // Auto-transición (design.md D8): todas las AC CERRADA con evidencia (descripción + archivo, o
+    // la URL histórica) y QE en EN_EJECUCION → PENDIENTE_CIERRE.
+    let nuevoEstado: QEStatus = ctx.qe.estado
+    if (ctx.qe.estado === 'EN_EJECUCION' && accionesCorrectivas.every((ac) => ac.estado === 'CERRADA' && tieneEvidencia(ac))) {
+      nuevoEstado = 'PENDIENTE_CIERRE'
+      auditTrail = [
+        ...auditTrail,
+        {
+          id: `aud-${ctx.qe.id}-${auditBase + 2}`,
+          entidadTipo: 'QualityEvent',
+          entidadId: ctx.qe.id,
+          accion: 'TRANSICION_AUTOMATICA',
+          estadoAnterior: 'EN_EJECUCION',
+          estadoNuevo: 'PENDIENTE_CIERRE',
+          realizadoPorId: currentUser.id,
+          realizadoPorNombre: currentUser.nombre,
+          timestamp: now,
+          generadoPorIA: false,
+        },
+      ]
     }
 
-    const updated: QualityEvent = {
-      ...qe,
-      estado: nuevoEstado,
-      accionesCorrectivas,
-      auditTrail,
-      actualizadoEn: now,
-    }
-    commitQE(idx, qe, updated)
+    const updated: QualityEvent = { ...ctx.qe, estado: nuevoEstado, accionesCorrectivas, auditTrail, actualizadoEn: now }
+    commitQE(ctx.idx, ctx.qe, updated)
+    if (nuevoEstado === 'PENDIENTE_CIERRE') notificarListoParaCierre(updated, currentUser.id)
 
-    if (nuevoEstado === 'PENDIENTE_CIERRE') {
-      const jefesCalidad = getUsersStore().filter((u) => getRolEfectivo(u.id, qe.empresaId) === 'JEFE_CALIDAD_SYST')
-      for (const jefe of jefesCalidad) {
-        createCambioEstadoNotification({
-          entidadTipo: 'QE',
-          entidadId: qe.id,
-          entidadCodigo: qe.numero,
-          empresaId: qe.empresaId,
-          estadoNuevo: nuevoEstado,
-          reportadoPorId: jefe.id,
-          responsablesACActivas: [],
-          actorId: currentUser.id,
-          link: `/quality-events/${qe.id}`,
-        })
-      }
-    }
-
-    return HttpResponse.json({ success: true, data: updatedAC })
+    return HttpResponse.json({ success: true, data: cerrada })
   }),
 
   http.post('/api/quality-events/:id/acciones-correctivas/:acId/solicitud-plazo', async ({ params, request }) => {
@@ -1311,6 +1719,8 @@ export const qualityEventHandlers = [
       )
     }
 
+    if (getSupervisoresArea(qe).length === 0) return areaSinSupervisorResponse()
+
     const body = await request.json() as { resultadoCierre: string; plazoVerificacionDias: number }
     const now = new Date().toISOString()
     const currentUser = getCurrentUser()
@@ -1377,6 +1787,13 @@ export const qualityEventHandlers = [
       )
     }
 
+    if (qe.estado !== 'PENDIENTE_CIERRE') {
+      return HttpResponse.json(
+        { success: false, message: 'El Quality Event no está en PENDIENTE_CIERRE' },
+        { status: 422 }
+      )
+    }
+
     if (!qe.resultadoCierre) {
       return HttpResponse.json(
         { success: false, message: 'QE-AC-006: debe registrarse el cierre antes de firmar' },
@@ -1394,11 +1811,16 @@ export const qualityEventHandlers = [
         )
       }
 
+      const supervisores = getSupervisoresArea(qe)
+      if (supervisores.length === 0) return areaSinSupervisorResponse()
+
       const auditEntry: QEAuditTrailEntry = {
         id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
         entidadTipo: 'QualityEvent',
         entidadId: qe.id,
         accion: 'FIRMA_CIERRE_JEFE_CALIDAD',
+        campoModificado: 'cerradoPorId',
+        valorNuevo: currentUser.nombre,
         realizadoPorId: currentUser.id,
         realizadoPorNombre: currentUser.nombre,
         timestamp: now,
@@ -1412,6 +1834,19 @@ export const qualityEventHandlers = [
         actualizadoEn: now,
       }
       commitQE(idx, qe, updated)
+      // PRD §1.5 P4 — aviso a los supervisores del área.
+      for (const supervisor of supervisores) {
+        createAsignacionNotification({
+          entidadTipo: 'QE',
+          entidadId: qe.id,
+          entidadCodigo: qe.numero,
+          empresaId: qe.empresaId,
+          asignadoId: supervisor.id,
+          actorId: currentUser.id,
+          link: `/quality-events/${qe.id}`,
+          mensaje: `El ${qe.numero} espera tu firma de cierre como Supervisor del área. Firmó el Jefe de Calidad ${currentUser.nombre}.`,
+        })
+      }
       return HttpResponse.json({ success: true, data: updated })
     }
 
@@ -1429,6 +1864,13 @@ export const qualityEventHandlers = [
       )
     }
 
+    if (currentUser.id === qe.cerradoPorId) {
+      return HttpResponse.json(
+        { success: false, message: 'la segunda firma no puede ser del mismo usuario que ya firmó como Jefe de Calidad' },
+        { status: 422 }
+      )
+    }
+
     const rolEsperado = resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId)
     if (body.rol !== rolEsperado) {
       return HttpResponse.json(
@@ -1436,6 +1878,8 @@ export const qualityEventHandlers = [
         { status: 422 }
       )
     }
+
+    if (!getSupervisoresArea(qe).some((sup) => sup.id === currentUser.id)) return noEsSupervisorDelAreaResponse()
 
     const fechaCierre = now
     const plazo = qe.plazoVerificacionDias ?? 60
@@ -1447,7 +1891,9 @@ export const qualityEventHandlers = [
       id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
       entidadTipo: 'QualityEvent',
       entidadId: qe.id,
-      accion: 'FIRMA_CIERRE_SEGUNDA',
+      accion: 'FIRMA_CIERRE_SUPERVISOR',
+      campoModificado: 'cierreFirmaSupervisorId',
+      valorNuevo: currentUser.nombre,
       realizadoPorId: currentUser.id,
       realizadoPorNombre: currentUser.nombre,
       timestamp: now,
@@ -1506,6 +1952,79 @@ export const qualityEventHandlers = [
         })
       }
     }
+
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  // PRD §1.5 P5 — espejo de RechazarCierreQEHandler (qe-cierre-firma-supervisor-area D6).
+  http.post('/api/quality-events/:id/rechazar-cierre', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const qe = qeStore[idx]
+    const body = await request.json() as { motivo?: string }
+    const motivo = (body.motivo ?? '').trim()
+    if (motivo.length < 20 || motivo.length > 500) {
+      return HttpResponse.json(
+        { success: false, message: 'El motivo debe tener entre 20 y 500 caracteres' },
+        { status: 400 }
+      )
+    }
+
+    if (qe.estado !== 'PENDIENTE_CIERRE' || !qe.cerradoPorId || qe.cierreFirmaSupervisorId) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'solo se puede rechazar un cierre en PENDIENTE_CIERRE firmado por el Jefe de Calidad y sin la firma del supervisor',
+        },
+        { status: 422 }
+      )
+    }
+
+    const currentUser = getCurrentUser()
+    if (!getSupervisoresArea(qe).some((sup) => sup.id === currentUser.id)) return noEsSupervisorDelAreaResponse()
+
+    const now = new Date().toISOString()
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'CIERRE_RECHAZADO',
+      estadoAnterior: 'PENDIENTE_CIERRE',
+      estadoNuevo: 'EN_EJECUCION',
+      valorNuevo: motivo,
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
+    const jefeCalidadId = qe.cerradoPorId
+    const updated: QualityEvent = {
+      ...qe,
+      estado: 'EN_EJECUCION',
+      cerradoPorId: undefined,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
+    }
+    commitQE(idx, qe, updated)
+
+    createCambioEstadoNotification({
+      entidadTipo: 'QE',
+      entidadId: qe.id,
+      entidadCodigo: qe.numero,
+      empresaId: qe.empresaId,
+      estadoNuevo: 'EN_EJECUCION',
+      reportadoPorId: jefeCalidadId,
+      responsablesACActivas: [],
+      actorId: currentUser.id,
+      link: `/quality-events/${qe.id}`,
+    })
 
     return HttpResponse.json({ success: true, data: updated })
   }),
@@ -1741,12 +2260,94 @@ export const qualityEventHandlers = [
     }
 
     const qe = qeStore[idx]
+    const currentUser = getCurrentUser()
+    if (!ROLES_SOLICITAR_AC.includes(getRolEfectivo(currentUser.id, qe.empresaId) ?? '')) {
+      return acError(403, 'Tu rol no puede solicitar acciones correctivas en el QE.', 'SOLICITUD_AC_ROL_NO_PERMITIDO')
+    }
+    if (ESTADOS_SIN_SOLICITUDES.includes(qe.estado)) {
+      return acError(422, `El QE está en ${qe.estado} y ya no admite solicitudes de acción correctiva.`, 'SOLICITUD_AC_ESTADO_INVALIDO')
+    }
+
+    const now = new Date().toISOString()
+    const solicitudesAC = qe.solicitudesAC + 1
+    const auditEntry: QEAuditTrailEntry = {
+      id: `aud-${qe.id}-${qe.auditTrail.length + 1}`,
+      entidadTipo: 'QualityEvent',
+      entidadId: qe.id,
+      accion: 'AC_SOLICITADA',
+      valorNuevo: String(solicitudesAC),
+      realizadoPorId: currentUser.id,
+      realizadoPorNombre: currentUser.nombre,
+      timestamp: now,
+      generadoPorIA: false,
+    }
     const updated: QualityEvent = {
       ...qe,
-      solicitudesAC: qe.solicitudesAC + 1,
-      actualizadoEn: new Date().toISOString(),
+      solicitudesAC,
+      auditTrail: [...qe.auditTrail, auditEntry],
+      actualizadoEn: now,
     }
     commitQE(idx, qe, updated)
+    return HttpResponse.json({ success: true, data: updated })
+  }),
+
+  http.post('/api/quality-events/:id/solicitudes-ac/descartar', async ({ params, request }) => {
+    await delay(LATENCY)
+    const idx = qeStore.findIndex(q => q.id === params.id)
+    if (idx === -1 || qeStore[idx].empresaId !== getActiveEmpresaId()) {
+      return HttpResponse.json(
+        { success: false, message: 'Quality Event no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const body = (await request.json()) as { motivo?: string }
+    const motivo = body.motivo?.trim() ?? ''
+    if (motivo.length < 20 || motivo.length > 500) {
+      return HttpResponse.json(
+        {
+          success: false,
+          message: 'Error de validación.',
+          errors: ['motivo: El motivo del descarte debe tener entre 20 y 500 caracteres.'],
+        },
+        { status: 400 },
+      )
+    }
+
+    const qe = qeStore[idx]
+    const currentUser = getCurrentUser()
+    if (getRolEfectivo(currentUser.id, qe.empresaId) !== 'JEFE_CALIDAD_SYST') {
+      return acError(403, 'Solo el Jefe de Calidad puede descartar solicitudes de acción correctiva.', 'SOLO_JCA_DESCARTA_SOLICITUD')
+    }
+    if (qe.solicitudesAC <= 0) {
+      return acError(422, 'El QE no tiene solicitudes de acción correctiva pendientes.', 'SIN_SOLICITUDES_PENDIENTES')
+    }
+
+    const solicitanteId = solicitanteMasAntiguo(qe)
+    const now = new Date().toISOString()
+    const updated: QualityEvent = {
+      ...qe,
+      solicitudesAC: qe.solicitudesAC - 1,
+      auditTrail: [...qe.auditTrail, solicitudAuditEntry(qe, 'SOLICITUD_AC_DESCARTADA', motivo, currentUser, now)],
+      actualizadoEn: now,
+    }
+    commitQE(idx, qe, updated)
+
+    if (solicitanteId && solicitanteId !== currentUser.id) {
+      createCambioEstadoNotification({
+        entidadTipo: 'QE',
+        entidadId: updated.id,
+        entidadCodigo: updated.numero,
+        empresaId: updated.empresaId,
+        estadoNuevo: updated.estado,
+        reportadoPorId: solicitanteId,
+        responsablesACActivas: [],
+        actorId: currentUser.id,
+        link: `/quality-events/${updated.id}`,
+        mensaje: `Tu solicitud de acción correctiva en el ${updated.numero} fue descartada: ${motivo}`,
+      })
+    }
+
     return HttpResponse.json({ success: true, data: updated })
   }),
 

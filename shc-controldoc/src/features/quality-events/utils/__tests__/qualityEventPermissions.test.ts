@@ -328,6 +328,7 @@ describe('validateTransitionToPendienteCierre (RN-QE-003)', () => {
     descripcion: '...',
     responsableId: 'u1',
     responsableNombre: 'Usuario Uno',
+    tipo: 'CORRECTIVA' as const,
     plazoFecha: '2025-12-31',
     creadoEn: '2025-06-01T00:00:00Z',
     actualizadoEn: '2025-06-01T00:00:00Z',

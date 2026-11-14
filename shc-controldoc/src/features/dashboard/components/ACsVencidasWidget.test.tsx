@@ -17,6 +17,7 @@ function ac(overrides: Partial<AccionCorrectivaResumen>): AccionCorrectivaResume
     descripcion: 'AC vencida de prueba',
     responsableId: 'user-operario-001',
     responsableNombre: 'Luis Quispe',
+    tipo: 'CORRECTIVA',
     plazoFecha: new Date(Date.now() - 5 * 86_400_000).toISOString(),
     estado: 'EN_EJECUCION',
     ...overrides,

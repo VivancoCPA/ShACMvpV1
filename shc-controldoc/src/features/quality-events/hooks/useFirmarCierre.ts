@@ -1,19 +1,23 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { AxiosError } from 'axios'
+import { useTranslation } from 'react-i18next'
 import { firmarCierre } from '../api/quality-events.api'
 import type { FirmarCierreInput } from '../schemas/firmarCierre.schema'
 import { QE_QUERY_KEYS } from './useQualityEvents'
 import { QE_AUDIT_TRAIL_QUERY_KEY } from './useQEAuditTrail'
 import { INCIDENT_QUERY_KEYS } from '../../incidents/hooks/useIncidents'
 import { QUERY_KEYS as NC_QUERY_KEYS } from '../../nonconformities/hooks/useNonconformities'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export function useFirmarCierre() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation('qualityEvents')
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: FirmarCierreInput }) => firmarCierre(id, data),
     onSuccess: (qe, { id }) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['quality-events', 'list'] })
       void queryClient.invalidateQueries({ queryKey: QE_QUERY_KEYS.detail(id) })
       void queryClient.invalidateQueries({ queryKey: QE_AUDIT_TRAIL_QUERY_KEY(id) })
@@ -32,6 +36,12 @@ export function useFirmarCierre() {
       // 'PIN_NO_CONFIGURADO' se muestra como aviso con link a /perfil dentro del propio
       // PinModal (ver QECierreSection), no como toast genérico — ver pin-firma-ui/design.md D6.
       if (axiosError.response?.data?.errorCode === 'PIN_NO_CONFIGURADO') return
+      // AREA_SIN_SUPERVISOR se muestra inline en QECierreSection (qe-cierre-firma-supervisor-area).
+      if (axiosError.response?.data?.errorCode === 'AREA_SIN_SUPERVISOR') return
+      if (axiosError.response?.data?.errorCode === 'NO_ES_SUPERVISOR_DEL_AREA') {
+        toast.error(t('errors.NO_ES_SUPERVISOR_DEL_AREA'))
+        return
+      }
       const message = axiosError.response?.data?.message ?? 'Error al registrar la firma'
       toast.error(message)
     },

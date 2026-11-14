@@ -9,52 +9,55 @@ Define the `JefeCalidadDashboard` page: how it renders the 9 system KPIs (`KpiRe
 ## Requirements
 
 ### Requirement: JefeCalidadDashboard renderiza los 9 KPIs completos
-El sistema SHALL implementar `JefeCalidadDashboard` en `src/features/dashboard/pages/JefeCalidadDashboard.tsx`, consumiendo `useDashboardSummary()` y renderizando, cuando `data.rol === 'JEFE_CALIDAD'`, un widget `KpiGridWidget` que muestra las 9 entradas de `data.data.kpis` (`KpiResult[]`). Cada tarjeta con `metaTipo: 'ABSOLUTO'` y `semaforo` distinto de `'INFORMATIVO'` SHALL mostrar: `kpiId`, el `nombre` correspondiente desde `KPI_DEFINITIONS`, el `valor` calculado formateado según `unidad` (`PORCENTAJE` con símbolo `%`, `DIAS` con sufijo de días, `TASA` como tasa por 1,000,000, `CONTEO` como entero), la `meta`, y un indicador visual de color derivado de `semaforo` (`VERDE`/`AMARILLO`/`ROJO`) mediante un borde izquierdo de 3px cuyo color SHALL renderizarse correctamente tanto en Light Mode como en Dark Mode (sin que un shorthand `border`/`dark:border-*` de mayor especificidad Tailwind pise el color del borde izquierdo). La tarjeta de `KPI-04` (`metaTipo: 'REDUCCION_INTERANUAL'`) SHALL mostrar su meta como texto ("Reducción ≥{{meta}}% anual"), nunca como `formatValor(meta, unidad)`. La tarjeta de `KPI-09` (`semaforo: 'INFORMATIVO'`) SHALL renderizar las primeras 3 entradas de `distribucion` como una lista rankeada de área+conteo en vez de un único número, con un borde izquierdo neutro (no semántico) y sin aplicar `VALOR_CLASSES` de color al texto.
+El sistema SHALL implementar `JefeCalidadDashboard` en `src/features/dashboard/pages/JefeCalidadDashboard.tsx` sobre `DashboardLayout` (`dashboard-layout`). La zona "Indicadores" SHALL renderizar `KpiGridWidget` con los `KpiResult` de `useDashboardKpis(periodo)` (con `periodo` de `usePeriodoKpi()`, no del summary), y `PeriodoSelector` a la derecha del label. `KpiGridWidget` SHALL recibir la lista de KPIs a mostrar y renderizar una `KpiRingCard` por cada uno, en el orden dado, sin `<section>` ni `h2` propios (el label lo pone la zona). El JCA SHALL ver 6 anillos, en este orden: KPI-01, KPI-02, KPI-03, KPI-05, KPI-07 y KPI-06. KPI-08 se muestra como alerta ("AC vencidas") y KPI-04 y KPI-09 no se muestran como tarjeta en este dashboard (ver `design.md` D7). Cada `KpiRingCard` SHALL recibir como `tendencia` los últimos 6 valores de `tendenciaMensualKpis[kpiId]` del summary, cuando existen. El valor SHALL formatearse según `unidad` (`PORCENTAJE` con `%`, `DIAS` con sufijo de días, `TASA` con 2 decimales, `CONTEO` como entero), en Light Mode y en Dark Mode. Mientras `useDashboardKpis` carga por primera vez, la zona SHALL mostrar 6 skeletons del tamaño de la tarjeta.
 
-#### Scenario: Las 9 tarjetas de KPI se renderizan
-- **WHEN** `JefeCalidadDashboard` recibe `data.data.kpis` con 9 elementos
-- **THEN** se renderizan exactamente 9 tarjetas, una por cada `KpiId`
+#### Scenario: Se renderizan los 6 anillos en orden
+- **WHEN** `useDashboardKpis` resuelve con los 9 `KpiResult`
+- **THEN** la zona "Indicadores" tiene exactamente 6 tarjetas, para KPI-01, KPI-02, KPI-03, KPI-05, KPI-07 y KPI-06, en ese orden
 
 #### Scenario: Valor de KPI en PORCENTAJE se formatea con símbolo
-- **WHEN** un `KpiResult` tiene `unidad: 'PORCENTAJE'` (vía `KPI_DEFINITIONS[kpiId].unidad`) y `valor: 87.5`
-- **THEN** la tarjeta muestra el valor con el símbolo `%`
+- **WHEN** KPI-01 tiene `valor: 87.5`
+- **THEN** el centro del anillo muestra el valor con el símbolo `%`
 
 #### Scenario: Semáforo ROJO se refleja visualmente
 - **WHEN** un `KpiResult` tiene `semaforo: 'ROJO'`
-- **THEN** la tarjeta correspondiente usa el color semántico de error (`error`/rojo), no el de éxito ni advertencia
+- **THEN** el arco de su anillo usa el color semántico de error
 
-#### Scenario: Borde izquierdo de color visible en Dark Mode
-- **WHEN** el tema activo es `dark` y una tarjeta tiene `semaforo: 'VERDE'`
-- **THEN** el borde izquierdo de 3px se renderiza en el color semántico de éxito, sin ser sobreescrito por las clases `dark:border-*` del resto del borde
+#### Scenario: Minigráfico desde la tendencia del summary
+- **WHEN** el summary trae `tendenciaMensualKpis['KPI-01']` con 12 entradas
+- **THEN** la tarjeta de KPI-01 dibuja un minigráfico con los 6 últimos valores, y la de KPI-06 (sin serie) no dibuja minigráfico
 
-#### Scenario: KPI-04 muestra su meta como reducción interanual, no como umbral
-- **WHEN** se renderiza la tarjeta de `KPI-04` con `metaTipo: 'REDUCCION_INTERANUAL'` y `meta: 10`
-- **THEN** el texto de meta mostrado es "Reducción ≥10% anual" (o su traducción equivalente), nunca `"Meta: 10.00"` ni `"Meta: 10%"` como si fuera un umbral absoluto
-
-#### Scenario: KPI-09 muestra una lista de áreas, no un porcentaje
-- **WHEN** se renderiza la tarjeta de `KPI-09` con `distribucion: [{ area: 'Almacén Norte', valor: 5 }, { area: 'Calidad', valor: 2 }, { area: 'Laboratorio de Calidad', valor: 1 }]`
-- **THEN** la tarjeta muestra las 3 áreas con su conteo respectivo, no un único valor numérico con `%`/`d`/tasa
-
-#### Scenario: KPI-09 no usa color semántico de semáforo
-- **WHEN** se renderiza la tarjeta de `KPI-09` (`semaforo: 'INFORMATIVO'`)
-- **THEN** el borde izquierdo y el color del valor no usan las clases de `VERDE`/`AMARILLO`/`ROJO`
-
----
+#### Scenario: El período elegido cambia los KPIs consultados
+- **WHEN** la URL tiene `?periodo=anio` y el año actual en Lima es 2026
+- **THEN** `JefeCalidadDashboard` consulta `GET /api/dashboard/kpis?periodo=2026`
 
 ### Requirement: AccionesRequeridasWidget es el primer widget de JefeCalidadDashboard
-`JefeCalidadDashboard.tsx` SHALL montar `AccionesRequeridasWidget` como el primer elemento visible, antes de `KpiGridWidget`, fuera del bloque condicional de `isLoading`/`data.rol !== 'JEFE_CALIDAD'` — el widget gestiona su propio estado de carga de forma independiente de `useDashboardSummary()`.
+`JefeCalidadDashboard.tsx` SHALL componer `DashboardLayout` así:
+- **alertas:** 4 `AlertaCard`, según `design.md` D9: "AC vencidas" (error; KPI-08 de `data.data.kpis` del summary; `#acs-por-vencer`), "Incidentes sin QE vencidos" (error; `incidentesSinQeVencidosTotal`; `#incidentes-sin-qe`), "Esperan mi firma o aprobación" (warning; ítems `QE_APROBAR_CAUSA_RAIZ` y `QE_CERRAR` de `useAccionesRequeridas`; `#acciones-requeridas`) y "QE críticos activos" (info; `qeCriticosAbiertos.length`; `/quality-events?severidad=CRITICA`);
+- **indicadores:** ver "JefeCalidadDashboard renderiza los 9 KPIs completos";
+- **trabajoPrincipal:** `AccionesRequeridasWidget` (en un contenedor `id="acciones-requeridas"`) y `TendenciaMensualWidget`;
+- **trabajoLateral:** `QEPorEstadoWidget`, `ACsPorVencerWidget` (`id="acs-por-vencer"`) e `IncidentesSinQeVencidosWidget` (`id="incidentes-sin-qe"`);
+- **mapa:** `HeatmapIncidentesWidget`.
 
-Con la introducción de `JefeControlDocumentarioDashboard` (`dashboard-jefecontroldoc-view`) y el fix de `dashboardRoleMapping.ts` (`dashboard-types`), `JefeCalidadDashboard` deja de ser el dashboard que ve `JEFE_CONTROL_DOCUMENTARIO` — el rol objetivo de esta página vuelve a ser exclusivamente `JEFE_CALIDAD_SYST`.
+`AccionesRequeridasWidget` SHALL montarse fuera del bloque condicional de carga del summary (gestiona su propio estado de carga). Mientras el summary carga, las alertas y la columna lateral muestran skeletons dentro de su zona.
+
+Con la introducción de `JefeControlDocumentarioDashboard` (`dashboard-jefecontroldoc-view`) y el fix de `dashboardRoleMapping.ts` (`dashboard-types`), `JefeCalidadDashboard` deja de ser el dashboard que ve `JEFE_CONTROL_DOCUMENTARIO`: el rol objetivo de esta página vuelve a ser exclusivamente `JEFE_CALIDAD_SYST`.
 
 #### Scenario: Widget visible antes de que carguen los KPIs
 - **WHEN** `JefeCalidadDashboard` renderiza mientras `useDashboardSummary()` sigue en `isLoading: true`
-- **THEN** `AccionesRequeridasWidget` ya es visible, independientemente del estado de carga de `KpiGridWidget`
+- **THEN** `AccionesRequeridasWidget` ya es visible, independientemente del estado de carga del summary y de los KPIs
 
-#### Scenario: Widget precede a KpiGridWidget en el árbol renderizado
-- **WHEN** `data.rol === 'JEFE_CALIDAD'` y los datos ya cargaron
-- **THEN** `AccionesRequeridasWidget` aparece antes que `KpiGridWidget` en el DOM
+#### Scenario: Zonas del Jefe de Calidad
+- **WHEN** el summary y los KPIs ya cargaron
+- **THEN** se renderizan las 4 zonas, con 4 alertas, `AccionesRequeridasWidget` y `TendenciaMensualWidget` en la columna principal, y `HeatmapIncidentesWidget` en "Dónde ocurre"
 
----
+#### Scenario: Alerta de firmas cuenta solo aprobar causa raíz y cerrar
+- **WHEN** `useAccionesRequeridas` devuelve 2 ítems `QE_APROBAR_CAUSA_RAIZ`, 1 `QE_CERRAR` y 3 `QE_VERIFICAR`
+- **THEN** la alerta "Esperan mi firma o aprobación" muestra `3`
+
+#### Scenario: Alerta en cero
+- **WHEN** `qeCriticosAbiertos` está vacío
+- **THEN** la alerta "QE críticos activos" se muestra neutra, con "Todo en orden"
 
 ### Requirement: JefeCalidadDashboard monta el punto de entrada de exportación ejecutiva
 `JefeCalidadDashboard.tsx` SHALL montar `ExportButton` (`dashboard-export-ejecutivo`) dentro de `PageWrapper`, visible solo para `JEFE_CALIDAD_SYST`, sin alterar el orden ni comportamiento de `AccionesRequeridasWidget` ni `KpiGridWidget` existentes.

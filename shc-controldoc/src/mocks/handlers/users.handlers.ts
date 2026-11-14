@@ -3,10 +3,23 @@ import { getUsersStore } from '../fixtures/auth.fixtures'
 import type { MockUser } from '../fixtures/auth.fixtures'
 import { getUsuarioEmpresaStore } from '../fixtures/empresas.fixtures'
 import { getSessionUser } from './shared/session'
+import { getCandidatosPorRoles } from './shared/candidatosUsuarios'
 import { useAuthStore } from '../../stores/authStore'
 import type { User, UserRole } from '../../types/auth.types'
 
 const LATENCY = 400
+// Los 9 valores de UserRole — para validar ?roles= de /api/users/candidatos como el backend (400).
+const USER_ROLES: readonly UserRole[] = [
+  'OPERARIO',
+  'SUPERVISOR',
+  'JEFE_CALIDAD_SYST',
+  'JEFE_CONTROL_DOCUMENTARIO',
+  'AUDITOR_INTERNO',
+  'ALTA_DIRECCION',
+  'ADMINISTRADOR_SISTEMA',
+  'ADMINISTRADOR_EMPRESA',
+  'SUPERADMIN',
+]
 const TEMP_PASSWORD_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
 function ok<T>(data: T, status = 200) {
@@ -85,6 +98,11 @@ export const userHandlers = [
     await delay(LATENCY)
     const sessionUser = getSessionUser(request)
     if (!sessionUser) return err('Sesión expirada', 401)
+    // Igual que ListarUsuariosEndpoint: solo ADMINISTRADOR_EMPRESA / SUPERADMIN. Los selectores
+    // operativos usan /api/users/candidatos o /api/users/nombres (ac-tipo-responsables).
+    if (sessionUser.rol !== 'ADMINISTRADOR_EMPRESA' && sessionUser.rol !== 'SUPERADMIN') {
+      return err('Acceso denegado', 403)
+    }
 
     let usuarioIdsVisibles: Set<string> | null = null
     let empresaActivaId: string | null = null
@@ -122,6 +140,26 @@ export const userHandlers = [
     if (activoParam !== null) result = result.filter((u) => u.activo === (activoParam === 'true'))
 
     return ok(result)
+  }),
+
+  // GET /api/users/candidatos?roles=… — selectores operativos (ac-tipo-responsables), sin
+  // restricción de rol. Nunca devuelve roles de administración, aunque se pidan.
+  http.get('/api/users/candidatos', async ({ request }) => {
+    await delay(LATENCY)
+    const sessionUser = getSessionUser(request)
+    if (!sessionUser) return err('Sesión expirada', 401)
+    const empresaActivaId = useAuthStore.getState().empresaActivaId
+    if (!empresaActivaId) return err('Sesión sin empresa activa', 401)
+
+    const roles = (new URL(request.url).searchParams.get('roles') ?? '')
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean)
+    if (roles.length === 0) return err("Debe indicar al menos un rol en 'roles'.", 400)
+    const invalido = roles.find((r) => !(USER_ROLES as readonly string[]).includes(r))
+    if (invalido) return err(`El rol '${invalido}' no es válido.`, 400)
+
+    return ok(getCandidatosPorRoles(empresaActivaId, roles as UserRole[]))
   }),
 
   // GET /api/users/nombres — lookup liviano de nombres (user-names-lookup), sin

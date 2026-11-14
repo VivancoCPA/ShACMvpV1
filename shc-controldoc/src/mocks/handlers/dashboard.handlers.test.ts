@@ -48,7 +48,8 @@ async function call<T>(promise: Promise<{ data: T; status: number }>): Promise<R
 function authHeaders(email: string) {
   const mockUser = authFixtures.find((u) => u.email === email)
   if (!mockUser) throw new Error(`Fixture no encontrado: ${email}`)
-  const { password: _password, ...user } = mockUser
+  const { password, ...user } = mockUser
+  void password
   const accessToken = `mock-access-token-${user.id}-${Date.now()}`
   useAuthStore.setState({ user, accessToken, isAuthenticated: true, empresaActivaId: 'empresa-001' })
   return { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -72,6 +73,30 @@ describe('dashboard.handlers — GET /api/dashboard/kpis', () => {
     for (const kpi of sensiblesAPeriodo) {
       expect(kpi.valor).toBe(0)
     }
+  })
+
+  // dashboard-layout-4-zonas (dashboard-msw-handlers, "acepta período mensual, trimestral o anual").
+  it.each([
+    ['2026-11', '2026-11', '2026-Q4'],
+    ['2026-Q4', '2026-Q4', '2026-Q4'],
+    ['2026', '2026', '2026'],
+  ])('acepta periodo=%s y etiqueta KPI-01 y KPI-03', async (periodo, label01, label03) => {
+    const { status, data } = await call(api.get<KpiResult[]>('/api/dashboard/kpis', { params: { periodo } }))
+    expect(status).toBe(200)
+    expect(kpi(data, 'KPI-01').periodo).toBe(label01)
+    expect(typeof kpi(data, 'KPI-01').valorPeriodoAnterior).toBe('number')
+    expect(kpi(data, 'KPI-03').periodo).toBe(label03)
+    expect(kpi(data, 'KPI-06').valorPeriodoAnterior).toBeUndefined()
+  })
+
+  it.each(['2026-13', '2026-Q5', 'nov-2026'])('periodo inválido %s responde 400', async (periodo) => {
+    const { status } = await call(api.get<KpiResult[]>('/api/dashboard/kpis', { params: { periodo } }))
+    expect(status).toBe(400)
+  })
+
+  it('KPI-04 marca datosIncompletos en un año sin horas cargadas', async () => {
+    const { data } = await call(api.get<KpiResult[]>('/api/dashboard/kpis', { params: { periodo: '2020' } }))
+    expect(kpi(data, 'KPI-04').datosIncompletos).toBe(true)
   })
 
   it('cada KpiResult referencia la meta y un semáforo válido', async () => {
@@ -274,6 +299,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           descripcion: 'AC pendiente vencida',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: ayer,
           estado: 'PENDIENTE',
           creadoEn: '2026-05-01T00:00:00Z',
@@ -286,6 +312,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           descripcion: 'AC en ejecución vencida',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: ayer,
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
@@ -298,6 +325,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           descripcion: 'AC en ejecución vigente',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: enFuturo,
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
@@ -365,7 +393,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     )
     expect(data.rol).toBe('JEFE_CONTROL_DOC')
     if (data.rol === 'JEFE_CONTROL_DOC') {
-      expect(data.data).toEqual({})
+      expect(Object.keys(data.data).sort()).toEqual(['documentosRevisionProxima', 'documentosRevisionVencida'])
     }
   })
 
@@ -395,6 +423,20 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     }
   })
 
+  // dashboard-alertas-coherentes D4: la lista de la tarjeta "AC vencidas" y KPI-08 usan el mismo
+  // predicado, así que su largo coincide.
+  it('accionesCorrectivasVencidas del JCA tiene el mismo largo que KPI-08 y viene ordenada por plazo', async () => {
+    const { data } = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
+    )
+    if (data.rol !== 'JEFE_CALIDAD') throw new Error('esperaba rol JEFE_CALIDAD')
+    const kpi08 = data.data.kpis.find((k) => k.kpiId === 'KPI-08')
+    expect(data.data.accionesCorrectivasVencidas.length).toBe(kpi08?.valor)
+    const plazos = data.data.accionesCorrectivasVencidas.map((ac) => new Date(ac.plazoFecha).getTime())
+    expect(plazos).toEqual([...plazos].sort((a, b) => a - b))
+    expect(data.data.accionesCorrectivasVencidas.every((ac) => ac.estado !== 'CERRADA' && ac.estado !== 'COMPLETADA')).toBe(true)
+  })
+
   it('accionesCorrectivasPorVencer excluye ACs de Incidentes', async () => {
     const incidentesStore = getIncidentsStore()
     const incidente = incidentesStore[0]
@@ -406,6 +448,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       descripcion: 'AC de Incidente que no debe aparecer en accionesCorrectivasPorVencer',
       responsableId: 'user-operario-001',
       responsableNombre: 'Luis Quispe',
+      tipo: 'CORRECTIVA',
       plazoFecha: manana,
       estado: 'EN_EJECUCION',
       creadoEn: '2026-05-01T00:00:00Z',
@@ -448,6 +491,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           descripcion: 'AC de QE vencida hace 2 días',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: hace2Dias,
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
@@ -460,6 +504,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
           descripcion: 'AC de QE próxima a vencer en 3 días',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: enTresDias,
           estado: 'EN_EJECUCION',
           creadoEn: '2026-05-01T00:00:00Z',
@@ -475,6 +520,7 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
       descripcion: 'AC de NC próxima a vencer en 4 días',
       responsableId: 'user-operario-001',
       responsableNombre: 'Luis Quispe',
+      tipo: 'CORRECTIVA',
       plazoFecha: enCuatroDias,
       estado: 'PENDIENTE',
       creadoEn: '2026-05-01T00:00:00Z',
@@ -537,13 +583,13 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     expect(entry?.cerrados).toBe(cerradosEsperados)
   })
 
-  it('tendenciaMensualKpis tiene exactamente KPI-01/04/05 y coincide con /api/dashboard/kpis para el mismo periodo', async () => {
+  it('tendenciaMensualKpis tiene KPI-01/02/04/05/07 y coincide con /api/dashboard/kpis para el mismo periodo', async () => {
     const { data } = await call(
       api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.calidad@shac.pe')),
     )
     if (data.rol !== 'JEFE_CALIDAD') throw new Error('esperaba rol JEFE_CALIDAD')
     const tendenciaKpis = data.data.tendenciaMensualKpis
-    expect(Object.keys(tendenciaKpis).sort()).toEqual(['KPI-01', 'KPI-04', 'KPI-05'])
+    expect(Object.keys(tendenciaKpis).sort()).toEqual(['KPI-01', 'KPI-02', 'KPI-04', 'KPI-05', 'KPI-07'])
     expect(tendenciaKpis['KPI-01']).toHaveLength(12)
     expect(tendenciaKpis['KPI-04']).toHaveLength(12)
     expect(tendenciaKpis['KPI-05']).toHaveLength(12)
@@ -564,6 +610,25 @@ describe('dashboard.handlers — GET /api/dashboard/summary', () => {
     )
     expect(jc.data.rol).toBe('JEFE_CALIDAD')
     expect(jcd.data.rol).toBe('JEFE_CONTROL_DOC')
+  })
+
+  // dashboard-layout-4-zonas (dashboard-msw-handlers).
+  it('JEFE_CONTROL_DOC recibe los conteos de revisión periódica', async () => {
+    const { data } = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('jefe.docs@shac.pe')),
+    )
+    if (data.rol !== 'JEFE_CONTROL_DOC') throw new Error('esperaba rol JEFE_CONTROL_DOC')
+    expect(typeof data.data.documentosRevisionVencida).toBe('number')
+    expect(typeof data.data.documentosRevisionProxima).toBe('number')
+  })
+
+  it('ALTA_DIRECCION recibe tendenciaMensualKpis de KPI-01/04/05', async () => {
+    const { data } = await call(
+      api.get<DashboardSummaryData>('/api/dashboard/summary', authHeaders('gerencia@shac.pe')),
+    )
+    if (data.rol !== 'ALTA_DIRECCION') throw new Error('esperaba rol ALTA_DIRECCION')
+    expect(Object.keys(data.data.tendenciaMensualKpis).sort()).toEqual(['KPI-01', 'KPI-04', 'KPI-05'])
+    expect(data.data.tendenciaMensualKpis['KPI-01']).toHaveLength(12)
   })
 })
 
@@ -687,6 +752,7 @@ function acQeCerrada(id: string, overrides: Partial<AccionCorrectivaQE> = {}): A
     descripcion: 'AC de prueba',
     responsableId: 'user-test',
     responsableNombre: 'Usuario Test',
+    tipo: 'CORRECTIVA',
     plazoFecha: '2031-01-05T00:00:00Z',
     estado: 'CERRADA',
     creadoEn: '2031-01-01T00:00:00Z',
@@ -870,6 +936,7 @@ describe('dashboard.handlers — KPI-05 escopa la verificación a ACs de origen 
           descripcion: 'AC de prueba',
           responsableId: 'user-test',
           responsableNombre: 'Usuario Test',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2031-10-05T00:00:00Z',
           estado: 'CERRADA',
           creadoEn: '2031-10-01T00:00:00Z',
@@ -887,6 +954,7 @@ describe('dashboard.handlers — KPI-05 escopa la verificación a ACs de origen 
           descripcion: 'AC de prueba',
           responsableId: 'user-test',
           responsableNombre: 'Usuario Test',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2031-10-05T00:00:00Z',
           estado: 'CERRADA',
           creadoEn: '2031-10-01T00:00:00Z',
@@ -1523,6 +1591,7 @@ describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', ()
           descripcion: 'AC de prueba',
           responsableId: 'user-test',
           responsableNombre: 'Usuario Test',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2031-01-05T00:00:00Z',
           estado: 'PENDIENTE',
           creadoEn: '2031-01-01T00:00:00Z',
@@ -1564,6 +1633,7 @@ describe('dashboard.handlers — ALTA_DIRECCION: acsConSolicitudAjustePlazo', ()
           descripcion: 'AC de prueba',
           responsableId: 'user-test',
           responsableNombre: 'Usuario Test',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2031-01-05T00:00:00Z',
           estado: 'EN_EJECUCION',
           creadoEn: '2031-01-01T00:00:00Z',
@@ -1660,6 +1730,7 @@ describe('dashboard.handlers — AUDITOR: hallazgosPorNorma / hallazgosPorEstado
           descripcion: 'AC de prueba',
           responsableId: 'user-test',
           responsableNombre: 'Usuario Test',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2031-01-05T00:00:00Z',
           estado: 'CERRADA',
           creadoEn: '2031-01-01T00:00:00Z',

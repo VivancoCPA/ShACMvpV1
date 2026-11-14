@@ -22,43 +22,114 @@ El sistema SHALL exportar un hook `useAccionesRequeridas()` en `src/features/das
 ---
 
 ### Requirement: Ítems de QE replican la lógica real de gating de cada componente de detalle
-El hook SHALL derivar ítems de dominio `QE` reproduciendo exactamente las condiciones ya usadas por los componentes de detalle correspondientes, no una versión simplificada de `getQualityEventPermissions`:
-- `JEFE_CALIDAD_SYST`, causa raíz: `qe.estado ∈ {'EN_INVESTIGACION', 'ANALISIS_COMPLETADO'} && !qe.causaRaizFirmadaEn`.
-- `JEFE_CALIDAD_SYST`, cerrar: `qe.estado === 'PENDIENTE_CIERRE' && !qe.cierreFirmaSupervisorId && (!qe.resultadoCierre || !qe.cerradoPorId)`.
-- `SUPERVISOR` o `ALTA_DIRECCION`, firmar cierre: `qe.estado === 'PENDIENTE_CIERRE' && !!qe.cerradoPorId && !qe.cierreFirmaSupervisorId && user.rol === resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)`.
-- `JEFE_CALIDAD_SYST`, verificar: `qe.estado === 'EN_VERIFICACION'`.
-- `AUDITOR_INTERNO`, verificar: `qe.estado === 'EN_VERIFICACION' && qe.auditorAsignadoId === user.id`.
+El hook SHALL derivar ítems de dominio `QE` (vía `extraerAccionesQE` en `src/features/dashboard/utils/accionesRequeridas.utils.ts`) calculados **por asignación del responsable de investigación** más las tareas propias del `JEFE_CALIDAD_SYST`, reproduciendo las condiciones ya usadas por los componentes de detalle correspondientes y no una versión simplificada de `getQualityEventPermissions`. Los QE con `deletedAt` SHALL quedar excluidos.
 
-Un QE que no cumple ninguna condición para el rol del usuario actual SHALL quedar excluido del panel — el hook NUNCA SHALL usar `getQualityEventPermissions(...).puedeCerrar` ni `.puedeFirmarCierre` directamente para decidir inclusión, dado que ambos flags son más amplios que la acción real pendiente en ese momento.
+Reglas por asignación — se evalúan antes y con independencia de la regla por rol, para cualquier rol:
+- Responsable asignado, iniciar investigación (`QE_INICIAR_INVESTIGACION`): `qe.estado === 'ABIERTO' && qe.responsableInvestigacionId === user.id`.
+- Responsable asignado, completar análisis (`QE_COMPLETAR_ANALISIS`): `qe.estado === 'EN_INVESTIGACION' && qe.responsableInvestigacionId === user.id`.
+
+Reglas por rol:
+- `JEFE_CALIDAD_SYST`, asignar responsable (`QE_ASIGNAR_RESPONSABLE`): `qe.estado === 'ABIERTO' && !qe.responsableInvestigacionId`.
+- `JEFE_CALIDAD_SYST`, aprobar causa raíz (`QE_APROBAR_CAUSA_RAIZ`): `qe.estado ∈ {'EN_INVESTIGACION', 'ANALISIS_COMPLETADO'} && (qe.causaRaizDefinitiva?.trim().length ?? 0) >= 100 && !qe.causaRaizFirmadaEn` — sobre cualquier QE, sea o no responsable.
+- `JEFE_CALIDAD_SYST`, cerrar (`QE_CERRAR`): `qe.estado === 'PENDIENTE_CIERRE' && !qe.cierreFirmaSupervisorId && (!qe.resultadoCierre || !qe.cerradoPorId)`.
+- `SUPERVISOR` o `ALTA_DIRECCION`, firmar cierre (`QE_FIRMAR_CIERRE`): `qe.estado === 'PENDIENTE_CIERRE' && !!qe.cerradoPorId && !qe.cierreFirmaSupervisorId && user.rol === resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId) && (user.areaIds ?? []).includes(qe.areaId)`.
+- `JEFE_CALIDAD_SYST`, verificar (`QE_VERIFICAR`): `qe.estado === 'EN_VERIFICACION'`.
+- `AUDITOR_INTERNO`, verificar (`QE_VERIFICAR`): `qe.estado === 'EN_VERIFICACION' && qe.auditorAsignadoId === user.id`.
+
+Un mismo QE MAY generar más de un ítem para el mismo usuario (p.ej. un JCA responsable de un QE en `EN_INVESTIGACION` con causa raíz ≥ 100 caracteres ve `QE_COMPLETAR_ANALISIS` y `QE_APROBAR_CAUSA_RAIZ`); el `id` de cada ítem SHALL ser `QE-{tipo}-{qe.id}`, único por par tipo/QE. El tipo `QE_CAUSA_RAIZ` NO SHALL existir.
+
+La `prioridad` SHALL ser la de `qeSeveridadPrioridad(qe)` (`'alta'` para severidad `ALTA`/`CRITICA`); además, para `QE_ASIGNAR_RESPONSABLE` y `QE_INICIAR_INVESTIGACION` SHALL ser `'alta'` cuando han transcurrido más de 48 h desde `qe.fechaHoraReporte` (o `qe.creadoEn` si falta) — plazo de asignación del PRD §1.3. Esto solo afecta el orden visual; no genera notificaciones.
+
+Un QE que no cumple ninguna condición para el usuario actual SHALL quedar excluido del panel — el hook NUNCA SHALL usar `getQualityEventPermissions(...).puedeCerrar` ni `.puedeFirmarCierre` directamente para decidir inclusión, dado que ambos flags son más amplios que la acción real pendiente en ese momento.
+
+#### Scenario: JCA responsable de un QE ABIERTO ve iniciar investigación, no asignar
+- **WHEN** un QE está en `ABIERTO` con `responsableInvestigacionId` igual al id del JCA autenticado
+- **THEN** el panel del JCA incluye `QE_INICIAR_INVESTIGACION` para ese QE y no incluye `QE_ASIGNAR_RESPONSABLE`
+
+#### Scenario: QE ABIERTO sin responsable
+- **WHEN** un QE está en `ABIERTO` sin `responsableInvestigacionId`
+- **THEN** el panel del JCA incluye `QE_ASIGNAR_RESPONSABLE` y el panel de un `SUPERVISOR` no incluye ningún ítem de ese QE
+
+#### Scenario: Solo el Supervisor asignado ve iniciar investigación
+- **WHEN** un QE está en `ABIERTO` con `responsableInvestigacionId` = Supervisor A
+- **THEN** el panel de A incluye `QE_INICIAR_INVESTIGACION`; el de otro Supervisor B no; el del JCA no incluye `QE_INICIAR_INVESTIGACION` ni `QE_ASIGNAR_RESPONSABLE`
+
+#### Scenario: Investigación de un Supervisor con causa raíz lista para aprobar
+- **WHEN** un QE está en `EN_INVESTIGACION` con responsable Supervisor A, `causaRaizDefinitiva` de 100 caracteres o más y sin `causaRaizFirmadaEn`
+- **THEN** A recibe `QE_COMPLETAR_ANALISIS`; el JCA no recibe `QE_COMPLETAR_ANALISIS` pero sí `QE_APROBAR_CAUSA_RAIZ`
+
+#### Scenario: Causa raíz firmada no genera aprobar causa raíz
+- **WHEN** un QE en `ANALISIS_COMPLETADO` tiene `causaRaizFirmadaEn`
+- **THEN** ningún usuario recibe `QE_APROBAR_CAUSA_RAIZ` para ese QE
+
+#### Scenario: QE ABIERTO hace más de 48 h tiene prioridad alta
+- **WHEN** un QE de severidad `BAJA` está en `ABIERTO` sin responsable y su `fechaHoraReporte` es de hace 50 h
+- **THEN** el ítem `QE_ASIGNAR_RESPONSABLE` del JCA tiene `prioridad: 'alta'`
+
+#### Scenario: QE eliminado no genera ítems
+- **WHEN** un QE tiene `deletedAt`
+- **THEN** no genera ningún ítem para ningún usuario
 
 #### Scenario: JEFE_CALIDAD_SYST no ve un QE PENDIENTE_CIERRE que ya firmó
 - **WHEN** un QE está en `PENDIENTE_CIERRE` con `resultadoCierre` y `cerradoPorId` ya establecidos (falta solo la segunda firma)
 - **THEN** ese QE no aparece en el panel de un usuario `JEFE_CALIDAD_SYST` (la acción pendiente ya no es suya)
 
 #### Scenario: SUPERVISOR ve el QE cuando le corresponde la segunda firma
-- **WHEN** un QE está en `PENDIENTE_CIERRE` con `cerradoPorId` establecido y `resolveRolSegundaFirma(cerradoPorId, areaAfectada)` retorna `'SUPERVISOR'`
-- **THEN** ese QE aparece en el panel de un usuario `SUPERVISOR` cuyo `rol` coincide, con `tipo: 'firmar_cierre'`
+- **WHEN** un QE está en `PENDIENTE_CIERRE` con `cerradoPorId` establecido, `resolveRolSegundaFirma(cerradoPorId, areaId)` retorna `'SUPERVISOR'` y el área del QE está en `user.areaIds`
+- **THEN** ese QE aparece en el panel de ese `SUPERVISOR` con `tipo: 'QE_FIRMAR_CIERRE'`
 
 #### Scenario: AUDITOR_INTERNO solo ve QE donde es el auditor asignado
 - **WHEN** existen dos QE en `EN_VERIFICACION`, uno con `auditorAsignadoId === user.id` y otro con `auditorAsignadoId` de otro usuario
 - **THEN** el panel del `AUDITOR_INTERNO` autenticado incluye solo el primero
 
----
-
 ### Requirement: Ítems de AC agregan los tres orígenes (QE, NC, Incidente)
-El hook SHALL recorrer `accionesCorrectivas` embebidas en los tres dominios (`QualityEvent.accionesCorrectivas`, `NoConformidad.accionesCorrectivas`, `Incidente.accionesCorrectivas`) e incluir un ítem `dominio: 'AC'` cuando `ac.responsableId === user.id && ac.estado ∈ {'PENDIENTE', 'EN_EJECUCION'} && (!ac.descripcionEvidencia || ac.descripcionEvidencia.trim() === '')`. `prioridad` SHALL ser `'alta'` cuando la AC está vencida (mismo criterio de `calcularEstadoSemaforoDesdeFecha` ya usado por `MisACsWidget`/`ACsPorVencerWidget`), `'normal'` en otro caso. `href` SHALL apuntar al detalle del dominio de origen (`/quality-events/:id`, `/nonconformities/:id`, `/incidents/:id`).
+El hook SHALL recorrer las `accionesCorrectivas` embebidas en los tres dominios (`QualityEvent.accionesCorrectivas`, `NoConformidad.accionesCorrectivas` e `Incidente.accionesCorrectivas`).
+
+- **AC de QE:** SHALL incluir un ítem `AC_EJECUTAR` (`dominio: 'AC'`) cuando `ac.responsableId === user.id` y `ac.estado ∈ {'PENDIENTE', 'EN_EJECUCION'}`, sin mirar `descripcionEvidencia`. Una AC devuelta vuelve a `EN_EJECUCION` con su descripción anterior y debe seguir apareciendo.
+- **AC de NC e incidente:** se mantiene la condición previa: `ac.estado ∈ {'PENDIENTE', 'EN_EJECUCION'}` y sin `descripcionEvidencia`.
+
+`prioridad` SHALL ser `'alta'` cuando la AC está vencida (el mismo criterio de `calcularEstadoSemaforoDesdeFecha` que ya usan `MisACsWidget` y `ACsPorVencerWidget`) y `'normal'` en otro caso. `href` SHALL apuntar al detalle del dominio de origen: `/quality-events/:id`, `/nonconformities/:id` o `/incidents/:id`.
 
 #### Scenario: AC de origen NC aparece en el panel
-- **WHEN** una `NoConformidad` tiene una AC con `responsableId === user.id`, `estado: 'PENDIENTE'`, sin `descripcionEvidencia`
+- **WHEN** una `NoConformidad` tiene una AC con `responsableId === user.id`, `estado: 'PENDIENTE'` y sin `descripcionEvidencia`
 - **THEN** el panel incluye un ítem `dominio: 'AC'` con `href` apuntando a `/nonconformities/:ncId`
 
-#### Scenario: AC con evidencia registrada no aparece
-- **WHEN** una AC tiene `responsableId === user.id`, `estado: 'EN_EJECUCION'`, y `descripcionEvidencia` no vacío
+#### Scenario: AC de NC o incidente con evidencia registrada no aparece
+- **WHEN** una AC de NC o incidente tiene `responsableId === user.id`, `estado: 'EN_EJECUCION'` y `descripcionEvidencia` no vacía
 - **THEN** esa AC no genera un ítem en el panel
+
+#### Scenario: AC de QE devuelta sigue pendiente
+- **WHEN** una AC de QE tiene `responsableId === user.id`, `estado: 'EN_EJECUCION'`, `descripcionEvidencia` no vacía y `motivoDevolucion`
+- **THEN** el panel incluye un ítem `AC_EJECUTAR` para esa AC
+
+#### Scenario: AC de QE ejecutada no aparece para el responsable
+- **WHEN** una AC de QE del usuario está en `COMPLETADA`
+- **THEN** no genera un ítem `AC_EJECUTAR`
 
 #### Scenario: AC vencida se marca con prioridad alta
 - **WHEN** una AC asignada al usuario tiene `plazoFecha` en el pasado según `calcularEstadoSemaforoDesdeFecha`
 - **THEN** el ítem correspondiente tiene `prioridad: 'alta'`
+
+---
+
+### Requirement: Ítem AC_VERIFICAR para el Jefe de Calidad
+Para un usuario con rol `JEFE_CALIDAD_SYST`, el hook SHALL incluir un ítem `AC_VERIFICAR` ("Verificar acción correctiva", `dominio: 'AC'`, `href` `/quality-events/:id`) por cada AC de QE en `COMPLETADA`, sin importar el responsable.
+
+La tarjeta "Aprobaciones y cierres pendientes" de `JefeCalidadDashboard` SHALL contar `AC_VERIFICAR` junto con `QE_APROBAR_CAUSA_RAIZ`, `QE_FIRMAR_CIERRE_JCA` y `QE_REGISTRAR_CIERRE`, filtrando con el mismo conjunto de tipos para que el número y la lista coincidan.
+
+Las mutaciones de iniciar, ejecutar y verificar SHALL invalidar `['dashboard']` y la lista de QE.
+
+#### Scenario: JCA ve AC por verificar
+- **WHEN** un QE tiene 2 AC en `COMPLETADA` y el usuario es JEFE_CALIDAD_SYST
+- **THEN** el panel incluye 2 ítems `AC_VERIFICAR`
+
+#### Scenario: Tarjeta de aprobaciones cuenta AC_VERIFICAR
+- **WHEN** `useAccionesRequeridas` devuelve 1 `QE_APROBAR_CAUSA_RAIZ` y 2 `AC_VERIFICAR`
+- **THEN** la tarjeta "Aprobaciones y cierres pendientes" muestra `3` y, al hacer clic, la lista muestra exactamente 3 filas
+
+#### Scenario: Otros roles no ven AC_VERIFICAR
+- **WHEN** un SUPERVISOR carga el panel con AC en `COMPLETADA`
+- **THEN** no hay ítems `AC_VERIFICAR`
 
 ---
 
@@ -97,12 +168,12 @@ El sistema SHALL exportar `AccionesRequeridasWidget` en `src/features/dashboard/
 ---
 
 ### Requirement: AccionesRequeridasWidget es el primer widget en 5 de los 6 dashboards de rol
-`AccionesRequeridasWidget` SHALL montarse como el primer elemento visible (antes de cualquier otro widget) en `OperarioDashboard.tsx`, `SupervisorDashboard.tsx`, `AltaDireccionDashboard.tsx` y `AuditorDashboard.tsx`, fuera del bloque condicional de `isLoading`/`data.rol` de `useDashboardSummary()` de cada página — el widget gestiona su propio `isLoading` de forma independiente. El montaje en `JefeCalidadDashboard.tsx` y en el nuevo `JefeControlDocumentarioDashboard.tsx` se cubre en sus respectivas capacidades (`dashboard-jefecalidad-view`, `dashboard-jefecontroldoc-view`).
+`AccionesRequeridasWidget` SHALL montarse como el primer widget de la columna principal de la zona "Mi trabajo y contexto" de `DashboardLayout` (`dashboard-layout`) en `OperarioDashboard.tsx`, `SupervisorDashboard.tsx`, `AltaDireccionDashboard.tsx` y `AuditorDashboard.tsx`, después de la zona de alertas y de la de indicadores, y fuera del bloque condicional de `isLoading`/`data.rol` de `useDashboardSummary()` de cada página: el widget gestiona su propio `isLoading` de forma independiente. Su contenedor SHALL tener `id="acciones-requeridas"`, destino de las alertas que enlazan a pendientes. El montaje en `JefeCalidadDashboard.tsx` y en `JefeControlDocumentarioDashboard.tsx` se cubre en sus respectivas capacidades (`dashboard-jefecalidad-view`, `dashboard-jefecontroldoc-view`).
 
 #### Scenario: Widget visible antes de que carguen los KPIs de Operario
 - **WHEN** `OperarioDashboard` renderiza mientras `useDashboardSummary()` sigue en `isLoading: true`
 - **THEN** `AccionesRequeridasWidget` ya es visible, independientemente del estado de carga de los demás widgets
 
-#### Scenario: Widget es el primer hijo en SupervisorDashboard
+#### Scenario: Widget es el primero de la columna principal en SupervisorDashboard
 - **WHEN** se inspecciona el árbol renderizado de `SupervisorDashboard`
-- **THEN** `AccionesRequeridasWidget` precede a `KpiGridWidget`/cualquier otro widget de esa página
+- **THEN** `AccionesRequeridasWidget` es el primer widget dentro de la columna principal de "Mi trabajo y contexto", antes del panel de pendientes del área

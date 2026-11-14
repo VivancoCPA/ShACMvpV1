@@ -17,6 +17,11 @@ import {
   ThumbsDown,
   FileDown,
   UserCheck,
+  PenLine,
+  Undo2,
+  MessageSquarePlus,
+  MessageSquareX,
+  CheckCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQEAuditTrail } from '../hooks/useQEAuditTrail'
@@ -41,6 +46,12 @@ const ACCION_ICONS: Record<string, LucideIcon> = {
   RESPONSABLE_ASIGNADO: UserCheck,
   RESPONSABLE_CAMBIADO: UserCheck,
   ASISTENTE_IA_CONSULTADO: Sparkles,
+  FIRMA_CIERRE_JEFE_CALIDAD: PenLine,
+  FIRMA_CIERRE_SUPERVISOR: PenLine,
+  CIERRE_RECHAZADO: Undo2,
+  AC_SOLICITADA: MessageSquarePlus,
+  SOLICITUD_AC_ATENDIDA: CheckCheck,
+  SOLICITUD_AC_DESCARTADA: MessageSquareX,
 }
 
 // Sufijo que agrega el backend (y MSW) al guardar una sugerencia IA editada (qe-asistente-ia D8).
@@ -92,6 +103,9 @@ function describeEntry(entry: QEAuditTrailEntry, t: (key: string) => string): st
   }
   if (entry.accion === 'RESPONSABLE_CAMBIADO') {
     return `${label}: ${entry.valorAnterior ?? '—'} → ${entry.valorNuevo ?? '—'}`
+  }
+  if (entry.accion === 'CIERRE_RECHAZADO') {
+    return `${label}: ${entry.valorNuevo ?? '—'}`
   }
   if (entry.accion === 'EXPORTACION_PDF') {
     return `${label} — ${entry.realizadoPorNombre}`

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Ban, RotateCcw, Users as UsersIcon, Building2, ShieldCheck } from 'lucide-react'
+import { Pencil, Ban, RotateCcw, Users as UsersIcon, Building2, ShieldCheck, ListChecks } from 'lucide-react'
 import { useEmpresas, useUpdateEmpresa } from '../hooks/useEmpresas'
 import { FilterBar } from '../../../components/shared/FilterBar'
 import { Pagination } from '../../../components/shared/Pagination'
@@ -16,12 +16,15 @@ interface EmpresaListProps {
   onEdit: (empresa: Empresa) => void
   /** Abre la configuración de seguridad de sesión de la empresa (sesion-timeout-inactividad). */
   onSeguridadSesion?: (empresa: Empresa) => void
+  /** Abre la configuración de responsables de AC de la empresa (ac-responsables-configurable-empresa). */
+  onResponsablesAc?: (empresa: Empresa) => void
   canAdminister: boolean
 }
 
-export function EmpresaList({ onEdit, onSeguridadSesion, canAdminister }: EmpresaListProps) {
+export function EmpresaList({ onEdit, onSeguridadSesion, onResponsablesAc, canAdminister }: EmpresaListProps) {
   const { t, i18n } = useTranslation('empresas')
   const { t: tSesion } = useTranslation('sesion')
+  const { t: tUsers } = useTranslation('users')
   const { data: empresas, isLoading } = useEmpresas()
   const updateMutation = useUpdateEmpresa()
   const [toggleTarget, setToggleTarget] = useState<Empresa | null>(null)
@@ -186,6 +189,17 @@ export function EmpresaList({ onEdit, onSeguridadSesion, canAdminister }: Empres
                               className="rounded p-1.5 text-muted hover:bg-hairline hover:text-ink dark:text-on-dark-soft dark:hover:bg-surface-dark-soft dark:hover:text-on-dark"
                             >
                               <ShieldCheck size={16} />
+                            </button>
+                          )}
+                          {onResponsablesAc && (
+                            <button
+                              type="button"
+                              onClick={() => onResponsablesAc(empresa)}
+                              aria-label={tUsers('responsablesAc.accionEmpresa')}
+                              title={tUsers('responsablesAc.accionEmpresa')}
+                              className="rounded p-1.5 text-muted hover:bg-hairline hover:text-ink dark:text-on-dark-soft dark:hover:bg-surface-dark-soft dark:hover:text-on-dark"
+                            >
+                              <ListChecks size={16} />
                             </button>
                           )}
                           <button

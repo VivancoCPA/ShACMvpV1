@@ -1,0 +1,101 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard SHAC — combinado</title><style>
+:root{--canvas:#faf9f7;--card:#fff;--ink:#1f1d1a;--body:#4a4640;--muted:#8a847b;--hair:#e7e3dc;--coral:#d9623b;--coral-s:#fbeae3;--ok:#2f8f5b;--ok-s:#e4f3ea;--amb:#c58a12;--amb-s:#fbf1dc;--err:#c2412d;--err-s:#f9e3df;--blue:#3f6fb5;--blue-s:#e5edf8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--canvas:#171614;--card:#211f1c;--ink:#f1eee9;--body:#d4cfc7;--muted:#9b958b;--hair:#34312c;--coral-s:#3a251d;--ok-s:#1d3127;--amb-s:#3a2f17;--err-s:#3b201b;--blue-s:#1e2a3c}}
+:root[data-theme="dark"]{--canvas:#171614;--card:#211f1c;--ink:#f1eee9;--body:#d4cfc7;--muted:#9b958b;--hair:#34312c;--coral-s:#3a251d;--ok-s:#1d3127;--amb-s:#3a2f17;--err-s:#3b201b;--blue-s:#1e2a3c}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--body);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 16px 8px;max-width:1280px;margin:auto}h1{font-size:22px;color:var(--ink);margin:0 0 4px}header p{margin:0;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;max-width:1280px;margin:12px auto 0;padding:0 16px}
+.tabs button{border:1px solid var(--hair);background:var(--card);color:var(--body);padding:8px 14px;border-radius:999px;cursor:pointer;font:inherit}
+.tabs button[aria-selected="true"]{background:var(--coral);border-color:var(--coral);color:#fff}
+main{max-width:1280px;margin:auto;padding:16px}
+.alt{display:none}.alt.on{display:block}
+.note{background:var(--card);border:1px solid var(--hair);border-left:3px solid var(--coral);border-radius:8px;padding:12px 14px;margin-bottom:16px}
+.note b{color:var(--ink)}.note ul{margin:6px 0 0;padding-left:18px}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:14px;min-width:0}
+.card h3{margin:0 0 10px;font-size:13px;color:var(--ink);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.card h3 small{color:var(--muted);font-weight:400}
+.grid{display:grid;gap:12px}
+.kpi .v{font-size:26px;font-weight:650;color:var(--ink);line-height:1.1}.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .m{font-size:12px;margin-top:4px}.up{color:var(--ok)}.dn{color:var(--err)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.p-err{background:var(--err-s);color:var(--err)}.p-amb{background:var(--amb-s);color:var(--amb)}.p-ok{background:var(--ok-s);color:var(--ok)}.p-blue{background:var(--blue-s);color:var(--blue)}
+.list{list-style:none;margin:0;padding:0}.list li{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--hair);font-size:13px}.list li:first-child{border-top:0}
+.list .c{font-weight:600;color:var(--ink);white-space:nowrap}.list .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{height:8px;border-radius:4px;background:var(--hair);overflow:hidden}.bar i{display:block;height:100%}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden}.stack i{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)}.legend span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;background:var(--c)}
+.spark{width:100%;height:44px}
+.heat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.heat div{border-radius:4px;padding:8px 4px;text-align:center;font-size:11px;color:var(--ink)}
+.ring{width:84px;height:84px}
+.hero{display:grid;gap:12px;grid-template-columns:1fr}
+.donut-row{display:flex;gap:14px;align-items:center}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px}
+/* Alt A */
+.a-kpis{grid-template-columns:repeat(2,1fr)}
+.a-main{grid-template-columns:1fr}
+@media(min-width:720px){.a-kpis{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1100px){.a-kpis{grid-template-columns:repeat(6,1fr)}.a-main{grid-template-columns:2fr 1fr}.a-bottom{grid-template-columns:repeat(3,1fr)}}
+/* Alt B */
+.b-top{grid-template-columns:1fr}
+@media(min-width:900px){.b-top{grid-template-columns:repeat(4,1fr)}}
+.b-cols{grid-template-columns:1fr}
+@media(min-width:1000px){.b-cols{grid-template-columns:1fr 1fr 1fr}}
+.alert{border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center}
+.alert .n{font-size:28px;font-weight:700}
+/* Alt C */
+.c-grid{grid-template-columns:1fr}
+@media(min-width:1000px){.c-grid{grid-template-columns:320px 1fr}}
+.c-side{display:grid;gap:12px;align-content:start}
+.c-right{display:grid;gap:12px}
+.c-kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:720px){.c-kpi{grid-template-columns:repeat(3,1fr)}}
+.big{font-size:40px;font-weight:700;color:var(--ink);line-height:1}
+.mini{font-size:12px;color:var(--muted)}
+.foot{color:var(--muted);font-size:12px;margin:24px 0 8px}
+
+.k-grid{grid-template-columns:1fr}@media(min-width:700px){.k-grid{grid-template-columns:repeat(2,1fr)}}@media(min-width:1100px){.k-grid{grid-template-columns:repeat(3,1fr)}}
+.alert{text-decoration:none;cursor:pointer}.alert:hover{filter:brightness(.97)}
+</style></head><body>
+<header><h1>Dashboard del Jefe de Calidad — propuesta combinada (B + A + anillos de C)</h1><p>Maqueta para confirmar. Datos de ejemplo.</p></header>
+<main>
+<div class="note"><b>Orden de lectura, de arriba a abajo:</b><ul>
+<li><b>1. Alertas (B):</b> 4 tarjetas de color con número grande; cada una lleva a su lista filtrada. Una tarjeta en 0 se muestra en gris ("Todo en orden").</li>
+<li><b>2. Indicadores (A + C):</b> los KPIs como anillos de avance contra la meta, cada uno con su minigráfico de tendencia y la variación respecto del mes anterior.</li>
+<li><b>3. Trabajo y contexto (A):</b> dos columnas, "Mis acciones requeridas" y la tendencia en la ancha; QE por estado, AC por vencer e incidentes sin QE en la angosta.</li>
+<li><b>4. Mapa de calor,</b> a todo el ancho.</li></ul></div>
+
+<div class="lbl">1 · Requiere atención</div>
+<div class="grid b-top">
+ <a class="alert" style="background:var(--err-s);color:var(--err)"><span class="n">5</span><div><b>AC vencidas</b><div class="mini" style="color:inherit">Meta = 0 · ver lista →</div></div></a>
+ <a class="alert" style="background:var(--err-s);color:var(--err)"><span class="n">2</span><div><b>Incidentes sin QE vencidos</b><div class="mini" style="color:inherit">RN-INC-006 · ver →</div></div></a>
+ <a class="alert" style="background:var(--amb-s);color:var(--amb)"><span class="n">3</span><div><b>Esperan mi firma o aprobación</b><div class="mini" style="color:inherit">ver →</div></div></a>
+ <a class="alert" style="background:var(--hair);color:var(--muted)"><span class="n">0</span><div><b>QE críticos activos</b><div class="mini" style="color:inherit">Todo en orden</div></div></a>
+</div>
+
+<div class="lbl">2 · Indicadores <span style="text-transform:none;letter-spacing:0">· Mes ▾ · Área: todas ▾</span></div>
+<div class="grid k-grid"><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amb)" stroke-width="3.5" stroke-dasharray="87 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">87%</text></svg><div class="kpi"><div class="l">Cierre en plazo</div><div class="m dn">▼ 3 pts · meta ≥90%</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--amb)" stroke-width="2" points="0,20 20,15 40,18 60,12 80,16 100,22"/></svg></div></div></div><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--ok)" stroke-width="3.5" stroke-dasharray="87 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">13 d</text></svg><div class="kpi"><div class="l">Tiempo medio cierre</div><div class="m up">▲ 2 d · meta ≤15 d</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,10 20,14 40,18 60,22 80,26 100,30"/></svg></div></div></div><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--ok)" stroke-width="3.5" stroke-dasharray="80 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">4%</text></svg><div class="kpi"><div class="l">Reaperturas</div><div class="m up">meta ≤5%</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,25 20,22 40,26 60,24 80,28 100,27"/></svg></div></div></div><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amb)" stroke-width="3.5" stroke-dasharray="82 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">82%</text></svg><div class="kpi"><div class="l">Eficacia de AC</div><div class="m dn">meta ≥85%</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--amb)" stroke-width="2" points="0,18 20,20 40,16 60,19 80,22 100,21"/></svg></div></div></div><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--ok)" stroke-width="3.5" stroke-dasharray="86 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">6 d</text></svg><div class="kpi"><div class="l">Investigación media</div><div class="m up">meta ≤7 d</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,15 20,17 40,20 60,22 80,21 100,25"/></svg></div></div></div><div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amb)" stroke-width="3.5" stroke-dasharray="96 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="20.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">96%</text></svg><div class="kpi"><div class="l">Docs vigentes</div><div class="m ">meta 100%</div><svg class="spark" viewBox="0 0 100 40" style="height:28px"><polyline fill="none" stroke="var(--amb)" stroke-width="2" points="0,22 20,21 40,20 60,19 80,20 100,18"/></svg></div></div></div></div>
+
+<div class="lbl">3 · Mi trabajo y contexto</div>
+<div class="grid a-main">
+ <div class="grid" style="gap:12px">
+  <div class="card"><h3>Mis acciones requeridas <small>8 pendientes</small></h3><ul class="list">
+   <li><span class="pill p-err">Alta</span><span class="c">QE-2026-014</span><span class="d">Aprobar causa raíz · derrame en patio 2</span><span class="mini">hace 3 d</span></li>
+   <li><span class="pill p-err">Alta</span><span class="c">QE-2026-019</span><span class="d">Asignar responsable · ABIERTO hace 52 h</span><span class="mini">52 h</span></li>
+   <li><span class="pill p-amb">Media</span><span class="c">QE-2026-011</span><span class="d">Cerrar Quality Event</span><span class="mini">hoy</span></li>
+   <li><span class="pill p-blue">Normal</span><span class="c">QE-2026-021</span><span class="d">Iniciar investigación (eres responsable)</span><span class="mini">hoy</span></li>
+   <li><span class="pill p-blue">Normal</span><span class="c">QE-2026-008</span><span class="d">Verificar eficacia</span><span class="mini">en 4 d</span></li></ul></div>
+  <div class="card"><h3>Tendencia mensual <small>QE abiertos vs. cerrados · 6 meses</small></h3>
+   <svg viewBox="0 0 600 140" style="width:100%;height:140px"><g stroke="var(--hair)"><line x1="0" y1="120" x2="600" y2="120"/><line x1="0" y1="70" x2="600" y2="70"/><line x1="0" y1="20" x2="600" y2="20"/></g><polyline fill="none" stroke="var(--coral)" stroke-width="3" points="20,90 120,70 220,80 320,50 420,60 520,40"/><polyline fill="none" stroke="var(--blue)" stroke-width="3" points="20,100 120,95 220,85 320,75 420,65 520,55"/><g fill="var(--muted)" font-size="11"><text x="10" y="136">may</text><text x="110" y="136">jun</text><text x="210" y="136">jul</text><text x="310" y="136">ago</text><text x="410" y="136">sep</text><text x="510" y="136">oct</text></g></svg>
+   <div class="legend"><span style="--c:var(--coral)">Abiertos</span><span style="--c:var(--blue)">Cerrados</span></div></div>
+ </div>
+ <div class="grid" style="gap:12px;align-content:start">
+  <div class="card"><h3>QE por estado <small>34 activos</small></h3><div class="stack"><i style="width:18%;background:var(--muted)"></i><i style="width:26%;background:var(--blue)"></i><i style="width:12%;background:var(--amb)"></i><i style="width:30%;background:var(--coral)"></i><i style="width:14%;background:var(--ok)"></i></div><div class="legend"><span style="--c:var(--muted)">Abierto 6</span><span style="--c:var(--blue)">Investigación 9</span><span style="--c:var(--amb)">Análisis 4</span><span style="--c:var(--coral)">Ejecución 10</span><span style="--c:var(--ok)">Pend. cierre 5</span></div></div>
+  <div class="card"><h3>AC por vencer <small>5 días hábiles</small></h3><ul class="list"><li><span class="c">AC-017-03</span><span class="d">Reparar iluminación patio</span><span class="pill p-err">hoy</span></li><li><span class="c">AC-014-02</span><span class="d">Señalizar zona de carga</span><span class="pill p-amb">2 d</span></li><li><span class="c">AC-009-01</span><span class="d">Capacitación montacargas</span><span class="pill p-amb">4 d</span></li></ul></div>
+  <div class="card"><h3>Incidentes sin QE vencidos <small>2</small></h3><ul class="list"><li><span class="c">INC-2026-003</span><span class="d">Accidente · vencido hace 30 h</span></li><li><span class="c">INC-2026-007</span><span class="d">Condición insegura · 6 h</span></li></ul></div>
+ </div>
+</div>
+
+<div class="lbl">4 · Dónde ocurre</div>
+<div class="card"><h3>Mapa de calor de incidentes <small>Almacén Callao · plano</small></h3><div class="heat"><div style="background:var(--err-s)">Patio 1 · 9</div><div style="background:var(--amb-s)">Patio 2 · 5</div><div style="background:var(--ok-s)">Muelle · 1</div><div style="background:var(--amb-s)">Nave A · 4</div></div></div>
+<p class="foot">En móvil queda en una sola columna. Se mantienen los tokens actuales y el modo oscuro.</p>
+</main></body></html>

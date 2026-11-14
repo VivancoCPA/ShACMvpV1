@@ -1,5 +1,6 @@
 import api from '../../lib/axios'
-import type { User } from '../../types/auth.types'
+import type { User, UserRole } from '../../types/auth.types'
+import type { AccionCorrectivaTipo, CandidatoUsuario } from '../../constants/accionCorrectivaTipo.constants'
 import type {
   CreateUserRequest,
   UpdateUserRequest,
@@ -44,6 +45,23 @@ export async function resetUserPassword(id: string): Promise<ResetPasswordRespon
 export async function getUserNames(ids: string[]): Promise<UserNombre[]> {
   const response = await api.get<UserNombre[]>('/api/users/nombres', {
     params: { ids: ids.join(',') },
+  })
+  return response.data
+}
+
+// Selectores operativos (auditor de la verificación, "Detectado por" de NC). Accesible a cualquier
+// rol con empresa activa; el backend nunca devuelve roles de administración (ac-tipo-responsables).
+export async function getCandidatosUsuarios(roles: readonly UserRole[]): Promise<CandidatoUsuario[]> {
+  const response = await api.get<CandidatoUsuario[]>('/api/users/candidatos', {
+    params: { roles: roles.join(',') },
+  })
+  return response.data
+}
+
+// Responsables elegibles para una AC según su tipo (ResponsableAcPolicy en el backend).
+export async function getCandidatosResponsableAC(tipo: AccionCorrectivaTipo): Promise<CandidatoUsuario[]> {
+  const response = await api.get<CandidatoUsuario[]>('/api/acciones-correctivas/candidatos-responsable', {
+    params: { tipo },
   })
   return response.data
 }

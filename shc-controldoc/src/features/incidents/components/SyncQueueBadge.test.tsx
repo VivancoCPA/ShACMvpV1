@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { SyncQueueBadge } from './SyncQueueBadge'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
 import type { QueuedIncident } from '../../../lib/offlineQueue'
@@ -39,7 +40,7 @@ afterEach(() => cleanup())
 
 describe('SyncQueueBadge', () => {
   it('no se muestra cuando la cola está vacía', () => {
-    render(<SyncQueueBadge onRetry={vi.fn()} />)
+    render(<SyncQueueBadge onRetry={vi.fn()} />, { wrapper: MemoryRouter })
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -50,7 +51,7 @@ describe('SyncQueueBadge', () => {
       syncingId: null,
       hasErrors: false,
     })
-    render(<SyncQueueBadge onRetry={vi.fn()} />)
+    render(<SyncQueueBadge onRetry={vi.fn()} />, { wrapper: MemoryRouter })
 
     const button = screen.getByRole('button')
     expect(button.className).toContain('text-amber')
@@ -64,7 +65,7 @@ describe('SyncQueueBadge', () => {
       syncingId: null,
       hasErrors: true,
     })
-    render(<SyncQueueBadge onRetry={vi.fn()} />)
+    render(<SyncQueueBadge onRetry={vi.fn()} />, { wrapper: MemoryRouter })
 
     expect(screen.getByRole('button').className).toContain('text-error')
   })
@@ -77,7 +78,7 @@ describe('SyncQueueBadge', () => {
       hasErrors: true,
     })
     const onRetry = vi.fn()
-    render(<SyncQueueBadge onRetry={onRetry} />)
+    render(<SyncQueueBadge onRetry={onRetry} />, { wrapper: MemoryRouter })
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'mobile.offline.badgeAriaLabel' }))

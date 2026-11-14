@@ -46,8 +46,12 @@ export interface JefeCalidadDashboardData {
   distribucionQEPorTipo: Record<QEType, number>
   qePorEstado: Record<QEStatus, number>
   accionesCorrectivasPorVencer: AccionCorrectivaResumen[]
+  // Todas las AC vencidas (mismo predicado que KPI-08), sin límite (dashboard-alertas-coherentes D4).
+  accionesCorrectivasVencidas: AccionCorrectivaResumen[]
   tendenciaMensualVolumen: TendenciaMensualVolumenEntry[]
-  tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', TendenciaMensualKpiEntry[]>
+  // KPI-02/07 alimentan los minigráficos de KpiRingCard (dashboard-layout-4-zonas design.md D6).
+  tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', TendenciaMensualKpiEntry[]> &
+    Partial<Record<'KPI-02' | 'KPI-07', TendenciaMensualKpiEntry[]>>
   // RN-INC-006 (incidentes-qe-estado-alertas D8): máximo 10, del más vencido al menos.
   incidentesSinQeVencidos: IncidenteResumen[]
   incidentesSinQeVencidosTotal: number
@@ -69,6 +73,7 @@ export interface AltaDireccionDashboardData {
   >
   reaperturas: QEReaperturaResumen[]
   acsConSolicitudAjustePlazo: ACSolicitudAjustePlazoResumen[]
+  tendenciaMensualKpis: Record<'KPI-01' | 'KPI-04' | 'KPI-05', TendenciaMensualKpiEntry[]>
 }
 
 export interface AuditorDashboardData {
@@ -78,7 +83,11 @@ export interface AuditorDashboardData {
   tasaCierreEnPlazoPorArea: { areaId: string; tasaCierreEnPlazo: number; totalCerrados: number }[]
 }
 
-export type JefeControlDocDashboardData = Record<string, never>
+// Documentos PUBLICADO con revisión periódica vencida / en los próximos 30 días (RN-DOC-006).
+export interface JefeControlDocDashboardData {
+  documentosRevisionVencida: number
+  documentosRevisionProxima: number
+}
 
 export type DashboardSummaryData =
   | { rol: 'OPERARIO'; data: OperarioDashboardData }

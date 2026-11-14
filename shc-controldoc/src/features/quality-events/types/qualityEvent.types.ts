@@ -1,3 +1,4 @@
+import type { AccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
 import type { DocStatus } from '../../../types/documents.types'
 
 export type QEOrigin =
@@ -84,6 +85,15 @@ export interface SolicitudAjustePlazoAC {
   comentarioRevision?: string
 }
 
+/** Archivo de evidencia de la ejecución de una AC (ac-ejecucion-verificacion-evidencias). */
+export interface EvidenciaACQE {
+  id: string
+  nombreArchivo: string
+  contentType: string
+  tamanioBytes: number
+  subidoEn: string
+}
+
 export interface AccionCorrectivaQE {
   id: string
   qeId: string
@@ -93,12 +103,22 @@ export interface AccionCorrectivaQE {
   responsableNombre: string
   plazoFecha: string
   prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
-  estado: 'PENDIENTE' | 'EN_EJECUCION' | 'CERRADA'
+  /** PRD §2.2 — obligatorio al crear, no editable (ac-tipo-responsables). */
+  tipo: AccionCorrectivaTipo
+  /** COMPLETADA = ejecutada por el responsable, pendiente de verificación del JCA. */
+  estado: 'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA'
   creadoEn: string
   actualizadoEn: string
   descripcionEvidencia?: string
-  evidenciaUrl?: string
+  /** Solo histórico (AC cerradas antes de las evidencias de archivo). */
+  evidenciaUrl?: string | null
   fechaCierre?: string
+  ejecutadaEn?: string | null
+  ejecutadaPorNombre?: string | null
+  verificadaEn?: string | null
+  verificadaPorNombre?: string | null
+  motivoDevolucion?: string | null
+  evidencias?: EvidenciaACQE[]
   solicitudesAjustePlazo: SolicitudAjustePlazoAC[]
 }
 
@@ -107,6 +127,12 @@ export interface DocumentoVinculadoResumen {
   codigo: string
   titulo: string
   estado: DocStatus
+}
+
+export interface SupervisorAreaQE {
+  id: string
+  nombreCompleto: string
+  avatarUrl?: string | null
 }
 
 export interface QualityEvent {
@@ -158,6 +184,11 @@ export interface QualityEvent {
   cerradoPorId?: string
   cierreFirmaSupervisorId?: string
   cierreFirmaSupervisorRol?: 'SUPERVISOR' | 'ALTA_DIRECCION'
+  // qe-cierre-firma-supervisor-area: nombres de los firmantes (LEFT JOIN en el detalle) y quién puede
+  // dar la segunda firma — supervisoresArea solo viene en PENDIENTE_CIERRE.
+  cerradoPorNombre?: string
+  cierreFirmaSupervisorNombre?: string
+  supervisoresArea?: SupervisorAreaQE[] | null
   fechaCierre?: string
   plazoVerificacionDias?: number
   fechaVerificacionProgramada?: string

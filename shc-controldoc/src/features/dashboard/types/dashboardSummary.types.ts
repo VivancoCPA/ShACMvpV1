@@ -1,3 +1,4 @@
+import type { AccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
 import type {
   QEStatus,
   QESeverity,
@@ -59,6 +60,8 @@ export interface AccionCorrectivaResumen {
   responsableId: string
   responsableNombre: string
   plazoFecha: string
+  /** PRD §2.2 — obligatorio al crear, no editable (ac-tipo-responsables). */
+  tipo: AccionCorrectivaTipo
   estado: string
 }
 

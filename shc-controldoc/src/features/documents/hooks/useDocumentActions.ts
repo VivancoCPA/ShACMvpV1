@@ -28,6 +28,7 @@ import type {
 import type { Documento } from '../../../types/documents.types'
 import { useAuthStore } from '../../../stores/authStore'
 import { QUERY_KEYS } from '../constants'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export function useChangeStatus(documentId: string) {
   const queryClient = useQueryClient()
@@ -37,6 +38,7 @@ export function useChangeStatus(documentId: string) {
     mutationFn: (payload: PatchDocumentStatusPayload) =>
       patchDocumentStatus(documentId, payload),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       toast.success(t('toasts.statusChangeSuccess'))
@@ -54,6 +56,7 @@ export function useSignDocument(documentId: string) {
   return useMutation({
     mutationFn: (payload: SignDocumentPayload) => signDocument(documentId, payload),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentId) })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       toast.success(t('toasts.signSuccess'))
@@ -92,6 +95,7 @@ export function useExportarPdfControlado() {
       })
     },
     onSuccess: ({ blob, fileName }, documento) => {
+      invalidarDashboard(queryClient)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -129,6 +133,7 @@ export function useCreateNuevaVersion(documentoId: string) {
   return useMutation({
     mutationFn: (payload: NuevaVersionPayload) => createNuevaVersion(documentoId, payload),
     onSuccess: (newDoc) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       // nueva-version-autor-permisos: si el backend dejó revisorId/aprobadorId vacíos (el
       // heredado era el nuevo autor, o ya no era candidato válido), avisar y llevar directo a
@@ -234,6 +239,7 @@ export function useConfirmarRevisionPeriodica(documentoId: string) {
   return useMutation({
     mutationFn: (payload?: ConfirmarRevisionPeriodicaPayload) => confirmarRevisionPeriodica(documentoId, payload),
     onSuccess: (updatedDoc) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.detail(documentoId) })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all })
       const locale = i18n.language

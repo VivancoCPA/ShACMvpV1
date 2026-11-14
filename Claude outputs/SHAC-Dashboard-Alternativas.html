@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard SHAC — alternativas</title>
+<style>
+:root{--canvas:#faf9f7;--card:#fff;--ink:#1f1d1a;--body:#4a4640;--muted:#8a847b;--hair:#e7e3dc;--coral:#d9623b;--coral-s:#fbeae3;--ok:#2f8f5b;--ok-s:#e4f3ea;--amb:#c58a12;--amb-s:#fbf1dc;--err:#c2412d;--err-s:#f9e3df;--blue:#3f6fb5;--blue-s:#e5edf8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--canvas:#171614;--card:#211f1c;--ink:#f1eee9;--body:#d4cfc7;--muted:#9b958b;--hair:#34312c;--coral-s:#3a251d;--ok-s:#1d3127;--amb-s:#3a2f17;--err-s:#3b201b;--blue-s:#1e2a3c}}
+:root[data-theme="dark"]{--canvas:#171614;--card:#211f1c;--ink:#f1eee9;--body:#d4cfc7;--muted:#9b958b;--hair:#34312c;--coral-s:#3a251d;--ok-s:#1d3127;--amb-s:#3a2f17;--err-s:#3b201b;--blue-s:#1e2a3c}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--body);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 16px 8px;max-width:1280px;margin:auto}h1{font-size:22px;color:var(--ink);margin:0 0 4px}header p{margin:0;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;max-width:1280px;margin:12px auto 0;padding:0 16px}
+.tabs button{border:1px solid var(--hair);background:var(--card);color:var(--body);padding:8px 14px;border-radius:999px;cursor:pointer;font:inherit}
+.tabs button[aria-selected="true"]{background:var(--coral);border-color:var(--coral);color:#fff}
+main{max-width:1280px;margin:auto;padding:16px}
+.alt{display:none}.alt.on{display:block}
+.note{background:var(--card);border:1px solid var(--hair);border-left:3px solid var(--coral);border-radius:8px;padding:12px 14px;margin-bottom:16px}
+.note b{color:var(--ink)}.note ul{margin:6px 0 0;padding-left:18px}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:14px;min-width:0}
+.card h3{margin:0 0 10px;font-size:13px;color:var(--ink);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.card h3 small{color:var(--muted);font-weight:400}
+.grid{display:grid;gap:12px}
+.kpi .v{font-size:26px;font-weight:650;color:var(--ink);line-height:1.1}.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .m{font-size:12px;margin-top:4px}.up{color:var(--ok)}.dn{color:var(--err)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.p-err{background:var(--err-s);color:var(--err)}.p-amb{background:var(--amb-s);color:var(--amb)}.p-ok{background:var(--ok-s);color:var(--ok)}.p-blue{background:var(--blue-s);color:var(--blue)}
+.list{list-style:none;margin:0;padding:0}.list li{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--hair);font-size:13px}.list li:first-child{border-top:0}
+.list .c{font-weight:600;color:var(--ink);white-space:nowrap}.list .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{height:8px;border-radius:4px;background:var(--hair);overflow:hidden}.bar i{display:block;height:100%}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden}.stack i{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)}.legend span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;background:var(--c)}
+.spark{width:100%;height:44px}
+.heat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.heat div{border-radius:4px;padding:8px 4px;text-align:center;font-size:11px;color:var(--ink)}
+.ring{width:84px;height:84px}
+.hero{display:grid;gap:12px;grid-template-columns:1fr}
+.donut-row{display:flex;gap:14px;align-items:center}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px}
+/* Alt A */
+.a-kpis{grid-template-columns:repeat(2,1fr)}
+.a-main{grid-template-columns:1fr}
+@media(min-width:720px){.a-kpis{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1100px){.a-kpis{grid-template-columns:repeat(6,1fr)}.a-main{grid-template-columns:2fr 1fr}.a-bottom{grid-template-columns:repeat(3,1fr)}}
+/* Alt B */
+.b-top{grid-template-columns:1fr}
+@media(min-width:900px){.b-top{grid-template-columns:repeat(4,1fr)}}
+.b-cols{grid-template-columns:1fr}
+@media(min-width:1000px){.b-cols{grid-template-columns:1fr 1fr 1fr}}
+.alert{border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center}
+.alert .n{font-size:28px;font-weight:700}
+/* Alt C */
+.c-grid{grid-template-columns:1fr}
+@media(min-width:1000px){.c-grid{grid-template-columns:320px 1fr}}
+.c-side{display:grid;gap:12px;align-content:start}
+.c-right{display:grid;gap:12px}
+.c-kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:720px){.c-kpi{grid-template-columns:repeat(3,1fr)}}
+.big{font-size:40px;font-weight:700;color:var(--ink);line-height:1}
+.mini{font-size:12px;color:var(--muted)}
+.foot{color:var(--muted);font-size:12px;margin:24px 0 8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dashboard del Jefe de Calidad — 3 alternativas de diseño</h1>
+  <p>Son maquetas para comparar. Usan los mismos widgets que hay hoy (KPIs, acciones requeridas, QE por estado, AC por vencer, incidentes sin QE, tendencia y mapa de calor). Los datos son de ejemplo.</p>
+</header>
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-t="a">A · Grilla densa</button>
+  <button role="tab" aria-selected="false" data-t="b">B · Centro de mando</button>
+  <button role="tab" aria-selected="false" data-t="c">C · Mi trabajo + indicadores</button>
+  <button role="tab" aria-selected="false" data-t="hoy">Hoy (vertical)</button>
+</div>
+<main>
+
+<!-- ============ A ============ -->
+<section class="alt on" id="a">
+  <div class="note"><b>A · Grilla densa (estilo BI).</b> Una franja de 6 KPIs compactos con su tendencia y, debajo, dos columnas: la de trabajo, ancha, y la de contexto, angosta.
+    <ul><li><b>A favor:</b> todo entra en una pantalla de 1280 px y el cambio es el menor de las tres (solo grilla CSS).</li><li><b>En contra:</b> es denso y exige un buen orden de lectura.</li></ul></div>
+  <div class="grid a-kpis">
+    <div class="card kpi"><div class="l">Cierre en plazo</div><div class="v">87%</div><div class="m dn">▼ 3 pts · meta ≥90%</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--amb)" stroke-width="2" points="0,20 20,15 40,18 60,12 80,16 100,22"/></svg></div>
+    <div class="card kpi"><div class="l">Tiempo medio cierre</div><div class="v">13 d</div><div class="m up">▲ mejora 2 d · meta ≤15</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,10 20,14 40,18 60,22 80,26 100,30"/></svg></div>
+    <div class="card kpi"><div class="l">Reaperturas</div><div class="v">4%</div><div class="m up">meta ≤5%</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,25 20,22 40,26 60,24 80,28 100,27"/></svg></div>
+    <div class="card kpi"><div class="l">Eficacia de AC</div><div class="v">82%</div><div class="m dn">meta ≥85%</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--amb)" stroke-width="2" points="0,18 20,20 40,16 60,19 80,22 100,21"/></svg></div>
+    <div class="card kpi"><div class="l">Investigación media</div><div class="v">6 d</div><div class="m up">meta ≤7</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--ok)" stroke-width="2" points="0,15 20,17 40,20 60,22 80,21 100,25"/></svg></div>
+    <div class="card kpi"><div class="l">AC vencidas</div><div class="v" style="color:var(--err)">5</div><div class="m dn">aceptable ≤3</div><svg class="spark" viewBox="0 0 100 40"><polyline fill="none" stroke="var(--err)" stroke-width="2" points="0,30 20,28 40,24 60,20 80,16 100,12"/></svg></div>
+  </div>
+  <div class="grid a-main" style="margin-top:12px">
+    <div class="grid" style="gap:12px">
+      <div class="card"><h3>Mis acciones requeridas <small>8 pendientes</small></h3>
+        <ul class="list">
+          <li><span class="pill p-err">Alta</span><span class="c">QE-2026-014</span><span class="d">Aprobar causa raíz · derrame en patio 2</span><span class="mini">hace 3 d</span></li>
+          <li><span class="pill p-err">Alta</span><span class="c">QE-2026-019</span><span class="d">Asignar responsable · ABIERTO hace 52 h</span><span class="mini">52 h</span></li>
+          <li><span class="pill p-amb">Media</span><span class="c">QE-2026-011</span><span class="d">Cerrar Quality Event · firma JCA</span><span class="mini">hoy</span></li>
+          <li><span class="pill p-blue">Normal</span><span class="c">QE-2026-008</span><span class="d">Verificar eficacia</span><span class="mini">en 4 d</span></li>
+          <li><span class="pill p-blue">Normal</span><span class="c">QE-2026-021</span><span class="d">Iniciar investigación (eres responsable)</span><span class="mini">hoy</span></li>
+        </ul></div>
+      <div class="card"><h3>Tendencia mensual <small>QE abiertos vs. cerrados · 6 meses</small></h3>
+        <svg viewBox="0 0 600 140" style="width:100%;height:140px">
+          <g stroke="var(--hair)"><line x1="0" y1="120" x2="600" y2="120"/><line x1="0" y1="70" x2="600" y2="70"/><line x1="0" y1="20" x2="600" y2="20"/></g>
+          <polyline fill="none" stroke="var(--coral)" stroke-width="3" points="20,90 120,70 220,80 320,50 420,60 520,40"/>
+          <polyline fill="none" stroke="var(--blue)" stroke-width="3" points="20,100 120,95 220,85 320,75 420,65 520,55"/>
+          <g fill="var(--muted)" font-size="11"><text x="10" y="136">may</text><text x="110" y="136">jun</text><text x="210" y="136">jul</text><text x="310" y="136">ago</text><text x="410" y="136">sep</text><text x="510" y="136">oct</text></g>
+        </svg>
+        <div class="legend"><span style="--c:var(--coral)">Abiertos</span><span style="--c:var(--blue)">Cerrados</span></div></div>
+    </div>
+    <div class="grid" style="gap:12px;align-content:start">
+      <div class="card"><h3>QE por estado <small>34 activos</small></h3>
+        <div class="stack"><i style="width:18%;background:var(--muted)"></i><i style="width:26%;background:var(--blue)"></i><i style="width:12%;background:var(--amb)"></i><i style="width:30%;background:var(--coral)"></i><i style="width:14%;background:var(--ok)"></i></div>
+        <div class="legend"><span style="--c:var(--muted)">Abierto 6</span><span style="--c:var(--blue)">Investigación 9</span><span style="--c:var(--amb)">Análisis 4</span><span style="--c:var(--coral)">Ejecución 10</span><span style="--c:var(--ok)">Pend. cierre 5</span></div></div>
+      <div class="card"><h3>AC por vencer <small>5 días hábiles</small></h3>
+        <ul class="list"><li><span class="c">AC-014-02</span><span class="d">Señalizar zona de carga</span><span class="pill p-amb">2 d</span></li><li><span class="c">AC-009-01</span><span class="d">Capacitación montacargas</span><span class="pill p-amb">4 d</span></li><li><span class="c">AC-017-03</span><span class="d">Reparar iluminación patio</span><span class="pill p-err">hoy</span></li></ul></div>
+      <div class="card"><h3>Incidentes sin QE vencidos <small>2</small></h3>
+        <ul class="list"><li><span class="c">INC-2026-003</span><span class="d">Accidente · vencido hace 30 h</span></li><li><span class="c">INC-2026-007</span><span class="d">Condición insegura · 6 h</span></li></ul></div>
+    </div>
+  </div>
+  <div class="grid a-bottom" style="margin-top:12px">
+    <div class="card" style="grid-column:1/-1"><h3>Mapa de calor de incidentes <small>Almacén Callao · plano</small></h3>
+      <div class="heat"><div style="background:var(--err-s)">Patio 1 · 9</div><div style="background:var(--amb-s)">Patio 2 · 5</div><div style="background:var(--ok-s)">Muelle · 1</div><div style="background:var(--amb-s)">Nave A · 4</div></div></div>
+  </div>
+</section>
+
+<!-- ============ B ============ -->
+<section class="alt" id="b">
+  <div class="note"><b>B · Centro de mando (lo urgente primero).</b> Arriba van 4 tarjetas grandes de alerta, en color y con un número grande; cada una lleva a su lista filtrada. Debajo, tres columnas: lo que me toca, lo que vence y cómo vamos.
+    <ul><li><b>A favor:</b> es el de mayor impacto visual, porque en 2 segundos se ve qué está en rojo, y sirve como pantalla en reunión.</li><li><b>En contra:</b> los KPIs del PRD quedan en segundo plano.</li></ul></div>
+  <div class="grid b-top">
+    <div class="alert" style="background:var(--err-s);color:var(--err)"><span class="n">5</span><div><b>AC vencidas</b><div class="mini">Meta = 0 · ver lista →</div></div></div>
+    <div class="alert" style="background:var(--err-s);color:var(--err)"><span class="n">2</span><div><b>Incidentes sin QE vencidos</b><div class="mini">RN-INC-006 · ver →</div></div></div>
+    <div class="alert" style="background:var(--amb-s);color:var(--amb)"><span class="n">3</span><div><b>QE esperando mi firma o aprobación</b><div class="mini">ver →</div></div></div>
+    <div class="alert" style="background:var(--blue-s);color:var(--blue)"><span class="n">1</span><div><b>QE crítico activo</b><div class="mini">QE-2026-014 · ver →</div></div></div>
+  </div>
+  <div class="grid b-cols" style="margin-top:12px">
+    <div class="card"><h3>Me toca <small>8</small></h3>
+      <ul class="list">
+        <li><span class="pill p-err">Alta</span><span class="c">QE-014</span><span class="d">Aprobar causa raíz</span></li>
+        <li><span class="pill p-err">Alta</span><span class="c">QE-019</span><span class="d">Asignar responsable</span></li>
+        <li><span class="pill p-amb">Media</span><span class="c">QE-011</span><span class="d">Cerrar QE</span></li>
+        <li><span class="pill p-blue">Normal</span><span class="c">QE-021</span><span class="d">Iniciar investigación</span></li>
+        <li><span class="pill p-blue">Normal</span><span class="c">QE-008</span><span class="d">Verificar eficacia</span></li>
+      </ul></div>
+    <div class="card"><h3>Vence pronto <small>7 días</small></h3>
+      <div class="lbl" style="margin-top:0">Esta semana</div>
+      <ul class="list"><li><span class="pill p-err">hoy</span><span class="d">AC-017-03 Reparar iluminación</span></li><li><span class="pill p-amb">jue</span><span class="d">AC-014-02 Señalizar zona</span></li></ul>
+      <div class="lbl">Próxima semana</div>
+      <ul class="list"><li><span class="pill p-blue">lun</span><span class="d">Verificación QE-008</span></li><li><span class="pill p-blue">mié</span><span class="d">AC-009-01 Capacitación</span></li></ul></div>
+    <div class="card"><h3>¿Cómo vamos? <small>vs. meta</small></h3>
+      <div style="display:grid;gap:10px">
+        <div><div class="mini">Cierre en plazo · 87% / 90%</div><div class="bar"><i style="width:87%;background:var(--amb)"></i></div></div>
+        <div><div class="mini">Eficacia AC · 82% / 85%</div><div class="bar"><i style="width:82%;background:var(--amb)"></i></div></div>
+        <div><div class="mini">Reaperturas · 4% / ≤5%</div><div class="bar"><i style="width:80%;background:var(--ok)"></i></div></div>
+        <div><div class="mini">Docs vigentes · 96% / 100%</div><div class="bar"><i style="width:96%;background:var(--amb)"></i></div></div>
+        <div><div class="mini">Tiempo cierre · 13 d / ≤15</div><div class="bar"><i style="width:87%;background:var(--ok)"></i></div></div>
+      </div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:12px">
+    <div class="card"><h3>QE por estado</h3><div class="stack"><i style="width:18%;background:var(--muted)"></i><i style="width:26%;background:var(--blue)"></i><i style="width:12%;background:var(--amb)"></i><i style="width:30%;background:var(--coral)"></i><i style="width:14%;background:var(--ok)"></i></div><div class="legend"><span style="--c:var(--muted)">6</span><span style="--c:var(--blue)">9</span><span style="--c:var(--amb)">4</span><span style="--c:var(--coral)">10</span><span style="--c:var(--ok)">5</span></div></div>
+    <div class="card"><h3>Mapa de calor</h3><div class="heat"><div style="background:var(--err-s)">Patio 1 · 9</div><div style="background:var(--amb-s)">Patio 2 · 5</div><div style="background:var(--ok-s)">Muelle · 1</div><div style="background:var(--amb-s)">Nave A · 4</div></div></div>
+  </div>
+</section>
+
+<!-- ============ C ============ -->
+<section class="alt" id="c">
+  <div class="note"><b>C · Mi trabajo + indicadores (dos zonas fijas).</b> A la izquierda, una columna fija con mi bandeja (pendientes, contador y lo que vence). A la derecha, un panel analítico con pestañas o filtro de período: KPIs, tendencia y mapa.
+    <ul><li><b>A favor:</b> separa claramente "lo que hago" de "cómo estamos" y sirve igual para todos los roles: el OPE y el SUP usan la izquierda, y la DIR y el AUD la derecha.</li><li><b>En contra:</b> es el cambio más grande (layout común para los 6 dashboards).</li></ul></div>
+  <div class="grid c-grid">
+    <aside class="c-side">
+      <div class="card" style="border-left:3px solid var(--coral)"><div class="mini">Mis pendientes</div><div class="big">8</div><div class="mini"><span class="pill p-err">3 altas</span> <span class="pill p-amb">2 vencen hoy</span></div></div>
+      <div class="card"><h3>Bandeja</h3>
+        <ul class="list">
+          <li><span class="pill p-err">!</span><span class="d"><b>QE-014</b> Aprobar causa raíz</span></li>
+          <li><span class="pill p-err">!</span><span class="d"><b>QE-019</b> Asignar responsable</span></li>
+          <li><span class="pill p-amb">·</span><span class="d"><b>QE-011</b> Cerrar QE</span></li>
+          <li><span class="pill p-blue">·</span><span class="d"><b>QE-021</b> Iniciar investigación</span></li>
+          <li><span class="pill p-blue">·</span><span class="d"><b>QE-008</b> Verificar eficacia</span></li>
+        </ul></div>
+      <div class="card"><h3>Vence en 5 días</h3><ul class="list"><li><span class="pill p-err">hoy</span><span class="d">AC-017-03</span></li><li><span class="pill p-amb">2 d</span><span class="d">AC-014-02</span></li><li><span class="pill p-amb">4 d</span><span class="d">AC-009-01</span></li></ul></div>
+      <div class="card" style="background:var(--err-s);border-color:transparent;color:var(--err)"><b>2 incidentes sin QE vencidos</b><div class="mini" style="color:inherit">INC-003 · INC-007 →</div></div>
+    </aside>
+    <div class="c-right">
+      <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="color:var(--ink)">Indicadores</b><span class="pill p-blue">Mes</span><span class="pill" style="border:1px solid var(--hair)">Trimestre</span><span class="pill" style="border:1px solid var(--hair)">Año</span><span class="mini" style="margin-left:auto">Área: todas ▾</span></div>
+      <div class="c-kpi">
+        <div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amb)" stroke-width="3.5" stroke-dasharray="87 100" transform="rotate(-90 18 18)"/></svg><div><div class="kpi"><div class="v">87%</div><div class="l">Cierre en plazo</div><div class="m dn">meta 90%</div></div></div></div></div>
+        <div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amb)" stroke-width="3.5" stroke-dasharray="82 100" transform="rotate(-90 18 18)"/></svg><div class="kpi"><div class="v">82%</div><div class="l">Eficacia AC</div><div class="m dn">meta 85%</div></div></div></div>
+        <div class="card"><div class="donut-row"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--hair)" stroke-width="3.5"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--ok)" stroke-width="3.5" stroke-dasharray="96 100" transform="rotate(-90 18 18)"/></svg><div class="kpi"><div class="v">96%</div><div class="l">Docs vigentes</div><div class="m">meta 100%</div></div></div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+        <div class="card"><h3>Tendencia <small>6 meses</small></h3><svg viewBox="0 0 600 140" style="width:100%;height:130px"><g stroke="var(--hair)"><line x1="0" y1="120" x2="600" y2="120"/><line x1="0" y1="70" x2="600" y2="70"/></g><polyline fill="none" stroke="var(--coral)" stroke-width="3" points="20,90 120,70 220,80 320,50 420,60 520,40"/><polyline fill="none" stroke="var(--blue)" stroke-width="3" points="20,100 120,95 220,85 320,75 420,65 520,55"/></svg><div class="legend"><span style="--c:var(--coral)">Abiertos</span><span style="--c:var(--blue)">Cerrados</span></div></div>
+        <div class="card"><h3>QE por estado</h3>
+          <div style="display:grid;gap:8px">
+            <div><div class="mini">Ejecución · 10</div><div class="bar"><i style="width:100%;background:var(--coral)"></i></div></div>
+            <div><div class="mini">Investigación · 9</div><div class="bar"><i style="width:90%;background:var(--blue)"></i></div></div>
+            <div><div class="mini">Abierto · 6</div><div class="bar"><i style="width:60%;background:var(--muted)"></i></div></div>
+            <div><div class="mini">Pend. cierre · 5</div><div class="bar"><i style="width:50%;background:var(--ok)"></i></div></div>
+            <div><div class="mini">Análisis · 4</div><div class="bar"><i style="width:40%;background:var(--amb)"></i></div></div>
+          </div></div>
+      </div>
+      <div class="card"><h3>Mapa de calor <small>Almacén Callao</small></h3><div class="heat"><div style="background:var(--err-s)">Patio 1 · 9</div><div style="background:var(--amb-s)">Patio 2 · 5</div><div style="background:var(--ok-s)">Muelle · 1</div><div style="background:var(--amb-s)">Nave A · 4</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOY ============ -->
+<section class="alt" id="hoy">
+  <div class="note"><b>Hoy.</b> Todos los bloques van uno debajo del otro (<code>space-y-8</code> en <code>JefeCalidadDashboard.tsx</code>) y los KPIs ocupan como máximo 3 columnas. Para llegar al mapa de calor hay que hacer scroll de unas 4 pantallas.</div>
+  <div style="max-width:780px;display:grid;gap:12px">
+    <div class="card"><h3>Acciones requeridas</h3><div class="mini">lista…</div></div>
+    <div class="card"><h3>KPIs</h3><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="card kpi"><div class="v">87%</div></div><div class="card kpi"><div class="v">13 d</div></div><div class="card kpi"><div class="v">4%</div></div></div></div>
+    <div class="card"><h3>QE por estado</h3></div><div class="card"><h3>AC por vencer</h3></div><div class="card"><h3>Incidentes sin QE vencidos</h3></div><div class="card"><h3>Tendencia mensual</h3></div><div class="card"><h3>Mapa de calor</h3></div>
+  </div>
+</section>
+
+<p class="foot">Las tres alternativas se adaptan a móvil (una columna) y mantienen los tokens actuales (coral, ink, canvas…) y el modo oscuro.</p>
+</main>
+<script>
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('.alt').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+}));
+</script>
+</body>
+</html>

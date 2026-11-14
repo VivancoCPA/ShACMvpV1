@@ -215,6 +215,7 @@ describe('generateVencimientoNotifications', () => {
           descripcion: 'AC de prueba',
           responsableId: 'user-operario-001',
           responsableNombre: 'Luis Quispe',
+          tipo: 'CORRECTIVA',
           plazoFecha: '2026-08-01',
           estado: 'EN_EJECUCION',
           creadoEn: '2026-01-01T00:00:00Z',

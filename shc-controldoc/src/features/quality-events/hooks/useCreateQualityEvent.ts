@@ -5,6 +5,7 @@ import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.sche
 import { QE_QUERY_KEYS } from './useQualityEvents'
 import { INCIDENT_QUERY_KEYS } from '../../incidents/hooks/useIncidents'
 import { QUERY_KEYS as NC_QUERY_KEYS } from '../../nonconformities/hooks/useNonconformities'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export function useCreateQualityEvent() {
   const queryClient = useQueryClient()
@@ -12,6 +13,7 @@ export function useCreateQualityEvent() {
   return useMutation({
     mutationFn: (data: QualityEventCreateInput) => createQualityEvent(data),
     onSuccess: (qe, variables) => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: QE_QUERY_KEYS.all })
       // El Incidente origen queda vinculado server-side en la misma transacción
       // (incidentes-qe-estado-alertas D3); la NC origen se actualiza por separado (useVincularNC,

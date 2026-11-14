@@ -19,6 +19,7 @@ import {
 import type { NCFilters, CreateACInput, UpdateACInput, CerrarACInput } from '../types/nonconformity.types'
 import type { CreateNCInput } from '../schemas/createNC.schema'
 import type { UpdateNCInput } from '../schemas/updateNC.schema'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export const QUERY_KEYS = {
   nonconformities: {
@@ -188,6 +189,7 @@ export function useCreateAccionCorrectiva(ncId: string) {
   return useMutation({
     mutationFn: (data: CreateACInput) => createAccionCorrectiva(ncId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.nonconformities.detail(ncId),
       })
@@ -207,6 +209,7 @@ export function useUpdateAccionCorrectiva(ncId: string) {
     mutationFn: ({ acId, data }: { acId: string; data: UpdateACInput }) =>
       updateAccionCorrectiva(ncId, acId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.nonconformities.detail(ncId),
       })
@@ -226,6 +229,7 @@ export function useCerrarAccionCorrectiva(ncId: string) {
     mutationFn: ({ acId, data }: { acId: string; data: CerrarACInput }) =>
       cerrarAccionCorrectiva(ncId, acId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.nonconformities.detail(ncId),
       })

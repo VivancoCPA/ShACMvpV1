@@ -1,3 +1,4 @@
+import type { AccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
 import type { UserRole } from '../../../types/auth.types'
 import type { DocStatus } from '../../../types/documents.types'
 
@@ -36,6 +37,8 @@ export interface AccionCorrectiva {
   responsableNombre: string
   plazoFecha: string
   prioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
+  /** PRD §2.2 — obligatorio al crear, no editable (ac-tipo-responsables). */
+  tipo: AccionCorrectivaTipo
   estado: ACStatus
   creadoEn: string
   actualizadoEn: string

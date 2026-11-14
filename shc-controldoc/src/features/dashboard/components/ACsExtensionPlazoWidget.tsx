@@ -10,14 +10,12 @@ export function ACsExtensionPlazoWidget({ acs }: ACsExtensionPlazoWidgetProps) {
   const { t, i18n } = useTranslation('dashboard')
   const navigate = useNavigate()
 
-  const gerenciaPendientes = acs
-    .map((ac) => ({
-      ac,
-      solicitud: ac.solicitudesAjustePlazo.find((s) => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia),
-    }))
-    .filter((entry): entry is { ac: ACSolicitudAjustePlazoResumen; solicitud: NonNullable<typeof entry.solicitud> } =>
-      !!entry.solicitud,
-    )
+  // `acs` llega ya filtrado por filtrarSolicitudesGerenciaPendientes — el mismo arreglo que cuenta
+  // la tarjeta "Extensiones de plazo por aprobar" (dashboard-alertas-coherentes D2).
+  const gerenciaPendientes = acs.flatMap((ac) => {
+    const solicitud = ac.solicitudesAjustePlazo.find((s) => s.estado === 'PENDIENTE' && s.requiereAprobacionGerencia)
+    return solicitud ? [{ ac, solicitud }] : []
+  })
 
   return (
     <section className="space-y-3">

@@ -99,14 +99,41 @@ describe('useNotificationsHub', () => {
       expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['documents'] }))
     })
 
-    it('no invalida nada de documents cuando entidadTipo no es DOCUMENTO', () => {
+    it('invalida la lista y el detalle de QE (y nada de documents) cuando entidadTipo es QE', () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.shac.example')
       renderHook(() => useNotificationsHub(makeToastHandle()))
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       getRegisteredHandler()(makeNotificacion({ entidadTipo: 'QE', entidadId: 'qe-001' }))
 
-      expect(invalidateSpy).not.toHaveBeenCalled()
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['quality-events', 'list'] }))
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: ['quality-events', 'detail', 'qe-001'] }),
+      )
+      expect(invalidateSpy).not.toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['documents'] }))
+    })
+
+    // dashboard-alertas-coherentes D5: cualquier notificación refresca el dashboard; fuera de
+    // DOCUMENTO y QE, es lo único que se invalida.
+    it('solo invalida el dashboard cuando entidadTipo no es DOCUMENTO ni QE', () => {
+      vi.stubEnv('VITE_API_BASE_URL', 'https://api.shac.example')
+      renderHook(() => useNotificationsHub(makeToastHandle()))
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+      getRegisteredHandler()(makeNotificacion({ entidadTipo: 'INCIDENTE', entidadId: 'inc-001' }))
+
+      expect(invalidateSpy).toHaveBeenCalledTimes(1)
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
+    })
+
+    it('invalida el dashboard con cualquier notificación', () => {
+      vi.stubEnv('VITE_API_BASE_URL', 'https://api.shac.example')
+      renderHook(() => useNotificationsHub(makeToastHandle()))
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+      getRegisteredHandler()(makeNotificacion({ entidadTipo: 'QE', entidadId: 'qe-001' }))
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
     })
   })
 })

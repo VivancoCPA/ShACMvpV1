@@ -17,7 +17,7 @@ afterEach(() => {
   const seedIds = new Set(
     ['user-operario-001', 'user-supervisor-001', 'user-supervisor-002', 'user-jefecalidad-001',
      'user-jefedocs-001', 'user-auditor-001', 'user-autor-001', 'user-004', 'user-005',
-     'user-gerencia-001', 'user-admin-001'],
+     'user-gerencia-001', 'user-admin-001', 'user-adminempresa-001'],
   )
   for (let i = authFixtures.length - 1; i >= 0; i--) {
     if (!seedIds.has(authFixtures[i].id)) authFixtures.splice(i, 1)
@@ -64,12 +64,12 @@ function authHeaders(email: string) {
 
 describe('users.handlers — GET /api/users', () => {
   it('retorna todos los usuarios sin filtros, activos e inactivos', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     // GET /api/users está scoped a la empresa activa de la sesión (RN-EMP-*,
     // me-f3-scoping-modulos) — solo SUPERADMIN ve todas las empresas. Como
-    // admin@shac.pe es ADMINISTRADOR_SISTEMA, el conteo esperado es el de
+    // admin.empresa@shac.pe es ADMINISTRADOR_EMPRESA, el conteo esperado es el de
     // usuarios asignados a su empresa activa, no el total de authFixtures.
-    const empresaActivaId = getEmpresasActivasForUsuario('user-admin-001')[0]?.id
+    const empresaActivaId = getEmpresasActivasForUsuario('user-adminempresa-001')[0]?.id
     const esperados = new Set(
       getUsuarioEmpresaStore()
         .filter((ue) => ue.empresaId === empresaActivaId)
@@ -81,20 +81,20 @@ describe('users.handlers — GET /api/users', () => {
   })
 
   it('filtra por rol', async () => {
-    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin@shac.pe'), params: { rol: 'SUPERVISOR' } })
+    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin.empresa@shac.pe'), params: { rol: 'SUPERVISOR' } })
     expect(res.data.every((u) => u.rol === 'SUPERVISOR')).toBe(true)
     expect(res.data.length).toBeGreaterThan(0)
   })
 
   it('filtra por estado activo', async () => {
-    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin@shac.pe'), params: { activo: true } })
+    const res = await api.get<User[]>('/api/users', { ...authHeaders('admin.empresa@shac.pe'), params: { activo: true } })
     expect(res.data.every((u) => u.activo === true)).toBe(true)
   })
 })
 
 describe('users.handlers — POST /api/users (RN-USR-005)', () => {
   it('crea un usuario y retorna temporaryPassword de 8 caracteres alfanuméricos', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const res = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Test',
       apellido: 'Nuevo',
@@ -111,7 +111,7 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
   })
 
   it('rechaza alta con email duplicado (usuario activo) con 409 y no agrega usuario', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const before = (await api.get<User[]>('/api/users', headers)).data.length
 
     const result = await call(
@@ -129,7 +129,7 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
   })
 
   it('rechaza alta con email duplicado de un usuario inactivo', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Baja',
       apellido: 'Prueba',
@@ -153,7 +153,7 @@ describe('users.handlers — POST /api/users (RN-USR-005)', () => {
 
 describe('users.handlers — PATCH /api/users/:id (RN-USR-006)', () => {
   it('actualiza rol y area sin tocar password ni activo', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Editar',
       apellido: 'Yo',
@@ -183,7 +183,7 @@ describe('users.handlers — PATCH /api/users/:id (RN-USR-006)', () => {
 
 describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-USR-003)', () => {
   it('da de baja sin eliminar el registro, y bloquea el login inmediatamente', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Baja',
       apellido: 'Directa',
@@ -208,7 +208,7 @@ describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-
   })
 
   it('reactivar restaura acceso sin resetear la contraseña', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Reactivar',
       apellido: 'Prueba',
@@ -229,7 +229,7 @@ describe('users.handlers — PATCH /api/users/:id/toggle-active (RN-USR-001, RN-
 
 describe('users.handlers — POST /api/users/:id/reset-password (RN-USR-004)', () => {
   it('permite login inmediato con la nueva contraseña e invalida la anterior', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const created = await api.post<User & { temporaryPassword: string }>('/api/users', {
       nombre: 'Reset',
       apellido: 'Password',
@@ -271,7 +271,7 @@ interface NombreDto {
 
 describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', () => {
   it('resuelve un usuario inactivo de la empresa activa', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const jefeDocs = authFixtures.find((u) => u.id === 'user-jefedocs-001')!
     jefeDocs.activo = false
     try {
@@ -294,8 +294,8 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
   })
 
   it('resuelve un usuario con asignación inactiva (estado ≠ ACTIVO)', async () => {
-    const headers = authHeaders('admin@shac.pe')
-    const empresaActivaId = getEmpresasActivasForUsuario('user-admin-001')[0]!.id
+    const headers = authHeaders('admin.empresa@shac.pe')
+    const empresaActivaId = getEmpresasActivasForUsuario('user-adminempresa-001')[0]!.id
     const asignacion = getUsuarioEmpresaStore().find(
       (ue) => ue.usuarioId === 'user-jefedocs-001' && ue.empresaId === empresaActivaId,
     )!
@@ -310,7 +310,7 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
   })
 
   it('omite un id de otra empresa, sin error', async () => {
-    const headers = authHeaders('admin@shac.pe') // empresa-001
+    const headers = authHeaders('admin.empresa@shac.pe') // empresa-001
     const res = await api.get<NombreDto[]>('/api/users/nombres', {
       ...headers,
       params: { ids: 'user-operario-101' }, // solo asignado a empresa-002
@@ -320,7 +320,7 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
   })
 
   it('400 con un id de formato inválido', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const result = await call(
       api.get<ErrorBody>('/api/users/nombres', { ...headers, params: { ids: '???' } }),
     )
@@ -328,7 +328,7 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
   })
 
   it('400 al superar el límite de 100 ids', async () => {
-    const headers = authHeaders('admin@shac.pe')
+    const headers = authHeaders('admin.empresa@shac.pe')
     const ids = Array.from({ length: 101 }, (_, i) => `user-${i}`).join(',')
     const result = await call(
       api.get<ErrorBody>('/api/users/nombres', { ...headers, params: { ids } }),
@@ -336,3 +336,37 @@ describe('users.handlers — GET /api/users/nombres (nombres-usuarios-reales)', 
     expect(result.status).toBe(400)
   })
 })
+
+describe('users.handlers — ac-tipo-responsables', () => {
+  it('GET /api/users responde 403 a un rol operativo (JEFE_CALIDAD_SYST)', async () => {
+    const result = await call<ErrorBody>(api.get('/api/users', authHeaders('jefe.calidad@shac.pe')))
+    expect(result.status).toBe(403)
+  })
+
+  it('GET /api/users/candidatos?roles=AUDITOR_INTERNO responde 200 al JCA con auditores activos', async () => {
+    const res = await api.get<{ id: string; rol: string }[]>('/api/users/candidatos', {
+      ...authHeaders('jefe.calidad@shac.pe'),
+      params: { roles: 'AUDITOR_INTERNO' },
+    })
+    expect(res.status).toBe(200)
+    expect(res.data.length).toBeGreaterThan(0)
+    expect(res.data.every((u) => u.rol === 'AUDITOR_INTERNO')).toBe(true)
+  })
+
+  it('GET /api/users/candidatos nunca devuelve administradores aunque se pidan', async () => {
+    const res = await api.get<{ id: string; rol: string }[]>('/api/users/candidatos', {
+      ...authHeaders('jefe.calidad@shac.pe'),
+      params: { roles: 'ADMINISTRADOR_EMPRESA,ADMINISTRADOR_SISTEMA,SUPERVISOR' },
+    })
+    expect(res.data.length).toBeGreaterThan(0)
+    expect(res.data.every((u) => u.rol === 'SUPERVISOR')).toBe(true)
+  })
+
+  it('GET /api/users/candidatos con rol inválido responde 400', async () => {
+    const result = await call<ErrorBody>(
+      api.get('/api/users/candidatos', { ...authHeaders('jefe.calidad@shac.pe'), params: { roles: 'FOO' } }),
+    )
+    expect(result.status).toBe(400)
+  })
+})
+

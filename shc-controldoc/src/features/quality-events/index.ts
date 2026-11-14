@@ -53,8 +53,8 @@ export type { VerificacionEficaciaInput } from './schemas/verificacionEficacia.s
 export { createQEAccionSchema } from './schemas/createQEAccion.schema'
 export type { CreateQEACInput } from './schemas/createQEAccion.schema'
 
-export { cerrarQEAccionSchema } from './schemas/cerrarQEAccion.schema'
-export type { CerrarQEACInput } from './schemas/cerrarQEAccion.schema'
+export { ejecutarQEAccionSchema } from './schemas/ejecutarQEAccion.schema'
+export type { EjecutarQEACInput } from './schemas/ejecutarQEAccion.schema'
 
 export {
   getQualityEvents,
@@ -65,17 +65,19 @@ export {
   deleteQualityEvent,
   getQEAcciones,
   createQEAccion,
-  updateQEAccion,
-  cerrarQEAccion,
+  iniciarQEAccion,
+  ejecutarQEAccion,
+  verificarQEAccion,
   getQEAuditTrail,
   solicitarACEnQE,
+  descartarSolicitudAC,
   cerrarQE,
   firmarCierre,
   aprobarCausaRaiz,
   forzarVencimientoVerificacion,
   registrarVerificacionEficacia,
 } from './api/quality-events.api'
-export type { QEListResponse, UpdateQEACStatusInput } from './api/quality-events.api'
+export type { QEListResponse } from './api/quality-events.api'
 
 export { QE_QUERY_KEYS, useQualityEvents } from './hooks/useQualityEvents'
 export { useQualityEvent } from './hooks/useQualityEvent'
@@ -86,10 +88,14 @@ export { useDeleteQualityEvent } from './hooks/useDeleteQualityEvent'
 export { useQEList } from './hooks/useQEList'
 export { useQEAcciones } from './hooks/useQEAcciones'
 export { useCreateQEAccion } from './hooks/useCreateQEAccion'
-export { useUpdateQEAccion } from './hooks/useUpdateQEAccion'
-export { useCerrarQEAccion } from './hooks/useCerrarQEAccion'
+export {
+  useIniciarQEAccion,
+  useEjecutarQEAccion,
+  useVerificarQEAccion,
+} from './hooks/useAccionCorrectivaFlujo'
 export { useQEAuditTrail } from './hooks/useQEAuditTrail'
 export { useSolicitarACEnQE } from './hooks/useSolicitarACEnQE'
+export { useDescartarSolicitudAC } from './hooks/useDescartarSolicitudAC'
 export { useCerrarQE } from './hooks/useCerrarQE'
 export { useFirmarCierre } from './hooks/useFirmarCierre'
 export { useAprobarCausaRaiz } from './hooks/useAprobarCausaRaiz'

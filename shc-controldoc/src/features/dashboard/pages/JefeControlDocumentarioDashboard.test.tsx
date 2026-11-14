@@ -49,8 +49,21 @@ describe('JefeControlDocumentarioDashboard', () => {
 
   it('shows no skeleton once useDashboardSummary resolves with rol JEFE_CONTROL_DOC', () => {
     mockIsLoading = false
-    mockData = { rol: 'JEFE_CONTROL_DOC', data: {} }
+    mockData = { rol: 'JEFE_CONTROL_DOC', data: { documentosRevisionVencida: 2, documentosRevisionProxima: 0 } }
     const { container } = renderDashboard()
     expect(container.querySelectorAll('.animate-pulse').length).toBe(0)
+  })
+
+  it('renders the revision alerts and AccionesRequeridas full width, without KPIs', () => {
+    mockIsLoading = false
+    mockData = { rol: 'JEFE_CONTROL_DOC', data: { documentosRevisionVencida: 2, documentosRevisionProxima: 0 } }
+    renderDashboard()
+    const vencida = screen.getByRole('link', { name: `2 ${i18n.t('dashboard:alertas.jefeControlDoc.revisionVencida')}` })
+    expect(vencida).toHaveAttribute('href', '/documentos?estado=PUBLICADO')
+    const proxima = screen.getByRole('link', { name: `0 ${i18n.t('dashboard:alertas.jefeControlDoc.revisionProxima')}` })
+    expect(proxima).toHaveTextContent(i18n.t('dashboard:layout.todoEnOrden'))
+    expect(screen.getByTestId('trabajo-principal')).toHaveClass('lg:col-span-3')
+    expect(screen.queryByTestId('trabajo-lateral')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('zona-indicadores')).not.toBeInTheDocument()
   })
 })

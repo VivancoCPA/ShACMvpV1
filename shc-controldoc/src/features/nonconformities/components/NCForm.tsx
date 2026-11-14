@@ -11,7 +11,8 @@ import { createNCSchema, type CreateNCInput } from '../schemas/createNC.schema'
 import { createNonconformity, type CreateNCResponse } from '../api/nonconformities.api'
 import { NC_DOMINIO_LABELS } from '../constants/nonconformity.constants'
 import { QUERY_KEYS } from '../hooks/useNonconformities'
-import { useUsers } from '../hooks/useUsers'
+import { useCandidatosUsuarios } from '../../users/hooks/useCandidatosUsuarios'
+import { ROLES_OPERATIVOS } from '../../../constants/accionCorrectivaTipo.constants'
 import { useAreas } from '../../areas/hooks/useAreas'
 import type { NoConformidad } from '../types/nonconformity.types'
 
@@ -91,7 +92,8 @@ export function NCForm({ onCancel }: NCFormProps) {
   const { t } = useTranslation('nonconformities')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data: users = [] } = useUsers()
+  // GET /api/users es solo de administración — "Detectado por" usa candidatos operativos (ac-tipo-responsables).
+  const { data: users = [] } = useCandidatosUsuarios(ROLES_OPERATIVOS)
   const { data: areas = [] } = useAreas()
   const areasActivas = areas.filter((a) => a.activo)
 
@@ -387,7 +389,7 @@ export function NCForm({ onCancel }: NCFormProps) {
               <option value="">{t('form.placeholders.select')}</option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.nombre} {u.apellido} ({u.rol})
+                  {u.nombreCompleto} · {t(`auth:roles.${u.rol}`)}
                 </option>
               ))}
             </select>

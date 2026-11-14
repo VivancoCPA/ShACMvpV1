@@ -22,6 +22,7 @@ import type { CreateIncidentInput, UpdateIncidentInvestigacionInput } from '../s
 import type { CreateACIncidenteInput } from '../schemas/createAC.schema'
 import type { CerrarACIncidenteInput } from '../schemas/cerrarAC.schema'
 import type { IncidentStatus, AccionCorrectivaIncidente } from '../types/incident.types'
+import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
 
 export const INCIDENT_QUERY_KEYS = {
   all: ['incidents'] as const,
@@ -73,6 +74,7 @@ export function useCreateIncident() {
   return useMutation({
     mutationFn: (data: CreateIncidentInput) => createIncident(data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: INCIDENT_QUERY_KEYS.all })
       toast.success(t('toasts.created'))
     },
@@ -97,6 +99,7 @@ export function useCreateIncidentOfflineSync() {
     mutationFn: ({ data, empresaId }: { data: CreateIncidentInput; empresaId: string }) =>
       createIncidentOfflineSync(data, empresaId),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({ queryKey: INCIDENT_QUERY_KEYS.all })
     },
   })
@@ -175,6 +178,7 @@ export function useCreateACIncidente(incidenteId: string) {
   return useMutation({
     mutationFn: (data: CreateACIncidenteInput) => createAC(incidenteId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: INCIDENT_QUERY_KEYS.detail(incidenteId),
       })
@@ -194,6 +198,7 @@ export function useUpdateACIncidente(incidenteId: string) {
     mutationFn: ({ acId, data }: { acId: string; data: Partial<AccionCorrectivaIncidente> }) =>
       updateAC(incidenteId, acId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: INCIDENT_QUERY_KEYS.detail(incidenteId),
       })
@@ -213,6 +218,7 @@ export function useCerrarACIncidente(incidenteId: string) {
     mutationFn: ({ acId, data }: { acId: string; data: CerrarACIncidenteInput }) =>
       cerrarAC(incidenteId, acId, data),
     onSuccess: () => {
+      invalidarDashboard(queryClient)
       void queryClient.invalidateQueries({
         queryKey: INCIDENT_QUERY_KEYS.detail(incidenteId),
       })

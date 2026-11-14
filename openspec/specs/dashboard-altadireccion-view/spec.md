@@ -22,20 +22,29 @@ Define the `ALTA_DIRECCION` role's executive dashboard: the `AltaDireccionDashbo
 ---
 
 ### Requirement: AltaDireccionDashboard compone los widgets ejecutivos en orden fijo
-El componente `AltaDireccionDashboard` (`src/features/dashboard/pages/AltaDireccionDashboard.tsx`) SHALL consumir `useDashboardSummary()`, mostrar `WidgetSkeleton` mientras `isLoading` es verdadero o `data.rol !== 'ALTA_DIRECCION'`, y en el caso exitoso renderizar, dentro de `PageWrapper`, en este orden: `AccionesRequeridasWidget` (montado fuera del bloque condicional de carga, cubierto por `dashboard-acciones-requeridas`), `KpisEjecutivosWidget`, `ComparativaMensualWidget`, `QEsCriticosWidget`, `ReaperturasWidget`, `ACsExtensionPlazoWidget`, `HeatmapIncidentesWidget`.
+El componente `AltaDireccionDashboard` (`src/features/dashboard/pages/AltaDireccionDashboard.tsx`) SHALL consumir `useDashboardSummary()` y `useDashboardKpis(periodo)` (con `periodo` de `usePeriodoKpi()`), y componer `DashboardLayout` así:
+- **alertas:** "QE críticos activos" (error; `alertasCriticas.length`; `/quality-events?severidad=CRITICA`), "Reaperturas del período" (warning; `reaperturas` cuya `fechaReapertura` cae en el rango del período elegido; `/quality-events?soloReincidencias=true`) y "Extensiones de plazo por aprobar" (warning; `acsConSolicitudAjustePlazo.length`; `#acs-extension-plazo`);
+- **indicadores:** `KpisEjecutivosWidget`, con `PeriodoSelector`;
+- **trabajoPrincipal:** `AccionesRequeridasWidget` (montado fuera del bloque condicional de carga, cubierto por `dashboard-acciones-requeridas`) y `ComparativaMensualWidget`;
+- **trabajoLateral:** `QEsCriticosWidget`, `ReaperturasWidget` y `ACsExtensionPlazoWidget` (`id="acs-extension-plazo"`);
+- **mapa:** `HeatmapIncidentesWidget`.
+
+Mientras `isLoading` es verdadero o `data.rol !== 'ALTA_DIRECCION'`, las zonas que dependen del summary SHALL mostrar `WidgetSkeleton`.
 
 #### Scenario: Carga muestra skeletons
 - **WHEN** `useDashboardSummary()` está en `isLoading`
 - **THEN** `AltaDireccionDashboard` renderiza skeletons para los widgets dependientes del summary, sin bloquear `AccionesRequeridasWidget`
 
-#### Scenario: Datos cargados renderizan los widgets en orden
+#### Scenario: Datos cargados renderizan los widgets en sus zonas
 - **WHEN** `useDashboardSummary()` resuelve con `{ rol: 'ALTA_DIRECCION', data }`
-- **THEN** se renderizan, en orden, `KpisEjecutivosWidget`, `ComparativaMensualWidget`, `QEsCriticosWidget`, `ReaperturasWidget`, `ACsExtensionPlazoWidget` y `HeatmapIncidentesWidget`, después de `AccionesRequeridasWidget`
+- **THEN** se renderizan 3 alertas, `KpisEjecutivosWidget` en "Indicadores", `AccionesRequeridasWidget` y `ComparativaMensualWidget` en la columna principal, `QEsCriticosWidget`, `ReaperturasWidget` y `ACsExtensionPlazoWidget` en la lateral, y `HeatmapIncidentesWidget` en "Dónde ocurre"
 
----
+#### Scenario: Reaperturas del período
+- **WHEN** el período es `mes` (noviembre de 2026) y `reaperturas` tiene una con `fechaReapertura` el 2026-11-03 y otra el 2026-10-20
+- **THEN** la alerta "Reaperturas del período" muestra `1`
 
 ### Requirement: KpisEjecutivosWidget muestra 5 indicadores ejecutivos
-`KpisEjecutivosWidget` SHALL renderizar 5 tarjetas: "QEs abiertos" (`resumenPorModulo.qualityEvents.abiertos`, conteo simple sin semáforo), "QEs vencidos" (`resumenPorModulo.qualityEvents.vencidos`, conteo simple sin semáforo), y KPI-01/KPI-04/KPI-05 tomados de `kpisEstrategicos.filter(k => ['KPI-01','KPI-04','KPI-05'].includes(k.kpiId))`, reutilizando el mismo formato visual que `KpiGridWidget`.
+`KpisEjecutivosWidget` SHALL renderizar 5 tarjetas, sin `<section>` ni `h2` propios (el label lo pone la zona "Indicadores"): "QEs abiertos" (`resumenPorModulo.qualityEvents.abiertos`, conteo simple sin semáforo ni anillo), "QEs vencidos" (`resumenPorModulo.qualityEvents.vencidos`, conteo simple sin semáforo ni anillo), y una `KpiRingCard` por cada uno de KPI-01, KPI-04 y KPI-05, tomados de los `KpiResult` de `useDashboardKpis(periodo)` que recibe por props, con `tendencia` = los últimos 6 valores de `tendenciaMensualKpis[kpiId]` del summary.
 
 #### Scenario: QEs abiertos incluye REABIERTO, excluye CERRADO y VERIFICADO
 - **WHEN** el store de QE contiene QEs en cada uno de los estados no `CERRADO` ni `VERIFICADO` (incluido `REABIERTO`)
@@ -56,9 +65,7 @@ El componente `AltaDireccionDashboard` (`src/features/dashboard/pages/AltaDirecc
 
 #### Scenario: Widget muestra exactamente 5 tarjetas
 - **WHEN** `KpisEjecutivosWidget` recibe datos completos
-- **THEN** renderiza exactamente 5 tarjetas, en el orden: QEs abiertos, QEs vencidos, KPI-01, KPI-04, KPI-05
-
----
+- **THEN** renderiza exactamente 5 tarjetas, en el orden: QEs abiertos, QEs vencidos, KPI-01, KPI-04, KPI-05; las 3 últimas con anillo
 
 ### Requirement: ComparativaMensualWidget muestra tendencia vs mes anterior para KPI-01/04/05
 El backend (`buildAltaDireccionData`) SHALL exponer `comparativaMensual: Record<'KPI-01'|'KPI-04'|'KPI-05', { actual: number; anterior: number; tendencia: 'SUBE'|'BAJA'|'ESTABLE' }>`, calculado invocando `calcularKpi01`/`calcularKpi04`/`calcularKpi05` (ya existentes) sobre los 2 últimos períodos de `ultimosMeses(2)`, sin duplicar la fórmula de cálculo mensual. `tendencia` SHALL ser `'ESTABLE'` cuando `Math.abs(actual - anterior) < 2` (umbral de 2 puntos porcentuales), `'SUBE'` cuando la diferencia es positiva y mayor o igual al umbral, `'BAJA'` cuando es negativa y mayor o igual al umbral en magnitud. `ComparativaMensualWidget` SHALL renderizar, para cada uno de los 3 KPIs, el valor actual, el valor del mes anterior y un ícono/etiqueta de tendencia (↑/↓/=).
@@ -125,8 +132,8 @@ El backend SHALL exponer `acsConSolicitudAjustePlazo: ACSolicitudAjustePlazoResu
 ---
 
 ### Requirement: HeatmapIncidentesWidget se monta como último widget del dashboard
-`AltaDireccionDashboard` SHALL montar `HeatmapIncidentesWidget` (mismo componente compartido que usa `JefeCalidadDashboard`) como último widget, con su propio rango (3/6/12 meses) y selector de local, independientes del resto del dashboard. El comportamiento detallado del widget (cálculo del mapa, interacción) es responsabilidad de su propia capability y no se redefine aquí.
+`AltaDireccionDashboard` SHALL montar `HeatmapIncidentesWidget` (mismo componente compartido que usa `JefeCalidadDashboard`) en la zona "Dónde ocurre" de `DashboardLayout`, la última de la página, con su propio rango (3/6/12 meses) y selector de local, independientes del resto del dashboard y del `PeriodoSelector` de indicadores. El comportamiento detallado del widget (cálculo del mapa, interacción) es responsabilidad de su propia capability y no se redefine aquí.
 
 #### Scenario: Heatmap aparece después de ACsExtensionPlazoWidget
 - **WHEN** `AltaDireccionDashboard` renderiza con datos cargados
-- **THEN** `HeatmapIncidentesWidget` es el último widget en el DOM, después de `ACsExtensionPlazoWidget`
+- **THEN** `HeatmapIncidentesWidget` es el último widget en el DOM, dentro de la zona "Dónde ocurre", después de `ACsExtensionPlazoWidget`

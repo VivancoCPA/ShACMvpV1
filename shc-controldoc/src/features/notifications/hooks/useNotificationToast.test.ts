@@ -4,6 +4,11 @@ import { renderHook } from '@testing-library/react'
 import { useNotificationToast } from './useNotificationToast'
 import type { Notificacion } from '../../../types/notification.types'
 
+const invalidarMock = vi.fn()
+vi.mock('../utils/invalidarQueriesDeEntidad', () => ({
+  invalidarQueriesDeEntidad: (...args: unknown[]) => invalidarMock(...args),
+}))
+
 const toastMock = vi.fn()
 vi.mock('sonner', () => ({ toast: (...args: unknown[]) => toastMock(...args) }))
 
@@ -117,5 +122,28 @@ describe('useNotificationToast', () => {
     rerender()
 
     expect(toastMock).toHaveBeenCalledWith('Notificación posterior a la marcada como vista.')
+  })
+
+  it('no invalida queries de entidad en la carga inicial (baseline)', () => {
+    mockNotifications = [makeNotificacion()]
+    renderHook(() => useNotificationToast())
+    expect(invalidarMock).not.toHaveBeenCalled()
+  })
+
+  it('invalida las queries de la entidad de una notificación nueva detectada por polling', () => {
+    mockNotifications = [makeNotificacion({ id: 'n1', createdAt: '2026-01-01T00:00:00.000Z' })]
+    const { rerender } = renderHook(() => useNotificationToast())
+
+    const nueva = makeNotificacion({
+      id: 'n2',
+      tipo: 'ASIGNACION',
+      entidadId: 'qe-2026-002',
+      createdAt: '2026-01-01T00:05:00.000Z',
+    })
+    mockNotifications = [...mockNotifications, nueva]
+    rerender()
+
+    expect(invalidarMock).toHaveBeenCalledTimes(1)
+    expect(invalidarMock).toHaveBeenCalledWith(nueva)
   })
 })

@@ -256,7 +256,11 @@ export function NCList() {
                 const isAnulada = nc.estado === 'ANULADA'
                 const isDeleted = !!nc.deletedAt
                 const showOverdueAlert = hasOverdueACs(nc)
-                const responsable = nc.accionesCorrectivas[0]?.responsableId ?? '—'
+                // Nombre denormalizado en la AC — nunca se muestra el id (ac-tipo-responsables).
+                const primeraAC = nc.accionesCorrectivas[0]
+                const responsable = primeraAC
+                  ? primeraAC.responsableNombre || t('common:userNames.noDisponible')
+                  : '—'
                 // fechaDeteccion es una fecha de calendario (fix-fechas-utc) — sin desfase de zona horaria.
                 const fechaDeteccion = formatCalendarDate(nc.fechaDeteccion, i18n.language)
 

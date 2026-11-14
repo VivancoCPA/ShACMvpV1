@@ -9,10 +9,14 @@
 ## Requirements
 
 ### Requirement: QECierreSection renders only for PENDIENTE_CIERRE and CERRADO
-The system SHALL render a `QECierreSection` component at `src/features/quality-events/components/QECierreSection.tsx` that receives the loaded `QualityEvent` as a prop. It SHALL render its closure-form-and-signature content when `qe.estado === 'PENDIENTE_CIERRE'`, its closure-summary content when `qe.estado === 'CERRADO'` (and beyond, for QEs that have since advanced to `EN_VERIFICACION`, `VERIFICADO`, or been reopened), and `null` for any other `qe.estado`.
+The system SHALL render a `QECierreSection` component at `src/features/quality-events/components/QECierreSection.tsx` that receives the loaded `QualityEvent` as a prop. It SHALL render its closure-form-and-signature content when `qe.estado === 'PENDIENTE_CIERRE'`, its closure-summary content when `qe.estado === 'CERRADO'` (and beyond, for QEs that have since advanced to `EN_VERIFICACION`, `VERIFICADO`, or been reopened), and, when `qe.estado === 'EN_EJECUCION'`, only the closure-rejection notice (see "Aviso de cierre rechazado") if it applies. For any other `qe.estado`, or `EN_EJECUCION` without a pending rejection notice, it SHALL render `null`.
 
 #### Scenario: Section hidden in ABIERTO
 - **WHEN** `QECierreSection` renders for a `QualityEvent` with `estado: 'ABIERTO'`
+- **THEN** the component renders `null`
+
+#### Scenario: Section hidden in EN_EJECUCION without a rejection
+- **WHEN** `QECierreSection` renders for a `QualityEvent` with `estado: 'EN_EJECUCION'` and no `CIERRE_RECHAZADO` audit entry
 - **THEN** the component renders `null`
 
 #### Scenario: Closure form shown in PENDIENTE_CIERRE
@@ -22,8 +26,6 @@ The system SHALL render a `QECierreSection` component at `src/features/quality-e
 #### Scenario: Closure summary shown from CERRADO onward
 - **WHEN** `QECierreSection` renders for a `QualityEvent` with `estado: 'CERRADO'`, `'EN_VERIFICACION'`, or `'VERIFICADO'`
 - **THEN** the closure summary (fecha de cierre, resultado, plazo) is visible
-
----
 
 ### Requirement: Closure form validates resultadoCierre and plazoVerificacionDias
 `QECierreSection` SHALL render, while `qe.estado === 'PENDIENTE_CIERRE'` and `qe.resultadoCierre` is not yet set, a form with a `resultadoCierre` textarea (validated by `qualityEventCierreFormSchema`: 100–500 characters, required) and a `plazoVerificacionDias` control offering `30`, `60`, `90`, or a custom positive-integer value, defaulting to `60`. The form SHALL be visible only to role `JEFE_CALIDAD_SYST`. Submitting a valid form SHALL call `useCerrarQE().mutate({ id: qe.id, data: { resultadoCierre, plazoVerificacionDias } })`, invoking `PATCH /api/quality-events/:id/cerrar`.
@@ -101,38 +103,30 @@ The system SHALL register `PATCH /api/quality-events/:id/cerrar` in `src/mocks/h
 ---
 
 ### Requirement: Second signature role is resolved per the same-user escalation rule
-`QECierreSection` SHALL compute the required second-signature role by calling `resolveRolSegundaFirma(qe.cerradoPorId, qe.areaAfectada)` (from `qualityEventPermissions.ts`) once `qe.cerradoPorId` is set and `qe.cierreFirmaSupervisorId` is empty, and SHALL render a "Firmar como Supervisor" or "Firmar como Alta Dirección" button (matching the resolved role) visible only to the current user whose own `rol` equals the resolved role. Clicking it SHALL open the same `PinModal` described in "First signature (JEFE_CALIDAD_SYST) via PIN modal" — including its "no PIN configured" notice, format-only client-side validation, and `PIN_NO_CONFIGURADO`/401/generic error handling — and, on a well-formed PIN, call `useFirmarCierre().mutate({ id: qe.id, data: { rol: <resolvedRole>, pin } })`.
+`QECierreSection` SHALL compute the required second-signature role by calling `resolveRolSegundaFirma(qe.cerradoPorId, qe.areaId)` once `qe.cerradoPorId` is set and `qe.cierreFirmaSupervisorId` is empty (always `'SUPERVISOR'`). The "Firmar cierre" (second signature) button and the "Rechazar cierre" button SHALL be visible only when the current user's `rol` is `'SUPERVISOR'` **and** the user's id is in `qe.supervisoresArea`. A `SUPERVISOR` not in `qe.supervisoresArea` SHALL instead see the text `qualityEvents:detail.cierre.noEsDelArea` ("Solo los supervisores del área {área} pueden firmar este cierre.") and no buttons. Clicking "Firmar cierre" SHALL open the same `PinModal` described in "First signature (JEFE_CALIDAD_SYST) via PIN modal" — including its "no PIN configured" notice, format-only client-side validation, and `PIN_NO_CONFIGURADO`/401/generic error handling — and, on a well-formed PIN, call `useFirmarCierre().mutate({ id: qe.id, data: { rol: 'SUPERVISOR', pin } })`.
 
-#### Scenario: Normal case shows Firmar como Supervisor
-- **WHEN** `resolveRolSegundaFirma` returns `'SUPERVISOR'` for the current QE
-- **THEN** a "Firmar como Supervisor" button is visible to users with `rol: 'SUPERVISOR'` and not visible to `ALTA_DIRECCION`
+#### Scenario: Area supervisor sees sign and reject buttons
+- **WHEN** the current user has `rol: 'SUPERVISOR'` and is listed in `qe.supervisoresArea`, with `cerradoPorId` set
+- **THEN** "Firmar cierre" and "Rechazar cierre" are visible
 
-#### Scenario: Escalated case shows Firmar como Alta Dirección
-- **WHEN** `resolveRolSegundaFirma` returns `'ALTA_DIRECCION'` because the first signer's own fixture record has `rol: 'SUPERVISOR'` and `area === qe.areaAfectada`
-- **THEN** a "Firmar como Alta Dirección" button is visible to users with `rol: 'ALTA_DIRECCION'` and not visible to `SUPERVISOR`
+#### Scenario: Supervisor of another area sees the message only
+- **WHEN** the current user has `rol: 'SUPERVISOR'` and is not in `qe.supervisoresArea`
+- **THEN** the "Solo los supervisores del área…" message is shown and neither button is rendered
 
 #### Scenario: Second signature submits with resolved role
-- **WHEN** the resolved role is `'SUPERVISOR'` and that user enters a well-formed 4-digit PIN and confirms
+- **WHEN** an area supervisor enters a well-formed 4-digit PIN and confirms
 - **THEN** `useFirmarCierre().mutate` is called with `{ id: qe.id, data: { rol: 'SUPERVISOR', pin: <entered value> } }`, and an incorrect PIN surfaces as a toast error from the backend's 401 response without closing the QE
 
----
-
 ### Requirement: resolveRolSegundaFirma escalation helper
-The system SHALL export a pure function `resolveRolSegundaFirma(primerFirmanteId: string, areaAfectada: string): 'SUPERVISOR' | 'ALTA_DIRECCION'` from `src/features/quality-events/utils/qualityEventPermissions.ts`. It SHALL look up the user matching `primerFirmanteId` (via the shared user fixtures) and return `'ALTA_DIRECCION'` if and only if that user's own `rol` is `'SUPERVISOR'` and their `area` equals `areaAfectada`. In all other cases, including when the user cannot be found, it SHALL return `'SUPERVISOR'`.
+The system SHALL export a pure function `resolveRolSegundaFirma(primerFirmanteId: string, areaId: string): 'SUPERVISOR' | 'ALTA_DIRECCION'` from `src/features/quality-events/utils/qualityEventPermissions.ts` that SHALL always return `'SUPERVISOR'` (RN-QE-004 reconciliada: un usuario no puede ser JCA y SUPERVISOR a la vez). Whether a given supervisor may sign SHALL be decided by `qe.supervisoresArea` in the detail view, and by `user.areaIds?.includes(qe.areaId)` in the dashboard pending-actions list, never by this helper.
 
-#### Scenario: Returns SUPERVISOR for the normal case
-- **WHEN** `resolveRolSegundaFirma('user-005', 'Calidad')` is called and `user-005` has `rol: 'JEFE_CALIDAD_SYST'`
+#### Scenario: Returns SUPERVISOR for any input
+- **WHEN** `resolveRolSegundaFirma` is called with any first-signer id and area id, known or unknown
 - **THEN** the return value is `'SUPERVISOR'`
 
-#### Scenario: Returns ALTA_DIRECCION when the first signer doubles as the area's supervisor
-- **WHEN** `resolveRolSegundaFirma('user-999', 'Operaciones')` is called and `user-999` has `rol: 'SUPERVISOR'` and `area: 'Operaciones'`
-- **THEN** the return value is `'ALTA_DIRECCION'`
-
-#### Scenario: Returns SUPERVISOR when the first signer is SUPERVISOR of a different area
-- **WHEN** `resolveRolSegundaFirma('user-003', 'Almacén Norte')` is called and `user-003` has `rol: 'SUPERVISOR'` and `area: 'Operaciones'`
-- **THEN** the return value is `'SUPERVISOR'`
-
----
+#### Scenario: Dashboard pending action only for area supervisors
+- **WHEN** a QE in PENDIENTE_CIERRE with `cerradoPorId` set belongs to area `area-001` and the current `SUPERVISOR` has `areaIds: ['area-002']`
+- **THEN** the dashboard does not list the second signature as a pending action for that user
 
 ### Requirement: PATCH /api/quality-events/:id/firmar-cierre validates signature order and transitions to CERRADO
 The system SHALL register `PATCH /api/quality-events/:id/firmar-cierre` accepting `{ rol, pin }`. It SHALL reject (422, `success: false`, message tagged `QE-AC-006`) any request where: `qe.resultadoCierre` is not yet set; `rol === 'JEFE_CALIDAD_SYST'` but `qe.cerradoPorId` is already set; or `rol` is `'SUPERVISOR'`/`'ALTA_DIRECCION'` but `qe.cerradoPorId` is empty (second signature attempted before the first). On a valid first signature (`rol: 'JEFE_CALIDAD_SYST'`, `cerradoPorId` empty), it SHALL set `cerradoPorId` and append an audit entry, without changing `estado`. On a valid second signature (`rol` matching `resolveRolSegundaFirma`, `cierreFirmaSupervisorId` empty), it SHALL set `cierreFirmaSupervisorId`, `cierreFirmaSupervisorRol: rol`, transition `estado → 'CERRADO'`, stamp `fechaCierre` to the current timestamp, compute `fechaVerificacionProgramada` as `fechaCierre` plus `plazoVerificacionDias` days, and append two audit entries (the signature, then the `CERRADO` transition). On the transition to `CERRADO`, the handler SHALL create a `CAMBIO_ESTADO` notification (via `createCambioEstadoNotification`) for the QE's original `reportadoPorId`, excluding the signing user, and additionally for every resolvable user with role `ALTA_DIRECCION` when `qe.severidad` is `'ALTA'` or `'CRITICA'`.
@@ -193,3 +187,47 @@ Mientras el input del PIN esté visible, el `PinModal` de `QECierreSection` SHAL
 #### Scenario: Enlace de configurar PIN con ancla
 - **WHEN** el firmante no tiene PIN configurado
 - **THEN** no se ve la pista, y el enlace de configurar PIN apunta a `/perfil#pin-firma`
+
+### Requirement: Estado de las dos firmas con nombres
+While `qe.estado === 'PENDIENTE_CIERRE'` and `qe.resultadoCierre` is set, `QECierreSection` SHALL show two rows:
+- **Firma 1 — Jefe de Calidad** (`detail.cierre.firma1`): if `qe.cerradoPorId` is set, "✓ {qe.cerradoPorNombre} — {fecha y hora}", where the date comes from the audit entry `FIRMA_CIERRE_JEFE_CALIDAD` or, if absent, the latest `FIRMA_REGISTRADA` with `campoModificado === 'cerradoPorId'`; otherwise `detail.cierre.pendiente`.
+- **Firma 2 — Supervisor de {área}** (`detail.cierre.firma2`, area name via `useArea(qe.areaId)`, fallback the id): if signed, "✓ {qe.cierreFirmaSupervisorNombre} — {fecha}"; if pending with the first signature done, `detail.cierre.pendiente` plus `detail.cierre.puedenFirmar` with the names in `qe.supervisoresArea` joined by ", " and `detail.cierre.avisoEnviado`; if pending without the first signature, `detail.cierre.esperaJCA`.
+
+Dates SHALL be formatted with `Intl.DateTimeFormat(i18n.language, …)`.
+
+#### Scenario: First signature pending
+- **WHEN** the QE has `resultadoCierre` but no `cerradoPorId`
+- **THEN** Firma 1 shows "Pendiente" and Firma 2 shows "Se habilita después de la firma del Jefe de Calidad."
+
+#### Scenario: First signature done with legacy audit entry
+- **WHEN** `cerradoPorId` is set, `cerradoPorNombre: 'Ana Pérez'`, and the only signature audit entry is `FIRMA_REGISTRADA` with `campoModificado: 'cerradoPorId'`
+- **THEN** Firma 1 shows "Ana Pérez" with that entry's formatted date
+
+#### Scenario: Second signature pending lists who can sign
+- **WHEN** `cerradoPorId` is set and `supervisoresArea` has "Luis Soto" and "Rosa Vega"
+- **THEN** Firma 2 shows "Pendiente", "Pueden firmar: Luis Soto, Rosa Vega" and "Se les envió un aviso."
+
+### Requirement: Rechazo del cierre desde QECierreSection
+"Rechazar cierre" SHALL open a modal with a "Motivo del rechazo" textarea (label associated), a character counter, validated with a Zod schema (20–500 characters) through React Hook Form. Submitting SHALL call `useRechazarCierreQE().mutate({ id: qe.id, motivo })` (`POST /api/quality-events/:id/rechazar-cierre`). On success the modal SHALL close and the hook SHALL invalidate the QE detail, its audit trail, the QE list and, when linked, the incidents/NC queries (same as `useFirmarCierre`).
+
+#### Scenario: Short reason blocks submission
+- **WHEN** the supervisor types a 10-character reason and submits
+- **THEN** a validation error is shown and the mutation is not called
+
+#### Scenario: Valid reason rejects the closure
+- **WHEN** the supervisor types a 25-character reason and submits
+- **THEN** `useRechazarCierreQE().mutate` is called with that reason
+
+### Requirement: Aviso de cierre rechazado
+When `qe.estado === 'EN_EJECUCION'` and, among the audit entries `CIERRE_RECHAZADO` and the entries moving the QE into `PENDIENTE_CIERRE` (`ESTADO_CAMBIADO`/`TRANSICION_AUTOMATICA` with `estadoNuevo === 'PENDIENTE_CIERRE'`), the latest is `CIERRE_RECHAZADO`, `QECierreSection` SHALL show an amber notice `detail.cierre.rechazadoAviso` with the entry's `realizadoPorNombre`, formatted date and `valorNuevo` (motivo).
+
+#### Scenario: Notice after a rejection
+- **WHEN** the QE is in `EN_EJECUCION` and its latest relevant entry is `CIERRE_RECHAZADO` by "Luis Soto" with motivo "Falta evidencia fotográfica de la AC 2"
+- **THEN** the amber notice shows "Cierre rechazado por Luis Soto el {fecha}: Falta evidencia fotográfica de la AC 2"
+
+### Requirement: Área sin supervisor en el cierre
+When `PATCH /:id/cerrar` or the first signature fails with `errorCode: 'AREA_SIN_SUPERVISOR'`, `useCerrarQE`/`useFirmarCierre` SHALL NOT show a toast and `QECierreSection` SHALL show inline `errors.AREA_SIN_SUPERVISOR` with the area name (read from the mutation's `error`, without `useEffect`); for `JEFE_CALIDAD_SYST` it SHALL add a link to `/usuarios`.
+
+#### Scenario: JCA starts closure on an area without supervisor
+- **WHEN** the JCA submits the closure form and the server responds 422 `AREA_SIN_SUPERVISOR`
+- **THEN** the section shows "El área {área} no tiene un supervisor activo asignado…" with a link to Usuarios, and no toast

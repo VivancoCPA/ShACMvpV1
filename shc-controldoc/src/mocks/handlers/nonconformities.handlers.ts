@@ -1,4 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
+import { validarTipoYResponsableAC } from './shared/candidatosUsuarios'
 import { nonconformityFixtures } from '../fixtures/nonconformities.fixtures'
 import { resolveUserDisplayName } from '../fixtures/userIdentity.fixtures'
 import { getSessionUser as getUserFromRequest } from './shared/session'
@@ -388,6 +389,9 @@ export const nonconformityHandlers = [
     if (missing.length > 0) {
       return err('Validation error', 400, missing.map((f) => `${f} is required`))
     }
+    // ac-tipo-responsables: tipo obligatorio + responsable validado por tipo y empresa.
+    const validacion = validarTipoYResponsableAC(nc.empresaId, body)
+    if ('error' in validacion) return validacion.error
 
     const now = new Date().toISOString()
     const acId = `ac-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -402,6 +406,7 @@ export const nonconformityHandlers = [
       responsableNombre: resolveUserDisplayName(responsableId),
       plazoFecha: body.plazoFecha as string,
       prioridad: body.prioridad as AccionCorrectiva['prioridad'],
+      tipo: validacion.tipo,
       estado: 'PENDIENTE',
       creadoEn: now,
       actualizadoEn: now,

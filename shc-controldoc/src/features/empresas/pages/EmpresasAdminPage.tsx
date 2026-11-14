@@ -9,6 +9,7 @@ import { EmpresaList } from '../components/EmpresaList'
 import { EmpresaFormModal } from '../components/EmpresaFormModal'
 import type { Empresa } from '../types/empresa.types'
 import { SeguridadSesionEmpresaModal } from '../../sesion/components/SeguridadSesionEmpresaModal'
+import { ResponsablesAcEmpresaModal } from '../../acciones-correctivas/components/ResponsablesAcEmpresaModal'
 
 export function EmpresasAdminPage() {
   const { t } = useTranslation('empresas')
@@ -17,6 +18,7 @@ export function EmpresasAdminPage() {
 
   const [formEmpresa, setFormEmpresa] = useState<Empresa | null | undefined>(undefined)
   const [seguridadEmpresa, setSeguridadEmpresa] = useState<Empresa | null>(null)
+  const [responsablesAcEmpresa, setResponsablesAcEmpresa] = useState<Empresa | null>(null)
 
   const actions = canAdminister ? (
     <button
@@ -35,6 +37,7 @@ export function EmpresasAdminPage() {
         <EmpresaList
           onEdit={setFormEmpresa}
           onSeguridadSesion={setSeguridadEmpresa}
+          onResponsablesAc={setResponsablesAcEmpresa}
           canAdminister={canAdminister}
         />
       </ErrorBoundary>
@@ -48,6 +51,14 @@ export function EmpresasAdminPage() {
           empresaId={seguridadEmpresa.id}
           empresaNombre={seguridadEmpresa.razonSocial}
           onClose={() => setSeguridadEmpresa(null)}
+        />
+      )}
+
+      {responsablesAcEmpresa && (
+        <ResponsablesAcEmpresaModal
+          empresaId={responsablesAcEmpresa.id}
+          empresaNombre={responsablesAcEmpresa.razonSocial}
+          onClose={() => setResponsablesAcEmpresa(null)}
         />
       )}
     </PageWrapper>

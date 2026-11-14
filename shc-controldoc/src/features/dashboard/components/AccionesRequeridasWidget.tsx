@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAccionesRequeridas } from '../hooks/useAccionesRequeridas'
 import { calcularEstadoSemaforoDesdeFecha } from '../utils/semaforoPendientes'
-import type { AccionRequerida, AccionRequeridaDominio } from '../types/accionesRequeridas.types'
+import { filtrarAccionesPorTipo } from '../utils/accionesRequeridas.utils'
+import { FiltroAlertaChip } from './layout/FiltroAlertaChip'
+import type { AccionRequerida, AccionRequeridaDominio, AccionRequeridaTipo } from '../types/accionesRequeridas.types'
 
 const DOMINIO_ORDEN: AccionRequeridaDominio[] = ['QE', 'AC', 'DOCUMENTO']
 const VISIBLE_LIMIT = 10
@@ -52,13 +54,23 @@ function AccionRequeridaRow({ item, onClick }: { item: AccionRequerida; onClick:
   )
 }
 
-export function AccionesRequeridasWidget() {
+interface AccionesRequeridasWidgetProps {
+  // Filtro de una tarjeta de alerta (dashboard-alertas-coherentes D2): con filtro se muestran todos
+  // los ítems que coinciden, sin el corte de VISIBLE_LIMIT, y un chip para quitarlo.
+  filtroTipos?: readonly AccionRequeridaTipo[]
+  etiquetaFiltro?: string
+  onQuitarFiltro?: () => void
+}
+
+export function AccionesRequeridasWidget({ filtroTipos, etiquetaFiltro, onQuitarFiltro }: AccionesRequeridasWidgetProps = {}) {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
-  const { items, isLoading } = useAccionesRequeridas()
+  const { items: todos, isLoading } = useAccionesRequeridas()
   const [showAll, setShowAll] = useState(false)
 
-  const visible = showAll ? items : items.slice(0, VISIBLE_LIMIT)
+  const filtrado = !!filtroTipos
+  const items = filtroTipos ? filtrarAccionesPorTipo(todos, filtroTipos) : todos
+  const visible = showAll || filtrado ? items : items.slice(0, VISIBLE_LIMIT)
   const grouped = DOMINIO_ORDEN.map((dominio) => ({
     dominio,
     items: visible.filter((item) => item.dominio === dominio),
@@ -69,6 +81,10 @@ export function AccionesRequeridasWidget() {
       <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">
         {t('accionesRequeridas.title')}
       </h2>
+
+      {filtrado && !isLoading && (
+        <FiltroAlertaChip etiqueta={etiquetaFiltro ?? ''} n={items.length} onQuitar={onQuitarFiltro} />
+      )}
 
       {isLoading ? (
         <WidgetSkeleton />
@@ -93,7 +109,7 @@ export function AccionesRequeridasWidget() {
             </div>
           ))}
 
-          {items.length > VISIBLE_LIMIT && (
+          {!filtrado && items.length > VISIBLE_LIMIT && (
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}

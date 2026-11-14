@@ -53,7 +53,8 @@ export function getIncidentPermissions(
       const canEdit =
         !isDeleted && (estado === 'ABIERTO' || estado === 'EN_INVESTIGACION')
       const canAddAC = !isDeleted && isActive && estado !== 'CERRADO' && estado !== 'ANULADO'
-      const canCerrarAC = canAddAC
+      // Solo el JCA cierra AC (PRD §2.2 "Verificado por", ac-ejecucion-verificacion-evidencias D10).
+      const canCerrarAC = false
       const canChangeStatus = !isDeleted && isActive
       return {
         ...DENY_ALL,

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useId, useRef } from 'react'
 import { useMatches, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Menu, Sun, Moon, Monitor, ChevronDown, Building2 } from 'lucide-react'
@@ -10,6 +10,7 @@ import { useSwitchEmpresa } from '../../features/auth/hooks/useSwitchEmpresa'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ROLE_BG_CLASSES } from '../ui/roleColors'
 import { NotificationBell } from '../../features/notifications/components/NotificationBell'
+import { useDismissable, useRouteScopedMenu } from '../../hooks/useDismissable'
 
 interface RouteHandle {
   breadcrumb?: string
@@ -25,10 +26,19 @@ export function TopNav() {
   const empresasDisponibles = useAuthStore((s) => s.empresasDisponibles)
   const { mutate: logout } = useLogout()
   const { mutate: switchEmpresa, isPending: isSwitchingEmpresa } = useSwitchEmpresa()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [empresaDropdownOpen, setEmpresaDropdownOpen] = useState(false)
+  // Menú de usuario y selector de empresa: a lo sumo uno abierto, cerrados al navegar, con clic
+  // afuera o Escape (pendientes-qe-asignacion-y-menus).
+  const { openKey, toggle: toggleMenu, close: closeMenu } = useRouteScopedMenu<'usuario' | 'empresa'>()
+  const dropdownOpen = openKey === 'usuario'
+  const empresaDropdownOpen = openKey === 'empresa'
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownTriggerRef = useRef<HTMLButtonElement>(null)
   const empresaDropdownRef = useRef<HTMLDivElement>(null)
+  const empresaTriggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownId = useId()
+  const empresaDropdownId = useId()
+  useDismissable(dropdownOpen, closeMenu, [dropdownRef, dropdownTriggerRef])
+  useDismissable(empresaDropdownOpen, closeMenu, [empresaDropdownRef, empresaTriggerRef])
   const navigate = useNavigate()
 
   const empresaActiva = empresasDisponibles.find((e) => e.id === empresaActivaId)
@@ -85,12 +95,16 @@ export function TopNav() {
             si el usuario tiene más de una empresa asignada — no hay entre
             qué cambiar con una sola. */}
         {empresaActiva && (
-          <div className="relative" ref={empresaDropdownRef}>
+          <div className="relative">
             {empresasDisponibles.length > 1 ? (
               <button
-                onClick={() => setEmpresaDropdownOpen((v) => !v)}
+                ref={empresaTriggerRef}
+                onClick={() => toggleMenu('empresa')}
                 disabled={isSwitchingEmpresa}
                 aria-label={t('empresaSwitcher.label')}
+                aria-haspopup="menu"
+                aria-expanded={empresaDropdownOpen}
+                aria-controls={empresaDropdownOpen ? empresaDropdownId : undefined}
                 className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hairline hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-surface-dark-elevated dark:hover:text-on-dark"
               >
                 <Building2 size={15} />
@@ -109,12 +123,18 @@ export function TopNav() {
             )}
 
             {empresasDisponibles.length > 1 && empresaDropdownOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-canvas py-1 shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
+              <div
+                ref={empresaDropdownRef}
+                id={empresaDropdownId}
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-canvas py-1 shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated"
+              >
                 {empresasDisponibles.map((empresa) => (
                   <button
                     key={empresa.id}
+                    role="menuitem"
                     onClick={() => {
-                      setEmpresaDropdownOpen(false)
+                      closeMenu()
                       if (empresa.id !== empresaActivaId) switchEmpresa(empresa.id)
                     }}
                     className={`w-full px-4 py-2 text-left text-sm hover:bg-hairline dark:hover:bg-surface-dark-soft ${
@@ -153,9 +173,14 @@ export function TopNav() {
 
         {/* User block */}
         {user && (
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative">
             <button
-              onClick={() => setDropdownOpen((v) => !v)}
+              ref={dropdownTriggerRef}
+              onClick={() => toggleMenu('usuario')}
+              aria-label={t('userMenu')}
+              aria-haspopup="menu"
+              aria-expanded={dropdownOpen}
+              aria-controls={dropdownOpen ? dropdownId : undefined}
               className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-hairline dark:hover:bg-surface-dark-elevated"
             >
               <UserAvatar user={user} size="sm" />
@@ -173,11 +198,17 @@ export function TopNav() {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-hairline bg-canvas shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
+              <div
+                ref={dropdownRef}
+                id={dropdownId}
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-hairline bg-canvas shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated"
+              >
                 <button
+                  role="menuitem"
                   className="w-full px-4 py-2.5 text-left text-sm text-ink hover:bg-hairline dark:text-on-dark dark:hover:bg-surface-dark-soft"
                   onClick={() => {
-                    setDropdownOpen(false)
+                    closeMenu()
                     navigate('/perfil')
                   }}
                 >
@@ -185,9 +216,10 @@ export function TopNav() {
                 </button>
                 <hr className="border-hairline dark:border-hairline/20" />
                 <button
+                  role="menuitem"
                   className="w-full px-4 py-2.5 text-left text-sm text-error hover:bg-hairline dark:hover:bg-surface-dark-soft"
                   onClick={() => {
-                    setDropdownOpen(false)
+                    closeMenu()
                     logout()
                   }}
                 >

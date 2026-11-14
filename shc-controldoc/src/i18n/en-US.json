@@ -38,6 +38,22 @@
     },
     "session": {
       "restoring": "Restoring session…"
+    },
+    "acTipo": {
+      "CORRECTIVA": "Corrective",
+      "PREVENTIVA": "Preventive",
+      "MEJORA": "Improvement"
+    },
+    "acEstado": {
+      "PENDIENTE": "Pending",
+      "EN_EJECUCION": "In progress",
+      "COMPLETADA": "Pending verification",
+      "CERRADA": "Closed",
+      "VENCIDA": "Overdue"
+    },
+    "acReadOnly": {
+      "verificadaPor": "Verified by {{nombre}} · {{fecha}}",
+      "verEnQE": "View in QE"
     }
   },
   "documents": {
@@ -605,6 +621,7 @@
     "logout": "Sign out",
     "myProfile": "My profile",
     "toggleTheme": "Toggle theme",
+    "userMenu": "User menu",
     "toggleLanguage": "Toggle language",
     "empresaSwitcher": {
       "label": "Switch company",
@@ -844,15 +861,15 @@
       "acSection": {
         "title": "Corrective Actions",
         "progreso": "{{cerradas}} of {{total}} ACs closed",
-        "solicitudesACBanner": "{{count}} pending new AC request(s) — logged from the QE's origin",
+        "solicitudesACBanner": "{{count}} pending new CA request(s) — logged from the QE's origin. Create it with \"New AC\" or dismiss it.",
         "empty": "No corrective actions registered.",
         "actions": {
           "add": "New AC",
           "iniciar": "Start",
-          "cerrar": "Close with evidence",
           "save": "Save",
           "cancel": "Cancel",
-          "cerrarModal": "Confirm closure"
+          "marcarEjecutada": "Mark as done",
+          "verificar": "Verify"
         },
         "fields": {
           "titulo": "Title",
@@ -861,7 +878,7 @@
           "prioridad": "Priority",
           "plazoFecha": "Due Date",
           "evidencia": "Evidence Description",
-          "evidenciaUrl": "Evidence URL (optional)"
+          "tipo": "Action type"
         },
         "placeholders": {
           "titulo": "Corrective action title…",
@@ -869,7 +886,8 @@
           "responsable": "Select the owner…",
           "prioridad": "Select the priority…",
           "evidencia": "Describe the evidence that shows the action's effectiveness…",
-          "evidenciaUrl": "https://…"
+          "tipo": "Select the action type…",
+          "elegirTipoPrimero": "Choose the action type first"
         },
         "prioridad": {
           "BAJA": "Low",
@@ -880,17 +898,14 @@
         "acStatus": {
           "PENDIENTE": "Pending",
           "EN_EJECUCION": "In Progress",
-          "CERRADA": "Closed"
+          "CERRADA": "Closed",
+          "COMPLETADA": "Pending verification"
         },
         "agregarModal": {
           "title": "Add Corrective Action"
         },
-        "cerrarModal": {
-          "title": "Close Corrective Action",
-          "body": "Record the evidence that the action was completed satisfactorily."
-        },
         "errors": {
-          "evidenciaRequerida": "The evidence description is required."
+          "tipoRequerido": "Select the action type."
         },
         "autoTransitionToast": "All corrective actions were closed — the QE moved to Pending Closure.",
         "ajustePlazo": {
@@ -942,7 +957,58 @@
             "rechazado": "Deadline extension request rejected.",
             "responsableNotificado": "The corrective action's responsible party was notified."
           }
-        }
+        },
+        "sinCandidatos": "No active users can own this action type.",
+        "responsableNoValido": "{{nombre}} can't own a {{tipo}} action.",
+        "sinCandidatosAdmin": "Check the configuration in Users → Corrective action owners.",
+        "sinCandidatosConsulta": "Ask your company administrator.",
+        "evidencias": {
+          "titulo": "Evidence",
+          "elegir": "Choose files",
+          "tomarFoto": "Take photo",
+          "ayuda": "PDF, JPG, PNG, MP4, DOCX or XLSX · max 50 MB · up to 5 files",
+          "descripcion": "Describe what the evidence shows (50–300 characters)",
+          "subiendo": "Uploading {{nombre}}…",
+          "quitar": "Remove {{nombre}}",
+          "abrir": "Open in a new tab",
+          "errorTipo": "{{nombre}}: file type not allowed.",
+          "errorTamano": "{{nombre}} exceeds 50 MB.",
+          "errorMaximo": "Up to 5 files per action.",
+          "errorSubida": "Could not upload {{nombre}}.",
+          "errorAbrir": "Could not open the evidence.",
+          "ver_one": "View evidence ({{count}})",
+          "ver_other": "View evidence ({{count}})",
+          "historica": "View evidence (legacy link)"
+        },
+        "ejecutarModal": {
+          "title": "Mark as done",
+          "body": "Attach evidence that you carried out the action. The Quality Manager will verify it before closing.",
+          "confirmar": "Confirm execution",
+          "contador": "{{actual}} / {{min}}–{{max}}"
+        },
+        "verificar": {
+          "title": "Verify corrective action",
+          "aprobar": "Approve and close",
+          "devolver": "Return",
+          "motivo": "Reason for return",
+          "confirmarDevolucion": "Confirm return",
+          "ejecutadaPor": "Done by {{nombre}} · {{fecha}}",
+          "sinEvidencias": "The action has no evidence files."
+        },
+        "devuelta": "Returned by the Quality Manager: {{motivo}}",
+        "verificadaPor": "Verified by {{nombre}} · {{fecha}}",
+        "toasts": {
+          "iniciada": "Corrective action started.",
+          "ejecutada": "Action marked as done. It is now pending verification.",
+          "verificada": "Corrective action verified and closed.",
+          "devuelta": "Corrective action returned to its owner.",
+          "error": "Could not update the corrective action.",
+          "solicitudDescartada": "CA request dismissed."
+        },
+        "descartarSolicitud": "Dismiss request",
+        "descartarSolicitudBody": "The request will be closed without creating a corrective action. The requester will receive the reason.",
+        "motivoDescarte": "Reason for dismissal",
+        "confirmarDescarte": "Dismiss"
       },
       "auditTrail": {
         "title": "Audit Trail",
@@ -965,7 +1031,19 @@
           "EXPORTACION_PDF": "PDF exported",
           "RESPONSABLE_ASIGNADO": "Lead assigned",
           "RESPONSABLE_CAMBIADO": "Lead changed",
-          "ASISTENTE_IA_CONSULTADO": "AI assistant consulted"
+          "ASISTENTE_IA_CONSULTADO": "AI assistant consulted",
+          "FIRMA_CIERRE_JEFE_CALIDAD": "Closure signature — Quality Manager",
+          "FIRMA_CIERRE_SUPERVISOR": "Closure signature — Supervisor",
+          "CIERRE_RECHAZADO": "Closure rejected",
+          "AC_INICIADA": "Corrective action started",
+          "AC_EVIDENCIA_AGREGADA": "Corrective action evidence added",
+          "AC_EVIDENCIA_ELIMINADA": "Corrective action evidence removed",
+          "AC_EJECUTADA": "Corrective action done",
+          "AC_VERIFICADA_CERRADA": "Corrective action verified and closed",
+          "AC_DEVUELTA": "Corrective action returned",
+          "AC_SOLICITADA": "Corrective action requested from the origin",
+          "SOLICITUD_AC_ATENDIDA": "CA request fulfilled",
+          "SOLICITUD_AC_DESCARTADA": "CA request dismissed"
         },
         "sugerenciaIAEditada": "edited AI suggestion"
       },
@@ -996,7 +1074,8 @@
         },
         "secondSignature": {
           "buttonSupervisor": "Sign as Supervisor",
-          "buttonAltaDireccion": "Sign as Senior Management"
+          "buttonAltaDireccion": "Sign as Senior Management",
+          "button": "Sign closure"
         },
         "pinModal": {
           "titleJefeCalidad": "Confirm signature — Quality Manager",
@@ -1017,8 +1096,24 @@
           "fechaCierre": "Closure date"
         },
         "toasts": {
-          "closed": "Quality Event closed successfully."
-        }
+          "closed": "Quality Event closed successfully.",
+          "rechazado": "Closure rejected. The Quality Manager was notified.",
+          "rechazoError": "Error rejecting the closure"
+        },
+        "firma1": "Signature 1 — Quality Manager",
+        "firma2": "Signature 2 — {{area}} Supervisor",
+        "firmaHecha": "✓ {{nombre}} — {{fecha}}",
+        "pendiente": "Pending",
+        "puedenFirmar": "Can sign: {{nombres}}.",
+        "avisoEnviado": "They were notified.",
+        "esperaJCA": "Available after the Quality Manager signs.",
+        "noEsDelArea": "Only {{area}} supervisors can sign this closure.",
+        "rechazar": "Reject closure",
+        "motivoRechazo": "Rejection reason",
+        "motivoRechazoMin": "The reason must be at least 20 characters.",
+        "motivoRechazoMax": "The reason cannot exceed 500 characters.",
+        "rechazadoAviso": "Closure rejected by {{nombre}} on {{fecha}}: {{motivo}}",
+        "irAUsuarios": "Go to Users"
       },
       "verificacion": {
         "title": "Effectiveness Verification",
@@ -1109,7 +1204,15 @@
       "ANALISIS_NO_EDITABLE": "The analysis can only be edited during investigation or once the analysis is completed.",
       "IA_LIMITE_DIARIO": "The daily AI query limit for this QE was reached.",
       "IA_NO_DISPONIBLE": "The assistant is not available right now. You can complete the analysis manually.",
-      "IA_NO_CONFIGURADA": "The AI assistant is not configured on this server."
+      "IA_NO_CONFIGURADA": "The AI assistant is not configured on this server.",
+      "AREA_SIN_SUPERVISOR": "Area {{area}} has no active supervisor. Assign one in Users before closing.",
+      "NO_ES_SUPERVISOR_DEL_AREA": "Only a supervisor of the area can sign or reject this closure.",
+      "SOLO_RESPONSABLE_AC": "Only the assigned owner can do this.",
+      "SOLO_JCA_VERIFICA": "Only the Quality Manager can verify and close the action.",
+      "SIN_SOLICITUDES_PENDIENTES": "No pending requests.",
+      "SOLO_JCA_DESCARTA_SOLICITUD": "Only the Quality Manager can dismiss CA requests.",
+      "SOLICITUD_AC_ROL_NO_PERMITIDO": "Your role cannot request corrective actions in the QE.",
+      "SOLICITUD_AC_ESTADO_INVALIDO": "The QE no longer accepts corrective action requests."
     },
     "roles": {
       "SUPERVISOR": "Supervisor",
@@ -1416,7 +1519,14 @@
       "verEnQE": "View in QE →",
       "toasts": {
         "solicitudEnviada": "Request sent — pending in QE"
-      }
+      },
+      "delQE": "Corrective actions of {{numero}}",
+      "delQESinNumero": "Corrective actions of the QE",
+      "anteriores": "Earlier corrective actions (logged on the incident)",
+      "qeSinAC": "The QE has no corrective actions yet.",
+      "solicitudesPendientes": "Pending requests in the QE: {{n}}",
+      "cargandoQE": "Loading the QE corrective actions…",
+      "errorQE": "The QE corrective actions could not be loaded."
     },
     "mobile": {
       "form": {
@@ -1783,7 +1893,14 @@
       "verEnQE": "View in QE →",
       "toasts": {
         "solicitudEnviada": "Request sent — the Quality Manager will create the CA in the QE"
-      }
+      },
+      "delQE": "Corrective actions of {{numero}}",
+      "delQESinNumero": "Corrective actions of the QE",
+      "anteriores": "Earlier corrective actions (logged on the NC)",
+      "qeSinAC": "The QE has no corrective actions yet.",
+      "solicitudesPendientes": "Pending requests in the QE: {{n}}",
+      "cargandoQE": "Loading the QE corrective actions…",
+      "errorQE": "The QE corrective actions could not be loaded."
     },
     "errors": {
       "notFound": "Non-conformity not found.",
@@ -1822,15 +1939,22 @@
         "DOCUMENTO": "Documents"
       },
       "tipo": {
-        "QE_CAUSA_RAIZ": "Define root cause",
-        "QE_CERRAR": "Close Quality Event",
+        "QE_INICIAR_INVESTIGACION": "Start investigation",
+        "QE_COMPLETAR_ANALISIS": "Complete analysis",
+        "QE_ASIGNAR_RESPONSABLE": "Assign lead",
+        "QE_APROBAR_CAUSA_RAIZ": "Approve root cause",
+        "QE_REGISTRAR_CIERRE": "Record closure result",
+        "QE_FIRMAR_CIERRE_JCA": "Sign closure (Quality Manager)",
         "QE_FIRMAR_CIERRE": "Sign closure",
         "QE_VERIFICAR": "Verify effectiveness",
         "AC_EJECUTAR": "Execute corrective action",
         "DOC_REVISAR": "Review document",
         "DOC_APROBAR": "Approve document",
-        "DOC_REVISION_PERIODICA": "Periodic review"
-      }
+        "DOC_REVISION_PERIODICA": "Periodic review",
+        "AC_VERIFICAR": "Verify corrective action"
+      },
+      "mostrando": "Showing: {{etiqueta}} ({{n}})",
+      "quitarFiltro": "Clear filter"
     },
     "semaforo": {
       "venceEn": "Due in {{dias}}d",
@@ -2130,6 +2254,76 @@
       "title": "Incidents without QE past deadline",
       "empty": "No incidents past their deadline.",
       "vencidoHace": "Overdue by {{duracion}}"
+    },
+    "layout": {
+      "zonas": {
+        "alertas": "Needs attention",
+        "indicadores": "Indicators",
+        "trabajo": "My work and context",
+        "mapa": "Where it happens"
+      },
+      "todoEnOrden": "All clear",
+      "periodo": {
+        "label": "Indicators period",
+        "mes": "Month",
+        "trimestre": "Quarter",
+        "anio": "Year"
+      }
+    },
+    "kpi": {
+      "meta": "target {{op}} {{valor}}",
+      "datosIncompletos": "Incomplete data",
+      "variacionSinCambio": "no change",
+      "ariaLabel": "{{nombre}}: {{valor}}, {{meta}}, {{estado}}",
+      "semaforo": {
+        "VERDE": "on target",
+        "AMARILLO": "at risk",
+        "ROJO": "off target",
+        "INFORMATIVO": "informational"
+      }
+    },
+    "alertas": {
+      "jefeCalidad": {
+        "acVencidas": "Overdue CAs",
+        "incidentesSinQe": "Overdue incidents without QE",
+        "aprobaciones": "Pending approvals and closures",
+        "qeCriticos": "Active critical QEs"
+      },
+      "altaDireccion": {
+        "qeCriticos": "Active critical QEs",
+        "reaperturas": "Reopenings in the period",
+        "extensiones": "Deadline extensions to approve"
+      },
+      "supervisor": {
+        "acVencidas": "Overdue CAs in my area",
+        "firmaCierre": "Awaiting my closure signature",
+        "incidentesRecientes": "Recent incidents in my area (7 days)"
+      },
+      "auditor": {
+        "verificaciones": "Pending assigned verifications",
+        "hallazgosAbiertos": "Open findings"
+      },
+      "operario": {
+        "acVencidas": "My overdue CAs",
+        "acPorVencer": "My CAs due within 5 days"
+      },
+      "jefeControlDoc": {
+        "revisionVencida": "Documents overdue for review",
+        "revisionProxima": "Review due within 30 days"
+      },
+      "verLista": "view →"
+    },
+    "acs": {
+      "title": "Corrective actions",
+      "tablist": "Overdue and upcoming corrective actions",
+      "tabs": {
+        "vencidas": "Overdue ({{n}})",
+        "porVencer": "Due soon ({{n}})"
+      },
+      "empty": {
+        "vencidas": "No overdue corrective actions",
+        "porVencer": "No corrective actions due in the next 5 business days"
+      }
     }
   },
   "locations": {
@@ -2372,6 +2566,27 @@
         "bajaError": "Error disabling the user",
         "reactivarError": "Error reactivating the user"
       }
+    },
+    "responsablesAc": {
+      "title": "Corrective action owners",
+      "descripcion": "Choose which roles can own each action type.",
+      "porDefecto": "Default",
+      "alMenosUno": "Select at least one role.",
+      "restablecer": "Reset to defaults",
+      "confirmarRestablecer": "Restore the default configuration?",
+      "notaAplicacion": "Changes apply to new assignments. Existing corrective actions keep their owner.",
+      "guardado": "Configuration saved.",
+      "tipoColumna": "Action type",
+      "guardar": "Save",
+      "guardando": "Saving…",
+      "cancelar": "Cancel",
+      "confirmar": "Reset",
+      "cargando": "Loading configuration…",
+      "errorCarga": "Could not load the owner configuration.",
+      "sinCambios": "No changes recorded: default values apply.",
+      "accionEmpresa": "CA owners",
+      "modalTitle": "Corrective action owners — {{empresa}}",
+      "cerrar": "Close"
     }
   },
   "notifications": {

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDismissable, useRouteScopedOpen } from '../../../hooks/useDismissable'
 import type { ManagementActionItem } from '../utils/documentManagementActions'
 
 const VARIANT_CLASSES: Record<ManagementActionItem['variant'], string> = {
@@ -22,7 +23,11 @@ interface DocumentManagementActionsProps {
  */
 export function DocumentManagementActions({ items }: DocumentManagementActionsProps) {
   const { t } = useTranslation('documents')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { open: menuOpen, toggle: toggleMenu, close: closeMenu } = useRouteScopedOpen()
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuId = useId()
+  useDismissable(menuOpen, closeMenu, [menuRef, triggerRef])
 
   if (items.length === 0) return null
 
@@ -47,47 +52,46 @@ export function DocumentManagementActions({ items }: DocumentManagementActionsPr
       {overflow.length > 0 && (
         <div className="relative">
           <button
+            ref={triggerRef}
             type="button"
             aria-label={t('detail.menu.masAcciones')}
-            aria-haspopup="true"
+            aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
+            aria-controls={menuOpen ? menuId : undefined}
+            onClick={toggleMenu}
             className="rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink hover:bg-surface-soft dark:border-hairline/30 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-elevated"
           >
             ⋯
           </button>
 
+          {/* Clic afuera, Escape y navegación cierran el menú (useDismissable/useRouteScopedOpen,
+              pendientes-qe-asignacion-y-menus) — reemplaza el overlay invisible anterior. */}
           {menuOpen && (
-            <>
-              {/* Overlay invisible para cerrar al hacer click afuera — sin useEffect/listener,
-                  mismo patrón que los backdrops de modal ya usados en este feature. */}
-              <button
-                type="button"
-                aria-hidden="true"
-                tabIndex={-1}
-                onClick={() => setMenuOpen(false)}
-                className="fixed inset-0 z-40 cursor-default"
-              />
-              <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-canvas py-1 shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
-                {overflow.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled={item.disabled}
-                    title={item.disabledTitle}
-                    onClick={() => {
-                      item.onClick()
-                      setMenuOpen(false)
-                    }}
-                    className={`block w-full px-4 py-2 text-left text-sm hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-surface-dark-elevated ${
-                      item.variant === 'danger' ? 'text-error' : 'text-ink dark:text-on-dark'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div
+              ref={menuRef}
+              id={menuId}
+              role="menu"
+              className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-canvas py-1 shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated"
+            >
+              {overflow.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="menuitem"
+                  disabled={item.disabled}
+                  title={item.disabledTitle}
+                  onClick={() => {
+                    item.onClick()
+                    closeMenu()
+                  }}
+                  className={`block w-full px-4 py-2 text-left text-sm hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-surface-dark-elevated ${
+                    item.variant === 'danger' ? 'text-error' : 'text-ink dark:text-on-dark'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}

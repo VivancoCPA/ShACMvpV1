@@ -75,6 +75,7 @@ interface ACBase {
   descripcion: string
   responsableId: string
   responsableNombre: string
+  tipo: AccionCorrectivaResumen['tipo']
   plazoFecha: string
   estado: string
   fechaCierre?: string
@@ -95,10 +96,68 @@ function monthRange(periodo: string): { start: number; end: number } {
   return { start: Date.UTC(y, m - 1, 1), end: Date.UTC(y, m, 1) }
 }
 
-function quarterInfo(periodo: string): { start: number; end: number; label: string } {
-  const [y, m] = periodo.split('-').map(Number)
-  const q = Math.floor((m - 1) / 3)
-  return { start: Date.UTC(y, q * 3, 1), end: Date.UTC(y, q * 3 + 3, 1), label: `${y}-Q${q + 1}` }
+// Período de GET /api/dashboard/kpis (dashboard-layout-4-zonas design.md D2): mismo parseo que
+// KpiPeriodo.cs del backend. Rango [start, end) en ms UTC.
+type KpiPeriodoTipoApi = 'MES' | 'TRIMESTRE' | 'ANIO'
+
+interface KpiPeriodo {
+  tipo: KpiPeriodoTipoApi
+  start: number
+  end: number
+}
+
+interface Rango {
+  start: number
+  end: number
+}
+
+function mesesDe(tipo: KpiPeriodoTipoApi): number {
+  return tipo === 'MES' ? 1 : tipo === 'TRIMESTRE' ? 3 : 12
+}
+
+function crearPeriodo(tipo: KpiPeriodoTipoApi, year: number, monthIndex: number): KpiPeriodo {
+  return { tipo, start: Date.UTC(year, monthIndex, 1), end: Date.UTC(year, monthIndex + mesesDe(tipo), 1) }
+}
+
+function parseKpiPeriodo(valor: string): KpiPeriodo | null {
+  const mes = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(valor)
+  if (mes) return crearPeriodo('MES', Number(mes[1]), Number(mes[2]) - 1)
+  const trimestre = /^(\d{4})-Q([1-4])$/.exec(valor)
+  if (trimestre) return crearPeriodo('TRIMESTRE', Number(trimestre[1]), (Number(trimestre[2]) - 1) * 3)
+  const anio = /^(\d{4})$/.exec(valor)
+  if (anio) return crearPeriodo('ANIO', Number(anio[1]), 0)
+  return null
+}
+
+function labelPeriodo(periodo: KpiPeriodo): string {
+  const d = new Date(periodo.start)
+  const year = d.getUTCFullYear()
+  if (periodo.tipo === 'MES') return d.toISOString().slice(0, 7)
+  if (periodo.tipo === 'TRIMESTRE') return `${year}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`
+  return String(year)
+}
+
+function periodoAnterior(periodo: KpiPeriodo): KpiPeriodo {
+  const d = new Date(periodo.start)
+  return crearPeriodo(periodo.tipo, d.getUTCFullYear(), d.getUTCMonth() - mesesDe(periodo.tipo))
+}
+
+function mismoPeriodoAnioAnterior(periodo: KpiPeriodo): KpiPeriodo {
+  const d = new Date(periodo.start)
+  return crearPeriodo(periodo.tipo, d.getUTCFullYear() - 1, d.getUTCMonth())
+}
+
+function trimestreQueLoContiene(periodo: KpiPeriodo): KpiPeriodo {
+  if (periodo.tipo !== 'MES') return periodo
+  const d = new Date(periodo.start)
+  return crearPeriodo('TRIMESTRE', d.getUTCFullYear(), Math.floor(d.getUTCMonth() / 3) * 3)
+}
+
+function mesesDelPeriodo(periodo: KpiPeriodo): string[] {
+  const d = new Date(periodo.start)
+  return Array.from({ length: mesesDe(periodo.tipo) }, (_, i) =>
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + i, 1)).toISOString().slice(0, 7),
+  )
 }
 
 function quarterRangeFromLabel(label: string): { start: number; end: number } {
@@ -212,8 +271,7 @@ function qeCerradosEnPeriodo(qes: QualityEvent[], start: number, end: number): Q
   return qes.filter((qe) => (qe.estado === 'CERRADO' || qe.estado === 'VERIFICADO') && inRange(qe.fechaCierre, start, end))
 }
 
-function calcularKpi01(qes: QualityEvent[], periodo: string): number {
-  const { start, end } = monthRange(periodo)
+function calcularKpi01(qes: QualityEvent[], { start, end }: Rango): number {
   const cerrados = qeCerradosEnPeriodo(qes, start, end)
   if (cerrados.length === 0) return 0
   const enPlazo = cerrados.filter((qe) => {
@@ -223,8 +281,7 @@ function calcularKpi01(qes: QualityEvent[], periodo: string): number {
   return pct(enPlazo.length, cerrados.length)
 }
 
-function calcularKpi02(qes: QualityEvent[], periodo: string): number {
-  const { start, end } = monthRange(periodo)
+function calcularKpi02(qes: QualityEvent[], { start, end }: Rango): number {
   const cerrados = qeCerradosEnPeriodo(qes, start, end)
   if (cerrados.length === 0) return 0
   const totalDias = cerrados.reduce(
@@ -234,25 +291,32 @@ function calcularKpi02(qes: QualityEvent[], periodo: string): number {
   return totalDias / cerrados.length
 }
 
-function calcularKpi03(qes: QualityEvent[], periodo: string): number {
-  const { start, end } = quarterInfo(periodo)
+function calcularKpi03(qes: QualityEvent[], { start, end }: Rango): number {
   const cerrados = qeCerradosEnPeriodo(qes, start, end)
   if (cerrados.length === 0) return 0
   const reincidentes = cerrados.filter((qe) => qe.ciclo > 1)
   return pct(reincidentes.length, cerrados.length)
 }
 
-function calcularKpi04(incidentes: Incidente[], periodo: string): number {
-  const { start, end } = monthRange(periodo)
+// KPI-04 sobre uno o más meses: suma las horas de cada mes; datosIncompletos si a alguno le falta
+// su fila de horas (dashboard-layout-4-zonas design.md D3).
+function calcularKpi04Rango(
+  incidentes: Incidente[],
+  { start, end }: Rango,
+  meses: string[],
+): { valor: number; datosIncompletos: boolean } {
   const conLesionados = incidentes.filter((inc) => inc.huboLesionados && inRange(inc.fechaEvento, start, end))
-  const horas = horasTrabajadasFixtures
-    .filter((h) => h.periodo === periodo)
-    .reduce((acc, h) => acc + h.horas, 0)
-  return horas > 0 ? (conLesionados.length * 1_000_000) / horas : 0
+  const horasDelPeriodo = horasTrabajadasFixtures.filter((h) => meses.includes(h.periodo))
+  const horas = horasDelPeriodo.reduce((acc, h) => acc + h.horas, 0)
+  const datosIncompletos = meses.some((m) => !horasDelPeriodo.some((h) => h.periodo === m))
+  return { valor: horas > 0 ? (conLesionados.length * 1_000_000) / horas : 0, datosIncompletos }
 }
 
-function calcularKpi05(qes: QualityEvent[], ncs: NoConformidad[], periodo: string): number {
-  const { start, end } = monthRange(periodo)
+function calcularKpi04(incidentes: Incidente[], periodo: string): number {
+  return calcularKpi04Rango(incidentes, monthRange(periodo), [periodo]).valor
+}
+
+function calcularKpi05(qes: QualityEvent[], ncs: NoConformidad[], { start, end }: Rango): number {
   // Origen QE + NC únicamente (Incidente no tiene resultadoVerificacion, ver design.md decisión 7):
   // se pasa un array vacío de incidentes a collectACsWithOrigin.
   const acsCerradas = collectACsWithOrigin(qes, ncs, []).filter(({ ac }) => ac.estado === 'CERRADA')
@@ -300,8 +364,7 @@ function fechaEntradaEstadoActual(qe: QualityEvent): string {
   return fechaEntradaEstado(qe, qe.estado) ?? qe.fechaHoraReporte
 }
 
-function calcularKpi07(qes: QualityEvent[], periodo: string): number {
-  const { start, end } = monthRange(periodo)
+function calcularKpi07(qes: QualityEvent[], { start, end }: Rango): number {
   const conAnalisisEnPeriodo = qes
     .map((qe) => ({ qe, fecha: fechaAnalisisCompletado(qe) }))
     .filter((x): x is { qe: QualityEvent; fecha: string } => !!x.fecha && inRange(x.fecha, start, end))
@@ -313,15 +376,18 @@ function calcularKpi07(qes: QualityEvent[], periodo: string): number {
   return totalDias / conAnalisisEnPeriodo.length
 }
 
-function calcularKpi08(qes: QualityEvent[], ncs: NoConformidad[], incidentes: Incidente[]): number {
-  const hoy = Date.now()
-  return collectAllACs(qes, ncs, incidentes).filter(
-    (ac) => ac.estado !== 'CERRADA' && ac.estado !== 'COMPLETADA' && new Date(ac.plazoFecha).getTime() < hoy,
-  ).length
+// Única definición de "AC vencida" (espejo de DashboardKpiCalculator.EsAcVencida): KPI-08, la lista
+// accionesCorrectivasVencidas del JCA y la del Supervisor (dashboard-alertas-coherentes D4).
+function esAcVencida(ac: Pick<ACBase, 'estado' | 'plazoFecha'>, ahora: number): boolean {
+  return ac.estado !== 'CERRADA' && ac.estado !== 'COMPLETADA' && new Date(ac.plazoFecha).getTime() < ahora
 }
 
-function calcularKpi09(qes: QualityEvent[], periodo: string): { valor: number; distribucion: { area: string; valor: number }[] } {
-  const { start, end } = monthRange(periodo)
+function calcularKpi08(qes: QualityEvent[], ncs: NoConformidad[], incidentes: Incidente[]): number {
+  const hoy = Date.now()
+  return collectAllACs(qes, ncs, incidentes).filter((ac) => esAcVencida(ac, hoy)).length
+}
+
+function calcularKpi09(qes: QualityEvent[], { start, end }: Rango): { valor: number; distribucion: { area: string; valor: number }[] } {
   const delPeriodo = qes.filter((qe) => inRange(qe.fechaHoraReporte, start, end))
   const conteos = new Map<string, number>()
   for (const qe of delPeriodo) {
@@ -333,55 +399,76 @@ function calcularKpi09(qes: QualityEvent[], periodo: string): { valor: number; d
   return { valor: distribucion[0]?.valor ?? 0, distribucion }
 }
 
-function calcularKpis(periodo: string): KpiResult[] {
+function calcularKpis(periodo: KpiPeriodo): KpiResult[] {
   const qes = scopedQes()
   const docs = scopedDocs()
   const ncs = scopedNcs()
   const incidentes = scopedIncidentes()
   const calculadoEn = new Date().toISOString()
+  const label = labelPeriodo(periodo)
+  const anterior = periodoAnterior(periodo)
+  const trimestre03 = trimestreQueLoContiene(periodo)
+  const trimestre03Anterior = periodoAnterior(trimestre03)
 
-  const kpi04Valor = calcularKpi04(incidentes, periodo)
-  const kpi04AnioAnterior = kpi04AnioAnteriorFixtures.find((e) => e.periodo === periodo)?.valor
+  const kpi04 = calcularKpi04Rango(incidentes, periodo, mesesDelPeriodo(periodo))
+  // KPI-04 conserva su semántica interanual: mes → valor cargado; trimestre/año → calculado sobre
+  // el mismo período del año anterior, o undefined si le faltan horas (design.md D3).
+  let kpi04Anterior: number | undefined
+  if (periodo.tipo === 'MES') {
+    kpi04Anterior = kpi04AnioAnteriorFixtures.find((e) => e.periodo === label)?.valor
+  } else {
+    const anioAnterior = mismoPeriodoAnioAnterior(periodo)
+    const calculado = calcularKpi04Rango(incidentes, anioAnterior, mesesDelPeriodo(anioAnterior))
+    kpi04Anterior = calculado.datosIncompletos ? undefined : calculado.valor
+  }
   const kpi09 = calcularKpi09(qes, periodo)
+
+  function absoluto(
+    kpiId: KpiAbsolutoId,
+    valor: number,
+    valorPeriodoAnterior: number | undefined,
+    periodoLabel: string = label,
+  ): KpiResult {
+    const definicion = KPI_DEFINITIONS[kpiId]
+    return {
+      kpiId,
+      valor,
+      meta: definicion.meta,
+      metaTipo: definicion.metaTipo,
+      semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta),
+      periodo: periodoLabel,
+      calculadoEn,
+      ...(valorPeriodoAnterior !== undefined ? { valorPeriodoAnterior } : {}),
+    }
+  }
 
   return (Object.keys(KPI_DEFINITIONS) as KpiId[]).map((kpiId): KpiResult => {
     const definicion = KPI_DEFINITIONS[kpiId]
     switch (kpiId) {
-      case 'KPI-01': {
-        const valor = calcularKpi01(qes, periodo)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo, calculadoEn }
-      }
-      case 'KPI-02': {
-        const valor = calcularKpi02(qes, periodo)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo, calculadoEn }
-      }
-      case 'KPI-03': {
-        const valor = calcularKpi03(qes, periodo)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo: quarterInfo(periodo).label, calculadoEn }
-      }
+      case 'KPI-01':
+        return absoluto(kpiId, calcularKpi01(qes, periodo), calcularKpi01(qes, anterior))
+      case 'KPI-02':
+        return absoluto(kpiId, calcularKpi02(qes, periodo), calcularKpi02(qes, anterior))
+      case 'KPI-03':
+        return absoluto(kpiId, calcularKpi03(qes, trimestre03), calcularKpi03(qes, trimestre03Anterior), labelPeriodo(trimestre03))
       case 'KPI-04':
         return {
           kpiId,
-          valor: kpi04Valor,
+          valor: kpi04.valor,
           meta: definicion.meta,
           metaTipo: definicion.metaTipo,
-          semaforo: calcularSemaforoKpi04(kpi04Valor, kpi04AnioAnterior, definicion.meta),
-          periodo,
+          semaforo: calcularSemaforoKpi04(kpi04.valor, kpi04Anterior, definicion.meta),
+          periodo: label,
           calculadoEn,
-          valorPeriodoAnterior: kpi04AnioAnterior,
+          valorPeriodoAnterior: kpi04Anterior,
+          ...(kpi04.datosIncompletos ? { datosIncompletos: true } : {}),
         }
-      case 'KPI-05': {
-        const valor = calcularKpi05(qes, ncs, periodo)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo, calculadoEn }
-      }
-      case 'KPI-06': {
-        const valor = calcularKpi06(docs)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo, calculadoEn }
-      }
-      case 'KPI-07': {
-        const valor = calcularKpi07(qes, periodo)
-        return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoAbsoluto(kpiId, valor, definicion.meta), periodo, calculadoEn }
-      }
+      case 'KPI-05':
+        return absoluto(kpiId, calcularKpi05(qes, ncs, periodo), calcularKpi05(qes, ncs, anterior))
+      case 'KPI-06':
+        return absoluto(kpiId, calcularKpi06(docs), undefined)
+      case 'KPI-07':
+        return absoluto(kpiId, calcularKpi07(qes, periodo), calcularKpi07(qes, anterior))
       case 'KPI-08': {
         const valor = calcularKpi08(qes, ncs, incidentes)
         return { kpiId, valor, meta: definicion.meta, metaTipo: definicion.metaTipo, semaforo: calcularSemaforoKpi08(valor), periodo: 'TIEMPO_REAL', calculadoEn }
@@ -393,12 +480,16 @@ function calcularKpis(periodo: string): KpiResult[] {
           meta: definicion.meta,
           metaTipo: definicion.metaTipo,
           semaforo: 'INFORMATIVO',
-          periodo,
+          periodo: label,
           calculadoEn,
           distribucion: kpi09.distribucion,
         }
     }
   })
+}
+
+function calcularKpisMesActual(): KpiResult[] {
+  return calcularKpis(parseKpiPeriodo(currentPeriodo())!)
 }
 
 // --- Proyecciones a *Resumen ---
@@ -465,6 +556,7 @@ function toACResumen(
     descripcion: ac.descripcion,
     responsableId: ac.responsableId,
     responsableNombre: ac.responsableNombre,
+    tipo: ac.tipo,
     plazoFecha: ac.plazoFecha,
     estado: ac.estado,
   }
@@ -526,9 +618,7 @@ function buildSupervisorData(usuario: User): SupervisorDashboardData {
   const accionesCorrectivasPendientesArea = pendientes.map(({ ac, origenTipo, origenId }) =>
     toACResumen(ac, origenTipo, origenId),
   )
-  const vencidas = pendientes.filter(
-    ({ ac }) => ac.estado !== 'CERRADA' && ac.estado !== 'COMPLETADA' && new Date(ac.plazoFecha).getTime() < hoy,
-  )
+  const vencidas = pendientes.filter(({ ac }) => esAcVencida(ac, hoy))
   const accionesCorrectivasVencidas = vencidas.map(({ ac, origenTipo, origenId }) => toACResumen(ac, origenTipo, origenId))
 
   const incidentesRecientes = [...incidentes]
@@ -547,7 +637,7 @@ function buildSupervisorData(usuario: User): SupervisorDashboardData {
     { verde: 0, amarillo: 0, rojo: 0 },
   )
 
-  const kpisArea = calcularKpis(currentPeriodo()).filter((k) => SUPERVISOR_KPI_IDS.includes(k.kpiId))
+  const kpisArea = calcularKpisMesActual().filter((k) => SUPERVISOR_KPI_IDS.includes(k.kpiId))
 
   return {
     kpisArea,
@@ -576,12 +666,26 @@ function buildTendenciaMensualKpis(
   qes: QualityEvent[],
   ncs: NoConformidad[],
   incidentes: Incidente[],
+): AltaDireccionDashboardData['tendenciaMensualKpis'] {
+  const meses = ultimosMeses(12)
+  return {
+    'KPI-01': meses.map((periodo) => ({ periodo, valor: calcularKpi01(qes, monthRange(periodo)) })),
+    'KPI-04': meses.map((periodo) => ({ periodo, valor: calcularKpi04(incidentes, periodo) })),
+    'KPI-05': meses.map((periodo) => ({ periodo, valor: calcularKpi05(qes, ncs, monthRange(periodo)) })),
+  }
+}
+
+// JCA suma KPI-02/07 para los minigráficos de KpiRingCard (dashboard-layout-4-zonas design.md D6).
+function buildTendenciaMensualKpisJefeCalidad(
+  qes: QualityEvent[],
+  ncs: NoConformidad[],
+  incidentes: Incidente[],
 ): JefeCalidadDashboardData['tendenciaMensualKpis'] {
   const meses = ultimosMeses(12)
   return {
-    'KPI-01': meses.map((periodo) => ({ periodo, valor: calcularKpi01(qes, periodo) })),
-    'KPI-04': meses.map((periodo) => ({ periodo, valor: calcularKpi04(incidentes, periodo) })),
-    'KPI-05': meses.map((periodo) => ({ periodo, valor: calcularKpi05(qes, ncs, periodo) })),
+    ...buildTendenciaMensualKpis(qes, ncs, incidentes),
+    'KPI-02': meses.map((periodo) => ({ periodo, valor: calcularKpi02(qes, monthRange(periodo)) })),
+    'KPI-07': meses.map((periodo) => ({ periodo, valor: calcularKpi07(qes, monthRange(periodo)) })),
   }
 }
 
@@ -636,6 +740,13 @@ function buildJefeCalidadData(): JefeCalidadDashboardData {
     )
     .map(({ ac, origenTipo, origenId }) => toACResumen(ac, origenTipo, origenId))
 
+  // Todas las AC vencidas de QE + NC + Incidentes, sin límite: su largo es KPI-08.
+  const ahoraMs = Date.now()
+  const accionesCorrectivasVencidas = collectACsWithOrigin(qes, ncs, incidentes)
+    .filter(({ ac }) => esAcVencida(ac, ahoraMs))
+    .sort((a, b) => new Date(a.ac.plazoFecha).getTime() - new Date(b.ac.plazoFecha).getTime())
+    .map(({ ac, origenTipo, origenId }) => toACResumen(ac, origenTipo, origenId))
+
   // RN-INC-006 (incidentes-qe-estado-alertas D8): mismo criterio que el badge "Sin QE vinculado";
   // del más vencido al menos (vencimiento = fechaEvento + plazo del tipo).
   const ahora = new Date()
@@ -645,14 +756,15 @@ function buildJefeCalidadData(): JefeCalidadDashboardData {
     .sort((a, b) => vencimiento(a) - vencimiento(b))
 
   return {
-    kpis: calcularKpis(currentPeriodo()),
+    kpis: calcularKpisMesActual(),
     qeCriticosAbiertos,
     ncPendientesVerificacion,
     distribucionQEPorTipo,
     qePorEstado,
     accionesCorrectivasPorVencer,
+    accionesCorrectivasVencidas,
     tendenciaMensualVolumen: buildTendenciaMensualVolumen(qes),
-    tendenciaMensualKpis: buildTendenciaMensualKpis(qes, ncs, incidentes),
+    tendenciaMensualKpis: buildTendenciaMensualKpisJefeCalidad(qes, ncs, incidentes),
     incidentesSinQeVencidos: incidentesSinQeVencidos.slice(0, 10).map(toIncidenteResumen),
     incidentesSinQeVencidosTotal: incidentesSinQeVencidos.length,
   }
@@ -690,9 +802,9 @@ function buildComparativaMensual(
   }
 
   return {
-    'KPI-01': comparar(calcularKpi01(qes, mesActual), calcularKpi01(qes, mesAnterior)),
+    'KPI-01': comparar(calcularKpi01(qes, monthRange(mesActual)), calcularKpi01(qes, monthRange(mesAnterior))),
     'KPI-04': comparar(calcularKpi04(incidentes, mesActual), calcularKpi04(incidentes, mesAnterior)),
-    'KPI-05': comparar(calcularKpi05(qes, ncs, mesActual), calcularKpi05(qes, ncs, mesAnterior)),
+    'KPI-05': comparar(calcularKpi05(qes, ncs, monthRange(mesActual)), calcularKpi05(qes, ncs, monthRange(mesAnterior))),
   }
 }
 
@@ -772,13 +884,14 @@ function buildAltaDireccionData(): AltaDireccionDashboardData {
     .map(toQEResumen)
 
   return {
-    kpisEstrategicos: calcularKpis(currentPeriodo()),
+    kpisEstrategicos: calcularKpisMesActual(),
     resumenPorModulo,
     alertasCriticas,
     tendenciaTrimestral: buildTendenciaTrimestral(qes, ncs),
     comparativaMensual: buildComparativaMensual(qes, ncs, incidentes),
     reaperturas: buildReaperturas(qes),
     acsConSolicitudAjustePlazo: buildAcsConSolicitudAjustePlazo(qes),
+    tendenciaMensualKpis: buildTendenciaMensualKpis(qes, ncs, incidentes),
   }
 }
 
@@ -828,8 +941,25 @@ function buildTasaCierreEnPlazoPorArea(qes: QualityEvent[]): AuditorDashboardDat
     .sort((a, b) => a.tasaCierreEnPlazo - b.tasaCierreEnPlazo)
 }
 
+// Documentos PUBLICADO con revisión vencida / en los próximos 30 días (be-dashboard-api,
+// "Resumen JEFE_CONTROL_DOC").
 function buildJefeControlDocumentarioData(): JefeControlDocDashboardData {
-  return {}
+  const hoy = new Date()
+  hoy.setUTCHours(0, 0, 0, 0)
+  const limite = hoy.getTime() + 30 * 24 * 60 * 60 * 1000
+  const publicados = scopedDocs().filter((d) => !d.deletedAt && d.estado === 'PUBLICADO' && !!d.fechaRevisionProxima)
+  const diaDe = (fecha: string) => {
+    const d = new Date(fecha)
+    d.setUTCHours(0, 0, 0, 0)
+    return d.getTime()
+  }
+  return {
+    documentosRevisionVencida: publicados.filter((d) => diaDe(d.fechaRevisionProxima!) < hoy.getTime()).length,
+    documentosRevisionProxima: publicados.filter((d) => {
+      const dia = diaDe(d.fechaRevisionProxima!)
+      return dia >= hoy.getTime() && dia <= limite
+    }).length,
+  }
 }
 
 function buildAuditorData(): AuditorDashboardData {
@@ -868,7 +998,19 @@ export const dashboardHandlers = [
   http.get('/api/dashboard/kpis', async ({ request }) => {
     await delay(LATENCY)
     const url = new URL(request.url)
-    const periodo = url.searchParams.get('periodo') ?? currentPeriodo()
+    const periodoRaw = url.searchParams.get('periodo')
+    const periodo = parseKpiPeriodo(periodoRaw ?? currentPeriodo())
+    if (!periodo) {
+      return HttpResponse.json(
+        {
+          success: false,
+          data: null,
+          message: 'El período debe tener el formato yyyy-MM, yyyy-Qn o yyyy',
+          errorCode: 'PERIODO_INVALIDO',
+        },
+        { status: 400 },
+      )
+    }
     return HttpResponse.json({ success: true, data: calcularKpis(periodo) })
   }),
 

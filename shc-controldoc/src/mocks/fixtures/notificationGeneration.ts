@@ -49,6 +49,8 @@ interface CreateCambioEstadoParams {
   responsablesACActivas: string[]
   actorId: string
   link: string
+  /** Mensaje específico; por defecto "{codigo} cambió a estado {estado}." */
+  mensaje?: string
 }
 
 // RN-NOTIF-001
@@ -63,6 +65,7 @@ export function createCambioEstadoNotification(params: CreateCambioEstadoParams)
     responsablesACActivas,
     actorId,
     link,
+    mensaje,
   } = params
 
   const recipients = Array.from(new Set([reportadoPorId, ...responsablesACActivas]))
@@ -78,7 +81,7 @@ export function createCambioEstadoNotification(params: CreateCambioEstadoParams)
     entidadTipo,
     entidadId,
     entidadCodigo,
-    mensaje: `${entidadCodigo} cambió a estado ${estadoNuevo}.`,
+    mensaje: mensaje ?? `${entidadCodigo} cambió a estado ${estadoNuevo}.`,
     leida: false,
     createdAt: now,
     link,

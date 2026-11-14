@@ -5,6 +5,7 @@ import type {
   QEStatusTransitionInput,
   QualityEventUpdateInput,
   AccionCorrectivaQE,
+  EvidenciaACQE,
   QEAuditTrailEntry,
   CandidatoResponsableQE,
   Funcionalidades,
@@ -13,7 +14,8 @@ import type {
 } from '../types/qualityEvent.types'
 import type { QualityEventCreateInput } from '../schemas/qualityEventCreate.schema'
 import type { CreateQEACInput } from '../schemas/createQEAccion.schema'
-import type { CerrarQEACInput } from '../schemas/cerrarQEAccion.schema'
+import type { EjecutarQEACInput } from '../schemas/ejecutarQEAccion.schema'
+import type { VerificarQEACInput } from '../schemas/verificarQEAccion.schema'
 import type { QualityEventCierreFormInput } from '../schemas/qualityEventCierre.schema'
 import type { FirmarCierreInput } from '../schemas/firmarCierre.schema'
 import type { VerificacionEficaciaInput } from '../schemas/verificacionEficacia.schema'
@@ -69,12 +71,6 @@ export async function reactivateQualityEvent(id: string): Promise<QualityEvent> 
   return response.data
 }
 
-export type UpdateQEACStatusInput = {
-  estado: AccionCorrectivaQE['estado']
-  descripcionEvidencia?: string
-  evidenciaUrl?: string
-}
-
 export async function getQEAcciones(qeId: string): Promise<AccionCorrectivaQE[]> {
   const response = await api.get<AccionCorrectivaQE[]>(`/api/quality-events/${qeId}/acciones-correctivas`)
   return response.data
@@ -88,27 +84,57 @@ export async function createQEAccion(qeId: string, data: CreateQEACInput): Promi
   return response.data
 }
 
-export async function updateQEAccion(
-  qeId: string,
-  acId: string,
-  data: UpdateQEACStatusInput,
-): Promise<AccionCorrectivaQE> {
-  const response = await api.patch<AccionCorrectivaQE>(
-    `/api/quality-events/${qeId}/acciones-correctivas/${acId}/status`,
-    data,
-  )
+// ac-ejecucion-verificacion-evidencias: el responsable inicia, sube evidencias y ejecuta; el JCA
+// verifica. PATCH …/status ya no cierra (422 USAR_FLUJO_VERIFICACION).
+const acRuta = (qeId: string, acId: string) => `/api/quality-events/${qeId}/acciones-correctivas/${acId}`
+
+export async function iniciarQEAccion(qeId: string, acId: string): Promise<AccionCorrectivaQE> {
+  const response = await api.post<AccionCorrectivaQE>(`${acRuta(qeId, acId)}/iniciar`)
   return response.data
 }
 
-export async function cerrarQEAccion(
+export async function subirEvidenciaAC(
   qeId: string,
   acId: string,
-  data: CerrarQEACInput,
+  file: File,
+  onProgress?: (porcentaje: number) => void,
+): Promise<EvidenciaACQE> {
+  const formData = new FormData()
+  formData.append('archivo', file)
+  // Content-Type undefined: axios calcula el boundary real (mismo criterio que archivo-original).
+  const response = await api.post<EvidenciaACQE>(`${acRuta(qeId, acId)}/evidencias`, formData, {
+    headers: { 'Content-Type': undefined },
+    onUploadProgress: (e) => {
+      if (e.total) onProgress?.(Math.round((e.loaded * 100) / e.total))
+    },
+  })
+  return response.data
+}
+
+export async function eliminarEvidenciaAC(qeId: string, acId: string, evidenciaId: string): Promise<void> {
+  await api.delete(`${acRuta(qeId, acId)}/evidencias/${evidenciaId}`)
+}
+
+export async function getEvidenciaACBlob(qeId: string, acId: string, evidenciaId: string): Promise<Blob> {
+  const response = await api.get(`${acRuta(qeId, acId)}/evidencias/${evidenciaId}/archivo`, { responseType: 'blob' })
+  return response.data
+}
+
+export async function ejecutarQEAccion(
+  qeId: string,
+  acId: string,
+  data: EjecutarQEACInput,
 ): Promise<AccionCorrectivaQE> {
-  const response = await api.patch<AccionCorrectivaQE>(
-    `/api/quality-events/${qeId}/acciones-correctivas/${acId}/status`,
-    { estado: 'CERRADA', ...data },
-  )
+  const response = await api.post<AccionCorrectivaQE>(`${acRuta(qeId, acId)}/ejecutar`, data)
+  return response.data
+}
+
+export async function verificarQEAccion(
+  qeId: string,
+  acId: string,
+  data: VerificarQEACInput,
+): Promise<AccionCorrectivaQE> {
+  const response = await api.post<AccionCorrectivaQE>(`${acRuta(qeId, acId)}/verificar`, data)
   return response.data
 }
 
@@ -178,6 +204,12 @@ export async function solicitarACEnQE(qeId: string): Promise<QualityEvent> {
   return response.data
 }
 
+// solicitudes-ac-y-ac-del-qe-en-origen: el JCA descarta una solicitud pendiente con motivo.
+export async function descartarSolicitudAC(qeId: string, motivo: string): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${qeId}/solicitudes-ac/descartar`, { motivo })
+  return response.data
+}
+
 export async function cerrarQE(id: string, data: QualityEventCierreFormInput): Promise<QualityEvent> {
   const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/cerrar`, data)
   return response.data
@@ -185,6 +217,12 @@ export async function cerrarQE(id: string, data: QualityEventCierreFormInput): P
 
 export async function firmarCierre(id: string, data: FirmarCierreInput): Promise<QualityEvent> {
   const response = await api.patch<QualityEvent>(`/api/quality-events/${id}/firmar-cierre`, data)
+  return response.data
+}
+
+// PRD §1.5 P5: el supervisor del área rechaza el cierre (sin PIN) — vuelve a EN_EJECUCION.
+export async function rechazarCierre(id: string, motivo: string): Promise<QualityEvent> {
+  const response = await api.post<QualityEvent>(`/api/quality-events/${id}/rechazar-cierre`, { motivo })
   return response.data
 }
 

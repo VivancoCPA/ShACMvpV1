@@ -39,6 +39,7 @@ const baseData: AltaDireccionDashboardData = {
   },
   reaperturas: [],
   acsConSolicitudAjustePlazo: [],
+  tendenciaMensualKpis: { 'KPI-01': [], 'KPI-04': [], 'KPI-05': [] },
 }
 
 const accionesRequeridas: AccionRequerida[] = []

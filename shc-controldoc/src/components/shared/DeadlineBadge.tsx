@@ -6,7 +6,8 @@ interface DeadlineBadgeProps {
   estado: string
 }
 
-const CLOSED_STATES = new Set(['CERRADA', 'ANULADA'])
+// COMPLETADA: AC ya ejecutada, esperando verificación — no se muestra como vencida (ac-ejecucion-verificacion-evidencias).
+const CLOSED_STATES = new Set(['CERRADA', 'COMPLETADA', 'ANULADA'])
 
 export function DeadlineBadge({ fechaCierre, estado }: DeadlineBadgeProps) {
   const { i18n } = useTranslation()

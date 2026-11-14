@@ -4,14 +4,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuthStore } from '../../../stores/authStore'
-import { useUsers } from '../../nonconformities/hooks/useUsers'
+import { useCandidatosUsuarios } from '../../users/hooks/useCandidatosUsuarios'
 import { useForzarVencimientoVerificacion } from '../hooks/useForzarVencimientoVerificacion'
 import { useVerificacionEficacia } from '../hooks/useVerificacionEficacia'
 import { getQualityEventPermissions } from '../utils/qualityEventPermissions'
 import { verificacionEficaciaSchema, type VerificacionEficaciaInput } from '../schemas/verificacionEficacia.schema'
 import type { QualityEvent, QEStatus } from '../types/qualityEvent.types'
+import type { UserRole } from '../../../types/auth.types'
 
 const VISIBLE_STATES: QEStatus[] = ['CERRADO', 'EN_VERIFICACION', 'VERIFICADO']
+const ROLES_AUDITOR: UserRole[] = ['AUDITOR_INTERNO']
 
 interface QEVerificacionSectionProps {
   qe: QualityEvent
@@ -20,7 +22,8 @@ interface QEVerificacionSectionProps {
 export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
   const user = useAuthStore((s) => s.user)
-  const { data: users = [] } = useUsers()
+  // GET /api/users es solo de administración (403 para el JCA) — ac-tipo-responsables.
+  const { data: auditores = [] } = useCandidatosUsuarios(ROLES_AUDITOR)
   const forzarVencimiento = useForzarVencimientoVerificacion()
   const verificacionEficacia = useVerificacionEficacia()
   const [auditorAsignadoId, setAuditorAsignadoId] = useState('')
@@ -41,7 +44,6 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
     ? getQualityEventPermissions(qe.estado, user.rol, user.id === qe.auditorAsignadoId)
     : null
 
-  const auditores = users.filter((u) => u.rol === 'AUDITOR_INTERNO')
   const showForzarVencimiento =
     import.meta.env.DEV && (qe.estado === 'CERRADO' || qe.estado === 'EN_VERIFICACION')
   const showAuditorSelect = showForzarVencimiento && qe.estado === 'CERRADO'
@@ -183,7 +185,7 @@ export function QEVerificacionSection({ qe }: QEVerificacionSectionProps) {
                 <option value="">{t('detail.verificacion.auditorAsignado.placeholder')}</option>
                 {auditores.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.nombre} {u.apellido}
+                    {u.nombreCompleto}
                   </option>
                 ))}
               </select>

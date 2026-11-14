@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, X, CheckCircle, Play, ArrowUpRight, Check } from 'lucide-react'
+import { Plus, X, CheckCircle, Play, Check } from 'lucide-react'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
+import { AccionesCorrectivasDelQE } from '../../../components/shared/AccionesCorrectivasDelQE'
 import { useUpdateACIncidente, useCerrarACIncidente } from '../hooks/useIncidents'
 import { cerrarACIncidenteSchema, type CerrarACIncidenteInput } from '../schemas/cerrarAC.schema'
 import { useSolicitarACEnQE } from '../../quality-events/hooks/useSolicitarACEnQE'
@@ -155,7 +155,6 @@ export function IncidentACSection({
   const solicitarACEnQE = useSolicitarACEnQE()
 
   const isTerminal = TERMINAL_INCIDENT.includes(incidenteEstado)
-  const isQELinked = !!qeId
 
   const onTransition = (acId: string, newEstado: string) => {
     updateAC.mutate({ acId, data: { estado: newEstado as AccionCorrectivaIncidente['estado'] } })
@@ -180,7 +179,7 @@ export function IncidentACSection({
   }
 
   const solicitarACButton =
-    isQELinked && canAsignarAC ? (
+    qeId && canAsignarAC ? (
       solicitadoExitoso ? (
         <span className="flex items-center gap-1.5 text-xs font-medium text-success">
           <Check size={14} />
@@ -198,6 +197,20 @@ export function IncidentACSection({
         </button>
       )
     ) : null
+
+  if (qeId) {
+    return (
+      <section aria-labelledby="inc-ac-section-title">
+        <AccionesCorrectivasDelQE
+          qeId={qeId}
+          namespace="incidents"
+          titleId="inc-ac-section-title"
+          accionesPropias={accionesCorrectivas}
+          solicitarACButton={solicitarACButton}
+        />
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby="inc-ac-section-title">
@@ -221,33 +234,14 @@ export function IncidentACSection({
             </span>
           )}
         </h3>
-
-        {isQELinked && (
-          <div className="flex items-center gap-3">
-            {accionesCorrectivas.length === 0 && solicitarACButton}
-            <Link
-              to={`/quality-events/${qeId}`}
-              className="flex items-center gap-1 text-xs font-medium text-coral hover:underline"
-            >
-              <ArrowUpRight size={14} />
-              {t('acSection.actions.verQE')}
-            </Link>
-          </div>
-        )}
       </div>
 
-      {!isQELinked && (
-        <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
-          {t('acSection.qeRequerido')}
-        </p>
-      )}
+      <p className="mb-3 text-sm text-muted dark:text-on-dark-soft">
+        {t('acSection.qeRequerido')}
+      </p>
 
       {/* AC List */}
-      {accionesCorrectivas.length === 0 ? (
-        isQELinked && (
-          <p className="py-4 text-sm text-muted dark:text-on-dark-soft">{t('acSection.empty')}</p>
-        )
-      ) : (
+      {accionesCorrectivas.length > 0 && (
         <ul className="divide-y divide-hairline dark:divide-hairline/20">
           {accionesCorrectivas.map((ac) => (
             <li key={ac.id} className="py-3">
@@ -281,18 +275,9 @@ export function IncidentACSection({
                       {ac.descripcionEvidencia}
                     </p>
                   )}
-                  {isQELinked && (
-                    <Link
-                      to={`/quality-events/${qeId}`}
-                      className="mt-1 inline-flex items-center gap-1 text-xs text-coral hover:underline"
-                    >
-                      <ArrowUpRight size={12} />
-                      {t('acSection.verEnQE')}
-                    </Link>
-                  )}
                 </div>
 
-                {!isTerminal && !isQELinked && (
+                {!isTerminal && (
                   <div className="shrink-0">
                     {ac.estado === 'PENDIENTE' && (
                       <button
@@ -321,10 +306,6 @@ export function IncidentACSection({
             </li>
           ))}
         </ul>
-      )}
-
-      {accionesCorrectivas.length > 0 && solicitarACButton && (
-        <div className="mt-3 flex justify-end">{solicitarACButton}</div>
       )}
     </section>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -8,11 +8,14 @@ import { X } from 'lucide-react'
 import type { z } from 'zod'
 import type { AxiosError } from 'axios'
 import { useAuthStore } from '../../../stores/authStore'
+import { useArea } from '../../areas/hooks/useAreas'
 import { useCerrarQE } from '../hooks/useCerrarQE'
 import { useFirmarCierre } from '../hooks/useFirmarCierre'
+import { useRechazarCierreQE } from '../hooks/useRechazarCierreQE'
 import { qualityEventCierreFormSchema, type QualityEventCierreFormInput } from '../schemas/qualityEventCierre.schema'
+import { rechazarCierreSchema, type RechazarCierreInput } from '../schemas/rechazarCierre.schema'
 import { resolveRolSegundaFirma } from '../utils/qualityEventPermissions'
-import type { QualityEvent, QEStatus } from '../types/qualityEvent.types'
+import type { QualityEvent, QEStatus, QEAuditTrailEntry } from '../types/qualityEvent.types'
 
 type CierreFormFields = z.input<typeof qualityEventCierreFormSchema>
 
@@ -124,13 +127,123 @@ function PinModal({
   )
 }
 
+const errorCodeOf = (error: unknown): string | undefined =>
+  (error as AxiosError<{ errorCode?: string }> | null)?.response?.data?.errorCode
+
+// Última entrada que cumple el predicado (el audit trail viene en orden cronológico).
+function ultimaEntrada(
+  auditTrail: QEAuditTrailEntry[],
+  predicado: (entry: QEAuditTrailEntry) => boolean,
+): QEAuditTrailEntry | undefined {
+  return [...auditTrail].reverse().find(predicado)
+}
+
+// Firma 1: acción nueva FIRMA_CIERRE_JEFE_CALIDAD o la legacy FIRMA_REGISTRADA del backend anterior
+// (qe-cierre-firma-supervisor-area).
+const esFirmaJefeCalidad = (entry: QEAuditTrailEntry) =>
+  entry.accion === 'FIRMA_CIERRE_JEFE_CALIDAD' ||
+  (entry.accion === 'FIRMA_REGISTRADA' && entry.campoModificado === 'cerradoPorId')
+
+const esFirmaSupervisor = (entry: QEAuditTrailEntry) =>
+  entry.accion === 'FIRMA_CIERRE_SUPERVISOR' ||
+  entry.accion === 'FIRMA_CIERRE_SEGUNDA' ||
+  (entry.accion === 'FIRMA_REGISTRADA' && entry.campoModificado === 'cierreFirmaSupervisorId')
+
+// El aviso de rechazo vale mientras no haya una entrada posterior que devuelva el QE a PENDIENTE_CIERRE.
+const esRechazoOReingreso = (entry: QEAuditTrailEntry) =>
+  entry.accion === 'CIERRE_RECHAZADO' ||
+  ((entry.accion === 'ESTADO_CAMBIADO' || entry.accion === 'TRANSICION_AUTOMATICA') &&
+    entry.estadoNuevo === 'PENDIENTE_CIERRE')
+
+function RechazoCierreModal({
+  onConfirm,
+  onClose,
+  isPending,
+}: {
+  onConfirm: (motivo: string) => void
+  onClose: () => void
+  isPending: boolean
+}) {
+  const { t } = useTranslation('qualityEvents')
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<RechazarCierreInput>({
+    resolver: zodResolver(rechazarCierreSchema),
+    defaultValues: { motivo: '' },
+  })
+  const motivoLength = (watch('motivo') ?? '').length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60">
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="qe-rechazo-cierre-title"
+        onSubmit={(e) => void handleSubmit((values) => onConfirm(values.motivo))(e)}
+        className="relative w-full max-w-md rounded-xl bg-canvas p-6 shadow-xl dark:bg-surface-dark-elevated"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('detail.cierre.pinModal.cancel')}
+          className="absolute right-4 top-4 text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
+        >
+          <X size={18} />
+        </button>
+        <h2 id="qe-rechazo-cierre-title" className="mb-3 font-medium text-ink dark:text-on-dark">
+          {t('detail.cierre.rechazar')}
+        </h2>
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="qe-motivo-rechazo" className="text-sm font-medium text-body dark:text-on-dark-soft">
+            {t('detail.cierre.motivoRechazo')}
+          </label>
+          <span className={`text-xs ${motivoLength < 20 ? 'text-error' : 'text-muted dark:text-on-dark-soft'}`}>
+            {t('detail.cierre.form.resultadoCierreCharCount', { count: motivoLength, max: 500 })}
+          </span>
+        </div>
+        <textarea
+          id="qe-motivo-rechazo"
+          rows={4}
+          maxLength={500}
+          className="w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:border-coral focus:outline-none focus:ring-2 focus:ring-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark"
+          {...register('motivo')}
+        />
+        {errors.motivo?.message && <p className="mt-1 text-xs text-error">{t(errors.motivo.message)}</p>}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
+          >
+            {t('detail.cierre.pinModal.cancel')}
+          </button>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-md bg-error px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60 dark:bg-error"
+          >
+            {t('detail.cierre.rechazar')}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export function QECierreSection({ qe }: QECierreSectionProps) {
   const { t, i18n } = useTranslation('qualityEvents')
   const user = useAuthStore((s) => s.user)
   const cerrarQE = useCerrarQE()
   const firmarCierre = useFirmarCierre()
+  const rechazarCierre = useRechazarCierreQE()
+  const { data: area } = useArea(qe.areaId)
   const [pinModalRole, setPinModalRole] = useState<'JEFE_CALIDAD_SYST' | 'SUPERVISOR' | 'ALTA_DIRECCION' | null>(null)
   const [pinResetMidSession, setPinResetMidSession] = useState(false)
+  const [rechazoModalOpen, setRechazoModalOpen] = useState(false)
   const [plazoOption, setPlazoOption] = useState<number | 'CUSTOM'>(60)
 
   const {
@@ -148,9 +261,16 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
   const resultadoCierreLength = resultadoCierreValue.length
   const resultadoCierreBelowMin = resultadoCierreLength < 100
 
-  if (!VISIBLE_STATES.includes(qe.estado)) return null
+  const ultimoRechazoOReingreso = ultimaEntrada(qe.auditTrail, esRechazoOReingreso)
+  const rechazoVigente =
+    qe.estado === 'EN_EJECUCION' && ultimoRechazoOReingreso?.accion === 'CIERRE_RECHAZADO'
+      ? ultimoRechazoOReingreso
+      : undefined
+
+  if (!VISIBLE_STATES.includes(qe.estado) && !rechazoVigente) return null
 
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
+  const areaNombre = area?.nombre ?? qe.areaId
 
   const showClosureForm = qe.estado === 'PENDIENTE_CIERRE' && !qe.resultadoCierre && user?.rol === 'JEFE_CALIDAD_SYST'
   const showFirstSignature =
@@ -161,10 +281,21 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
     : null
   const showPendingSecondSignature =
     qe.estado === 'PENDIENTE_CIERRE' && !!qe.cerradoPorId && !qe.cierreFirmaSupervisorId
-  const showSecondSignature = showPendingSecondSignature && resolvedRole !== null && user?.rol === resolvedRole
-  const firstSignatureEntry = qe.auditTrail.find((entry) => entry.accion === 'FIRMA_CIERRE_JEFE_CALIDAD')
+  // La segunda firma (y el rechazo) solo la da un supervisor del área del QE — qe.supervisoresArea
+  // lo resuelve el backend (qe-cierre-firma-supervisor-area D1/D9).
+  const esSupervisorDelArea = !!user && (qe.supervisoresArea ?? []).some((s) => s.id === user.id)
+  const showSecondSignature =
+    showPendingSecondSignature && resolvedRole !== null && user?.rol === resolvedRole && esSupervisorDelArea
+  const showNoEsDelArea = showPendingSecondSignature && user?.rol === 'SUPERVISOR' && !esSupervisorDelArea
 
   const showSummary = qe.estado === 'CERRADO' || qe.estado === 'EN_VERIFICACION' || qe.estado === 'VERIFICADO'
+  const showFirmas = (qe.estado === 'PENDIENTE_CIERRE' && !!qe.resultadoCierre) || showSummary
+
+  const firmaJefeEntry = qe.cerradoPorId ? ultimaEntrada(qe.auditTrail, esFirmaJefeCalidad) : undefined
+  const firmaSupervisorEntry = qe.cierreFirmaSupervisorId ? ultimaEntrada(qe.auditTrail, esFirmaSupervisor) : undefined
+  const supervisoresNombres = (qe.supervisoresArea ?? []).map((s) => s.nombreCompleto).join(', ')
+  const areaSinSupervisor =
+    errorCodeOf(cerrarQE.error) === 'AREA_SIN_SUPERVISOR' || errorCodeOf(firmarCierre.error) === 'AREA_SIN_SUPERVISOR'
 
   const inputClass =
     'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
@@ -208,6 +339,30 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
     )
   }
 
+  const onRechazoConfirm = (motivo: string) => {
+    rechazarCierre.mutate({ id: qe.id, motivo }, { onSuccess: () => setRechazoModalOpen(false) })
+  }
+
+  const firmaRow = (
+    label: string,
+    firmado: boolean,
+    nombre: string | undefined,
+    entry: QEAuditTrailEntry | undefined,
+    pendiente: ReactNode,
+  ) => (
+    <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4">
+      <dt className="text-sm font-medium text-muted dark:text-on-dark-soft">{label}</dt>
+      <dd className="mt-0.5 text-sm text-body dark:text-on-dark sm:col-span-2 sm:mt-0">
+        {firmado
+          ? t('detail.cierre.firmaHecha', {
+              nombre: nombre ?? entry?.realizadoPorNombre ?? '—',
+              fecha: entry ? dateFormatter.format(new Date(entry.timestamp)) : '—',
+            })
+          : pendiente}
+      </dd>
+    </div>
+  )
+
   return (
     <section
       aria-labelledby="qe-cierre-title"
@@ -233,9 +388,44 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
         />
       )}
 
+      {rechazoModalOpen && (
+        <RechazoCierreModal
+          onConfirm={onRechazoConfirm}
+          onClose={() => setRechazoModalOpen(false)}
+          isPending={rechazarCierre.isPending}
+        />
+      )}
+
       <h2 id="qe-cierre-title" className="mb-4 text-base font-medium text-ink dark:text-on-dark">
         {t('detail.cierre.title')}
       </h2>
+
+      {rechazoVigente && (
+        <div
+          role="status"
+          className="mb-4 rounded-md border border-amber/40 bg-amber/10 px-3.5 py-2.5 text-sm text-body dark:border-amber/30 dark:bg-amber/10 dark:text-on-dark"
+        >
+          {t('detail.cierre.rechazadoAviso', {
+            nombre: rechazoVigente.realizadoPorNombre,
+            fecha: dateFormatter.format(new Date(rechazoVigente.timestamp)),
+            motivo: rechazoVigente.valorNuevo ?? '',
+          })}
+        </div>
+      )}
+
+      {areaSinSupervisor && (
+        <div
+          role="alert"
+          className="mb-4 rounded-md border border-error/40 bg-error/10 px-3.5 py-2.5 text-sm text-body dark:border-error/30 dark:bg-error/10 dark:text-on-dark"
+        >
+          <p>{t('errors.AREA_SIN_SUPERVISOR', { area: areaNombre })}</p>
+          {user?.rol === 'JEFE_CALIDAD_SYST' && (
+            <Link to="/usuarios" className="mt-1 inline-block font-medium text-coral hover:underline dark:text-coral">
+              {t('detail.cierre.irAUsuarios')}
+            </Link>
+          )}
+        </div>
+      )}
 
       {showClosureForm && (
         <form onSubmit={(e) => void handleSubmit(onSubmitCierre)(e)} className="space-y-4">
@@ -308,22 +498,33 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
         </form>
       )}
 
-      {showPendingSecondSignature && (
-        <div className="mb-4 rounded-md border border-hairline bg-canvas p-3.5 text-sm dark:border-hairline/20 dark:bg-surface-dark">
-          <p className="text-body dark:text-on-dark">
-            {resolvedRole === 'ALTA_DIRECCION'
-              ? t('detail.cierre.pendingSecondSignature.waitingForAltaDireccion')
-              : t('detail.cierre.pendingSecondSignature.waitingForSupervisor')}
-          </p>
-          {firstSignatureEntry && (
-            <p className="mt-1 text-xs text-muted dark:text-on-dark-soft">
-              {t('detail.cierre.pendingSecondSignature.signedBy', {
-                nombre: firstSignatureEntry.realizadoPorNombre,
-                fecha: dateFormatter.format(new Date(firstSignatureEntry.timestamp)),
-              })}
-            </p>
+      {showFirmas && (
+        <dl className="mb-4 divide-y divide-hairline dark:divide-hairline/20">
+          {firmaRow(t('detail.cierre.firma1'), !!qe.cerradoPorId, qe.cerradoPorNombre, firmaJefeEntry, t('detail.cierre.pendiente'))}
+          {firmaRow(
+            t('detail.cierre.firma2', { area: areaNombre }),
+            !!qe.cierreFirmaSupervisorId,
+            qe.cierreFirmaSupervisorNombre,
+            firmaSupervisorEntry,
+            qe.cerradoPorId ? (
+              <>
+                <span>{t('detail.cierre.pendiente')}. </span>
+                {supervisoresNombres && <span>{t('detail.cierre.puedenFirmar', { nombres: supervisoresNombres })} </span>}
+                {supervisoresNombres && (
+                  <span className="text-xs text-muted dark:text-on-dark-soft">{t('detail.cierre.avisoEnviado')}</span>
+                )}
+              </>
+            ) : (
+              t('detail.cierre.esperaJCA')
+            ),
           )}
-        </div>
+        </dl>
+      )}
+
+      {showNoEsDelArea && (
+        <p className="mb-4 text-sm text-muted dark:text-on-dark-soft">
+          {t('detail.cierre.noEsDelArea', { area: areaNombre })}
+        </p>
       )}
 
       {(showFirstSignature || showSecondSignature) && (
@@ -338,15 +539,22 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
             </button>
           )}
           {showSecondSignature && resolvedRole && (
-            <button
-              type="button"
-              onClick={() => setPinModalRole(resolvedRole)}
-              className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark"
-            >
-              {resolvedRole === 'SUPERVISOR'
-                ? t('detail.cierre.secondSignature.buttonSupervisor')
-                : t('detail.cierre.secondSignature.buttonAltaDireccion')}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setPinModalRole(resolvedRole)}
+                className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark"
+              >
+                {t('detail.cierre.secondSignature.button')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRechazoModalOpen(true)}
+                className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
+              >
+                {t('detail.cierre.rechazar')}
+              </button>
+            </>
           )}
         </div>
       )}

@@ -122,3 +122,24 @@ describe('QEAuditTrail — asistente IA (qe-asistente-ia)', () => {
     expect(screen.getByText(/detail.auditTrail.sugerenciaIAEditada/)).toBeInTheDocument()
   })
 })
+
+describe('QEAuditTrail — firmas y rechazo del cierre (qe-cierre-firma-supervisor-area)', () => {
+  it('labels both closure signatures', () => {
+    mockEntries = [
+      makeEntry({ id: 'aud-1', accion: 'FIRMA_CIERRE_JEFE_CALIDAD', valorNuevo: 'Ana Pérez' }),
+      makeEntry({ id: 'aud-2', accion: 'FIRMA_CIERRE_SUPERVISOR', valorNuevo: 'Luis Soto' }),
+    ]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+
+    // Con el mock de t (devuelve la clave), describeEntry cae al código de la acción.
+    expect(screen.getByText('FIRMA_CIERRE_JEFE_CALIDAD')).toBeInTheDocument()
+    expect(screen.getByText('FIRMA_CIERRE_SUPERVISOR')).toBeInTheDocument()
+  })
+
+  it('shows the reason of a closure rejection', () => {
+    mockEntries = [makeEntry({ accion: 'CIERRE_RECHAZADO', valorNuevo: 'Falta evidencia de la AC 2 en campo' })]
+    render(<QEAuditTrail qeId="qe-2026-001" />)
+
+    expect(screen.getByText('CIERRE_RECHAZADO: Falta evidencia de la AC 2 en campo')).toBeInTheDocument()
+  })
+})

@@ -7,9 +7,11 @@ import type { Notificacion } from '../../../types/notification.types'
 interface NotificationListProps {
   notifications: Notificacion[]
   emptyMessage?: string
+  /** Se llama al hacer clic en una notificación, antes de navegar (p.ej. cerrar el panel). */
+  onNavigate?: () => void
 }
 
-export function NotificationList({ notifications, emptyMessage }: NotificationListProps) {
+export function NotificationList({ notifications, emptyMessage, onNavigate }: NotificationListProps) {
   const { t } = useTranslation('notifications')
   const navigate = useNavigate()
   const markRead = useMarkNotificationRead()
@@ -24,6 +26,7 @@ export function NotificationList({ notifications, emptyMessage }: NotificationLi
 
   const handleClick = (notificacion: Notificacion) => {
     if (!notificacion.leida) markRead.mutate(notificacion.id)
+    onNavigate?.()
     navigate(notificacion.link)
   }
 

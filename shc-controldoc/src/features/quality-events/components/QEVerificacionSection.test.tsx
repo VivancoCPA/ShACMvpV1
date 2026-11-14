@@ -28,13 +28,17 @@ vi.mock('../hooks/useVerificacionEficacia', () => ({
   useVerificacionEficacia: () => ({ mutate: verificacionEficaciaMutate, isPending: false }),
 }))
 
-vi.mock('../../nonconformities/hooks/useUsers', () => ({
-  useUsers: () => ({
-    data: [
-      { id: 'user-004', nombre: 'Ana', apellido: 'Torres', email: 'ana@shac.internal', rol: 'AUDITOR_INTERNO' },
-      { id: 'user-006', nombre: 'Pedro', apellido: 'Quispe', email: 'pedro@shac.internal', rol: 'AUDITOR_INTERNO' },
-    ],
-  }),
+// ac-tipo-responsables: GET /api/users/candidatos?roles=AUDITOR_INTERNO (no GET /api/users, 403 para el JCA).
+const useCandidatosUsuariosMock = vi.fn((roles: readonly string[]) => ({
+  data: roles.includes('AUDITOR_INTERNO')
+    ? [
+        { id: 'user-004', nombreCompleto: 'Ana Torres', rol: 'AUDITOR_INTERNO' },
+        { id: 'user-006', nombreCompleto: 'Pedro Quispe', rol: 'AUDITOR_INTERNO' },
+      ]
+    : [],
+}))
+vi.mock('../../users/hooks/useCandidatosUsuarios', () => ({
+  useCandidatosUsuarios: (roles: readonly string[]) => useCandidatosUsuariosMock(roles),
 }))
 
 function buildQE(overrides: Partial<QualityEvent>): QualityEvent {
@@ -89,6 +93,9 @@ describe('QEVerificacionSection — asignación de auditor al forzar vencimiento
 
     const button = screen.getByText('detail.verificacion.forzarVencimiento').closest('button')
     expect(button).toBeDisabled()
+    // ac-tipo-responsables: pide solo auditores al endpoint de candidatos, la lista no queda vacía.
+    expect(useCandidatosUsuariosMock).toHaveBeenCalledWith(['AUDITOR_INTERNO'])
+    expect(screen.getByText('Ana Torres')).toBeInTheDocument()
 
     const select = screen.getByLabelText('detail.verificacion.auditorAsignado.label')
     fireEvent.change(select, { target: { value: 'user-004' } })

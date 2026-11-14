@@ -29,6 +29,7 @@ function makeAC(overrides: Partial<AccionCorrectivaQE>): AccionCorrectivaQE {
     descripcion: 'Reforzar señalización del área',
     responsableId: 'user-002',
     responsableNombre: 'Luis Paredes',
+    tipo: 'CORRECTIVA',
     plazoFecha: '2026-07-01',
     estado: 'PENDIENTE',
     creadoEn: '2026-06-01T08:00:00Z',

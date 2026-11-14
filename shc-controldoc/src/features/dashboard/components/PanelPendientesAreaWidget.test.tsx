@@ -33,6 +33,7 @@ function ac(overrides: Partial<AccionCorrectivaResumen>): AccionCorrectivaResume
     descripcion: 'Acción correctiva de prueba',
     responsableId: 'user-operario-001',
     responsableNombre: 'Luis Quispe',
+    tipo: 'CORRECTIVA',
     plazoFecha: new Date(Date.now() + 5 * 86_400_000).toISOString(),
     estado: 'PENDIENTE',
     ...overrides,
@@ -85,7 +86,7 @@ describe('PanelPendientesAreaWidget', () => {
     ['QE', '/quality-events'],
     ['NC', '/nonconformities'],
     ['INCIDENTE', '/incidents'],
-  ] as const)('navigates to %s route when an AC row is clicked', async (origenTipo, _route) => {
+  ] as const)('navigates to %s route when an AC row is clicked', async (origenTipo) => {
     const user = userEvent.setup()
     renderWidget([], [ac({ origenTipo, origenId: 'origen-99' })])
     await user.click(screen.getByRole('button'))

@@ -511,7 +511,7 @@ export function QEInvestigationSection({ qe }: QEInvestigationSectionProps) {
           onConfirm={onCrearAC}
           onClose={() => setAccionACrear(null)}
           isPending={createAC.isPending}
-          defaultValues={{ descripcion: accionACrear.descripcion }}
+          defaultValues={{ descripcion: accionACrear.descripcion, tipo: accionACrear.tipo }}
           ayuda={
             <p className="rounded-md bg-surface-cream px-3.5 py-2.5 text-xs text-body dark:bg-surface-dark-soft dark:text-on-dark-soft">
               <Sparkles size={12} className="mr-1 inline text-amber dark:text-amber" aria-hidden="true" />

@@ -55,6 +55,7 @@ const JEFE_CALIDAD_DATA: DashboardSummaryData = {
       REABIERTO: 0,
     },
     accionesCorrectivasPorVencer: [],
+    accionesCorrectivasVencidas: [],
     tendenciaMensualVolumen: [],
     tendenciaMensualKpis: { 'KPI-01': [], 'KPI-04': [], 'KPI-05': [] },
     incidentesSinQeVencidos: [],

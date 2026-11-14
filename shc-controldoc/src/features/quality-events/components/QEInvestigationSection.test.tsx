@@ -52,8 +52,40 @@ vi.mock('../hooks/useCreateQEAccion', () => ({
   useCreateQEAccion: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
-vi.mock('../../nonconformities/hooks/useUsers', () => ({
-  useUsers: () => ({ data: [] }),
+// ac-tipo-responsables: candidatos filtrados por tipo con la misma tabla que el backend.
+const candidatosFixture = [
+  { id: 'u-ope', nombreCompleto: 'Olga Operaria', rol: 'OPERARIO' },
+  { id: 'u-sup', nombreCompleto: 'Saúl Supervisor', rol: 'SUPERVISOR' },
+  { id: 'u-jca', nombreCompleto: 'Julia Calidad', rol: 'JEFE_CALIDAD_SYST' },
+  { id: 'u-jcd', nombreCompleto: 'Jorge Documentos', rol: 'JEFE_CONTROL_DOCUMENTARIO' },
+  { id: 'u-aud', nombreCompleto: 'Ana Auditora', rol: 'AUDITOR_INTERNO' },
+  { id: 'u-dir', nombreCompleto: 'Diana Dirección', rol: 'ALTA_DIRECCION' },
+] as const
+
+vi.mock('../../../api/endpoints/users.api', async () => {
+  const { ROLES_RESPONSABLE_POR_TIPO_AC } = await import('../../../constants/accionCorrectivaTipo.constants')
+  return {
+    getCandidatosResponsableAC: (tipo: keyof typeof ROLES_RESPONSABLE_POR_TIPO_AC) =>
+      Promise.resolve(candidatosFixture.filter((c) => ROLES_RESPONSABLE_POR_TIPO_AC[tipo].includes(c.rol))),
+  }
+})
+
+vi.mock('../hooks/useCandidatosResponsableAC', async () => {
+  const { ROLES_RESPONSABLE_POR_TIPO_AC } = await import('../../../constants/accionCorrectivaTipo.constants')
+  return {
+    candidatosResponsableACQueryKey: (tipo: string) => ['acciones-correctivas', 'candidatos', tipo],
+    useCandidatosResponsableAC: (tipo: keyof typeof ROLES_RESPONSABLE_POR_TIPO_AC | undefined) => ({
+      data: tipo ? candidatosFixture.filter((c) => ROLES_RESPONSABLE_POR_TIPO_AC[tipo].includes(c.rol)) : [],
+      isLoading: false,
+    }),
+  }
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQueryClient: () => ({
+    fetchQuery: ({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn(),
+  }),
 }))
 
 let getNameMock = (): string => 'Luis Paredes'
@@ -435,6 +467,21 @@ describe('QEInvestigationSection — asistente IA (qe-asistente-ia)', () => {
 
     expect(screen.getByText('detail.acSection.agregarModal.title')).toBeInTheDocument()
     expect(screen.getByLabelText(/detail.acSection.fields.descripcion/)).toHaveValue(SUGERENCIA.accionesSugeridas[0].descripcion)
+  })
+
+  it('"Crear AC" precarga el tipo sugerido por la IA y lista sus candidatos (ac-tipo-responsables)', () => {
+    currentUser = makeUser({})
+    renderSection(makeQE({ estado: 'EN_INVESTIGACION' }))
+    recibirSugerencia()
+
+    // Segunda acción sugerida: PREVENTIVA → SUP, JCA, JCD y DIR.
+    fireEvent.click(screen.getAllByText('detail.investigation.ia.crearAC')[1])
+
+    expect(screen.getByLabelText(/detail.acSection.fields.tipo/)).toHaveValue('PREVENTIVA')
+    const responsable = screen.getByLabelText(/detail.acSection.fields.responsable/)
+    expect(responsable).not.toBeDisabled()
+    const opciones = Array.from((responsable as HTMLSelectElement).options).map((o) => o.value).filter(Boolean)
+    expect(opciones).toEqual(['u-sup', 'u-jca', 'u-jcd', 'u-dir'])
   })
 
   it('un 503 muestra el toast del servidor y deja el formulario intacto', () => {

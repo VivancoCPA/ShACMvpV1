@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../../../stores/authStore'
 import { useNotifications } from './useNotifications'
+import { invalidarQueriesDeEntidad } from '../utils/invalidarQueriesDeEntidad'
 
 export interface NotificationToastHandle {
   /** Marca un `createdAt` como ya visto (ya toasteado por otro canal — hoy solo
@@ -57,7 +58,10 @@ export function useNotificationToast(): NotificationToastHandle {
     const fresh = notifications.filter(
       (n) => n.usuarioId === user.id && (!baseline || n.createdAt > baseline),
     )
-    fresh.forEach((n) => toast(n.mensaje))
+    fresh.forEach((n) => {
+      toast(n.mensaje)
+      invalidarQueriesDeEntidad(n)
+    })
 
     lastSeenCreatedAtRef.current = notifications.reduce<string | null>(
       (latest, n) => (!latest || n.createdAt > latest ? n.createdAt : latest),

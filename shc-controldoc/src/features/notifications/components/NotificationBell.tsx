@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bell } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
@@ -6,6 +6,7 @@ import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRea
 import { useNotificationToast } from '../hooks/useNotificationToast'
 import { useNotificationsHub } from '../hooks/useNotificationsHub'
 import { NotificationList } from './NotificationList'
+import { useDismissable, useRouteScopedOpen } from '../../../hooks/useDismissable'
 
 export function NotificationBell() {
   const { t } = useTranslation('notifications')
@@ -13,8 +14,11 @@ export function NotificationBell() {
   const markAllRead = useMarkAllNotificationsRead()
   const toastHandle = useNotificationToast()
   useNotificationsHub(toastHandle)
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const { open, toggle, close } = useRouteScopedOpen()
+  const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
+  useDismissable(open, close, [panelRef, triggerRef])
 
   const unreadCount = notifications.filter((n) => !n.leida).length
   const sorted = [...notifications].sort(
@@ -22,11 +26,15 @@ export function NotificationBell() {
   )
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-label={t('bell.ariaLabel')}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         className="relative rounded-md p-1.5 text-muted hover:bg-hairline hover:text-ink dark:hover:bg-surface-dark-elevated dark:hover:text-on-dark"
       >
         <Bell size={17} />
@@ -38,7 +46,13 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-hairline bg-canvas shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated">
+        <div
+          ref={panelRef}
+          id={panelId}
+          role="dialog"
+          aria-label={t('title')}
+          className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-hairline bg-canvas shadow-lg dark:border-hairline/20 dark:bg-surface-dark-elevated"
+        >
           <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5 dark:border-hairline/20">
             <span className="text-sm font-medium text-ink dark:text-on-dark">{t('title')}</span>
             <button
@@ -51,7 +65,7 @@ export function NotificationBell() {
             </button>
           </div>
           <div className="max-h-96 overflow-y-auto">
-            <NotificationList notifications={sorted} />
+            <NotificationList notifications={sorted} onNavigate={close} />
           </div>
         </div>
       )}

@@ -150,7 +150,8 @@ function toSeguridadEmpresaDto(empresaId: string): SeguridadSesionEmpresa {
 }
 
 /** ADMINISTRADOR_EMPRESA solo su empresa activa (otra → 404); SUPERADMIN cualquiera; resto 403. */
-function autorizarEmpresa(request: Request, empresaId: string) {
+// También la usa la configuración de responsables de AC (acciones-correctivas.handlers.ts).
+export function autorizarEmpresa(request: Request, empresaId: string) {
   const user = getSessionUser(request)
   if (!user) return { error: err('Sesión expirada', 401) } as const
   if (user.rol !== 'ADMINISTRADOR_EMPRESA' && user.rol !== 'SUPERADMIN') {

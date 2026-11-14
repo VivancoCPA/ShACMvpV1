@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import type { AccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
 import autoTable from 'jspdf-autotable'
 import { formatNormativaVinculada } from '../utils/qualityEventHelpers'
 import {
@@ -27,10 +28,17 @@ const TURNO_LABELS: Record<QualityEvent['turno'], string> = {
   NOCHE: 'Noche',
 }
 
-const AC_ESTADO_LABELS: Record<'PENDIENTE' | 'EN_EJECUCION' | 'CERRADA', string> = {
+const AC_ESTADO_LABELS: Record<'PENDIENTE' | 'EN_EJECUCION' | 'COMPLETADA' | 'CERRADA', string> = {
   PENDIENTE: 'Pendiente',
   EN_EJECUCION: 'En ejecución',
+  COMPLETADA: 'Pendiente de verificación',
   CERRADA: 'Cerrada',
+}
+
+const AC_TIPO_LABELS: Record<AccionCorrectivaTipo, string> = {
+  CORRECTIVA: 'Correctiva',
+  PREVENTIVA: 'Preventiva',
+  MEJORA: 'Mejora',
 }
 
 const ISHIKAWA_LABELS: Record<IshikawaCategoria, string> = {
@@ -174,8 +182,9 @@ function drawPlanAcciones(doc: jsPDF, qe: QualityEvent, y: number): void {
 
   autoTable(doc, {
     startY: y,
-    head: [['Descripción', 'Responsable', 'Plazo', 'Estado', 'Evidencia', 'Resultado']],
+    head: [['Tipo', 'Descripción', 'Responsable', 'Plazo', 'Estado', 'Evidencia', 'Resultado']],
     body: qe.accionesCorrectivas.map((ac) => [
+      AC_TIPO_LABELS[ac.tipo] ?? '—',
       ac.descripcion,
       ac.responsableNombre,
       formatFecha(ac.plazoFecha),

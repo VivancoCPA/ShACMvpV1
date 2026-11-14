@@ -1,20 +1,30 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Plus, X, CheckCircle, Play, AlertTriangle, CalendarClock, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Plus, X, CheckCircle, Play, AlertTriangle, CalendarClock, ThumbsUp, ThumbsDown, ShieldCheck, Paperclip } from 'lucide-react'
 import { DeadlineBadge } from '../../../components/shared/DeadlineBadge'
-import { useUsers } from '../../nonconformities/hooks/useUsers'
+import { useUserNames } from '../../users/hooks/useUserNames'
 import { useAuthStore } from '../../../stores/authStore'
+import { getCandidatosResponsableAC } from '../../../api/endpoints/users.api'
+import { AC_TIPOS, isAccionCorrectivaTipo } from '../../../constants/accionCorrectivaTipo.constants'
+import { candidatosResponsableACQueryKey, useCandidatosResponsableAC } from '../hooks/useCandidatosResponsableAC'
 import { useCreateQEAccion } from '../hooks/useCreateQEAccion'
-import { useUpdateQEAccion } from '../hooks/useUpdateQEAccion'
-import { useCerrarQEAccion } from '../hooks/useCerrarQEAccion'
+import { useEjecutarQEAccion, useIniciarQEAccion, useVerificarQEAccion } from '../hooks/useAccionCorrectivaFlujo'
 import { useSolicitarAjustePlazoAC } from '../hooks/useSolicitarAjustePlazoAC'
 import { useRevisarAjustePlazoAC } from '../hooks/useRevisarAjustePlazoAC'
+import { useDescartarSolicitudAC } from '../hooks/useDescartarSolicitudAC'
+import type { DescartarSolicitudACInput } from '../schemas/descartarSolicitudAC.schema'
 import { createQEAccionSchema, type CreateQEACInput } from '../schemas/createQEAccion.schema'
-import { cerrarQEAccionSchema, type CerrarQEACInput } from '../schemas/cerrarQEAccion.schema'
+import type { EjecutarQEACInput } from '../schemas/ejecutarQEAccion.schema'
+import type { VerificarQEACInput } from '../schemas/verificarQEAccion.schema'
+import { EjecutarQEACModal } from './EjecutarQEACModal'
+import { VerificarQEACModal } from './VerificarQEACModal'
+import { DescartarSolicitudACModal } from './DescartarSolicitudACModal'
+import { EvidenciaACItem } from './EvidenciaACItem'
 import { solicitarAjustePlazoACSchema, type SolicitarAjustePlazoACInput } from '../schemas/solicitarAjustePlazoAC.schema'
 import { rechazarAjustePlazoACSchema, type RechazarAjustePlazoACInput } from '../schemas/rechazarAjustePlazoAC.schema'
 import { PLAZO_MINIMO_DIAS_HABILES } from '../constants/plazoAjuste.constants'
@@ -26,6 +36,7 @@ import type { AccionCorrectivaQE, QEStatus, QESeverity, SolicitudAjustePlazoAC }
 const AC_STATUS_COLORS: Record<string, string> = {
   PENDIENTE: 'bg-muted-soft/20 text-muted',
   EN_EJECUCION: 'bg-amber/20 text-amber',
+  COMPLETADA: 'bg-teal/20 text-teal',
   CERRADA: 'bg-success/20 text-success',
 }
 
@@ -38,106 +49,6 @@ const PRIORIDAD_COLORS: Record<string, string> = {
 
 function getPendienteSolicitud(ac: AccionCorrectivaQE): SolicitudAjustePlazoAC | undefined {
   return ac.solicitudesAjustePlazo.find((s) => s.estado === 'PENDIENTE')
-}
-
-// ─── CerrarQEACModal ──────────────────────────────────────────────────────────
-
-function CerrarQEACModal({
-  onConfirm,
-  onClose,
-  isPending,
-}: {
-  onConfirm: (data: CerrarQEACInput) => void
-  onClose: () => void
-  isPending: boolean
-}) {
-  const { t } = useTranslation('qualityEvents')
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CerrarQEACInput>({ resolver: zodResolver(cerrarQEAccionSchema) })
-
-  const inputClass =
-    'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60">
-      <div className="relative w-full max-w-md rounded-xl bg-canvas p-6 shadow-xl dark:bg-surface-dark-elevated">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('detail.acSection.actions.cancel')}
-          className="absolute right-4 top-4 text-muted hover:text-ink dark:text-on-dark-soft dark:hover:text-on-dark"
-        >
-          <X size={18} />
-        </button>
-
-        <h2 className="mb-1 font-medium text-ink dark:text-on-dark">
-          {t('detail.acSection.cerrarModal.title')}
-        </h2>
-        <p className="mb-4 text-sm text-muted dark:text-on-dark-soft">
-          {t('detail.acSection.cerrarModal.body')}
-        </p>
-
-        <form onSubmit={(e) => void handleSubmit(onConfirm)(e)} className="space-y-4">
-          <div>
-            <label
-              htmlFor="qeac-descripcionEvidencia"
-              className="mb-1 block text-sm font-medium text-body dark:text-on-dark-soft"
-            >
-              {t('detail.acSection.fields.evidencia')} <span className="text-error">*</span>
-            </label>
-            <textarea
-              id="qeac-descripcionEvidencia"
-              rows={3}
-              maxLength={2000}
-              className={inputClass}
-              placeholder={t('detail.acSection.placeholders.evidencia')}
-              {...register('descripcionEvidencia')}
-            />
-            {errors.descripcionEvidencia && (
-              <p className="mt-1 text-xs text-error">{errors.descripcionEvidencia.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="qeac-evidenciaUrl"
-              className="mb-1 block text-sm font-medium text-body dark:text-on-dark-soft"
-            >
-              {t('detail.acSection.fields.evidenciaUrl')}
-            </label>
-            <input
-              id="qeac-evidenciaUrl"
-              type="url"
-              className={inputClass}
-              placeholder={t('detail.acSection.placeholders.evidenciaUrl')}
-              {...register('evidenciaUrl')}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark dark:hover:bg-surface-dark-soft"
-            >
-              {t('detail.acSection.actions.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-60"
-            >
-              {t('detail.acSection.actions.cerrarModal')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 }
 
 // ─── AgregarQEACModal ─────────────────────────────────────────────────────────
@@ -158,7 +69,9 @@ export function AgregarQEACModal({
   ayuda?: ReactNode
 }) {
   const { t } = useTranslation('qualityEvents')
-  const { data: users = [] } = useUsers()
+  const queryClient = useQueryClient()
+  const [avisoResponsable, setAvisoResponsable] = useState<string | null>(null)
+  const esAdminEmpresa = useAuthStore((s) => s.user?.rol === 'ADMINISTRADOR_EMPRESA')
 
   // `prioridad` usa `z.preprocess()` en el schema (normaliza '' a undefined
   // antes de validar el enum), lo que hace que TFieldValues (input) difiera
@@ -168,11 +81,65 @@ export function AgregarQEACModal({
   const {
     register,
     handleSubmit,
+    watch,
+    getValues,
+    setValue,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof createQEAccionSchema>, unknown, CreateQEACInput>({
     resolver: zodResolver(createQEAccionSchema),
     defaultValues,
   })
+
+  // ac-tipo-responsables: el responsable se elige entre los candidatos del tipo de acción.
+  const tipoValue = watch('tipo')
+  const tipo = isAccionCorrectivaTipo(tipoValue) ? tipoValue : undefined
+  const { data: candidatos = [], isLoading: cargandoCandidatos } = useCandidatosResponsableAC(tipo)
+
+  // Al cambiar el tipo (en el handler, no en un efecto): si el responsable elegido no está entre los
+  // candidatos del tipo nuevo, se limpia y se avisa inline.
+  const onTipoChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const nuevoTipo = e.target.value
+    setAvisoResponsable(null)
+    const responsableId = getValues('responsableId')
+    if (!isAccionCorrectivaTipo(nuevoTipo) || !responsableId) return
+
+    const nombreAnterior = candidatos.find((c) => c.id === responsableId)?.nombreCompleto
+    const nuevosCandidatos = await queryClient.fetchQuery({
+      queryKey: candidatosResponsableACQueryKey(nuevoTipo),
+      queryFn: () => getCandidatosResponsableAC(nuevoTipo),
+      staleTime: 60_000,
+    })
+    // El usuario pudo volver a cambiar el tipo mientras se cargaba la lista.
+    if (getValues('tipo') !== nuevoTipo || getValues('responsableId') !== responsableId) return
+    if (nuevosCandidatos.some((c) => c.id === responsableId)) return
+
+    setValue('responsableId', '', { shouldValidate: false })
+    setAvisoResponsable(
+      t('detail.acSection.responsableNoValido', {
+        nombre: nombreAnterior ?? t('common:userNames.noDisponible'),
+        tipo: t(`common:acTipo.${nuevoTipo}`),
+      }),
+    )
+  }
+
+  // El backend valida el responsable con la política del tipo y responde un error de campo
+  // `responsableId: ...` (FieldValidationException) — se muestra en el propio campo.
+  const onSubmit = async (data: CreateQEACInput) => {
+    try {
+      await onConfirm(data)
+    } catch (error) {
+      const serverErrors = (error as { response?: { data?: { errors?: string[] } } })?.response?.data?.errors
+      const campoResponsable = serverErrors?.find((e) => e.startsWith('responsableId:'))
+      if (campoResponsable) {
+        setError('responsableId', { message: campoResponsable.slice('responsableId:'.length).trim() })
+      }
+    }
+  }
+
+  const responsablePlaceholder = !tipo
+    ? t('detail.acSection.placeholders.elegirTipoPrimero')
+    : t('detail.acSection.placeholders.responsable')
 
   const inputClass =
     'w-full rounded-md border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink h-10 focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral dark:border-hairline/20 dark:bg-surface-dark dark:text-on-dark'
@@ -195,7 +162,7 @@ export function AgregarQEACModal({
           </button>
         </div>
 
-        <form onSubmit={(e) => void handleSubmit(onConfirm)(e)}>
+        <form onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="space-y-4 px-6 py-5">
             {ayuda}
             <div>
@@ -232,22 +199,64 @@ export function AgregarQEACModal({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="qeac-responsable" className={labelClass}>
-                  {t('detail.acSection.fields.responsable')} <span className="text-error">*</span>
+                <label htmlFor="qeac-tipo" className={labelClass}>
+                  {t('detail.acSection.fields.tipo')} <span className="text-error">*</span>
                 </label>
-                <select id="qeac-responsable" className={inputClass} {...register('responsableId')}>
-                  <option value="">{t('detail.acSection.placeholders.responsable')}</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre} {u.apellido}
+                <select
+                  id="qeac-tipo"
+                  className={inputClass}
+                  {...register('tipo', { onChange: (e: ChangeEvent<HTMLSelectElement>) => void onTipoChange(e) })}
+                >
+                  <option value="">{t('detail.acSection.placeholders.tipo')}</option>
+                  {AC_TIPOS.map((tp) => (
+                    <option key={tp} value={tp}>
+                      {t(`common:acTipo.${tp}`)}
                     </option>
                   ))}
                 </select>
+                {errors.tipo && (
+                  <p className="mt-1 text-xs text-error">{t('detail.acSection.errors.tipoRequerido')}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="qeac-responsable" className={labelClass}>
+                  {t('detail.acSection.fields.responsable')} <span className="text-error">*</span>
+                </label>
+                <select
+                  id="qeac-responsable"
+                  className={`${inputClass} disabled:opacity-60`}
+                  disabled={!tipo}
+                  {...register('responsableId', { onChange: () => setAvisoResponsable(null) })}
+                >
+                  <option value="">{responsablePlaceholder}</option>
+                  {candidatos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombreCompleto} · {t(`auth:roles.${c.rol}`)}
+                    </option>
+                  ))}
+                </select>
+                {avisoResponsable && (
+                  <p role="status" className="mt-1 text-xs text-warning dark:text-warning">
+                    {avisoResponsable}
+                  </p>
+                )}
+                {tipo && !cargandoCandidatos && candidatos.length === 0 && (
+                  <p className="mt-1 text-xs text-muted dark:text-on-dark-soft">
+                    {t('detail.acSection.sinCandidatos')}{' '}
+                    {/* ac-responsables-configurable-empresa: la tabla tipo → roles es configurable por empresa. */}
+                    {esAdminEmpresa
+                      ? t('detail.acSection.sinCandidatosAdmin')
+                      : t('detail.acSection.sinCandidatosConsulta')}
+                  </p>
+                )}
                 {errors.responsableId && (
                   <p className="mt-1 text-xs text-error">{errors.responsableId.message}</p>
                 )}
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="qeac-prioridad" className={labelClass}>
                   {t('detail.acSection.fields.prioridad')}
@@ -264,16 +273,16 @@ export function AgregarQEACModal({
                   <p className="mt-1 text-xs text-error">{errors.prioridad.message}</p>
                 )}
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="qeac-plazo" className={labelClass}>
-                {t('detail.acSection.fields.plazoFecha')} <span className="text-error">*</span>
-              </label>
-              <input id="qeac-plazo" type="date" className={inputClass} {...register('plazoFecha')} />
-              {errors.plazoFecha && (
-                <p className="mt-1 text-xs text-error">{errors.plazoFecha.message}</p>
-              )}
+              <div>
+                <label htmlFor="qeac-plazo" className={labelClass}>
+                  {t('detail.acSection.fields.plazoFecha')} <span className="text-error">*</span>
+                </label>
+                <input id="qeac-plazo" type="date" className={inputClass} {...register('plazoFecha')} />
+                {errors.plazoFecha && (
+                  <p className="mt-1 text-xs text-error">{errors.plazoFecha.message}</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -524,9 +533,10 @@ function AjustePlazoPanel({
   isPending: boolean
 }) {
   const { t, i18n } = useTranslation('qualityEvents')
-  const { data: users = [] } = useUsers()
-  const solicitante = users.find((u) => u.id === solicitud.solicitadoPorId)
-  const solicitanteNombre = solicitante ? `${solicitante.nombre} ${solicitante.apellido}` : solicitud.solicitadoPorId
+  // GET /api/users/nombres (sin restricción de rol) — nunca se muestra el id; si no se resuelve,
+  // getName devuelve "Usuario no disponible" (ac-tipo-responsables).
+  const { getName } = useUserNames([solicitud.solicitadoPorId])
+  const solicitanteNombre = getName(solicitud.solicitadoPorId)
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' })
 
   return (
@@ -598,15 +608,18 @@ export function QEACSection({
   solicitudesAC,
   readOnly = false,
 }: QEACSectionProps) {
-  const { t } = useTranslation('qualityEvents')
+  const { t, i18n } = useTranslation('qualityEvents')
   const user = useAuthStore((s) => s.user)
 
   const [showAddModal, setShowAddModal] = useState(false)
-  const [closingAcId, setClosingAcId] = useState<string | null>(null)
+  const [ejecutandoAcId, setEjecutandoAcId] = useState<string | null>(null)
+  const [verificandoAcId, setVerificandoAcId] = useState<string | null>(null)
+  const [evidenciasAbiertas, setEvidenciasAbiertas] = useState<string | null>(null)
   const [solicitandoAjusteAcId, setSolicitandoAjusteAcId] = useState<string | null>(null)
   const [rechazandoSolicitud, setRechazandoSolicitud] = useState<{ acId: string; solicitudId: string } | null>(null)
+  const [descartandoSolicitud, setDescartandoSolicitud] = useState(false)
 
-  // The close-AC endpoint returns only the AC, not the parent QE — the auto-transition to
+  // The verify-AC endpoint returns only the AC, not the parent QE — the auto-transition to
   // PENDIENTE_CIERRE (RN-QE-003) is observed via the qeEstado prop changing after the query
   // invalidation refetches the QE detail, not from the mutation's own response.
   const previousEstadoRef = useRef(qeEstado)
@@ -618,17 +631,27 @@ export function QEACSection({
   }, [qeEstado, t])
 
   const createAC = useCreateQEAccion(qeId)
-  const updateAC = useUpdateQEAccion(qeId)
-  const cerrarAC = useCerrarQEAccion(qeId)
+  const iniciarAC = useIniciarQEAccion(qeId)
+  const ejecutarAC = useEjecutarQEAccion(qeId)
+  const verificarAC = useVerificarQEAccion(qeId)
   const solicitarAjustePlazo = useSolicitarAjustePlazoAC(qeId)
   const revisarAjustePlazo = useRevisarAjustePlazoAC(qeId)
+  const descartarSolicitud = useDescartarSolicitudAC(qeId)
 
   const canAsignarAC =
     !readOnly && user?.rol === 'JEFE_CALIDAD_SYST' && AC_CREATE_VISIBLE_STATES.includes(qeEstado)
   const showSolicitudesACBanner = user?.rol === 'JEFE_CALIDAD_SYST' && solicitudesAC > 0
   const cerradas = accionesCorrectivas.filter((ac) => ac.estado === 'CERRADA').length
 
+  const esJca = user?.rol === 'JEFE_CALIDAD_SYST'
   const solicitandoAjusteAc = accionesCorrectivas.find((ac) => ac.id === solicitandoAjusteAcId)
+  const ejecutandoAc = accionesCorrectivas.find((ac) => ac.id === ejecutandoAcId)
+  const verificandoAc = accionesCorrectivas.find((ac) => ac.id === verificandoAcId)
+  const formatoFecha = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' })
+
+  const onDescartarConfirm = (data: DescartarSolicitudACInput) => {
+    descartarSolicitud.mutate(data.motivo, { onSuccess: () => setDescartandoSolicitud(false) })
+  }
 
   const onAddAC = async (data: CreateQEACInput) => {
     await createAC.mutateAsync(data)
@@ -636,12 +659,17 @@ export function QEACSection({
   }
 
   const onIniciar = (acId: string) => {
-    updateAC.mutate({ acId, data: { estado: 'EN_EJECUCION' } })
+    iniciarAC.mutate(acId)
   }
 
-  const onCerrarConfirm = (data: CerrarQEACInput) => {
-    if (!closingAcId) return
-    cerrarAC.mutate({ acId: closingAcId, data }, { onSuccess: () => setClosingAcId(null) })
+  const onEjecutarConfirm = (data: EjecutarQEACInput) => {
+    if (!ejecutandoAcId) return
+    ejecutarAC.mutate({ acId: ejecutandoAcId, data }, { onSuccess: () => setEjecutandoAcId(null) })
+  }
+
+  const onVerificar = (data: VerificarQEACInput) => {
+    if (!verificandoAcId) return
+    verificarAC.mutate({ acId: verificandoAcId, data }, { onSuccess: () => setVerificandoAcId(null) })
   }
 
   const onSolicitarAjusteConfirm = (data: SolicitarAjustePlazoACInput) => {
@@ -698,6 +726,7 @@ export function QEACSection({
 
   return (
     <section
+      id="qe-ac-section"
       aria-labelledby="qe-ac-section-title"
       className="rounded-lg border border-hairline bg-surface-card p-6 dark:border-hairline/20 dark:bg-surface-dark-elevated"
     >
@@ -705,11 +734,23 @@ export function QEACSection({
         <AgregarQEACModal onConfirm={onAddAC} onClose={() => setShowAddModal(false)} isPending={createAC.isPending} />
       )}
 
-      {closingAcId && (
-        <CerrarQEACModal
-          onConfirm={onCerrarConfirm}
-          onClose={() => setClosingAcId(null)}
-          isPending={cerrarAC.isPending}
+      {ejecutandoAc && (
+        <EjecutarQEACModal
+          qeId={qeId}
+          ac={ejecutandoAc}
+          onConfirm={onEjecutarConfirm}
+          onClose={() => setEjecutandoAcId(null)}
+          isPending={ejecutarAC.isPending}
+        />
+      )}
+
+      {verificandoAc && (
+        <VerificarQEACModal
+          qeId={qeId}
+          ac={verificandoAc}
+          onVerificar={onVerificar}
+          onClose={() => setVerificandoAcId(null)}
+          isPending={verificarAC.isPending}
         />
       )}
 
@@ -731,10 +772,28 @@ export function QEACSection({
         />
       )}
 
+      {descartandoSolicitud && (
+        <DescartarSolicitudACModal
+          onConfirm={onDescartarConfirm}
+          onClose={() => setDescartandoSolicitud(false)}
+          isPending={descartarSolicitud.isPending}
+        />
+      )}
+
       {showSolicitudesACBanner && (
-        <div className="mb-4 flex items-start gap-2.5 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-warning">
+        <div className="mb-4 flex flex-wrap items-start gap-2.5 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-warning dark:border-warning/30 dark:bg-warning/10 dark:text-warning">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <p className="text-sm">{t('detail.acSection.solicitudesACBanner', { count: solicitudesAC })}</p>
+          <p className="min-w-0 flex-1 text-sm">{t('detail.acSection.solicitudesACBanner', { count: solicitudesAC })}</p>
+          {/* qe-quitar-boton-crear-ac-duplicado: la AC se crea con "Nueva AC" del encabezado (descuenta la solicitud en el servidor); aquí solo se descarta. */}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setDescartandoSolicitud(true)}
+              className="shrink-0 rounded-md border border-warning/40 px-2.5 py-1 text-xs font-medium text-warning hover:bg-warning/10 dark:border-warning/40 dark:text-warning dark:hover:bg-warning/10"
+            >
+              {t('detail.acSection.descartarSolicitud')}
+            </button>
+          )}
         </div>
       )}
 
@@ -764,8 +823,15 @@ export function QEACSection({
         <ul className="divide-y divide-hairline dark:divide-hairline/20">
           {accionesCorrectivas.map((ac) => {
             const pendienteSolicitud = getPendienteSolicitud(ac)
+            // ac-ejecucion-verificacion-evidencias: el responsable inicia y ejecuta; el JCA verifica.
+            // Un JCA que además es el responsable ve ambas acciones según el estado.
+            const esResponsable = user?.id === ac.responsableId
+            const evidencias = ac.evidencias ?? []
             const canSolicitarAjuste =
-              !readOnly && user?.id === ac.responsableId && ac.estado !== 'CERRADA' && !pendienteSolicitud
+              !readOnly &&
+              esResponsable &&
+              (ac.estado === 'PENDIENTE' || ac.estado === 'EN_EJECUCION') &&
+              !pendienteSolicitud
             const canDecideSolicitud =
               !!pendienteSolicitud &&
               !readOnly &&
@@ -779,7 +845,14 @@ export function QEACSection({
                     {ac.titulo && (
                       <p className="text-sm font-medium text-body dark:text-on-dark">{ac.titulo}</p>
                     )}
-                    <p className="text-sm text-body dark:text-on-dark-soft">{ac.descripcion}</p>
+                    <p className="text-sm text-body dark:text-on-dark-soft">
+                      {ac.descripcion}
+                      {ac.tipo && (
+                        <span className="ml-2 inline-flex rounded-xs border border-hairline px-1.5 py-0.5 align-middle text-[11px] font-medium text-muted dark:border-hairline/20 dark:text-on-dark-soft">
+                          {t(`common:acTipo.${ac.tipo}`)}
+                        </span>
+                      )}
+                    </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <span
                         className={`rounded-pill px-2 py-0.5 text-xs font-medium ${AC_STATUS_COLORS[ac.estado] ?? 'bg-muted-soft/20 text-muted'}`}
@@ -796,11 +869,58 @@ export function QEACSection({
                       <span className="text-xs text-muted dark:text-on-dark-soft">{ac.responsableNombre}</span>
                       <DeadlineBadge fechaCierre={ac.plazoFecha} estado={ac.estado} />
                     </div>
-                    {ac.descripcionEvidencia && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                    {ac.estado === 'EN_EJECUCION' && ac.motivoDevolucion && (
+                      <p
+                        role="status"
+                        className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber/40 bg-amber/10 px-2.5 py-1.5 text-xs text-amber dark:border-amber/40 dark:bg-amber/10 dark:text-amber"
+                      >
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+                        {t('detail.acSection.devuelta', { motivo: ac.motivoDevolucion })}
+                      </p>
+                    )}
+                    {(ac.estado === 'COMPLETADA' || ac.estado === 'CERRADA') && ac.descripcionEvidencia && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-success dark:text-success">
                         <CheckCircle size={12} />
                         {ac.descripcionEvidencia}
                       </p>
+                    )}
+                    {ac.estado === 'CERRADA' && ac.verificadaPorNombre && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-muted dark:text-on-dark-soft">
+                        <ShieldCheck size={12} aria-hidden="true" />
+                        {t('detail.acSection.verificadaPor', {
+                          nombre: ac.verificadaPorNombre,
+                          fecha: ac.verificadaEn ? formatoFecha.format(new Date(ac.verificadaEn)) : '—',
+                        })}
+                      </p>
+                    )}
+                    {ac.estado === 'CERRADA' && evidencias.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setEvidenciasAbiertas(evidenciasAbiertas === ac.id ? null : ac.id)}
+                        aria-expanded={evidenciasAbiertas === ac.id}
+                        className="mt-1 flex items-center gap-1 text-xs text-coral hover:underline dark:text-coral"
+                      >
+                        <Paperclip size={12} aria-hidden="true" />
+                        {t('detail.acSection.evidencias.ver', { count: evidencias.length })}
+                      </button>
+                    )}
+                    {evidenciasAbiertas === ac.id && (
+                      <ul className="mt-2 space-y-2">
+                        {evidencias.map((ev) => (
+                          <EvidenciaACItem key={ev.id} qeId={qeId} acId={ac.id} evidencia={ev} />
+                        ))}
+                      </ul>
+                    )}
+                    {ac.evidenciaUrl && (
+                      <a
+                        href={ac.evidenciaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-coral hover:underline dark:text-coral"
+                      >
+                        <Paperclip size={12} aria-hidden="true" />
+                        {t('detail.acSection.evidencias.historica')}
+                      </a>
                     )}
 
                     {pendienteSolicitud && (
@@ -815,25 +935,35 @@ export function QEACSection({
                   </div>
 
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    {!readOnly && ac.estado === 'PENDIENTE' && (
+                    {!readOnly && esResponsable && ac.estado === 'PENDIENTE' && (
                       <button
                         type="button"
                         onClick={() => onIniciar(ac.id)}
-                        disabled={updateAC.isPending}
+                        disabled={iniciarAC.isPending}
                         className="flex items-center gap-1 rounded-md border border-teal/40 px-2.5 py-1 text-xs font-medium text-teal hover:bg-teal/10 disabled:opacity-60"
                       >
                         <Play size={11} />
                         {t('detail.acSection.actions.iniciar')}
                       </button>
                     )}
-                    {!readOnly && ac.estado === 'EN_EJECUCION' && (
+                    {!readOnly && esResponsable && ac.estado === 'EN_EJECUCION' && (
                       <button
                         type="button"
-                        onClick={() => setClosingAcId(ac.id)}
-                        className="flex items-center gap-1 rounded-md border border-success/40 px-2.5 py-1 text-xs font-medium text-success hover:bg-success/10"
+                        onClick={() => setEjecutandoAcId(ac.id)}
+                        className="flex items-center gap-1 rounded-md border border-success/40 px-2.5 py-1 text-xs font-medium text-success hover:bg-success/10 dark:border-success/40 dark:text-success"
                       >
                         <CheckCircle size={11} />
-                        {t('detail.acSection.actions.cerrar')}
+                        {t('detail.acSection.actions.marcarEjecutada')}
+                      </button>
+                    )}
+                    {!readOnly && esJca && ac.estado === 'COMPLETADA' && (
+                      <button
+                        type="button"
+                        onClick={() => setVerificandoAcId(ac.id)}
+                        className="flex items-center gap-1 rounded-md bg-coral px-2.5 py-1 text-xs font-medium text-white hover:bg-coral-dark dark:bg-coral dark:hover:bg-coral-dark"
+                      >
+                        <ShieldCheck size={11} />
+                        {t('detail.acSection.actions.verificar')}
                       </button>
                     )}
                     {canSolicitarAjuste && (
