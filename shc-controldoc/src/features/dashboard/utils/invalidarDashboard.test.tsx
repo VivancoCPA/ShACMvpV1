@@ -50,6 +50,19 @@ describe('invalidarDashboard', () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
   })
 
+  // modulo-acciones-correctivas D11: también el listado de AC, pero no la configuración ni los candidatos.
+  it('also invalidates the corrective actions list, but not responsables config or candidatos', async () => {
+    const listado = ['acciones-correctivas', 'listado', { vencida: true }]
+    const candidatos = ['acciones-correctivas', 'candidatos', 'CORRECTIVA']
+    qc.setQueryData(listado, { items: [] })
+    qc.setQueryData(candidatos, [])
+
+    invalidarDashboard(qc)
+
+    expect(qc.getQueryState(listado)?.isInvalidated).toBe(true)
+    expect(qc.getQueryState(candidatos)?.isInvalidated).toBe(false)
+  })
+
   it('useAprobarCausaRaiz invalidates the dashboard on success', async () => {
     const spy = vi.spyOn(qc, 'invalidateQueries')
     const { result } = renderHook(() => useAprobarCausaRaiz(), { wrapper })

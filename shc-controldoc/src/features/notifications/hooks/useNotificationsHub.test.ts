@@ -122,8 +122,10 @@ describe('useNotificationsHub', () => {
 
       getRegisteredHandler()(makeNotificacion({ entidadTipo: 'INCIDENTE', entidadId: 'inc-001' }))
 
-      expect(invalidateSpy).toHaveBeenCalledTimes(1)
+      // invalidarDashboard: dashboard + listado de AC (modulo-acciones-correctivas D11); nada más.
+      expect(invalidateSpy).toHaveBeenCalledTimes(2)
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['acciones-correctivas', 'listado'] })
     })
 
     it('invalida el dashboard con cualquier notificación', () => {

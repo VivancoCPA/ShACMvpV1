@@ -9,6 +9,17 @@
 } from '../../features/quality-events/types/qualityEvent.types'
 import { resolveUserDisplayName } from './userIdentity.fixtures'
 
+// Fechas relativas al momento de carga del módulo (modulo-acciones-correctivas).
+function hace(horas: number): string {
+  return new Date(Date.now() - horas * 60 * 60 * 1000).toISOString()
+}
+
+/** Fecha de calendario (medianoche UTC) dentro de `dias` días. */
+function fechaCalendarioEnDias(dias: number): string {
+  const d = new Date()
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + dias)).toISOString()
+}
+
 // Modelo B: las ACs pertenecen al QE (qeId primario). Este mapa se usa solo
 // para sembrar accionesCorrectivas en los fixtures que corresponden — no es
 // un store runtime separado.
@@ -298,6 +309,44 @@ export const qeAccionesCorrectivas: Record<string, AccionCorrectivaQE[]> = {
           requiereAprobacionGerencia: false,
         },
       ],
+    },
+    // modulo-acciones-correctivas: fechas relativas a "hoy" para que el listado de AC siempre tenga
+    // una AC por vencer y una cerrada en el mes en curso (el resto de fixtures usa fechas fijas).
+    {
+      id: 'ac-qe-013-01',
+      qeId: 'qe-2026-013',
+      titulo: 'Recalibrar balanza de recepción',
+      descripcion: 'Recalibrar la balanza de recepción de concentrado y registrar el certificado de calibración.',
+      responsableId: 'user-operario-001',
+      responsableNombre: resolveUserDisplayName('user-operario-001'),
+      plazoFecha: fechaCalendarioEnDias(3),
+      prioridad: 'MEDIA',
+      tipo: 'CORRECTIVA',
+      estado: 'EN_EJECUCION',
+      creadoEn: hace(10 * 24),
+      actualizadoEn: hace(2 * 24),
+      solicitudesAjustePlazo: [],
+    },
+    {
+      id: 'ac-qe-013-02',
+      qeId: 'qe-2026-013',
+      titulo: 'Señalizar zona de pesaje',
+      descripcion: 'Instalar señalización de tránsito peatonal en la zona de pesaje de camiones.',
+      responsableId: 'user-operario-001',
+      responsableNombre: resolveUserDisplayName('user-operario-001'),
+      plazoFecha: fechaCalendarioEnDias(1),
+      prioridad: 'BAJA',
+      tipo: 'PREVENTIVA',
+      estado: 'CERRADA',
+      descripcionEvidencia: 'Señalización instalada y verificada en campo.',
+      creadoEn: hace(12 * 24),
+      actualizadoEn: hace(1),
+      ejecutadaEn: hace(3),
+      ejecutadaPorNombre: resolveUserDisplayName('user-operario-001'),
+      verificadaEn: hace(1),
+      verificadaPorNombre: resolveUserDisplayName('user-jefecalidad-001'),
+      fechaCierre: hace(1),
+      solicitudesAjustePlazo: [],
     },
   ],
   'qe-2026-015': [

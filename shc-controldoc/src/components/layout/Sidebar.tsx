@@ -6,6 +6,7 @@ import {
   ShieldAlert,
   ClipboardList,
   BarChart2,
+  ListChecks,
   Users,
   MapPin,
   Building2,
@@ -49,6 +50,13 @@ const NAV_ITEMS: NavItem[] = [
     key: 'qualityEvents',
     path: '/quality-events',
     icon: ClipboardList,
+    roles: ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
+  },
+  {
+    // modulo-acciones-correctivas: listado unificado de AC (QE, NC, incidente).
+    key: 'accionesCorrectivas',
+    path: '/acciones-correctivas',
+    icon: ListChecks,
     roles: ['OPERARIO', 'SUPERVISOR', 'JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION'],
   },
   {

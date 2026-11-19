@@ -6,6 +6,12 @@ import { getSessionUser as getUserFromRequest } from './shared/session'
 import { useAuthStore } from '../../stores/authStore'
 import { createCambioEstadoNotification } from '../fixtures/notificationGeneration'
 import { getNCPermissions } from '../../features/nonconformities/utils/ncPermissions'
+import {
+  NC_DOMINIO_VALUES,
+  NC_ORIGEN_LABELS,
+  NC_TIPO_LABELS,
+  NC_SEVERIDAD_LABELS,
+} from '../../features/nonconformities/constants/nonconformity.constants'
 import { getDocumentsStore, makeAuditEntry as makeDocumentAuditEntry } from './documents.handlers'
 import type {
   NoConformidad,
@@ -82,6 +88,26 @@ function ok<T>(data: T, status = 200) {
 
 function err(message: string, status: number, errors?: string[]) {
   return HttpResponse.json({ success: false, data: null, message, errors }, { status })
+}
+
+// nc-turno-todos-y-errores-400 — mismo contrato que el backend real (ApiExceptionHandler): un
+// valor de enum desconocido en el body responde 400 con el campo que falló, nunca 500. La NC
+// admite turno TODOS (enum NCTurno propio, distinto de IncidentTurno).
+const NC_ENUM_VALUES: Record<string, readonly string[]> = {
+  turno: ['TODOS', 'DIA', 'TARDE', 'NOCHE'],
+  dominio: NC_DOMINIO_VALUES,
+  origen: Object.keys(NC_ORIGEN_LABELS),
+  tipo: Object.keys(NC_TIPO_LABELS),
+  severidad: Object.keys(NC_SEVERIDAD_LABELS),
+}
+
+function invalidEnumField(body: Record<string, unknown>): string | null {
+  for (const [campo, valores] of Object.entries(NC_ENUM_VALUES)) {
+    const valor = body[campo]
+    if (valor === undefined || valor === null || valor === '') continue
+    if (typeof valor !== 'string' || !valores.includes(valor)) return campo
+  }
+  return null
 }
 
 export const nonconformityHandlers = [
@@ -164,6 +190,9 @@ export const nonconformityHandlers = [
 
     const body = await request.json() as Record<string, unknown>
 
+    const campoInvalidoCrear = invalidEnumField(body)
+    if (campoInvalidoCrear) return err(`Valor inválido en el campo '${campoInvalidoCrear}'.`, 400)
+
     const required = ['origen', 'tipo', 'severidad', 'areaId', 'descripcion', 'fechaDeteccion', 'dominio', 'titulo', 'fechaCierre']
     const missing = required.filter((f) => !body[f])
     if (missing.length > 0) {
@@ -244,6 +273,10 @@ export const nonconformityHandlers = [
     }
 
     const body = await request.json() as Record<string, unknown>
+
+    const campoInvalidoEditar = invalidEnumField(body)
+    if (campoInvalidoEditar) return err(`Valor inválido en el campo '${campoInvalidoEditar}'.`, 400)
+
     const now = new Date().toISOString()
 
     const newAuditEntries: AuditTrailEntry[] = Object.keys(body).map((campo) =>

@@ -627,7 +627,8 @@
       "label": "Cambiar de empresa",
       "switchError": "No se pudo cambiar de empresa. Inténtalo de nuevo."
     },
-    "parametrosSesion": "Parámetros de sesión"
+    "parametrosSesion": "Parámetros de sesión",
+    "accionesCorrectivas": "Acciones correctivas"
   },
   "qualityEvents": {
     "list": {
@@ -2323,7 +2324,8 @@
       "empty": {
         "vencidas": "No hay acciones correctivas vencidas",
         "porVencer": "No hay acciones correctivas por vencer en los próximos 5 días hábiles"
-      }
+      },
+      "verTodas": "Ver todas"
     }
   },
   "locations": {
@@ -2888,6 +2890,110 @@
       "sesionMenorQueInactividad": "La duración máxima no puede ser menor que el tiempo de inactividad",
       "maxMenorQueMin": "El máximo no puede ser menor que el mínimo",
       "defaultFueraDeLimites": "El valor por defecto debe estar entre el mínimo y el máximo"
+    }
+  },
+  "accionesCorrectivas": {
+    "title": "Acciones correctivas",
+    "titleMias": "Mis acciones correctivas",
+    "subtitle": "Acciones correctivas, preventivas y de mejora de QE, NC e incidentes.",
+    "contadores": {
+      "label": "Resumen de acciones correctivas",
+      "abiertas": "Abiertas",
+      "enEjecucion": "En ejecución",
+      "pendientesVerificacion": "Pendientes de verificación",
+      "porVencer": "Por vencer (5 días hábiles)",
+      "vencidas": "Vencidas",
+      "cerradasPeriodo": "Cerradas este mes"
+    },
+    "columnas": {
+      "origen": "Origen",
+      "descripcion": "Descripción",
+      "tipo": "Tipo",
+      "responsable": "Responsable",
+      "area": "Área",
+      "plazo": "Plazo",
+      "estado": "Estado",
+      "verificadaPor": "Verificada por",
+      "estadoOriginal": "Estado original",
+      "creadoEn": "Fecha de creación",
+      "ejecutadaEn": "Fecha de ejecución",
+      "fechaCierre": "Fecha de cierre"
+    },
+    "estado": {
+      "PENDIENTE": "Pendiente",
+      "EN_EJECUCION": "En ejecución",
+      "PENDIENTE_VERIFICACION": "Pendiente de verificación",
+      "CERRADA": "Cerrada"
+    },
+    "estadoOriginal": {
+      "PENDIENTE": "Pendiente",
+      "EN_EJECUCION": "En ejecución",
+      "COMPLETADA": "Completada",
+      "CERRADA": "Cerrada",
+      "VENCIDA": "Vencida"
+    },
+    "origen": {
+      "QE": "QE",
+      "NC": "NC",
+      "INCIDENTE": "INC",
+      "nombre": {
+        "QE": "Quality Event",
+        "NC": "No conformidad",
+        "INCIDENTE": "Incidente"
+      }
+    },
+    "tipo": {
+      "CORRECTIVA": "Correctiva",
+      "PREVENTIVA": "Preventiva",
+      "MEJORA": "Mejora"
+    },
+    "plazo": {
+      "venceEn_one": "vence en {{count}} d",
+      "venceEn_other": "vence en {{count}} d",
+      "venceHoy": "vence hoy",
+      "vencidaHace_one": "vencida hace {{count}} d",
+      "vencidaHace_other": "vencida hace {{count}} d",
+      "vencida": "vencida"
+    },
+    "filtros": {
+      "label": "Filtros",
+      "estado": "Estado",
+      "tipo": "Tipo",
+      "origen": "Origen",
+      "responsable": "Responsable",
+      "area": "Área",
+      "todos": "Todos",
+      "todas": "Todas",
+      "plazoDesde": "Plazo desde",
+      "plazoHasta": "Plazo hasta",
+      "creadaDesde": "Creada desde",
+      "creadaHasta": "Creada hasta",
+      "buscar": "Buscar",
+      "buscarPlaceholder": "Descripción o número de origen",
+      "limpiar": "Limpiar filtros"
+    },
+    "orden": {
+      "ascendente": "Orden ascendente",
+      "descendente": "Orden descendente"
+    },
+    "paginacion": {
+      "resumen": "{{desde}}–{{hasta}} de {{total}}",
+      "anterior": "Página anterior",
+      "siguiente": "Página siguiente"
+    },
+    "verOrigen": "Ver {{numero}}",
+    "sinAcceso": "No tienes acceso al detalle de este origen.",
+    "exportar": "Exportar a Excel",
+    "exportando": "Exportando…",
+    "exportHoja": "Acciones correctivas",
+    "vacio": "No hay acciones correctivas con estos filtros.",
+    "cargando": "Cargando acciones correctivas…",
+    "redirigiendo": "Abriendo el origen de la acción correctiva…",
+    "errors": {
+      "EXPORT_DEMASIADAS_FILAS": "Hay demasiadas filas para exportar. Acota los filtros.",
+      "exportar": "No se pudo exportar a Excel.",
+      "cargar": "No se pudieron cargar las acciones correctivas.",
+      "origenNoEncontrado": "No se encontró la acción correctiva."
     }
   }
 }

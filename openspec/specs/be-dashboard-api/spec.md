@@ -130,7 +130,7 @@ El sistema SHALL calcular KPI-07 como el promedio en días hábiles entre `fecha
 - **THEN** el sistema usa la entrada más reciente para el cálculo
 
 ### Requirement: KPI-08 — Acciones correctivas vencidas activas
-El sistema SHALL calcular KPI-08 en tiempo real (sin filtrar por `periodo`, respondiendo `periodo: "TIEMPO_REAL"`) como el conteo de acciones correctivas de QE, NC e Incidentes cuyo `estado` no es terminal (no `CERRADA` ni `COMPLETADA`) y cuyo `plazoFecha` ya pasó. El semáforo SHALL ser `VERDE` si el conteo es 0, `AMARILLO` si está entre 1 y 3, `ROJO` si es mayor a 3 — no el semáforo genérico de desviación ±20%.
+El sistema SHALL calcular KPI-08 en tiempo real, sin filtrar por `periodo` y respondiendo `periodo: "TIEMPO_REAL"`, como el conteo de acciones correctivas de QE, NC e Incidentes que cumplen `DashboardKpiCalculator.EsAcVencida(estado, plazoFecha, ahora)`: `estado` no terminal (ni `CERRADA` ni `COMPLETADA`) y `plazoFecha < ahora`. Ese helper SHALL ser la única definición de "AC vencida" del dashboard: lo usan KPI-08, `JefeCalidadDashboardData.AccionesCorrectivasVencidas` y `SupervisorDashboardData.AccionesCorrectivasVencidas`. El semáforo SHALL ser `VERDE` si el conteo es 0, `AMARILLO` si está entre 1 y 3, y `ROJO` si es mayor a 3, en lugar del semáforo genérico de desviación ±20 %.
 
 #### Scenario: Sin acciones vencidas
 - **WHEN** ninguna acción correctiva de la empresa está vencida
@@ -139,6 +139,10 @@ El sistema SHALL calcular KPI-08 en tiempo real (sin filtrar por `periodo`, resp
 #### Scenario: Más de 3 acciones vencidas
 - **WHEN** hay 4 o más acciones correctivas vencidas activas
 - **THEN** KPI-08 responde `semaforo: 'ROJO'`
+
+#### Scenario: EsAcVencida
+- **WHEN** se evalúa `EsAcVencida` para una AC `EN_EJECUCION` con plazo de ayer, una `COMPLETADA` con plazo de ayer y una `PENDIENTE` con plazo de mañana
+- **THEN** solo la primera es vencida
 
 ### Requirement: KPI-09 — Distribución de QE por área
 El sistema SHALL calcular KPI-09 como el conteo de Quality Events cuya `fechaHoraReporte` cae dentro del mes de `periodo`, agrupado por `areaId` y ordenado descendentemente por conteo. La respuesta SHALL incluir `semaforo: 'INFORMATIVO'` y el arreglo completo `distribucion: { area, valor }[]`, no solo el máximo.
@@ -199,11 +203,12 @@ Para rol `SUPERVISOR`, el sistema SHALL responder `{ kpisArea, qePorEstado, qeAb
 - **THEN** esa AC aparece tanto en `accionesCorrectivasPendientesArea` como en `accionesCorrectivasVencidas`
 
 ### Requirement: Resumen JEFE_CALIDAD
-Para el rol `JEFE_CALIDAD_SYST` (mapeado a `rol: 'JEFE_CALIDAD'` en la respuesta), el sistema SHALL responder con alcance organizacional completo (toda la empresa activa, sin filtro de área): `{ kpis, qeCriticosAbiertos, ncPendientesVerificacion, distribucionQEPorTipo, qePorEstado, accionesCorrectivasPorVencer, tendenciaMensualVolumen, tendenciaMensualKpis, incidentesSinQeVencidos, incidentesSinQeVencidosTotal }`.
-- `qePorEstado` SHALL inicializar los 8 estados persistibles de QE en 0 aunque no haya datos.
-- `tendenciaMensualVolumen` SHALL cubrir los últimos 12 meses (`abiertos`/`cerrados` por mes).
-- `tendenciaMensualKpis` SHALL cubrir KPI-01/KPI-04/KPI-05 × 12 meses.
-- `incidentesSinQeVencidos` SHALL listar, como `IncidenteResumen`, como máximo 10 incidentes activos sin QE que superaron su plazo para vincular un QE (RN-INC-006, mismos plazos que el escáner de vencimientos), ordenados del más vencido al menos.
+Para el rol `JEFE_CALIDAD_SYST` (mapeado a `rol: 'JEFE_CALIDAD'` en la respuesta), el sistema SHALL responder con alcance organizacional completo (toda la empresa activa, sin filtro de área): `{ kpis, qeCriticosAbiertos, ncPendientesVerificacion, distribucionQEPorTipo, qePorEstado, accionesCorrectivasPorVencer, accionesCorrectivasVencidas, tendenciaMensualVolumen, tendenciaMensualKpis, incidentesSinQeVencidos, incidentesSinQeVencidosTotal }`.
+- `qePorEstado` SHALL inicializar en 0 los 8 estados persistibles de QE, aunque no haya datos.
+- `tendenciaMensualVolumen` SHALL cubrir los últimos 12 meses (`abiertos` y `cerrados` por mes).
+- `tendenciaMensualKpis` SHALL cubrir los últimos 12 meses (ver "Tendencia mensual de KPIs en los resúmenes JEFE_CALIDAD y ALTA_DIRECCION").
+- `accionesCorrectivasVencidas` SHALL listar, como `AccionCorrectivaResumen`, **todas** las AC de QE, NC e Incidentes de la empresa que cumplen `EsAcVencida`, sin límite, de la más vencida a la menos (`plazoFecha` ascendente). Para el mismo set de datos y el mismo instante, su `Count` SHALL ser igual al valor de KPI-08. El `ResponsableNombre` de las AC de incidente SHALL resolverse con los nombres de usuario, igual que en Operario y Supervisor.
+- `incidentesSinQeVencidos` SHALL listar, como `IncidenteResumen`, como máximo 10 incidentes activos sin QE que superaron su plazo para vincular un QE (RN-INC-006, con los mismos plazos que el escáner de vencimientos), del más vencido al menos.
 - `incidentesSinQeVencidosTotal` SHALL contar todos esos incidentes, sin el límite de 10.
 
 #### Scenario: Estado sin QE
@@ -212,11 +217,15 @@ Para el rol `JEFE_CALIDAD_SYST` (mapeado a `rol: 'JEFE_CALIDAD'` en la respuesta
 
 #### Scenario: Incidentes sin QE vencidos ordenados y limitados
 - **WHEN** la empresa tiene 12 incidentes activos sin QE con el plazo vencido y 1 en preaviso
-- **THEN** `incidentesSinQeVencidos` tiene 10 elementos, el primero es el de mayor tiempo vencido, y `incidentesSinQeVencidosTotal` es 12
+- **THEN** `incidentesSinQeVencidos` tiene 10 elementos, el primero es el que lleva más tiempo vencido, y `incidentesSinQeVencidosTotal` es 12
 
 #### Scenario: Incidentes de otra empresa o con QE no cuentan
 - **WHEN** un incidente vencido pertenece a otra empresa o ya tiene `qeId`
 - **THEN** no aparece en `incidentesSinQeVencidos`
+
+#### Scenario: AC vencidas coinciden con KPI-08
+- **WHEN** la empresa tiene AC vencidas en QE, NC e Incidentes, además de una AC `CERRADA` vencida, y otra empresa tiene AC vencidas
+- **THEN** `accionesCorrectivasVencidas` incluye las AC vencidas de los tres orígenes de la empresa, excluye la `CERRADA` y las de la otra empresa, y su `Count` es igual al `valor` de KPI-08 calculado sobre los mismos datos
 
 ### Requirement: Resumen ALTA_DIRECCION
 Para rol `ALTA_DIRECCION`, el sistema SHALL responder con alcance organizacional completo: `{ kpisEstrategicos, resumenPorModulo, alertasCriticas, tendenciaTrimestral, comparativaMensual, reaperturas, acsConSolicitudAjustePlazo }`. `resumenPorModulo.documentos` SHALL responder `{ total, publicados, vencidosRevision }` calculado sobre documentos reales de la empresa activa: `total` = documentos no eliminados; `publicados` = documentos con `estado: PUBLICADO`; `vencidosRevision` = documentos `PUBLICADO` cuya `fechaRevisionProxima` ya pasó. `tendenciaTrimestral.ncCerradas` SHALL contar las No Conformidades cuya fecha real de transición a `CERRADA` (derivada de `NoConformidadAuditTrail`, última entrada con `campoModificado: "estado"` y `valorNuevo: "CERRADA"` — **no** la columna `NoConformidad.fechaCierre`, que es una fecha límite esperada fijada en la creación y nunca sincronizada automáticamente con el cierre real) cae dentro de ese trimestre. `comparativaMensual` SHALL comparar KPI-01/KPI-04/KPI-05 entre el mes actual y el mes anterior, clasificando la tendencia como `SUBE`/`BAJA`/`ESTABLE` (diferencia absoluta menor a 2 puntos se considera `ESTABLE`). `reaperturas` SHALL listar QE con `ciclo > 1`, ordenados por fecha de reapertura más reciente. `acsConSolicitudAjustePlazo` SHALL incluir solo acciones correctivas de QE `ALTA`/`CRITICA` con al menos una solicitud de ajuste de plazo en estado `PENDIENTE`.

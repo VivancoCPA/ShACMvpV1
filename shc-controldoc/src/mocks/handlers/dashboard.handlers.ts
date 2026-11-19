@@ -8,6 +8,7 @@ import { calcularEstadoSemaforoDesdeFecha } from '../../features/dashboard/utils
 import { horasTrabajadasFixtures } from '../fixtures/horasTrabajadas.fixtures'
 import { kpi04AnioAnteriorFixtures } from '../fixtures/kpi04AnioAnterior.fixtures'
 import { getSessionUser as getUserFromRequest } from './shared/session'
+import { esAcVencida } from '../utils/accionesCorrectivas.mock'
 import type { User } from '../../types/auth.types'
 import {
   KPI_DEFINITIONS,
@@ -376,11 +377,8 @@ function calcularKpi07(qes: QualityEvent[], { start, end }: Rango): number {
   return totalDias / conAnalisisEnPeriodo.length
 }
 
-// Única definición de "AC vencida" (espejo de DashboardKpiCalculator.EsAcVencida): KPI-08, la lista
-// accionesCorrectivasVencidas del JCA y la del Supervisor (dashboard-alertas-coherentes D4).
-function esAcVencida(ac: Pick<ACBase, 'estado' | 'plazoFecha'>, ahora: number): boolean {
-  return ac.estado !== 'CERRADA' && ac.estado !== 'COMPLETADA' && new Date(ac.plazoFecha).getTime() < ahora
-}
+// esAcVencida: única definición de "AC vencida", compartida con el listado de AC
+// (mocks/utils/accionesCorrectivas.mock.ts — dashboard-alertas-coherentes D4, modulo-acciones-correctivas D14).
 
 function calcularKpi08(qes: QualityEvent[], ncs: NoConformidad[], incidentes: Incidente[]): number {
   const hoy = Date.now()

@@ -27,11 +27,15 @@ Cada zona SHALL ser una `<section>` con `aria-labelledby` apuntando a su label, 
 - **THEN** los labels aparecen en el DOM en el orden "Requiere atención", "Indicadores", "Mi trabajo y contexto", "Dónde ocurre"
 
 ### Requirement: AlertaCard es un enlace con número grande y color de nivel, neutro cuando vale 0
-El sistema SHALL exportar `AlertaCard` en `src/features/dashboard/components/layout/AlertaCard.tsx` con props `{ valor: number; titulo: string; subtitulo?: string; nivel: 'error' | 'warning' | 'info'; to: string }`. SHALL renderizar un `<Link to={to}>` de React Router, salvo que `to` empiece con `#`, en cuyo caso SHALL renderizar `<a href={to}>` (ancla nativa al widget de la misma página). El número SHALL ir en `text-3xl font-bold` y el título debajo.
-- Con `valor > 0`, el fondo SHALL ser el tono suave del nivel (`error` → `bg-error/10`, `warning` → `bg-amber/15`, `info` → el token azul existente al 10–15 %), con su variante `dark:`, y el número en el color del nivel. Se muestra `subtitulo` si viene.
-- Con `valor === 0`, SHALL usar el estilo neutro `bg-surface-soft text-muted` (con variante `dark:`) y el subtítulo `t('dashboard:layout.todoEnOrden')`, ignorando `subtitulo`. Sigue siendo un enlace.
+El sistema SHALL exportar `AlertaCard` en `src/features/dashboard/components/layout/AlertaCard.tsx`, con props `{ valor: number; titulo: string; subtitulo?: string; nivel: 'error' | 'warning' | 'info' }` más **una** de estas dos formas de destino (unión discriminada; nunca las dos a la vez):
+- `to: string`: SHALL renderizar un `<Link to={to}>` de React Router. Se usa para las tarjetas que llevan a **otra pantalla**. Si `to` empieza con `#`, SHALL renderizar `<a href={to}>`.
+- `onSelect: () => void` y `activa?: boolean`: SHALL renderizar un `<button type="button">` con `aria-pressed={activa ?? false}`, que llama a `onSelect` al hacer clic. Se usa para las tarjetas que filtran o seleccionan una lista de la **misma página** (`?alerta=`). Con `activa: true`, SHALL mostrar un anillo (`ring-2 ring-offset-2`) del color del nivel (`error`, `amber` o azul para `info`), con su variante `dark:`.
 
-El enlace SHALL tener foco visible (`focus-visible:ring-2`) y `aria-label` con el número y el título (p.ej. "5 AC vencidas").
+El número SHALL ir en `text-3xl font-bold`, con el título debajo.
+- Con `valor > 0`, el fondo SHALL ser el tono suave del nivel (`error` → `bg-error/10`, `warning` → `bg-amber/15`, `info` → el token azul existente al 10–15 %), con su variante `dark:`, y el número en el color del nivel. Se muestra `subtitulo` si viene.
+- Con `valor === 0`, SHALL usar el estilo neutro `bg-surface-soft text-muted` (con variante `dark:`) y el subtítulo `t('dashboard:layout.todoEnOrden')`, ignorando `subtitulo`. Sigue siendo un enlace o un botón.
+
+El elemento SHALL tener foco visible (`focus-visible:ring-2`) y un `aria-label` con el número y el título (p.ej. "5 AC vencidas").
 
 #### Scenario: Valor cero se ve neutro con "Todo en orden"
 - **WHEN** `AlertaCard` recibe `valor: 0`, `nivel: 'error'`
@@ -48,6 +52,14 @@ El enlace SHALL tener foco visible (`focus-visible:ring-2`) y `aria-label` con e
 #### Scenario: Enlace a un ancla de la misma página
 - **WHEN** `AlertaCard` recibe `to: '#acciones-requeridas'`
 - **THEN** se renderiza un `<a href="#acciones-requeridas">`
+
+#### Scenario: Tarjeta selectora
+- **WHEN** `AlertaCard` recibe `onSelect` y `activa: true`
+- **THEN** se renderiza un `<button>` con `aria-pressed="true"` y la clase de anillo del nivel, y al hacer clic se llama a `onSelect`
+
+#### Scenario: Tarjeta selectora inactiva
+- **WHEN** `AlertaCard` recibe `onSelect` sin `activa`
+- **THEN** el botón tiene `aria-pressed="false"` y no tiene la clase de anillo
 
 ### Requirement: KpiRingCard muestra el avance contra la meta en un anillo
 El sistema SHALL exportar `KpiRingCard` en `src/features/dashboard/components/layout/KpiRingCard.tsx` con props `{ kpi: KpiResult; definicion: KpiDefinition; tendencia?: number[] }`. Para todo KPI con `semaforo !== 'INFORMATIVO'` SHALL dibujar un anillo SVG de 84 px: un `circle` de fondo con `stroke-hairline` y un `circle` de progreso con `stroke-dasharray` proporcional al avance, que arranca a las 12 (`rotate(-90)`) y tiene `stroke-linecap="round"`. El color del progreso SHALL derivarse de `semaforo` (`VERDE` → `success`, `AMARILLO` → `amber`, `ROJO` → `error`). El valor formateado según `definicion.unidad` va en el centro del anillo.
@@ -137,3 +149,22 @@ El sistema SHALL exportar `PeriodoSelector` (`components/layout/PeriodoSelector.
 #### Scenario: El período sobrevive a la recarga
 - **WHEN** la página se monta con `?periodo=anio`
 - **THEN** el botón "Año" tiene `aria-pressed="true"`
+
+### Requirement: La tarjeta de alerta seleccionada vive en la URL
+El sistema SHALL exportar `useAlertaSeleccionada()` en `src/features/dashboard/hooks/useAlertaSeleccionada.ts`, que lee `?alerta=` con `useSearchParams` y devuelve `{ alerta: string | null, seleccionar(id: string): void, limpiar(): void, alternar(id: string): void }`.
+- `seleccionar` y `limpiar` SHALL escribir con `replace: true` y conservar los demás parámetros de la URL (p.ej. `periodo`).
+- `alternar(id)` SHALL limpiar si `alerta === id` y seleccionar `id` en caso contrario.
+
+Cada página de dashboard con alertas SHALL declarar una tabla `ALERTAS` con, para cada tarjeta que apunta a una lista de la misma página, la función o los tipos que definen su conjunto. El `valor` de la tarjeta SHALL ser la longitud del **mismo** arreglo filtrado que muestra la lista, calculado con la misma función. Al hacer clic en una tarjeta selectora, la página SHALL llamar a `alternar(id)` y hacer scroll suave (`scrollIntoView({ behavior: 'smooth', block: 'start' })`) hasta el contenedor de la lista destino, desde el handler del clic (sin `useEffect`).
+
+#### Scenario: Seleccionar conserva el período
+- **WHEN** la URL es `/dashboard?periodo=anio` y se llama a `seleccionar('aprobaciones')`
+- **THEN** la URL pasa a tener `periodo=anio` y `alerta=aprobaciones`
+
+#### Scenario: Alternar una tarjeta activa la desactiva
+- **WHEN** la URL tiene `?alerta=aprobaciones` y se llama a `alternar('aprobaciones')`
+- **THEN** la URL deja de tener el parámetro `alerta`
+
+#### Scenario: El filtro sobrevive a la recarga
+- **WHEN** la página se monta con `?alerta=aprobaciones`
+- **THEN** `alerta` vale `'aprobaciones'`, la tarjeta correspondiente tiene `aria-pressed="true"` y la lista destino ya está filtrada

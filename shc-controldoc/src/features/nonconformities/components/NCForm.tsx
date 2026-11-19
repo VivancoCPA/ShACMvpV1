@@ -15,6 +15,7 @@ import { useCandidatosUsuarios } from '../../users/hooks/useCandidatosUsuarios'
 import { ROLES_OPERATIVOS } from '../../../constants/accionCorrectivaTipo.constants'
 import { useAreas } from '../../areas/hooks/useAreas'
 import type { NoConformidad } from '../types/nonconformity.types'
+import { getServerErrorMessage } from '../utils/serverErrorMessage'
 
 const NC_DOMINIO_KEYS = Object.keys(NC_DOMINIO_LABELS) as (keyof typeof NC_DOMINIO_LABELS)[]
 
@@ -149,8 +150,8 @@ export function NCForm({ onCancel }: NCFormProps) {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })
       toast.success(t('toasts.created'))
       navigate(`/nonconformities/${result.id}`)
-    } catch {
-      toast.error(t('toasts.createError'))
+    } catch (error) {
+      toast.error(getServerErrorMessage(error, t('toasts.createError')))
     }
   }
 
@@ -173,8 +174,8 @@ export function NCForm({ onCancel }: NCFormProps) {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })
       toast.success(t('toasts.created'))
       navigate(`/nonconformities/${result.id}`)
-    } catch {
-      toast.error(t('toasts.createError'))
+    } catch (error) {
+      toast.error(getServerErrorMessage(error, t('toasts.createError')))
     }
   }
 

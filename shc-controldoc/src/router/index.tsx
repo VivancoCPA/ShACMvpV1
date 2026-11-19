@@ -35,6 +35,8 @@ import { AreasAdminPage } from '../features/areas/pages/AreasAdminPage'
 import { SemaforoPreviewPage } from '../pages/dev/SemaforoPreviewPage'
 import { DevResetMocksPage } from '../pages/dev/DevResetMocksPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
+import { AccionesCorrectivasPage } from '../features/acciones-correctivas/pages/AccionesCorrectivasPage'
+import { AccionCorrectivaOrigenRedirect } from '../features/acciones-correctivas/components/AccionCorrectivaOrigenRedirect'
 import { ProfilePage } from '../features/users/pages/ProfilePage'
 import { UsersListPage } from '../features/users/pages/UsersListPage'
 import { EmpresasAdminPage } from '../features/empresas/pages/EmpresasAdminPage'
@@ -211,6 +213,18 @@ export const router = createBrowserRouter([
                 element: <DashboardPage />,
                 handle: { breadcrumb: 'dashboard' },
               },
+            ],
+          },
+          {
+            element: <RoleGuard requiredRoles={ROUTE_ROLE_GROUPS.accionesCorrectivas} />,
+            children: [
+              {
+                path: '/acciones-correctivas',
+                element: <AccionesCorrectivasPage />,
+                handle: { breadcrumb: 'accionesCorrectivas' },
+              },
+              // Enlaces viejos de notificaciones: resuelve el origen de la AC y redirige (D9).
+              { path: '/acciones-correctivas/:id', element: <AccionCorrectivaOrigenRedirect /> },
             ],
           },
           {

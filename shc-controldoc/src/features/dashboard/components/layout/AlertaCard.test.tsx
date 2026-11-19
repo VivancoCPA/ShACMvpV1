@@ -34,6 +34,15 @@ describe('AlertaCard', () => {
     expect(link).toHaveTextContent('5')
   })
 
+  // modulo-acciones-correctivas D13.
+  it('supports the success level', () => {
+    renderCard({ valor: 4, titulo: 'Cerradas este mes', nivel: 'success', onSelect: vi.fn(), activa: true })
+    const button = screen.getByRole('button', { name: '4 Cerradas este mes' })
+    expect(button).toHaveClass('bg-success/10')
+    expect(button).toHaveClass('ring-success')
+    expect(button).toHaveAttribute('data-nivel', 'success')
+  })
+
   it('links to a list route', () => {
     renderCard({ valor: 2, titulo: 'QE críticos', nivel: 'info', to: '/quality-events?severidad=CRITICA' })
     expect(screen.getByRole('link', { name: '2 QE críticos' })).toHaveAttribute('href', '/quality-events?severidad=CRITICA')

@@ -627,7 +627,8 @@
       "label": "Switch company",
       "switchError": "Could not switch company. Please try again."
     },
-    "parametrosSesion": "Session parameters"
+    "parametrosSesion": "Session parameters",
+    "accionesCorrectivas": "Corrective actions"
   },
   "qualityEvents": {
     "list": {
@@ -2323,7 +2324,8 @@
       "empty": {
         "vencidas": "No overdue corrective actions",
         "porVencer": "No corrective actions due in the next 5 business days"
-      }
+      },
+      "verTodas": "View all"
     }
   },
   "locations": {
@@ -2888,6 +2890,110 @@
       "sesionMenorQueInactividad": "Maximum duration cannot be shorter than the inactivity timeout",
       "maxMenorQueMin": "Maximum cannot be lower than minimum",
       "defaultFueraDeLimites": "Default value must be between minimum and maximum"
+    }
+  },
+  "accionesCorrectivas": {
+    "title": "Corrective actions",
+    "titleMias": "My corrective actions",
+    "subtitle": "Corrective, preventive and improvement actions from QEs, NCs and incidents.",
+    "contadores": {
+      "label": "Corrective actions summary",
+      "abiertas": "Open",
+      "enEjecucion": "In progress",
+      "pendientesVerificacion": "Pending verification",
+      "porVencer": "Due soon (5 business days)",
+      "vencidas": "Overdue",
+      "cerradasPeriodo": "Closed this month"
+    },
+    "columnas": {
+      "origen": "Origin",
+      "descripcion": "Description",
+      "tipo": "Type",
+      "responsable": "Owner",
+      "area": "Area",
+      "plazo": "Due date",
+      "estado": "Status",
+      "verificadaPor": "Verified by",
+      "estadoOriginal": "Original status",
+      "creadoEn": "Created on",
+      "ejecutadaEn": "Executed on",
+      "fechaCierre": "Closed on"
+    },
+    "estado": {
+      "PENDIENTE": "Pending",
+      "EN_EJECUCION": "In progress",
+      "PENDIENTE_VERIFICACION": "Pending verification",
+      "CERRADA": "Closed"
+    },
+    "estadoOriginal": {
+      "PENDIENTE": "Pending",
+      "EN_EJECUCION": "In progress",
+      "COMPLETADA": "Completed",
+      "CERRADA": "Closed",
+      "VENCIDA": "Overdue"
+    },
+    "origen": {
+      "QE": "QE",
+      "NC": "NC",
+      "INCIDENTE": "INC",
+      "nombre": {
+        "QE": "Quality Event",
+        "NC": "Nonconformity",
+        "INCIDENTE": "Incident"
+      }
+    },
+    "tipo": {
+      "CORRECTIVA": "Corrective",
+      "PREVENTIVA": "Preventive",
+      "MEJORA": "Improvement"
+    },
+    "plazo": {
+      "venceEn_one": "due in {{count}} d",
+      "venceEn_other": "due in {{count}} d",
+      "venceHoy": "due today",
+      "vencidaHace_one": "overdue {{count}} d",
+      "vencidaHace_other": "overdue {{count}} d",
+      "vencida": "overdue"
+    },
+    "filtros": {
+      "label": "Filters",
+      "estado": "Status",
+      "tipo": "Type",
+      "origen": "Origin",
+      "responsable": "Owner",
+      "area": "Area",
+      "todos": "All",
+      "todas": "All",
+      "plazoDesde": "Due from",
+      "plazoHasta": "Due to",
+      "creadaDesde": "Created from",
+      "creadaHasta": "Created to",
+      "buscar": "Search",
+      "buscarPlaceholder": "Description or origin number",
+      "limpiar": "Clear filters"
+    },
+    "orden": {
+      "ascendente": "Ascending order",
+      "descendente": "Descending order"
+    },
+    "paginacion": {
+      "resumen": "{{desde}}–{{hasta}} of {{total}}",
+      "anterior": "Previous page",
+      "siguiente": "Next page"
+    },
+    "verOrigen": "View {{numero}}",
+    "sinAcceso": "You don't have access to this origin's detail.",
+    "exportar": "Export to Excel",
+    "exportando": "Exporting…",
+    "exportHoja": "Corrective actions",
+    "vacio": "No corrective actions match these filters.",
+    "cargando": "Loading corrective actions…",
+    "redirigiendo": "Opening the corrective action's origin…",
+    "errors": {
+      "EXPORT_DEMASIADAS_FILAS": "Too many rows to export. Narrow the filters.",
+      "exportar": "Could not export to Excel.",
+      "cargar": "Could not load corrective actions.",
+      "origenNoEncontrado": "The corrective action was not found."
     }
   }
 }

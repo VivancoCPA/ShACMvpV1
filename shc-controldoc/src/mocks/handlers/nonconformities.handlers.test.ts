@@ -311,3 +311,44 @@ describe('nonconformities.handlers — POST/DELETE /api/nonconformities/:id/docu
     expect(status).toBe(404)
   })
 })
+
+describe('nonconformities.handlers — turno TODOS y enums inválidos (nc-turno-todos-y-errores-400)', () => {
+  const baseBody = {
+    origen: 'INSPECCION_INTERNA',
+    tipo: 'PRODUCTO',
+    severidad: 'BAJA',
+    areaId: 'area-001',
+    descripcion: 'Balanza de pesaje descalibrada en todos los turnos',
+    fechaDeteccion: '2026-11-17',
+    fechaCierre: '2026-11-30',
+    dominio: 'CALIDAD',
+    titulo: 'Balanza descalibrada',
+    forzar: true,
+  }
+
+  it('acepta turno TODOS al crear', async () => {
+    const { status, data } = await call(
+      api.post<{ turno?: string }>('/api/nonconformities', { ...baseBody, turno: 'TODOS' }, authHeaders('jefe.calidad@ilo.pe')),
+    )
+    expect(status).toBe(201)
+    expect(data.turno).toBe('TODOS')
+  })
+
+  it('responde 400 con el campo ante un turno desconocido y no crea la NC', async () => {
+    const antes = getNonconformitiesStore().length
+    const { status, data } = await call(
+      api.post<{ message?: string }>('/api/nonconformities', { ...baseBody, turno: 'XYZ' }, authHeaders('jefe.calidad@ilo.pe')),
+    )
+    expect(status).toBe(400)
+    expect(data.message).toBe("Valor inválido en el campo 'turno'.")
+    expect(getNonconformitiesStore()).toHaveLength(antes)
+  })
+
+  it('responde 400 ante otro enum desconocido (tipo)', async () => {
+    const { status, data } = await call(
+      api.post<{ message?: string }>('/api/nonconformities', { ...baseBody, tipo: 'NOPE' }, authHeaders('jefe.calidad@ilo.pe')),
+    )
+    expect(status).toBe(400)
+    expect(data.message).toBe("Valor inválido en el campo 'tipo'.")
+  })
+})

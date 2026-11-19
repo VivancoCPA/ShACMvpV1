@@ -156,3 +156,13 @@ describe('NonconformityDetailPage — detectadoPor muestra el nombre real (nombr
     expect(screen.queryByText('user-desconocido')).not.toBeInTheDocument()
   })
 })
+
+describe('NonconformityDetailPage — turno TODOS (nc-turno-todos-y-errores-400)', () => {
+  it('muestra la etiqueta i18n form.turno.TODOS cuando la NC afecta a todos los turnos', () => {
+    mockNC = makeNC({ turno: 'TODOS' })
+    mockRole = 'SUPERVISOR'
+    renderPage()
+    expect(screen.getByText('detail.fields.turno')).toBeInTheDocument()
+    expect(screen.getByText('form.turno.TODOS')).toBeInTheDocument()
+  })
+})

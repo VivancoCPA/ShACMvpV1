@@ -270,6 +270,7 @@ PUBLICADO → EN_REVISION_PERIODICA → BORRADOR (versión N+1)
 | M7  | PWA Mobile de Incidentes (offline-first)  | `features/incidents/` (mobile)  | Implementado (mock)   | 2026-08-12               |
 | M8  | Normativa Vinculada (extensión de M4)     | `features/quality-events/`      | Implementado (mock)   | 2026-07-14               |
 | —   | Multiempresa (transversal a M1-M6)        | varios                           | Implementado (mock)   | 2026-07-26               |
+| —   | Acciones correctivas (listado unificado QE/NC/Incidente) | `features/acciones-correctivas/` | Implementado (backend + mock) | `modulo-acciones-correctivas` (2026-11-19, pendiente de archivar) |
 
 Los ocho módulos y la capa Multiempresa tienen specs completas en
 `openspec/specs/` (tipos, schemas, permisos, hooks, vistas de

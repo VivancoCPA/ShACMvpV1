@@ -68,6 +68,31 @@ describe('Sidebar — visibilidad del ítem Dashboard', () => {
   })
 })
 
+// modulo-acciones-correctivas: listado unificado de AC para los 6 roles operativos.
+describe('Sidebar — visibilidad del ítem Acciones correctivas', () => {
+  afterEach(() => {
+    cleanup()
+    useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
+  })
+
+  it.each<UserRole>([
+    'OPERARIO',
+    'SUPERVISOR',
+    'JEFE_CALIDAD_SYST',
+    'JEFE_CONTROL_DOCUMENTARIO',
+    'AUDITOR_INTERNO',
+    'ALTA_DIRECCION',
+  ])('muestra el ítem para %s', (rol) => {
+    renderSidebarAs(rol)
+    expect(screen.getByText('accionesCorrectivas')).toBeInTheDocument()
+  })
+
+  it.each<UserRole>(['ADMINISTRADOR_SISTEMA', 'ADMINISTRADOR_EMPRESA', 'SUPERADMIN'])('NO muestra el ítem para %s', (rol) => {
+    renderSidebarAs(rol)
+    expect(screen.queryByText('accionesCorrectivas')).not.toBeInTheDocument()
+  })
+})
+
 // me-f4-admin-empresas: el ítem "Usuarios" cambia de ['ADMINISTRADOR_SISTEMA']
 // exclusivamente a ['ADMINISTRADOR_EMPRESA'], alineado con el RoleGuard de
 // /usuarios. ADMINISTRADOR_SISTEMA conserva sin cambios su alcance

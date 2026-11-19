@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
-export type AlertaNivel = 'error' | 'warning' | 'info'
+// 'success' lo usa la tarjeta "Cerradas" del listado de AC (modulo-acciones-correctivas D13).
+export type AlertaNivel = 'error' | 'warning' | 'info' | 'success'
 
 interface AlertaCardBaseProps {
   valor: number
@@ -24,6 +25,7 @@ const NIVEL_CLASSES: Record<AlertaNivel, { fondo: string; numero: string }> = {
   error: { fondo: 'bg-error/10 dark:bg-error/15', numero: 'text-error dark:text-error' },
   warning: { fondo: 'bg-amber/15 dark:bg-amber/15', numero: 'text-warning dark:text-amber' },
   info: { fondo: 'bg-blue-500/10 dark:bg-blue-400/15', numero: 'text-blue-700 dark:text-blue-300' },
+  success: { fondo: 'bg-success/10 dark:bg-success/15', numero: 'text-success dark:text-success' },
 }
 
 // Anillo de la tarjeta seleccionada, en el color del nivel.
@@ -31,6 +33,7 @@ const ANILLO_ACTIVA: Record<AlertaNivel, string> = {
   error: 'ring-2 ring-error ring-offset-2 ring-offset-canvas dark:ring-error dark:ring-offset-surface-dark',
   warning: 'ring-2 ring-amber ring-offset-2 ring-offset-canvas dark:ring-amber dark:ring-offset-surface-dark',
   info: 'ring-2 ring-blue-500 ring-offset-2 ring-offset-canvas dark:ring-blue-400 dark:ring-offset-surface-dark',
+  success: 'ring-2 ring-success ring-offset-2 ring-offset-canvas dark:ring-success dark:ring-offset-surface-dark',
 }
 
 const NEUTRO = { fondo: 'bg-surface-soft dark:bg-surface-dark-soft', numero: 'text-muted dark:text-on-dark-soft' }

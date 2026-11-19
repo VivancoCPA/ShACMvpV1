@@ -20,6 +20,7 @@ import type { NCFilters, CreateACInput, UpdateACInput, CerrarACInput } from '../
 import type { CreateNCInput } from '../schemas/createNC.schema'
 import type { UpdateNCInput } from '../schemas/updateNC.schema'
 import { invalidarDashboard } from '../../dashboard/utils/invalidarDashboard'
+import { getServerErrorMessage } from '../utils/serverErrorMessage'
 
 export const QUERY_KEYS = {
   nonconformities: {
@@ -59,8 +60,8 @@ export function useCreateNonconformity() {
         toast.warning(t('toasts.posibleDuplicado'))
       }
     },
-    onError: () => {
-      toast.error(t('toasts.createError'))
+    onError: (error) => {
+      toast.error(getServerErrorMessage(error, t('toasts.createError')))
     },
   })
 }
@@ -76,8 +77,8 @@ export function useUpdateNonconformity() {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.nonconformities.all })
       toast.success(t('toasts.updated'))
     },
-    onError: () => {
-      toast.error(t('toasts.updateError'))
+    onError: (error) => {
+      toast.error(getServerErrorMessage(error, t('toasts.updateError')))
     },
   })
 }

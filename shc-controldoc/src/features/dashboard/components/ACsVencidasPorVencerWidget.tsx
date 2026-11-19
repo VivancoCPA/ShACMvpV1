@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { SemaforoRow } from '../../../components/shared/SemaforoRow'
 import { calcularEstadoSemaforoDesdeFecha } from '../utils/semaforoPendientes'
 import type { AccionCorrectivaResumen } from '../types/dashboardSummary.types'
@@ -31,7 +31,18 @@ export function ACsVencidasPorVencerWidget({ vencidas, porVencer, pestana, onCam
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">{t('acs.title')}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-body-strong dark:text-on-dark">{t('acs.title')}</h2>
+        {/* modulo-acciones-correctivas: el listado completo usa la misma regla EsAcVencida. */}
+        {pestana === 'vencidas' && (
+          <Link
+            to="/acciones-correctivas?vencida=true"
+            className="text-xs font-medium text-coral hover:text-coral-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral dark:text-coral dark:hover:text-coral"
+          >
+            {t('acs.verTodas')}
+          </Link>
+        )}
+      </div>
       <div role="tablist" aria-label={t('acs.tablist')} className="flex gap-1 rounded-md bg-surface-soft p-1 dark:bg-surface-dark-soft">
         {PESTANAS.map((p) => (
           <button

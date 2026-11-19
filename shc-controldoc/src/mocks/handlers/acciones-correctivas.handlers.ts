@@ -12,7 +12,23 @@ import { autorizarEmpresa } from './sesion.handlers'
 import { getAuditoriaSesionStore } from '../fixtures/sesion.fixtures'
 import { getConfiguracionesResponsablesAcStore, getRolesResponsableAC } from '../fixtures/responsablesAc.fixtures'
 import type { ConfiguracionResponsablesAc } from '../../features/acciones-correctivas/types/responsablesAc.types'
-import type { UserRole } from '../../types/auth.types'
+import type { User, UserRole } from '../../types/auth.types'
+import { getQeStore } from './quality-events.handlers'
+import { getNonconformitiesStore } from './nonconformities.handlers'
+import { getIncidentsStore } from './incidents.handlers'
+import { getAreasStore } from './areas.handlers'
+import { getSessionUser } from './shared/session'
+import {
+  AC_EXPORT_MAX_FILAS,
+  aplicarFiltrosBaseAC,
+  aplicarFiltrosDeEstadoAC,
+  contarAC,
+  ordenarAC,
+  parseFiltrosAC,
+  unificarAccionesCorrectivas,
+  type ACFiltrosMock,
+} from '../utils/accionesCorrectivas.mock'
+import type { AccionCorrectivaListadoItem } from '../../features/acciones-correctivas/types/accionesCorrectivasListado.types'
 
 const LATENCY = 400
 
@@ -98,9 +114,126 @@ function registrarAuditoria(
   return true
 }
 
+// --- Listado unificado de AC (modulo-acciones-correctivas) — espejo de AccionesCorrectivasListadoHandler ---
+
+const ROLES_TODAS: readonly UserRole[] = ['JEFE_CALIDAD_SYST', 'JEFE_CONTROL_DOCUMENTARIO', 'AUDITOR_INTERNO', 'ALTA_DIRECCION']
+
+function forbidden() {
+  return HttpResponse.json({ success: false, data: null, message: 'Rol sin acceso a acciones correctivas.' }, { status: 403 })
+}
+
+function badRequest(message: string) {
+  return HttpResponse.json({ success: false, data: null, message }, { status: 400 })
+}
+
+// D3: visibilidad por rol. null = rol sin acceso (403).
+function visiblePara(user: User): ((a: AccionCorrectivaListadoItem) => boolean) | null {
+  if (ROLES_TODAS.includes(user.rol)) return () => true
+  if (user.rol === 'SUPERVISOR') {
+    const areas = user.areaIds ?? []
+    return (a) => areas.includes(a.areaId) || a.responsableId === user.id
+  }
+  if (user.rol === 'OPERARIO') return (a) => a.responsableId === user.id
+  return null
+}
+
+function universoVisible(user: User, ahora: Date): AccionCorrectivaListadoItem[] | null {
+  const visible = visiblePara(user)
+  if (!visible) return null
+  const empresaId = useAuthStore.getState().empresaActivaId
+  const areaNombre = (areaId: string) => getAreasStore().find((a) => a.id === areaId)?.nombre ?? null
+  return unificarAccionesCorrectivas(
+    getQeStore().filter((qe) => qe.empresaId === empresaId),
+    getNonconformitiesStore().filter((nc) => nc.empresaId === empresaId),
+    getIncidentsStore().filter((inc) => inc.empresaId === empresaId),
+    areaNombre,
+    ahora.getTime(),
+  ).filter(visible)
+}
+
+type ParseResult = { filtros: ACFiltrosMock } | { error: string }
+
+function parse(request: Request, paginar: boolean): ParseResult {
+  try {
+    return { filtros: parseFiltrosAC(new URL(request.url).searchParams, paginar) }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 // Transversal a QE/NC/incidente (ac-tipo-responsables) — espejo de CandidatosResponsableACEndpoint
 // y de ConfiguracionResponsablesAcEndpoint (ac-responsables-configurable-empresa).
 export const accionesCorrectivasHandlers = [
+  http.get('/api/acciones-correctivas', async ({ request }) => {
+    await delay(LATENCY)
+    const user = getSessionUser(request)
+    if (!user) return HttpResponse.json({ success: false, message: 'No autenticado' }, { status: 401 })
+    const parsed = parse(request, true)
+    if ('error' in parsed) return badRequest(parsed.error)
+    const f = parsed.filtros
+
+    const ahora = new Date()
+    const universo = universoVisible(user, ahora)
+    if (!universo) return forbidden()
+    const base = aplicarFiltrosBaseAC(universo, f)
+    const filtradas = ordenarAC(aplicarFiltrosDeEstadoAC(base, f, ahora), f)
+    const items = filtradas.slice((f.page - 1) * f.pageSize, f.page * f.pageSize)
+
+    return HttpResponse.json({
+      success: true,
+      data: {
+        items,
+        pagination: {
+          page: f.page,
+          pageSize: f.pageSize,
+          totalItems: filtradas.length,
+          totalPages: Math.ceil(filtradas.length / f.pageSize),
+        },
+        contadores: contarAC(base, f, ahora),
+      },
+    })
+  }),
+
+  http.get('/api/acciones-correctivas/export', async ({ request }) => {
+    await delay(LATENCY)
+    const user = getSessionUser(request)
+    if (!user) return HttpResponse.json({ success: false, message: 'No autenticado' }, { status: 401 })
+    const parsed = parse(request, false)
+    if ('error' in parsed) return badRequest(parsed.error)
+    const f = parsed.filtros
+
+    const ahora = new Date()
+    const universo = universoVisible(user, ahora)
+    if (!universo) return forbidden()
+    const filas = ordenarAC(aplicarFiltrosDeEstadoAC(aplicarFiltrosBaseAC(universo, f), f, ahora), f)
+    if (filas.length > AC_EXPORT_MAX_FILAS) {
+      return HttpResponse.json(
+        {
+          success: false,
+          data: null,
+          errorCode: 'EXPORT_DEMASIADAS_FILAS',
+          message: `EXPORT_DEMASIADAS_FILAS: Hay ${filas.length} filas para exportar y el máximo es ${AC_EXPORT_MAX_FILAS}. Acota los filtros.`,
+        },
+        { status: 422 },
+      )
+    }
+    return HttpResponse.json({ success: true, data: filas })
+  }),
+
+  http.get('/api/acciones-correctivas/:id/origen', async ({ params, request }) => {
+    await delay(LATENCY)
+    const user = getSessionUser(request)
+    if (!user) return HttpResponse.json({ success: false, message: 'No autenticado' }, { status: 401 })
+    if (!visiblePara(user)) return forbidden()
+    // D9: sin la visibilidad por rol (el destino tiene su propio guard), solo empresa activa.
+    const todos = universoVisible({ ...user, rol: 'JEFE_CALIDAD_SYST' }, new Date()) ?? []
+    const ac = todos.find((a) => a.id === params.id)
+    if (!ac) {
+      return HttpResponse.json({ success: false, data: null, message: 'Acción correctiva no encontrada.' }, { status: 404 })
+    }
+    return HttpResponse.json({ success: true, data: { origenTipo: ac.origenTipo, origenId: ac.origenId } })
+  }),
+
   http.get('/api/acciones-correctivas/candidatos-responsable', async ({ request }) => {
     await delay(LATENCY)
     const empresaId = useAuthStore.getState().empresaActivaId

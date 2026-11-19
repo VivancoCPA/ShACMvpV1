@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -724,8 +724,15 @@ export function QEACSection({
     )
   }
 
+  // modulo-acciones-correctivas: el listado de AC enlaza a /quality-events/:id#qe-ac-section — al
+  // montar con ese hash, la sección se trae a la vista (ref callback estable, se ejecuta una vez).
+  const scrollSiEsAncla = useCallback((el: HTMLElement | null) => {
+    if (el && window.location.hash === '#qe-ac-section') el.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   return (
     <section
+      ref={scrollSiEsAncla}
       id="qe-ac-section"
       aria-labelledby="qe-ac-section-title"
       className="rounded-lg border border-hairline bg-surface-card p-6 dark:border-hairline/20 dark:bg-surface-dark-elevated"
