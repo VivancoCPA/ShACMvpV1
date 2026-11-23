@@ -20,6 +20,8 @@ import { calcularRequiereAprobacionGerencia } from '../../features/quality-event
 import { contarDiasHabiles } from '../../utils/businessDays'
 import { EVIDENCIA_AC_MAX_ARCHIVOS, EVIDENCIA_AC_MAX_BYTES } from '../../features/quality-events/constants/evidenciaAC.constants'
 import { getSessionUserUnchecked } from './shared/session'
+import { buildSiguientePaso } from './shared/qeSiguientePaso'
+import { buildCicloReiniciadoEntry, CAMPOS_REINICIADOS_AL_REABRIR } from './shared/qeReapertura'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../types/auth.types'
 import type { QualityEvent, QEStatus, AccionCorrectivaQE, EvidenciaACQE, QEAuditTrailEntry, SolicitudAjustePlazoAC, CandidatoResponsableQE, QualityEventUpdateInput, OrigenIAValor } from '../../features/quality-events/types/qualityEvent.types'
@@ -462,7 +464,9 @@ export const qualityEventHandlers = [
         { status: 404 }
       )
     }
-    return HttpResponse.json({ success: true, data: conCierre(conResponsable(qe)) })
+    // Detalle: + siguiente paso (qe-siguiente-paso-responsable D12), después de resolver supervisoresArea.
+    const detalle = conCierre(conResponsable(qe))
+    return HttpResponse.json({ success: true, data: { ...detalle, siguientePaso: buildSiguientePaso(detalle) } })
   }),
 
   http.patch('/api/quality-events/:id/responsable', async ({ params, request }) => {
@@ -2108,11 +2112,14 @@ export const qualityEventHandlers = [
         timestamp: now,
         generadoPorIA: false,
       }
+      const cicloEntry = buildCicloReiniciadoEntry(
+        qe, 'vencida', currentUser, now, `aud-${qe.id}-${qe.auditTrail.length + 3}`)
       const updated: QualityEvent = {
         ...qe,
+        ...CAMPOS_REINICIADOS_AL_REABRIR,
         estado: 'EN_INVESTIGACION',
         ciclo: qe.ciclo + 1,
-        auditTrail: [...qe.auditTrail, timeoutEntry, reaperturaEntry],
+        auditTrail: [...qe.auditTrail, timeoutEntry, cicloEntry, reaperturaEntry],
         actualizadoEn: now,
       }
       commitQE(idx, qe, updated)
@@ -2232,14 +2239,16 @@ export const qualityEventHandlers = [
       timestamp: now,
       generadoPorIA: false,
     }
+    const cicloEntry = buildCicloReiniciadoEntry(
+      qe, 'NO_EFECTIVO', currentUser, now, `aud-${qe.id}-${qe.auditTrail.length + 3}`)
+    // qe-reapertura-reinicia-cierre: el resultado/evidencia de la verificación quedan en el audit
+    // (resultEntry, CICLO_REINICIADO); el ciclo nuevo arranca con cierre y verificación en blanco.
     const updated: QualityEvent = {
       ...qe,
-      resultadoVerificacion: 'NO_EFECTIVO',
-      evidenciaVerificacion: body.evidencia,
-      fechaVerificacionRealizada: now,
+      ...CAMPOS_REINICIADOS_AL_REABRIR,
       ciclo: qe.ciclo + 1,
       estado: 'EN_INVESTIGACION',
-      auditTrail: [...qe.auditTrail, resultEntry, reaperturaEntry],
+      auditTrail: [...qe.auditTrail, resultEntry, cicloEntry, reaperturaEntry],
       actualizadoEn: now,
     }
     commitQE(idx, qe, updated)

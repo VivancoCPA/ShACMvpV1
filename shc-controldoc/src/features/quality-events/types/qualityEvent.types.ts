@@ -135,6 +135,40 @@ export interface SupervisorAreaQE {
   avatarUrl?: string | null
 }
 
+// qe-siguiente-paso-responsable — calculado por QESiguientePasoResolver (backend), solo en el detalle.
+export type QESiguientePasoCodigo =
+  | 'ASIGNAR_RESPONSABLE'
+  | 'INICIAR_INVESTIGACION'
+  | 'COMPLETAR_ANALISIS'
+  | 'APROBAR_CAUSA_RAIZ'
+  | 'INICIAR_EJECUCION'
+  | 'EJECUTAR_ACS'
+  | 'REGISTRAR_RESULTADO_CIERRE'
+  | 'FIRMA_JCA'
+  | 'FIRMA_SUPERVISOR'
+  // qe-reapertura-reinicia-cierre D3: las dos firmas en PENDIENTE_CIERRE (datos arrastrados).
+  | 'CIERRE_INCONSISTENTE'
+  | 'ESPERA_VERIFICACION'
+  | 'VERIFICAR_EFICACIA'
+  | 'FINALIZADO'
+
+export interface ResponsablePasoQE {
+  id: string
+  nombreCompleto: string
+  rol?: string | null
+  avatarUrl?: string | null
+}
+
+export interface QESiguientePaso {
+  paso: QESiguientePasoCodigo
+  responsables: ResponsablePasoQE[]
+  estadoDesde: string
+  plazoFecha?: string | null
+  plazoRegla?: string | null
+  progreso?: number | null
+  total?: number | null
+}
+
 export interface QualityEvent {
   id: string
   numero: string
@@ -189,6 +223,8 @@ export interface QualityEvent {
   cerradoPorNombre?: string
   cierreFirmaSupervisorNombre?: string
   supervisoresArea?: SupervisorAreaQE[] | null
+  // Siguiente paso pendiente (qe-siguiente-paso-responsable) — solo en el detalle.
+  siguientePaso?: QESiguientePaso | null
   fechaCierre?: string
   plazoVerificacionDias?: number
   fechaVerificacionProgramada?: string

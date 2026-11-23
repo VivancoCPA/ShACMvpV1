@@ -784,7 +784,8 @@
         "verificacionDiasRestantes": "{{count}} days",
         "plazoPendienteCierre": "{{count}} business days (informational closure deadline)",
         "exportarPDF": "Export PDF",
-        "exportarPDFError": "Error exporting the PDF. Please try again."
+        "exportarPDFError": "Error exporting the PDF. Please try again.",
+        "ciclo": "Cycle {{n}}"
       },
       "transitions": {
         "title": "Status transitions",
@@ -1044,7 +1045,9 @@
           "AC_DEVUELTA": "Corrective action returned",
           "AC_SOLICITADA": "Corrective action requested from the origin",
           "SOLICITUD_AC_ATENDIDA": "CA request fulfilled",
-          "SOLICITUD_AC_DESCARTADA": "CA request dismissed"
+          "SOLICITUD_AC_DESCARTADA": "CA request dismissed",
+          "CICLO_REINICIADO": "Cycle restarted",
+          "CORRECCION_DATOS_REAPERTURA": "Reopening data correction"
         },
         "sugerenciaIAEditada": "edited AI suggestion"
       },
@@ -1054,6 +1057,32 @@
         "volver": "Back to list"
       },
       "deletedBanner": "This Quality Event has been deleted.",
+      "siguientePaso": {
+        "titulo": "Next step",
+        "responsable": "Owner",
+        "sinResponsable": "No owner available",
+        "teToca": "Your turn",
+        "desde": "In this status since {{fecha}} ({{dias}} days ago)",
+        "plazo": "Due: {{fecha}}",
+        "progresoAC": "{{progreso}} of {{total}} CAs closed",
+        "finalizado": "Process complete — verified on {{fecha}}",
+        "masResponsables": "+{{count}}",
+        "paso": {
+          "ASIGNAR_RESPONSABLE": "Assign investigation lead",
+          "INICIAR_INVESTIGACION": "Start the investigation",
+          "COMPLETAR_ANALISIS": "Complete the root cause analysis",
+          "APROBAR_CAUSA_RAIZ": "Approve the root cause (PIN signature)",
+          "INICIAR_EJECUCION": "Move to corrective action execution",
+          "EJECUTAR_ACS": "Execute and verify the corrective actions",
+          "REGISTRAR_RESULTADO_CIERRE": "Record the closure result",
+          "FIRMA_JCA": "Quality Manager closure signature",
+          "FIRMA_SUPERVISOR": "Area supervisor closure signature",
+          "ESPERA_VERIFICACION": "Wait for the effectiveness check date",
+          "VERIFICAR_EFICACIA": "Verify effectiveness",
+          "FINALIZADO": "Process complete",
+          "CIERRE_INCONSISTENTE": "Inconsistent closure data — contact the Quality Manager"
+        }
+      },
       "cierre": {
         "title": "Quality Event Closure",
         "form": {
@@ -1101,6 +1130,7 @@
           "rechazado": "Closure rejected. The Quality Manager was notified.",
           "rechazoError": "Error rejecting the closure"
         },
+        "paso1": "Step 1 — Record the closure result (Quality Manager)",
         "firma1": "Signature 1 — Quality Manager",
         "firma2": "Signature 2 — {{area}} Supervisor",
         "firmaHecha": "✓ {{nombre}} — {{fecha}}",

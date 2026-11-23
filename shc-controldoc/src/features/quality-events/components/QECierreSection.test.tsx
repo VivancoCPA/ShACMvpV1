@@ -330,3 +330,77 @@ describe('QECierreSection — firmas, supervisores del área y rechazo (qe-cierr
     expect(screen.getByRole('link', { name: 'detail.cierre.irAUsuarios' })).toHaveAttribute('href', '/usuarios')
   })
 })
+
+describe('QECierreSection — pasos siempre visibles en PENDIENTE_CIERRE (qe-siguiente-paso-responsable)', () => {
+  afterEach(() => {
+    cleanup()
+    useAuthStore.setState({ user: null })
+  })
+
+  it('a SUPERVISOR sees the three steps pending before the closure result is recorded', () => {
+    setUser(true, 'SUPERVISOR', 'user-supervisor')
+    renderSection(makeQE({ resultadoCierre: undefined }))
+
+    expect(screen.getByText('detail.cierre.paso1')).toBeInTheDocument()
+    expect(screen.getAllByText('detail.cierre.pendiente')).toHaveLength(2)
+    expect(screen.getByText('detail.cierre.firma1')).toBeInTheDocument()
+    expect(screen.getByText('detail.cierre.esperaJCA')).toBeInTheDocument()
+    expect(screen.queryByLabelText('detail.cierre.form.resultadoCierre')).not.toBeInTheDocument()
+  })
+
+  it('the JCA sees the closure form and the three steps', () => {
+    setUser(true)
+    renderSection(makeQE({ resultadoCierre: undefined }))
+
+    expect(screen.getByLabelText('detail.cierre.form.resultadoCierre')).toBeInTheDocument()
+    expect(screen.getByText('detail.cierre.paso1')).toBeInTheDocument()
+  })
+
+  it('marks step 1 done with the CIERRE_INICIADO date', () => {
+    setUser(true, 'SUPERVISOR', 'user-supervisor')
+    const timestamp = '2026-01-05T15:00:00.000Z'
+    renderSection(
+      makeQE({
+        auditTrail: [
+          {
+            id: 'a-1',
+            entidadTipo: 'QualityEvent',
+            entidadId: 'qe-001',
+            accion: 'CIERRE_INICIADO',
+            realizadoPorId: 'user-jefe',
+            realizadoPorNombre: 'Jefe Calidad',
+            timestamp,
+            generadoPorIA: false,
+          },
+        ],
+      }),
+    )
+    const fecha = new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(timestamp))
+    // textContent: Intl usa espacios no separables que el matcher de getByText normaliza.
+    expect(screen.getByText('detail.cierre.paso1').nextElementSibling?.textContent).toBe(`✓ ${fecha}`)
+  })
+
+  // qe-reapertura-reinicia-cierre D5: una entrada del ciclo anterior no se presenta como del actual.
+  it('ignores closure audit entries from before the last REABIERTO', () => {
+    setUser(true, 'SUPERVISOR', 'user-supervisor')
+    const viejo = '2026-01-05T15:00:00.000Z'
+    const entrada = (id: string, accion: string, timestamp: string) => ({
+      id,
+      entidadTipo: 'QualityEvent' as const,
+      entidadId: 'qe-001',
+      accion,
+      realizadoPorId: 'user-jefe',
+      realizadoPorNombre: 'Jefe Calidad',
+      timestamp,
+      generadoPorIA: false,
+    })
+    renderSection(
+      makeQE({
+        ciclo: 2,
+        auditTrail: [entrada('a-1', 'CIERRE_INICIADO', viejo), entrada('a-2', 'REABIERTO', '2026-02-01T10:00:00.000Z')],
+      }),
+    )
+    const fecha = new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(viejo))
+    expect(screen.getByText('detail.cierre.paso1').nextElementSibling?.textContent).not.toContain(fecha)
+  })
+})

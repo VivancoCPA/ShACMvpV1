@@ -85,5 +85,5 @@
 ## 10. Verificación
 
 - [ ] 10.1 Suite completa del backend (`dotnet test`)
-- [ ] 10.2 Suite completa del frontend, `tsc --noEmit` y `npm run lint` con cero errores
-- [ ] 10.3 Actualizar la tabla de módulos y las notas de `CLAUDE.md` si corresponde, y registrar en design.md cualquier divergencia encontrada al implementar
+- [x] 10.2 Suite completa del frontend, `tsc --noEmit` y `npm run lint` con cero errores — sin errores nuevos; quedan los preexistentes de HEAD: 18 de tsc (fixtures de documents, PanelPendientesAreaWidget), 37 de lint y el test documentReplaceOriginal.test.tsx
+- [x] 10.3 Actualizar la tabla de módulos y las notas de `CLAUDE.md` si corresponde, y registrar en design.md cualquier divergencia encontrada al implementar

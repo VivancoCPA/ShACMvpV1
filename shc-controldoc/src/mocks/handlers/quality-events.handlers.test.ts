@@ -521,6 +521,60 @@ describe('quality-events.handlers — verificacion-eficacia notifications', () =
   })
 })
 
+// qe-reapertura-reinicia-cierre: la reapertura deja el cierre en blanco para el ciclo nuevo.
+describe('quality-events.handlers — reapertura reinicia el cierre', () => {
+  it('NO_EFECTIVO clears closure, verification and root-cause approval, keeping the analysis', async () => {
+    setCurrentUser('user-auditor-001', 'AUDITOR_INTERNO')
+    getQeStore().push(
+      baseQE({
+        id: 'qe-test-reapertura-ciclo',
+        estado: 'EN_VERIFICACION',
+        ciclo: 1,
+        causaRaizDefinitiva: 'c'.repeat(120),
+        causaRaizAprobadaPorId: 'user-jc-001',
+        causaRaizFirmadaEn: '2026-09-01T10:00:00Z',
+        resultadoCierre: 'r'.repeat(120),
+        plazoVerificacionDias: 60,
+        cerradoPorId: 'user-jc-001',
+        cerradoPorNombre: 'Ana Torres',
+        cierreFirmaSupervisorId: 'user-supervisor-002',
+        cierreFirmaSupervisorNombre: 'Luis Peralta',
+        fechaVerificacionProgramada: '2026-11-01T10:00:00Z',
+      }),
+    )
+
+    const { status, data } = await call(
+      api.post<QualityEvent>('/api/quality-events/qe-test-reapertura-ciclo/verificacion-eficacia', {
+        resultado: 'NO_EFECTIVO',
+        evidencia: 'Recurrencia detectada',
+      }),
+    )
+
+    expect(status).toBe(200)
+    expect(data.ciclo).toBe(2)
+    expect(data.estado).toBe('EN_INVESTIGACION')
+    expect(data.resultadoCierre).toBeUndefined()
+    expect(data.cerradoPorId).toBeUndefined()
+    expect(data.cierreFirmaSupervisorId).toBeUndefined()
+    expect(data.causaRaizFirmadaEn).toBeUndefined()
+    expect(data.causaRaizAprobadaPorId).toBeUndefined()
+    expect(data.resultadoVerificacion).toBeUndefined()
+    expect(data.causaRaizDefinitiva).toBe('c'.repeat(120))
+    const reinicio = data.auditTrail.find((e) => e.accion === 'CICLO_REINICIADO')
+    expect(reinicio?.valorNuevo).toBe('Ciclo 2')
+    expect(reinicio?.valorAnterior).toContain('Firma JCA: Ana Torres')
+    expect(reinicio?.valorAnterior).toContain('Firma supervisor: Luis Peralta')
+  })
+
+  it('the cycle-2 fixture waits for the JCA signature', async () => {
+    setCurrentUser('user-jc-001', 'JEFE_CALIDAD_SYST')
+    const { status, data } = await call(api.get<QualityEvent>('/api/quality-events/qe-2026-024'))
+    expect(status).toBe(200)
+    expect(data.ciclo).toBe(2)
+    expect(data.siguientePaso?.paso).toBe('FIRMA_JCA')
+  })
+})
+
 describe('quality-events.handlers — export-pdf', () => {
   it('appends an EXPORTACION_PDF audit entry and returns the updated QE', async () => {
     setCurrentUser('user-jc-001', 'JEFE_CALIDAD_SYST')
@@ -1788,5 +1842,47 @@ describe('quality-events.handlers — solicitudes de AC (solicitudes-ac-y-ac-del
     )
     expect(vacio.status).toBe(422)
     expect(vacio.data.errorCode).toBe('SIN_SOLICITUDES_PENDIENTES')
+  })
+})
+
+describe('quality-events.handlers — siguientePaso en el detalle (qe-siguiente-paso-responsable)', () => {
+  const RESULTADO = 'Cierre de prueba con más de cien caracteres para pasar la validación mínima requerida por el formulario.'
+
+  it('PENDIENTE_CIERRE sin resultado → REGISTRAR_RESULTADO_CIERRE con los JCA activos', async () => {
+    getQeStore().push(baseQE({ id: 'qe-sp-registrar', estado: 'PENDIENTE_CIERRE', areaId: 'area-010' }))
+    setCurrentUser('user-supervisor-001', 'SUPERVISOR')
+
+    const { status, data } = await call(api.get<QualityEvent>('/api/quality-events/qe-sp-registrar'))
+
+    expect(status).toBe(200)
+    expect(data.siguientePaso?.paso).toBe('REGISTRAR_RESULTADO_CIERRE')
+    expect(data.siguientePaso?.responsables.map((r) => r.id)).toContain('user-jefecalidad-001')
+    expect(data.siguientePaso?.estadoDesde).toBe('2026-01-01T00:00:00Z')
+    expect(data.siguientePaso?.plazoFecha).toBeTruthy()
+  })
+
+  it('PENDIENTE_CIERRE con firma del JCA → FIRMA_SUPERVISOR con los supervisores del área', async () => {
+    getQeStore().push(
+      baseQE({
+        id: 'qe-sp-supervisor',
+        estado: 'PENDIENTE_CIERRE',
+        areaId: 'area-010',
+        resultadoCierre: RESULTADO,
+        cerradoPorId: 'user-jefecalidad-001',
+      }),
+    )
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+
+    const { data } = await call(api.get<QualityEvent>('/api/quality-events/qe-sp-supervisor'))
+
+    expect(data.siguientePaso?.paso).toBe('FIRMA_SUPERVISOR')
+    expect(data.siguientePaso?.responsables.map((r) => r.id)).toContain('user-supervisor-001')
+  })
+
+  it('el listado no incluye siguientePaso', async () => {
+    setCurrentUser('user-jefecalidad-001', 'JEFE_CALIDAD_SYST')
+    const { data } = await call(api.get<{ items: QualityEvent[] }>('/api/quality-events'))
+    expect(data.items.length).toBeGreaterThan(0)
+    expect(data.items.every((qe) => qe.siguientePaso == null)).toBe(true)
   })
 })

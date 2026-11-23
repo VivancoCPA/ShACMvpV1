@@ -205,3 +205,18 @@ describe('QEHeaderSection — responsable de investigación', () => {
     expect(screen.queryByRole('button', { name: 'detail.responsable.asignar' })).not.toBeInTheDocument()
   })
 })
+
+// qe-reapertura-reinicia-cierre D5 (RN-QE-007): el badge de reincidencia dice el ciclo.
+describe('QEHeaderSection — badge de ciclo', () => {
+  it('shows "Ciclo {n}" when ciclo > 1', () => {
+    currentUser = makeUser({})
+    render(<QEHeaderSection qe={makeQE({ ciclo: 2 })} />)
+    expect(screen.getByText('detail.header.ciclo')).toBeInTheDocument()
+  })
+
+  it('does not show the badge in the first cycle', () => {
+    currentUser = makeUser({})
+    render(<QEHeaderSection qe={makeQE({ ciclo: 1 })} />)
+    expect(screen.queryByText('detail.header.ciclo')).not.toBeInTheDocument()
+  })
+})

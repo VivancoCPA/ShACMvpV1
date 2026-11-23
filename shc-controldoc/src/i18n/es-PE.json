@@ -784,7 +784,8 @@
         "verificacionDiasRestantes": "{{count}} días",
         "plazoPendienteCierre": "{{count}} días hábiles (plazo informativo de cierre)",
         "exportarPDF": "Exportar PDF",
-        "exportarPDFError": "Error al exportar el PDF. Inténtalo de nuevo."
+        "exportarPDFError": "Error al exportar el PDF. Inténtalo de nuevo.",
+        "ciclo": "Ciclo {{n}}"
       },
       "transitions": {
         "title": "Transiciones de estado",
@@ -1044,7 +1045,9 @@
           "AC_DEVUELTA": "Acción correctiva devuelta",
           "AC_SOLICITADA": "Acción correctiva solicitada desde el origen",
           "SOLICITUD_AC_ATENDIDA": "Solicitud de AC atendida",
-          "SOLICITUD_AC_DESCARTADA": "Solicitud de AC descartada"
+          "SOLICITUD_AC_DESCARTADA": "Solicitud de AC descartada",
+          "CICLO_REINICIADO": "Ciclo reiniciado",
+          "CORRECCION_DATOS_REAPERTURA": "Corrección de datos de reapertura"
         },
         "sugerenciaIAEditada": "sugerencia IA editada"
       },
@@ -1054,6 +1057,32 @@
         "volver": "Volver al listado"
       },
       "deletedBanner": "Este Quality Event ha sido eliminado.",
+      "siguientePaso": {
+        "titulo": "Siguiente paso",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin responsable disponible",
+        "teToca": "Te toca a ti",
+        "desde": "En este estado desde el {{fecha}} (hace {{dias}} días)",
+        "plazo": "Plazo: vence el {{fecha}}",
+        "progresoAC": "{{progreso}} de {{total}} AC cerradas",
+        "finalizado": "Proceso finalizado — verificado el {{fecha}}",
+        "masResponsables": "+{{count}}",
+        "paso": {
+          "ASIGNAR_RESPONSABLE": "Asignar responsable de investigación",
+          "INICIAR_INVESTIGACION": "Iniciar la investigación",
+          "COMPLETAR_ANALISIS": "Completar el análisis de causa raíz",
+          "APROBAR_CAUSA_RAIZ": "Aprobar la causa raíz (firma con PIN)",
+          "INICIAR_EJECUCION": "Pasar a ejecución de acciones correctivas",
+          "EJECUTAR_ACS": "Ejecutar y verificar las acciones correctivas",
+          "REGISTRAR_RESULTADO_CIERRE": "Registrar el resultado del cierre",
+          "FIRMA_JCA": "Firma de cierre del Jefe de Calidad",
+          "FIRMA_SUPERVISOR": "Firma de cierre del supervisor del área",
+          "ESPERA_VERIFICACION": "Esperar la fecha de verificación de eficacia",
+          "VERIFICAR_EFICACIA": "Verificar la eficacia",
+          "FINALIZADO": "Proceso finalizado",
+          "CIERRE_INCONSISTENTE": "Datos de cierre inconsistentes — contacta al Jefe de Calidad"
+        }
+      },
       "cierre": {
         "title": "Cierre del Quality Event",
         "form": {
@@ -1101,6 +1130,7 @@
           "rechazado": "Cierre rechazado. El Jefe de Calidad fue notificado.",
           "rechazoError": "Error al rechazar el cierre"
         },
+        "paso1": "Paso 1 — Registrar el resultado del cierre (Jefe de Calidad)",
         "firma1": "Firma 1 — Jefe de Calidad",
         "firma2": "Firma 2 — Supervisor de {{area}}",
         "firmaHecha": "✓ {{nombre}} — {{fecha}}",

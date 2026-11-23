@@ -138,6 +138,16 @@ function ultimaEntrada(
   return [...auditTrail].reverse().find(predicado)
 }
 
+// qe-reapertura-reinicia-cierre D5: las filas de pasos/firmas solo miran el ciclo actual — las
+// entradas posteriores al último REABIERTO (en ciclo 1, todo el audit trail).
+function entradasDelCicloActual(auditTrail: QEAuditTrailEntry[]): QEAuditTrailEntry[] {
+  let inicio = -1
+  auditTrail.forEach((entry, i) => {
+    if (entry.accion === 'REABIERTO') inicio = i
+  })
+  return inicio === -1 ? auditTrail : auditTrail.slice(inicio + 1)
+}
+
 // Firma 1: acción nueva FIRMA_CIERRE_JEFE_CALIDAD o la legacy FIRMA_REGISTRADA del backend anterior
 // (qe-cierre-firma-supervisor-area).
 const esFirmaJefeCalidad = (entry: QEAuditTrailEntry) =>
@@ -289,10 +299,14 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
   const showNoEsDelArea = showPendingSecondSignature && user?.rol === 'SUPERVISOR' && !esSupervisorDelArea
 
   const showSummary = qe.estado === 'CERRADO' || qe.estado === 'EN_VERIFICACION' || qe.estado === 'VERIFICADO'
-  const showFirmas = (qe.estado === 'PENDIENTE_CIERRE' && !!qe.resultadoCierre) || showSummary
+  // Siempre en PENDIENTE_CIERRE, para todos los roles (qe-siguiente-paso-responsable D1): sin
+  // resultado del cierre nadie más que el JCA veía qué faltaba.
+  const showFirmas = qe.estado === 'PENDIENTE_CIERRE' || showSummary
 
-  const firmaJefeEntry = qe.cerradoPorId ? ultimaEntrada(qe.auditTrail, esFirmaJefeCalidad) : undefined
-  const firmaSupervisorEntry = qe.cierreFirmaSupervisorId ? ultimaEntrada(qe.auditTrail, esFirmaSupervisor) : undefined
+  const auditCiclo = entradasDelCicloActual(qe.auditTrail)
+  const paso1Entry = qe.resultadoCierre ? ultimaEntrada(auditCiclo, (e) => e.accion === 'CIERRE_INICIADO') : undefined
+  const firmaJefeEntry = qe.cerradoPorId ? ultimaEntrada(auditCiclo, esFirmaJefeCalidad) : undefined
+  const firmaSupervisorEntry = qe.cierreFirmaSupervisorId ? ultimaEntrada(auditCiclo, esFirmaSupervisor) : undefined
   const supervisoresNombres = (qe.supervisoresArea ?? []).map((s) => s.nombreCompleto).join(', ')
   const areaSinSupervisor =
     errorCodeOf(cerrarQE.error) === 'AREA_SIN_SUPERVISOR' || errorCodeOf(firmarCierre.error) === 'AREA_SIN_SUPERVISOR'
@@ -500,6 +514,14 @@ export function QECierreSection({ qe }: QECierreSectionProps) {
 
       {showFirmas && (
         <dl className="mb-4 divide-y divide-hairline dark:divide-hairline/20">
+          <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt className="text-sm font-medium text-muted dark:text-on-dark-soft">{t('detail.cierre.paso1')}</dt>
+            <dd className="mt-0.5 text-sm text-body dark:text-on-dark sm:col-span-2 sm:mt-0">
+              {qe.resultadoCierre
+                ? `✓${paso1Entry ? ` ${dateFormatter.format(new Date(paso1Entry.timestamp))}` : ''}`
+                : t('detail.cierre.pendiente')}
+            </dd>
+          </div>
           {firmaRow(t('detail.cierre.firma1'), !!qe.cerradoPorId, qe.cerradoPorNombre, firmaJefeEntry, t('detail.cierre.pendiente'))}
           {firmaRow(
             t('detail.cierre.firma2', { area: areaNombre }),
